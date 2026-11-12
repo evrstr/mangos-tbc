@@ -1,22 +1,35 @@
 --- Script Layout ---
+--- 脚本目录结构说明 ---
 A quick explanation of the layout I hope everyone will follow for scriptdev2.
+关于 scriptdev2 脚本目录布局的简要说明，希望大家在编写脚本时共同遵守。
 
 --- Sub Folders ---
+--- 子目录说明 ---
 
 battlegrounds - Contains scripts for npcs in Battlegrounds
+battlegrounds - 包含战场（Battlegrounds）中 NPC 的相关脚本。
 
 custom - Intentionally empty folder from SVN. If you make a custom script please put it here.
+custom - SVN 仓库中刻意保留的空目录。如果你编写了自定义脚本，请放在此目录中。
 
 examples - Contains a couple of example scripts showing the most commonly used functions within SD2
+examples - 包含若干示例脚本，演示 SD2 中最常用的函数与用法。
 
 eastern_kingdoms, kalimdor, northrend, outland - Contain scripts for anything related to npcs or instances on the corresponding continent.
 Instances are grouped to subfolders, the normal continent-maps are divided into zones
+eastern_kingdoms, kalimdor, northrend, outland - 包含对应大陆（东部王国、卡利姆多、诺森德、外域）上与 NPC 或副本相关的所有脚本。
+其中副本按子文件夹分组，常规大陆地图则按区域划分。
 
 world - Contains scripts for anything that is not related to a specified zone.
 This includes item_scripts, areatrigger_scripts, some npcs that can be found at many places, go_scripts and spell_scripts
+world - 包含不隶属于特定区域的全局脚本。
+其中包括物品脚本（item_scripts）、区域触发器脚本（areatrigger_scripts）、在多处出现的 NPC 脚本、游戏对象脚本（go_scripts）以及法术脚本（spell_scripts）。
 
 --- Naming Conventions ---
+--- 命名规范 ---
 
 Please keep file names to "type_objectname.cpp" where type is replaced by the type of object and objectname is replaced by the name of the object, creature, item, or area that this script will be used by.
+请将文件名统一保持为 "type_objectname.cpp" 格式，其中 type 替换为对象类型，objectname 替换为该脚本所对应的对象、生物、物品或区域名称。
 
 AddSC functions should follow "void AddSC_filename(void);" format. Do not append AI or anything else.
+AddSC 注册函数应遵循 "void AddSC_filename(void);" 格式，切勿在后面附加 AI 或其他后缀。

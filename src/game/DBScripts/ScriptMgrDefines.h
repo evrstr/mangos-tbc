@@ -22,22 +22,24 @@
 #include <string>
 #include <map>
 
+/// 数据库脚本表类型枚举（决定脚本的触发来源与对应数据库表）
 enum ScriptMapType
 {
-    SCRIPT_TYPE_QUEST_END           = 0,
-    SCRIPT_TYPE_QUEST_START         = 1,
-    SCRIPT_TYPE_SPELL               = 2,
-    SCRIPT_TYPE_GAMEOBJECT          = 3,
-    SCRIPT_TYPE_GAMEOBJECT_TEMPLATE = 4,
-    SCRIPT_TYPE_EVENT               = 5,
-    SCRIPT_TYPE_GOSSIP              = 6,
-    SCRIPT_TYPE_CREATURE_DEATH      = 7,
-    SCRIPT_TYPE_CREATURE_MOVEMENT   = 8,
-    SCRIPT_TYPE_RELAY               = 9,
-    SCRIPT_TYPE_INTERNAL            = 10, // must be last
+    SCRIPT_TYPE_QUEST_END           = 0,                    // 任务完成脚本 (dbscripts_on_quest_end)
+    SCRIPT_TYPE_QUEST_START         = 1,                    // 任务接取脚本 (dbscripts_on_quest_start)
+    SCRIPT_TYPE_SPELL               = 2,                    // 法术触发脚本 (dbscripts_on_spell)
+    SCRIPT_TYPE_GAMEOBJECT          = 3,                    // 游戏对象交互脚本 (dbscripts_on_go_use)
+    SCRIPT_TYPE_GAMEOBJECT_TEMPLATE = 4,                    // 游戏对象模板脚本 (dbscripts_on_go_template_use)
+    SCRIPT_TYPE_EVENT               = 5,                    // 事件脚本 (dbscripts_on_event)
+    SCRIPT_TYPE_GOSSIP              = 6,                    // 对话菜单脚本 (dbscripts_on_gossip)
+    SCRIPT_TYPE_CREATURE_DEATH      = 7,                    // 生物死亡脚本 (dbscripts_on_creature_death)
+    SCRIPT_TYPE_CREATURE_MOVEMENT   = 8,                    // 生物路径移动脚本 (dbscripts_on_creature_movement)
+    SCRIPT_TYPE_RELAY               = 9,                    // 中继链式脚本 (dbscripts_on_relay)
+    SCRIPT_TYPE_INTERNAL            = 10, // must be last   // 内部临时脚本（必须保持在枚举最后）
     SCRIPT_TYPE_MAX
 };
 
+/// 字符串标识定义（将整数 ID 与可读字符串名称双向映射，用于脚本引用生物/对象）
 struct StringId
 {
     int32 Id;

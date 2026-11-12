@@ -21,9 +21,15 @@ SDComment:
 SDCategory: Tempest Keep, The Botanica
 EndScriptData */
 
+// 看管者索恩格林（生态船一号首领）
+/* 遭遇战概述：
+ * 看管者索恩格林是狂暴萨特，施放地狱火、牺牲之怒与激怒。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_INTRO       = 16961,
@@ -42,6 +48,7 @@ enum
     SPELL_ENRAGE        = 34670,
 };
 
+// ThorngrinActions 相关枚举
 enum ThorngrinActions
 {
     THORNGRIN_20,
@@ -62,6 +69,7 @@ struct boss_thorngrinAI : CombatAI
     bool m_isRegularMode;
     bool m_hasYelledIntro;
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (!m_hasYelledIntro && who->IsPlayer() && !static_cast<Player*>(who)->IsGameMaster() && m_creature->IsWithinDistInMap(who, 75.0f) && m_creature->IsWithinLOSInMap(who))
@@ -73,16 +81,19 @@ struct boss_thorngrinAI : CombatAI
         ScriptedAI::MoveInLineOfSight(who);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -93,6 +104,7 @@ struct boss_thorngrinAI : CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -115,6 +127,7 @@ struct boss_thorngrinAI : CombatAI
     }
 };
 
+// 注册 boss_thorngrin 脚本
 void AddSC_boss_thorngrin()
 {
     Script* pNewScript = new Script;

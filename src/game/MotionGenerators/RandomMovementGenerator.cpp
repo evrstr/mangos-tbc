@@ -22,23 +22,24 @@
 #include "Movement/MoveSpline.h"
 #include "MotionGenerators/RandomMovementGenerator.h"
 
+/// 初始化随机移动：接管玩家控制或令 AI 脱靶停攻，并中断既有样条
 void AbstractRandomMovementGenerator::Initialize(Unit& owner)
 {
     owner.addUnitState(i_stateActive);
 
     m_pathFinder = std::make_unique<PathFinder>(&owner);
 
-    // Client-controlled unit should have control removed
+    // Client-controlled unit should have control removed (客户端控制单位需临时取消本地操控)
     if (const Player* controllingClientPlayer = owner.GetClientControlling())
         controllingClientPlayer->UpdateClientControl(&owner, false);
-    // Non-client controlled unit with an AI should drop target
+    // Non-client controlled unit with an AI should drop target (AI 单位取消目标并停止近战攻击)
     else if (owner.AI())
     {
         owner.SetTarget(nullptr);
         owner.MeleeAttackStop(owner.GetVictim());
     }
 
-    // Stop any previously dispatched splines no matter the source
+    // Stop any previously dispatched splines no matter the source (停止之前残留的移动样条)
     if (!owner.movespline->Finalized())
     {
         if (owner.IsClientControlled())
@@ -48,11 +49,12 @@ void AbstractRandomMovementGenerator::Initialize(Unit& owner)
     }
 }
 
+/// 结束随机移动：清除状态、归还客户端控制权并停止样条
 void AbstractRandomMovementGenerator::Finalize(Unit& owner)
 {
     owner.clearUnitState(i_stateActive | i_stateMotion);
 
-    // Client-controlled unit should have control restored
+    // Client-controlled unit should have control restored (归还客户端控制权)
     if (const Player* controllingClientPlayer = owner.GetClientControlling())
         controllingClientPlayer->UpdateClientControl(&owner, true);
 
@@ -80,6 +82,7 @@ void AbstractRandomMovementGenerator::Reset(Unit& owner)
     Initialize(owner);
 }
 
+/// 每帧更新：当当前段样条走完且等待计时器到期后，选取下一随机目标点继续移动
 bool AbstractRandomMovementGenerator::Update(Unit& owner, const uint32& diff)
 {
     if (!owner.IsAlive())
@@ -116,9 +119,10 @@ bool AbstractRandomMovementGenerator::Update(Unit& owner, const uint32& diff)
     return true;
 }
 
+/// 通过 PathFinder 在中心周围随机取点并下发移动样条
 int32 AbstractRandomMovementGenerator::_setLocation(Unit& owner)
 {
-    // Look for a random location within certain radius of initial position
+    // Look for a random location within certain radius of initial position (在初始中心半径范围内寻找随机可达点)
     float x = i_x, y = i_y, z = i_z;
 
     if (i_pathLength != 0.0f)
@@ -239,9 +243,10 @@ FleeingMovementGenerator::FleeingMovementGenerator(Unit const& source) :
     i_walk = false;
 }
 
-#define MIN_QUIET_DISTANCE 28.0f
-#define MAX_QUIET_DISTANCE 43.0f
+#define MIN_QUIET_DISTANCE 28.0f // 逃跑安全距离下限
+#define MAX_QUIET_DISTANCE 43.0f // 逃跑安全距离上限
 
+/// 根据与威胁源的距离动态决定逃跑选点半径
 int32 FleeingMovementGenerator::_setLocation(Unit& owner)
 {
     float dist_from_source = owner.GetDistance(i_x, i_y, i_z);
@@ -250,7 +255,7 @@ int32 FleeingMovementGenerator::_setLocation(Unit& owner)
         i_radius = frand(0.4f, 1.3f) * (MIN_QUIET_DISTANCE - dist_from_source);
     else if (dist_from_source > MAX_QUIET_DISTANCE)
         i_radius = frand(0.4f, 1.0f) * (MAX_QUIET_DISTANCE - MIN_QUIET_DISTANCE);
-    else    // we are inside quiet range
+    else    // we are inside quiet range (已处于安全区间内，在附近小幅游走避险)
         i_radius = frand(0.6f, 1.2f) * (MAX_QUIET_DISTANCE - MIN_QUIET_DISTANCE);
 
     return AbstractRandomMovementGenerator::_setLocation(owner);
@@ -268,6 +273,7 @@ void PanicMovementGenerator::Finalize(Unit& owner)
     owner.clearUnitState(UNIT_STAT_PANIC);
 
     // Since two fleeing mmgens are mutually exclusive, we are also responsible for the removal of that flag, nobody will clear this for us
+    // 两种逃跑生成器互斥，需由恐慌生成器自行移除 UNIT_FLAG_FLEEING 并通知 AI 结束
     owner.RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
 
     FleeingMovementGenerator::Finalize(owner);

@@ -22,10 +22,11 @@
 #include "Spells/SpellMgr.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
 
+// 内部自定义动作 ID
 enum
 {
-    ACTION_CASTING_RESTORE = 1000,
-    ACTION_ON_KILL_COOLDOWN = 1001,
+    ACTION_CASTING_RESTORE = 1000,                          // 施法后目标恢复动作 ID
+    ACTION_ON_KILL_COOLDOWN = 1001,                         // 击杀反应内置冷却恢复动作 ID
 };
 
 CombatAI::CombatAI(Creature* creature, uint32 combatActions) : ScriptedAI(creature, combatActions), m_onKillCooldown(false), m_stopTargeting(false)
@@ -34,6 +35,7 @@ CombatAI::CombatAI(Creature* creature, uint32 combatActions) : ScriptedAI(creatu
     AddCustomAction(ACTION_ON_KILL_COOLDOWN, true, [&]() { m_onKillCooldown = false; });
 }
 
+// 重置 AI 状态
 void CombatAI::Reset()
 {
     ScriptedAI::Reset();
@@ -41,6 +43,7 @@ void CombatAI::Reset()
     m_storedTarget = ObjectGuid();
 }
 
+// 延迟瞬发法术动画处理：记录当前目标并在 2 秒后尝试恢复目标
 void CombatAI::HandleDelayedInstantAnimation(SpellEntry const* /*spellInfo*/)
 {
     m_storedTarget = m_creature->GetTarget() ? m_creature->GetTarget()->GetObjectGuid() : ObjectGuid();
@@ -48,6 +51,7 @@ void CombatAI::HandleDelayedInstantAnimation(SpellEntry const* /*spellInfo*/)
         ResetTimer(ACTION_CASTING_RESTORE, 2000);
 }
 
+// 恢复战斗主目标（若当前仍在施法或目标已改变则退出）
 void CombatAI::HandleTargetRestoration()
 {
     ObjectGuid guid = m_unit->GetTarget() ? m_unit->GetTarget()->GetObjectGuid() : ObjectGuid();
@@ -65,32 +69,38 @@ void CombatAI::HandleTargetRestoration()
     m_storedTarget = ObjectGuid();
 }
 
+// 检查是否限制目标选择（主动限制、施法暂存锁定或基类限制）
 bool CombatAI::IsTargetingRestricted()
 {
     return m_stopTargeting || m_storedTarget || ScriptedAI::IsTargetingRestricted();
 }
 
+// 受到嘲讽时的响应：快速触发目标恢复
 void CombatAI::OnTaunt()
 {
     if (m_storedTarget)
-        ResetTimer(ACTION_CASTING_RESTORE, 1); // clear on next update
+        ResetTimer(ACTION_CASTING_RESTORE, 1); // clear on next update (在下次 Update 时清理暂存目标)
 }
 
+// 添加击杀玩家时的台词响应
 void CombatAI::AddOnKillText(int32 text)
 {
     m_onDeathReactions.emplace_back(text, false);
 }
 
+// 添加击杀玩家时的音效响应
 void CombatAI::AddOnKillSound(int32 soundId)
 {
     m_onDeathReactions.emplace_back(soundId, true);
 }
 
+// 清除击杀反应列表
 void CombatAI::ClearOnKillReactions()
 {
     m_onDeathReactions.clear();
 }
 
+// 击杀单位回调：击杀玩家时随机播放台词或声音并设置 10 秒冷却
 void CombatAI::KilledUnit(Unit* victim)
 {
     if (!m_creature->IsAlive() || !victim->IsPlayer())

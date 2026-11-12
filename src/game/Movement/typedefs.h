@@ -34,22 +34,26 @@ namespace Movement
     using G3D::Vector3;
     using G3D::Vector4;
 
+    /// 秒转毫秒
     inline uint32 SecToMS(float sec)
     {
         return static_cast<uint32>(sec * 1000.f);
     }
 
+    /// 毫秒转秒
     inline float MSToSec(uint32 ms)
     {
         return ms / 1000.f;
     }
 
+    /// 循环递增计数器，达到上限后归零重置（用于生成 Spline ID 等）
     template<class T, T limit>
     class counter
     {
         public:
             counter() { init();}
 
+            /// 递增计数，达到上限时回绕归零
             void Increase()
             {
                 if (m_counter == limit)
@@ -58,7 +62,9 @@ namespace Movement
                     ++m_counter;
             }
 
+            /// 生成并返回一个新的自增 ID
             T NewId() { Increase(); return m_counter;}
+            /// 获取当前计数值
             T getCurrent() const { return m_counter;}
 
         private:
@@ -66,7 +72,7 @@ namespace Movement
             T m_counter;
     };
 
-    typedef counter<uint32, 0xFFFFFFFF> UInt32Counter;
+    typedef counter<uint32, 0xFFFFFFFF> UInt32Counter; // 32 位无符号整型循环计数器
 }
 
 #endif // MANGOSSERVER_TYPEDEFS_H

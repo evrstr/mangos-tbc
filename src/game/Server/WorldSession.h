@@ -65,6 +65,7 @@ class SessionAnticheatInterface;
 
 struct OpcodeHandler;
 
+/// 客户端账号配置缓存类型（g=账号全局共享，p=单角色独立缓存）
 enum AccountDataType
 {
     GLOBAL_CONFIG_CACHE             = 0,                    // 0x01 g
@@ -81,6 +82,7 @@ enum AccountDataType
 #define GLOBAL_CACHE_MASK           0x15
 #define PER_CHARACTER_CACHE_MASK    0xEA
 
+/// 账号/角色界面配置数据缓存项
 struct AccountData
 {
     AccountData() : Time(0), Data("") {}
@@ -89,6 +91,7 @@ struct AccountData
     std::string Data;
 };
 
+/// 客户端操作系统类型
 enum ClientOSType
 {
     CLIENT_OS_UNKNOWN,
@@ -96,6 +99,7 @@ enum ClientOSType
     CLIENT_OS_MAC
 };
 
+/// 客户端 CPU 架构类型
 enum ClientPlatformType
 {
     CLIENT_PLATFORM_UNKNOWN,
@@ -103,12 +107,14 @@ enum ClientPlatformType
     CLIENT_PLATFORM_PPC
 };
 
+/// 组队操作类型
 enum PartyOperation
 {
     PARTY_OP_INVITE = 0,
     PARTY_OP_LEAVE = 2,
 };
 
+/// 组队操作结果码
 enum PartyResult
 {
     ERR_PARTY_RESULT_OK                 = 0,
@@ -125,6 +131,7 @@ enum PartyResult
     ERR_INVITE_RESTRICTED               = 13,
 };
 
+/// 聊天受限提示类型
 enum ChatRestrictionType
 {
     ERR_CHAT_RESTRICTED = 0,
@@ -132,6 +139,7 @@ enum ChatRestrictionType
     ERR_USER_SQUELCHED  = 2,
 };
 
+/// 新手教学标志数据脏状态
 enum TutorialDataState
 {
     TUTORIALDATA_UNCHANGED = 0,
@@ -139,32 +147,36 @@ enum TutorialDataState
     TUTORIALDATA_NEW       = 2
 };
 
+/// 世界会话生命周期状态
 enum WorldSessionState
 {
-    WORLD_SESSION_STATE_CREATED        = 0,
-    WORLD_SESSION_STATE_CHAR_SELECTION = 1,
-    WORLD_SESSION_STATE_READY          = 2,
-    WORLD_SESSION_STATE_OFFLINE        = 3
+    WORLD_SESSION_STATE_CREATED        = 0,                 ///< 已建连待初始化角色列表阶段
+    WORLD_SESSION_STATE_CHAR_SELECTION = 1,                 ///< 处于选人界面阶段
+    WORLD_SESSION_STATE_READY          = 2,                 ///< 已进入游戏世界就绪阶段
+    WORLD_SESSION_STATE_OFFLINE        = 3                  ///< 断线保留等待重连阶段
 };
 
 #define MAX_DECLINED_NAME_CASES 5
 
+/// 俄语等屈折语角色名的 5 种变格形式
 struct DeclinedName
 {
     std::string name[MAX_DECLINED_NAME_CASES];
 };
 
+/// 角色名称查询响应缓存结构
 struct CharacterNameQueryResponse
 {
-    ObjectGuid          guid;                   // pc's guid
-    std::string         name;                   // pc's name
-    std::string         realm;                  // realm name (xrealm battlegrounds)
-    uint32              race        = 0;        // pc's race
-    uint32              gender      = 0;        // pc's gender
-    uint32              classid     = 0;        // pc's class
-    DeclinedName        declined;               // pc's declined name definitions
+    ObjectGuid          guid;                   // pc's guid | 玩家 GUID
+    std::string         name;                   // pc's name | 玩家名称
+    std::string         realm;                  // realm name (xrealm battlegrounds) | 跨服战场服务器名
+    uint32              race        = 0;        // pc's race | 种族
+    uint32              gender      = 0;        // pc's gender | 性别
+    uint32              classid     = 0;        // pc's class | 职业
+    DeclinedName        declined;               // pc's declined name definitions | 变格名称
 };
 
+/// 账号标志位
 enum AccountFlags
 {
     ACCOUNT_FLAG_SHOW_ANTICHEAT = 0x01,
@@ -175,6 +187,7 @@ enum AccountFlags
 
 // class to deal with packet processing
 // allows to determine if next packet is safe to be processed
+// 数据包过滤策略基类：用于判断某数据包是否可在当前更新上下文中处理
 class PacketFilter
 {
     public:
@@ -188,7 +201,7 @@ class PacketFilter
         WorldSession* const m_pSession;
 };
 
-// process only thread-safe packets in Map::Update()
+// process only thread-safe packets in Map::Update() | 地图线程过滤器：仅允许在 Map::Update() 中安全处理的线程安全数据包
 class MapSessionFilter : public PacketFilter
 {
     public:
@@ -196,12 +209,13 @@ class MapSessionFilter : public PacketFilter
         ~MapSessionFilter() {}
 
         virtual bool Process(WorldPacket const& packet) const override;
-        // in Map::Update() we do not process player logout!
+        // in Map::Update() we do not process player logout! | 禁止在 Map::Update() 中执行玩家登出逻辑
         virtual bool ProcessLogout() const override { return false; }
 };
 
 // class used to filer only thread-unsafe packets from queue
 // in order to update only be used in World::UpdateSessions()
+// 世界主线程过滤器：筛选需在 World::UpdateSessions() 串行处理的非线程安全数据包
 class WorldSessionFilter : public PacketFilter
 {
     public:
@@ -211,7 +225,7 @@ class WorldSessionFilter : public PacketFilter
         virtual bool Process(WorldPacket const& packet) const override;
 };
 
-/// Player session in the World
+/// Player session in the World | 玩家在世界服中的会话对象（管理连接、队列包分发、登出状态机及各类 CMSG 处理器）
 class WorldSession
 {
         friend class CharacterHandler;
@@ -221,11 +235,12 @@ class WorldSession
         ~WorldSession();
 
         // Set this session have no attached socket but keep it alive for short period of time to permit a possible reconnection
+        // 将会话置为离线保留态（关闭现有连接但短时间内保留会话以支持重连）
         void SetOffline();
         void SetOnline();
         void SetInCharSelection();
 
-        // Request set offline, close socket and put session offline
+        // Request set offline, close socket and put session offline | 重连时请求接管新 Socket 连接
         bool RequestNewSocket(WorldSocket* socket);
         bool IsOffline() const { return m_sessionState == WORLD_SESSION_STATE_OFFLINE; }
         WorldSessionState GetState() const { return m_sessionState; }
@@ -281,13 +296,13 @@ class WorldSession
         void SetNoAnticheat();
 #endif
 
-        /// Session in auth.queue currently
+        /// Session in auth.queue currently | 设置会话是否处于登录排队中
         void SetInQueue(bool state) { m_inQueue = state; }
 
-        /// Is the user engaged in a log out process?
+        /// Is the user engaged in a log out process? | 判断当前是否已发起或正在执行登出流程
         bool isLogingOut() const { return _logoutTime || m_playerLogout; }
 
-        /// Engage the logout process for the user
+        /// Engage the logout process for the user | 触发玩家登出请求（记录请求时间及是否保存数据库/踢出连接）
         void LogoutRequest(time_t requestTime, bool saveToDB = true, bool kickSession = false)
         {
             _logoutTime = requestTime;
@@ -297,33 +312,40 @@ class WorldSession
 
         void AfkStateChange(bool state);
 
-        /// Is logout cooldown expired?
+        /// Is logout cooldown expired? | 判断 20 秒延迟登出倒计时是否已到期
         bool ShouldLogOut(time_t currTime) const
         {
             return (_logoutTime > 0 && currTime >= _logoutTime + 20);
         }
 
+        /// 判断离线断线保留宽限期（60 秒）是否已超时
         bool ShouldDisconnect(time_t currTime)
         {
             return (_logoutTime > 0 && currTime >= _logoutTime + 60);
         }
 
+        /// 判断 AFK 挂机超时（15 分钟）是否需要断开连接
         bool ShouldAfkDisconnect(time_t currTime) const
         {
             return (m_afkTime > 0 && currTime >= m_afkTime + 15 * MINUTE);
         }
 
+        /// 执行完整玩家下线清理（保存角色、退队/退频道、移出世界并下发登出完成包）
         void LogoutPlayer();
-        void KickPlayer(bool save = false, bool inPlace = false); // inplace variable needed for shutdown
+        void KickPlayer(bool save = false, bool inPlace = false); // inplace variable needed for shutdown | 踢出玩家（inPlace=true 用于关服时原地立即登出）
 
+        /// 将网络层收到的客户端数据包按线程策略入队或立即执行
         void QueuePacket(std::unique_ptr<WorldPacket> new_packet);
 
+        /// 清空待处理的地图线程移动包（防止传送/控制权切换时残留旧包）
         void DeleteMovementPackets();
 
+        /// 世界主线程更新：处理非线程安全队列包、反作弊更新与会话状态机流转
         bool Update(uint32 diff);
+        /// 地图线程更新：发送时间同步包并处理地图线程安全队列包（PROCESS_MAP_THREAD）
         void UpdateMap(uint32 diff);
 
-        /// Handle the authentication waiting queue (to be completed)
+        /// Handle the authentication waiting queue (to be completed) | 发送登录排队位置通知
         void SendAuthWaitQue(uint32 position) const;
 
         void SendNameQueryResponse(CharacterNameQueryResponse& response) const;
@@ -470,11 +492,11 @@ class WorldSession
         void SendAuthQueued() const;
         void SendKickReason(uint8 reason, std::string const& string) const;
 
-        // opcodes handlers
-        void Handle_NULL(WorldPacket& recvPacket);          // not used
-        void Handle_EarlyProccess(WorldPacket& recvPacket); // just mark packets processed in WorldSocket::OnRead
-        void Handle_ServerSide(WorldPacket& recvPacket);    // sever side only, can't be accepted from client
-        void Handle_Deprecated(WorldPacket& recvPacket);    // never used anymore by client
+        // opcodes handlers | 客户端操作码处理器声明
+        void Handle_NULL(WorldPacket& recvPacket);          // not used | 未使用操作码空处理器
+        void Handle_EarlyProccess(WorldPacket& recvPacket); // just mark packets processed in WorldSocket::OnRead | 仅标记为网络层早期已处理
+        void Handle_ServerSide(WorldPacket& recvPacket);    // sever side only, can't be accepted from client | 仅服务端下行使用，不允许客户端发送
+        void Handle_Deprecated(WorldPacket& recvPacket);    // never used anymore by client | 已废弃操作码
 
         void HandleCharEnumOpcode(WorldPacket& recvPacket);
         void HandleCharDeleteOpcode(WorldPacket& recvPacket);
@@ -937,20 +959,20 @@ class WorldSession
 
         void ProcessByteBufferException(WorldPacket const& packet);
 
-        uint32 m_GUIDLow;                                   // set logged or recently logout player (while m_playerRecentlyLogout set)
-        Player* _player;
-        std::shared_ptr<WorldSocket> m_socket;              // socket pointer is owned by the network thread which created it
-        std::shared_ptr<WorldSocket> m_requestSocket;       // a new socket for this session is requested (double connection)
+        uint32 m_GUIDLow;                                   // set logged or recently logout player (while m_playerRecentlyLogout set) | 当前登录或刚登出玩家的低位 GUID
+        Player* _player;                                    ///< 当前在线玩家角色实体指针
+        std::shared_ptr<WorldSocket> m_socket;              // socket pointer is owned by the network thread which created it | 关联的网络 Socket（由网络线程创建并共享所有权）
+        std::shared_ptr<WorldSocket> m_requestSocket;       // a new socket for this session is requested (double connection) | 重连请求接管的新 Socket 指针
         std::string m_localAddress;
-        WorldSessionState m_sessionState;                   // this session state
+        WorldSessionState m_sessionState;                   // this session state | 当前会话状态机阶段
 
-        AccountTypes _security;
-        uint32 _accountId;
-        uint8 m_expansion;
-        std::string m_accountName;
-        uint32 m_accountFlags;
+        AccountTypes _security;                             ///< 账号安全/GM 权限等级
+        uint32 _accountId;                                  ///< 账号数据库 ID
+        uint8 m_expansion;                                  ///< 账号资料片权限等级（0=经典旧世，1=TBC）
+        std::string m_accountName;                          ///< 账号登录名
+        uint32 m_accountFlags;                              ///< 账号特殊标志掩码
 
-        // anticheat
+        // anticheat | 反作弊与客户端环境信息
         ClientOSType m_clientOS;
         ClientPlatformType m_clientPlatform;
         uint32 m_gameBuild;
@@ -959,51 +981,52 @@ class WorldSession
         uint32 m_lastAnticheatUpdate;
         std::unique_ptr<SessionAnticheatInterface> m_anticheat;
 
-        time_t _logoutTime;                                 // when logout will be processed after a logout request
-        time_t m_kickTime;
-        time_t m_afkTime;
-        bool m_playerSave;                                  // should we have to save the player after logout request
-        bool m_inQueue;                                     // session wait in auth.queue
-        bool m_playerLoading;                               // code processed in LoginPlayer
-        bool m_kickSession;
+        time_t _logoutTime;                                 // when logout will be processed after a logout request | 发起登出请求的时间戳
+        time_t m_kickTime;                                  ///< 选人界面超时踢出时间戳
+        time_t m_afkTime;                                   ///< 进入 AFK 挂机状态的时间戳
+        bool m_playerSave;                                  // should we have to save the player after logout request | 登出时是否保存角色数据到数据库
+        bool m_inQueue;                                     // session wait in auth.queue | 是否处于世界登录排队中
+        bool m_playerLoading;                               // code processed in LoginPlayer | 是否正在异步加载角色登录数据
+        bool m_kickSession;                                 ///< 登出后是否强制关闭底层网络连接
 
         // True when the player is in the process of logging out (WorldSession::LogoutPlayer is currently executing)
+        // 是否正在执行 LogoutPlayer() 清理流程中
         bool m_playerLogout;
-        bool m_playerRecentlyLogout;
+        bool m_playerRecentlyLogout;                        ///< 角色是否刚完成登出（用于宽限迟到的客户端数据包）
         LocaleConstant m_sessionDbcLocale;
         int m_sessionDbLocaleIndex;
-        std::atomic<uint32> m_latency;
+        std::atomic<uint32> m_latency;                      ///< 最近一次客户端上报的网络延迟（ms）
         AccountData m_accountData[NUM_ACCOUNT_DATA_TYPES];
         uint32 m_Tutorials[8];
         TutorialDataState m_tutorialState;
 
-        boost::circular_buffer<std::pair<int64, uint32>> m_timeSyncClockDeltaQueue; // first member: clockDelta. Second member: latency of the packet exchange that was used to compute that clockDelta.
-        int64 m_timeSyncClockDelta;
-        std::atomic<uint32> m_timeSyncRoundTrip;           // median round trip of the clock synchronisation
+        boost::circular_buffer<std::pair<int64, uint32>> m_timeSyncClockDeltaQueue; // first member: clockDelta. Second member: latency of the packet exchange that was used to compute that clockDelta. | 时钟同步采样环形缓冲：<客户端时钟偏移, 往返延迟>
+        int64 m_timeSyncClockDelta;                         ///< 计算得到的客户端与服务端时钟差值
+        std::atomic<uint32> m_timeSyncRoundTrip;           // median round trip of the clock synchronisation | 时钟同步中位数往返耗时
         void ComputeNewClockDelta();
 
-        std::map<uint32, uint32> m_pendingTimeSyncRequests; // key: counter. value: server time when packet with that counter was sent.
+        std::map<uint32, uint32> m_pendingTimeSyncRequests; // key: counter. value: server time when packet with that counter was sent. | 待回应的时间同步请求映射：<序号, 发送时刻>
         uint32 m_timeSyncNextCounter;
         uint32 m_timeSyncTimer;
 
-        std::set<ObjectGuid> m_offlineNameQueries; // for name queries made when not logged in (character selection screen)
-        std::deque<CharacterNameQueryResponse> m_offlineNameResponses; // for responses to name queries made when not logged in
+        std::set<ObjectGuid> m_offlineNameQueries; // for name queries made when not logged in (character selection screen) | 选人界面发出的异步名称查询 GUID 集合
+        std::deque<CharacterNameQueryResponse> m_offlineNameResponses; // for responses to name queries made when not logged in | 离线阶段待发送的名称查询响应队列
 
         bool m_initialZoneUpdated = false;
 
-        // Recruit-A-Friend
+        // Recruit-A-Friend | 战友招募（RAF）绑定信息
         uint32 m_recruitingFriendId;
         bool m_isRecruiter;
 
-        // Thread safety mechanisms
-        std::mutex m_recvQueueLock;
-        std::mutex m_recvQueueMapLock;
+        // Thread safety mechanisms | 跨线程数据包队列及会话消息投递器
+        std::mutex m_recvQueueLock;                         ///< 保护世界主线程收包队列的互斥锁
+        std::mutex m_recvQueueMapLock;                      ///< 保护地图线程收包队列的互斥锁
         std::deque<std::unique_ptr<WorldPacket>> m_recvQueue;
         std::deque<std::unique_ptr<WorldPacket>> m_recvQueueMap;
 
-        Messager<WorldSession> m_messager;
+        Messager<WorldSession> m_messager;                  ///< 跨线程异步回调投递队列
 
-        std::atomic<uint32> m_currentPlayerLevel;
+        std::atomic<uint32> m_currentPlayerLevel;           ///< 原子缓存当前玩家等级（供多线程安全读取）
 };
 #endif
 /// @}

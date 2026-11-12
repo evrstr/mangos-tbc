@@ -21,6 +21,8 @@ SDComment: Support for Quests and Mini-Events still TODO
 SDCategory: Zul'Aman
 EndScriptData */
 
+// 祖阿曼（Zul'Aman）副本状态机与20分钟限时拯救人质获取阿曼尼战熊事件
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulaman.h"
 #include "MotionGenerators/WaypointManager.h"
@@ -93,7 +95,7 @@ void instance_zulaman::OnCreatureCreate(Creature* creature)
         case NPC_KORAGG:
             m_npcEntryGuidStore[creature->GetEntry()] = creature->GetObjectGuid();
             break;        
-        // Akil'zon gauntlet 
+        // Akil'zon gauntlet (埃基尔松gauntlet)
         case NPC_TEMPEST:
             if (creature->GetPositionZ() > 50.0f) // excludes Tempest in Malacrass trash
                 sAkilzonTrashGuidSet.insert(creature->GetObjectGuid());
@@ -366,7 +368,7 @@ void instance_zulaman::SetData(uint32 type, uint32 data)
             if (data == FAIL)
             {
                 DoTimeRunSay(RUN_FAIL);
-                // Kill remaining Event NPCs
+                // Kill remaining Event NPCs (击杀remaining事件NPCs)
                 for (auto& i : m_aEventNpcInfo)
                 {
                     // Not yet rescued, so too late
@@ -689,7 +691,7 @@ void instance_zulaman::DoChestEvent(BossToChestIndex uiIndex)
     // Store Order of this kill
     m_aEventNpcInfo[uiIndex].uiSavePosition = GetKilledPreBosses() + 1;
 
-    // Do Yell
+    // Do Yell (Do大喊)
     DoTimeRunSay(RUN_PROGRESS);
 
     if (Creature* creature = instance->GetCreature(m_aEventNpcInfo[uiIndex].npGuid))
@@ -822,6 +824,7 @@ InstanceData* GetInstanceData_instance_zulaman(Map* map)
     return new instance_zulaman(map);
 }
 
+// 注册并载入脚本模块：instance_zulaman
 void AddSC_instance_zulaman()
 {
     Script* pNewScript = new Script;

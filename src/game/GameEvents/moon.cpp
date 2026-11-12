@@ -27,6 +27,7 @@ const long   Moon::IGREG = (15+31L*(10+12L*1582));
 const double Moon::MEAN_LUNAR_CYCLE = 29.53058868;
 ///////////////////////////////////////////////////////////////
 
+/// 计算指定公历日期正午时刻的月相值（0=新月，1=上弦月，2=满月，3=下弦月）
 double Moon::phase(int mon,int day,int year)
 {
     // the new moon Julian date
@@ -117,6 +118,7 @@ double Moon::phase(int mon,int day,int year)
 
 ///////////////////////////////////////////////////////////////
 
+/// 根据给定起始日期计算下一次指定月相（nph）出现的精确年月日时分
 void Moon::nextphase(int& mon,int& day,int& year,int& hr,int& min,int nph)
 {
     long jd = 0;
@@ -159,6 +161,7 @@ void Moon::nextphase(int& mon,int& day,int& year,int& hr,int& min,int nph)
 
 ///////////////////////////////////////////////////////////////
 
+/// 计算自 1900 年 1 月起第 n 个朔望周期第 nph 月相对应的儒略日（整数部分 jd 与小数部分 frac）
 double Moon::flmoon(int n,int nph,long& jd,double& frac)
 {
     int int_part = 0;
@@ -202,6 +205,7 @@ double Moon::flmoon(int n,int nph,long& jd,double& frac)
 
 ///////////////////////////////////////////////////////////////
 
+/// 将儒略日转换为公历年月日
 void Moon::Julian2Calendar(long jd,int& mon,int& day,int& year)
 {
     const long GREG = 2299161L;
@@ -232,6 +236,7 @@ void Moon::Julian2Calendar(long jd,int& mon,int& day,int& year)
 
 ///////////////////////////////////////////////////////////////
 
+/// 将公历年月日转换为儒略日
 long Moon::Calendar2Julian(int mon,int day,int year)
 {
     long jul;
@@ -255,6 +260,7 @@ long Moon::Calendar2Julian(int mon,int day,int year)
 
 ///////////////////////////////////////////////////////////////
 
+/// 判断指定儒略日或公历日期在本地时区是否处于夏令时（DST）
 bool Moon::isDST(long jd)
 {
     int m,d,y;

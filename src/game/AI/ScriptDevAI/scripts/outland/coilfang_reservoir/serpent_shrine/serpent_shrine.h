@@ -3,10 +3,16 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_SERPENT_SHRINE_H
+
+// 毒蛇神殿团队副本数据头文件
+/* 遭遇战概述：
+ * 定义毒蛇神殿六大首领与电梯水闸枚举。
+ */
 #define DEF_SERPENT_SHRINE_H
 
 #include "Chat/Chat.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER                   = 7,
@@ -65,22 +71,30 @@ enum
     SPELL_LEOTHERAS_BANISH          = 37546,
 };
 
+// instance_serpentshrine_cavern 副本数据管理类
 class instance_serpentshrine_cavern : public ScriptedInstance
 {
     public:
         instance_serpentshrine_cavern(Map* pMap);
 
+        // 初始化副本数据与状态
         void Initialize() override;
         bool IsEncounterInProgress() const override;
 
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* pCreature) override;
         void OnCreatureEnterCombat(Creature* pCreature) override;
+        // 副本生物死亡处理
         void OnCreatureDeath(Creature* pCreature) override;
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* pGo) override;
 
+        // 玩家在副本内复活回调
         void OnPlayerResurrect(Player* player) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 uiType, uint32 uiData) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 uiType) const override;
 
         void SetData64(uint32 uiType, uint64 uiGuid) override;

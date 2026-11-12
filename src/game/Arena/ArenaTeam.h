@@ -28,6 +28,7 @@ class WorldPacket;
 class WorldSession;
 class Player;
 
+// 竞技场战队命令类型枚举
 enum ArenaTeamCommandTypes
 {
     ERR_ARENA_TEAM_CREATE_S                 = 0x00,
@@ -36,6 +37,7 @@ enum ArenaTeamCommandTypes
     ERR_ARENA_TEAM_FOUNDER_S                = 0x0E
 };
 
+// 竞技场战队命令错误码枚举
 enum ArenaTeamCommandErrors
 {
     ERR_ARENA_TEAM_INTERNAL                 = 0x01,
@@ -56,14 +58,15 @@ enum ArenaTeamCommandErrors
     ERR_ARENA_TEAM_TOO_MANY_MEMBERS_S       = 0x16,
 };
 
+// 竞技场战队事件通知类型
 enum ArenaTeamEvents
 {
-    ERR_ARENA_TEAM_JOIN_SS                  = 3,            // player name + arena team name
-    ERR_ARENA_TEAM_LEAVE_SS                 = 4,            // player name + arena team name
-    ERR_ARENA_TEAM_REMOVE_SSS               = 5,            // player name + arena team name + captain name
-    ERR_ARENA_TEAM_LEADER_IS_SS             = 6,            // player name + arena team name
-    ERR_ARENA_TEAM_LEADER_CHANGED_SSS       = 7,            // old captain + new captain + arena team name
-    ERR_ARENA_TEAM_DISBANDED_S              = 8             // captain name + arena team name
+    ERR_ARENA_TEAM_JOIN_SS                  = 3,            // player name + arena team name (玩家名 + 战队名)
+    ERR_ARENA_TEAM_LEAVE_SS                 = 4,            // player name + arena team name (玩家名 + 战队名)
+    ERR_ARENA_TEAM_REMOVE_SSS               = 5,            // player name + arena team name + captain name (玩家名 + 战队名 + 队长名)
+    ERR_ARENA_TEAM_LEADER_IS_SS             = 6,            // player name + arena team name (玩家名 + 战队名)
+    ERR_ARENA_TEAM_LEADER_CHANGED_SSS       = 7,            // old captain + new captain + arena team name (原队长 + 新队长 + 战队名)
+    ERR_ARENA_TEAM_DISBANDED_S              = 8             // captain name + arena team name (队长名 + 战队名)
 };
 
 /*
@@ -72,8 +75,14 @@ ERR_ARENA_TEAM_YOU_JOIN_S - client show it automatically when accept invite
 ERR_ARENA_TEAM_TARGET_TOO_LOW_S
 ERR_ARENA_TEAM_TOO_MANY_MEMBERS_S
 ERR_ARENA_TEAM_LEVEL_TOO_LOW_I
+(待确认以下事件的发送方式：
+ERR_ARENA_TEAM_YOU_JOIN_S - 客户端接受邀请时自动显示
+ERR_ARENA_TEAM_TARGET_TOO_LOW_S
+ERR_ARENA_TEAM_TOO_MANY_MEMBERS_S
+ERR_ARENA_TEAM_LEVEL_TOO_LOW_I)
 */
 
+// 竞技场战队统计字段类型
 enum ArenaTeamStatTypes
 {
     STAT_TYPE_RATING        = 0,
@@ -84,6 +93,7 @@ enum ArenaTeamStatTypes
     STAT_TYPE_RANK          = 5
 };
 
+// 竞技场战队成员信息结构
 struct ArenaTeamMember
 {
     ObjectGuid guid;
@@ -95,9 +105,10 @@ struct ArenaTeamMember
     uint32 wins_season;
     uint32 personal_rating;
 
-    void ModifyPersonalRating(Player* plr, int32 mod, uint32 slot);
+    void ModifyPersonalRating(Player* plr, int32 mod, uint32 slot); // 修改成员个人竞技场等级并同步至玩家字段
 };
 
+// 竞技场战队整体战绩统计
 struct ArenaTeamStats
 {
     uint32 rating;
@@ -108,15 +119,18 @@ struct ArenaTeamStats
     uint32 rank;
 };
 
-#define MAX_ARENA_SLOT 3                                    // 0..2 slots
+#define MAX_ARENA_SLOT 3                                    // 0..2 slots (0..2 号战队槽位，对应 2v2/3v3/5v5)
 
+// 竞技场战队类：管理战队创建、解散、成员增减、队徽外观、积分结算与数据库持久化
 class ArenaTeam
 {
     public:
         ArenaTeam();
         ~ArenaTeam();
 
+        // 创建新战队并写入数据库
         bool Create(ObjectGuid captainGuid, ArenaType type, std::string arenaTeamName);
+        // 解散战队并通知成员、清理数据库记录
         void Disband(WorldSession* session);
 
         typedef std::list<ArenaTeamMember> MemberList;
@@ -137,11 +151,11 @@ class ArenaTeam
         uint32 GetBorderColor() const     { return m_BorderColor; }
         uint32 GetBackgroundColor() const { return m_BackgroundColor; }
 
-        void SetCaptain(ObjectGuid guid);
-        bool AddMember(ObjectGuid playerGuid);
-        void DelMember(ObjectGuid guid);
+        void SetCaptain(ObjectGuid guid);                   // 移交队长权限
+        bool AddMember(ObjectGuid playerGuid);              // 添加战队成员
+        void DelMember(ObjectGuid guid);                    // 移除战队成员
 
-        void SetEmblem(uint32 backgroundColor, uint32 emblemStyle, uint32 emblemColor, uint32 borderStyle, uint32 borderColor);
+        void SetEmblem(uint32 backgroundColor, uint32 emblemStyle, uint32 emblemColor, uint32 borderStyle, uint32 borderColor); // 设置队徽样式与颜色
 
         size_t GetMembersSize() const         { return m_members.size(); }
         size_t GetMaxMembersSize() const      { return size_t(GetType() * 2); }
@@ -167,14 +181,14 @@ class ArenaTeam
             return nullptr;
         }
 
-        bool IsFighting() const;
+        bool IsFighting() const;                            // 检查战队当前是否有成员在竞技场战斗中
 
-        bool LoadArenaTeamFromDB(QueryResult* arenaTeamDataResult);
-        bool LoadMembersFromDB(QueryResult* arenaTeamMembersResult);
+        bool LoadArenaTeamFromDB(QueryResult* arenaTeamDataResult);    // 从数据库查询结果加载战队基本信息
+        bool LoadMembersFromDB(QueryResult* arenaTeamMembersResult);   // 从数据库查询结果加载成员列表
 
-        void SaveToDB();
+        void SaveToDB();                                    // 保存战队及成员战绩到数据库
 
-        void BroadcastPacket(WorldPacket const& packet) const;
+        void BroadcastPacket(WorldPacket const& packet) const; // 向在线队员广播数据包
 
         void BroadcastEvent(ArenaTeamEvents event, ObjectGuid guid, char const* str1 = nullptr, char const* str2 = nullptr, char const* str3 = nullptr);
         void BroadcastEvent(ArenaTeamEvents event, char const* str1 = nullptr, char const* str2 = nullptr, char const* str3 = nullptr)
@@ -182,29 +196,29 @@ class ArenaTeam
             BroadcastEvent(event, ObjectGuid(), str1, str2, str3);
         }
 
-        void Roster(WorldSession* session);
-        void Query(WorldSession* session) const;
-        void Stats(WorldSession* session) const;
-        void InspectStats(WorldSession* session, ObjectGuid guid);
+        void Roster(WorldSession* session);                 // 发送战队名册信息
+        void Query(WorldSession* session) const;            // 响应战队基本信息查询
+        void Stats(WorldSession* session) const;            // 发送战队战绩统计
+        void InspectStats(WorldSession* session, ObjectGuid guid); // 发送观察目标玩家的战队战绩
 
-        uint32 GetPoints(uint32 MemberRating);
-        float GetChanceAgainst(uint32 own_rating, uint32 enemy_rating) const;
-        int32 WonAgainst(uint32 againstRating);
-        void MemberWon(Player* plr, uint32 againstRating);
-        int32 LostAgainst(uint32 againstRating);
-        void MemberLost(Player* plr, uint32 againstRating);
-        void OfflineMemberLost(ObjectGuid guid, uint32 againstRating);
+        uint32 GetPoints(uint32 MemberRating);              // 根据等级计算可获得的竞技场点数
+        float GetChanceAgainst(uint32 own_rating, uint32 enemy_rating) const; // 计算 ELO 胜率期望
+        int32 WonAgainst(uint32 againstRating);             // 战队获胜时更新等级并返回变动值
+        void MemberWon(Player* plr, uint32 againstRating);  // 获胜成员个人战绩与等级更新
+        int32 LostAgainst(uint32 againstRating);            // 战队战败时更新等级并返回变动值
+        void MemberLost(Player* plr, uint32 againstRating); // 战败成员个人战绩与等级更新
+        void OfflineMemberLost(ObjectGuid guid, uint32 againstRating); // 离线战败成员个人等级与场次更新
 
-        void UpdateArenaPointsHelper(std::map<uint32, uint32>& PlayerPoints);
+        void UpdateArenaPointsHelper(std::map<uint32, uint32>& PlayerPoints); // 周结算时汇总成员应得竞技场点数
 
-        void NotifyStatsChanged();
+        void NotifyStatsChanged();                          // 通知所有在线成员战队战绩已更新
 
-        void FinishWeek();
-        void FinishGame(int32 mod);
+        void FinishWeek();                                  // 重置每周战绩计数
+        void FinishGame(int32 mod);                         // 结算单场比赛后的战队等级、场次与排名
 
-        void FinishSeason();
+        void FinishSeason();                                // 赛季结束重置战绩与等级
 
-        void SetRatingForAll(uint32 rating);
+        void SetRatingForAll(uint32 rating);                // 统一设置战队及所有成员等级
 
     protected:
 
@@ -213,11 +227,11 @@ class ArenaTeam
         std::string m_Name;
         ObjectGuid m_CaptainGuid;
 
-        uint32 m_BackgroundColor; // ARGB format
-        uint32 m_EmblemStyle;     // icon id
-        uint32 m_EmblemColor;     // ARGB format
-        uint32 m_BorderStyle;     // border image id
-        uint32 m_BorderColor;     // ARGB format
+        uint32 m_BackgroundColor; // ARGB format (ARGB 格式背景色)
+        uint32 m_EmblemStyle;     // icon id (队徽图标 ID)
+        uint32 m_EmblemColor;     // ARGB format (ARGB 格式队徽颜色)
+        uint32 m_BorderStyle;     // border image id (边框样式 ID)
+        uint32 m_BorderColor;     // ARGB format (ARGB 格式边框颜色)
 
         MemberList m_members;
         ArenaTeamStats m_stats;

@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Blackrock Depths
 EndScriptData */
 
+// 黑石深渊（Blackrock Depths）副本进度状态机与暗炉大门控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackrock_depths.h"
 
@@ -56,7 +58,7 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
             // replace the princess if required
             if (CanReplacePrincess())
                 pCreature->UpdateEntry(NPC_PRIESTESS);
-        // no break;
+        // no break; (穿透执行，无需 break)
         case NPC_EMPEROR:
         case NPC_MAGMUS:
         case NPC_PHALANX:
@@ -88,7 +90,7 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
         case NPC_WATCHER_DOOMGRIP:
             m_sVaultNpcGuids.insert(pCreature->GetObjectGuid());
             break;
-        // Arena crowd
+        // Arena crowd (竞技场观众)
         case NPC_ARENA_SPECTATOR:
         case NPC_SHADOWFORGE_PEASANT:
         case NPC_SHADOWFORGE_CITIZEN:
@@ -163,14 +165,14 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
             if (GetData(TYPE_ROCKNOT) == DONE)
             {
                 // Rocknot event done: set the Grim Guzzler door animation to "broken"
-                // tell the instance script it is open to prevent some of the other events
+                // tell the instance script it is open to prevent some of the other events (通知副本脚本大门已开启以协调后续事件)
                 pGo->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
                 SetBarDoorIsOpen();
             }
             else if (m_auiEncounter[10] == DONE || m_auiEncounter[11] == DONE)
             {
                 // bar or Plugger event done: open the Grim Guzzler door
-                // tell the instance script it is open to prevent some of the other events
+                // tell the instance script it is open to prevent some of the other events (通知副本脚本大门已开启以协调后续事件)
                 DoUseDoorOrButton(GO_BAR_DOOR);
                 SetBarDoorIsOpen();
             }
@@ -218,7 +220,7 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
 
                     Creature* pConstruct = nullptr;
 
-                    // Activate vault constructs
+                    // Activate vault constructs (激活宝库constructs)
                     for (auto m_sVaultNpcGuid : m_sVaultNpcGuids)
                     {
                         pConstruct = instance->GetCreature(m_sVaultNpcGuid);
@@ -229,7 +231,7 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
                     if (!pConstruct)
                         return;
 
-                    // Summon doomgrip
+                    // Summon doomgrip (召唤 doomgrip)
                     pConstruct->SummonCreature(NPC_WATCHER_DOOMGRIP, aVaultPositions[0], aVaultPositions[1], aVaultPositions[2], aVaultPositions[3], TEMPSPAWN_DEAD_DESPAWN, 0);
                 }
                 // No need to store in this case
@@ -256,17 +258,17 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
             }
             break;
         case TYPE_TOMB_OF_SEVEN:
-            // Don't set the same data twice
+            // Don't set the same data twice (避免重复设置相同数据)
             if (uiData == m_auiEncounter[3])
                 break;
-            // Combat door
+            // Combat door (战斗大门)
             DoUseDoorOrButton(GO_TOMB_ENTER);
-            // Start the event
+            // Start the event (开始the事件)
             if (uiData == IN_PROGRESS)
                 DoCallNextDwarf();
             if (uiData == FAIL)
             {
-                // Reset dwarfes
+                // Reset dwarfes (重置dwarfes)
                 for (unsigned int aTombDwarfe : aTombDwarfes)
                 {
                     if (Creature* pDwarf = GetSingleCreatureFromStorage(aTombDwarfe))
@@ -331,13 +333,13 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
                 {
                     if (Creature* pPlugger = GetSingleCreatureFromStorage(NPC_PLUGGER_SPAZZRING))
                     {
-                        // Summon Hurley Blackbreath
+                        // Summon Hurley Blackbreath (召唤 Hurley Blackbreath)
                         Creature* pHurley = pPlugger->SummonCreature(NPC_HURLEY_BLACKBREATH, aHurleyPositions[0], aHurleyPositions[1], aHurleyPositions[2], aHurleyPositions[3], TEMPSPAWN_DEAD_DESPAWN, 0);
 
                         if (!pHurley)
                             return;
 
-                        // Summon cronies around Hurley
+                        // Summon cronies around Hurley (召唤 cronies around Hurley)
                         for (uint8 i = 0; i < MAX_CRONIES; ++i)
                         {
                             float fX, fY, fZ;
@@ -550,11 +552,11 @@ void instance_blackrock_depths::OnCreatureDeath(Creature* pCreature)
             SetData(TYPE_HURLEY, DONE);
             break;
         case NPC_RIBBLY_SCREWSPIGGOT:
-            // Do nothing if the patrol was already spawned or is about to:
-            // Plugger has made the bar hostile
+            // Do nothing if the patrol was already spawned or is about to: (若巡逻怪已生成或即将生成则不执行操作)
+            // Plugger has made the bar hostile (普拉格已将酒吧全员变为敌对)
         {
-            // Do nothing if the patrol was already spawned or is about to:
-            // Plugger has made the bar hostile
+            // Do nothing if the patrol was already spawned or is about to: (若巡逻怪已生成或即将生成则不执行操作)
+            // Plugger has made the bar hostile (普拉格已将酒吧全员变为敌对)
             if (GetData(TYPE_BAR) == IN_PROGRESS || GetData(TYPE_PLUGGER) == IN_PROGRESS || GetData(TYPE_BAR) == DONE || GetData(TYPE_PLUGGER) == DONE)
                 return;
             SetData(TYPE_BAR, IN_PROGRESS);
@@ -826,6 +828,7 @@ InstanceData* GetInstanceData_instance_blackrock_depths(Map* pMap)
     return new instance_blackrock_depths(pMap);
 }
 
+// 注册并载入脚本模块：instance_blackrock_depths
 void AddSC_instance_blackrock_depths()
 {
     Script* pNewScript = new Script;

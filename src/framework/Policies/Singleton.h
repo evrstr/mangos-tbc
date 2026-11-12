@@ -20,7 +20,7 @@
 #define MANGOS_SINGLETON_H
 
 /**
- * @brief class Singleton
+ * @brief class Singleton | 基于策略模板的单例类（支持线程模型、创建策略与生命周期策略）
  */
 
 #include "CreationPolicy.h"
@@ -40,6 +40,7 @@ namespace MaNGOS
     {
         public:
 
+            /// 获取单例唯一实例引用
             static T& Instance();
 
         protected:
@@ -50,14 +51,14 @@ namespace MaNGOS
 
         private:
 
-            // Prohibited actions...this does not prevent hijacking.
+            // Prohibited actions...this does not prevent hijacking. | 禁止拷贝与赋值（不防止外部恶意强转）
             Singleton(const Singleton&);
             Singleton& operator=(const Singleton&);
 
-            // Singleton Helpers
+            // Singleton Helpers | 单例销毁辅助函数
             static void DestroySingleton();
 
-            // data structure
+            // data structure | 内部状态与锁类型定义
             typedef typename ThreadingModel::Lock Guard;
             static T* si_instance;
             static bool si_destroyed;
@@ -74,7 +75,7 @@ namespace MaNGOS
     {
         if (!si_instance)
         {
-            // double-checked Locking pattern
+            // double-checked Locking pattern | 双重检查锁定模式
             Guard();
 
             if (!si_instance)

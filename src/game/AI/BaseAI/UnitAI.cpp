@@ -36,6 +36,7 @@ UnitAI::UnitAI(Unit* unit) : UnitAI(unit, 0)
 {
 }
 
+// 构造函数：初始化默认追击参数、施法者 AI 状态并注册内置距离/法术列表冷却定时器
 UnitAI::UnitAI(Unit* unit, uint32 combatActions) :
     CombatActions(combatActions),
     m_unit(unit),
@@ -52,7 +53,7 @@ UnitAI::UnitAI(Unit* unit, uint32 combatActions) :
     m_combatScriptHappening(false),
     m_currentAIOrder(ORDER_NONE),
     m_currentSpell(nullptr), m_teleportUnreachable(false),
-    // Caster AI components
+    // Caster AI components (施法者 AI 参数初始化)
     m_rangedMode(false), m_rangedModeSetting(TYPE_NONE), m_chaseDistance(0.f), m_currentRangedMode(false),
     m_mainSpellId(0), m_mainSpellCost(0), m_mainSpellInfo(nullptr), m_mainSpellMinRange(0.f),
     m_mainAttackMask(SPELL_SCHOOL_MASK_NONE), m_distancingCooldown(false), m_spellListCooldown(true)
@@ -65,6 +66,7 @@ UnitAI::~UnitAI()
 {
 }
 
+// 视野内单位移动检测：处理主动求援协助检查、潜行警觉以及主动怪索敌开战
 void UnitAI::MoveInLineOfSight(Unit* who)
 {
     if (GetReactState() < REACT_DEFENSIVE)
@@ -83,7 +85,7 @@ void UnitAI::MoveInLineOfSight(Unit* who)
     if (who->GetObjectGuid().IsCreature() && who->IsInCombat())
         CheckForHelp(who, m_unit, sWorld.getConfig(CONFIG_FLOAT_CREATURE_CHECK_FOR_HELP_RADIUS));
 
-    if (!HasReactState(REACT_AGGRESSIVE)) // mobs who are aggressive can still assist
+    if (!HasReactState(REACT_AGGRESSIVE)) // mobs who are aggressive can still assist (仅主动姿态继续后续主动索敌)
         return;
 
     if (!m_unit->CanInitiateAttack())
@@ -101,6 +103,7 @@ void UnitAI::MoveInLineOfSight(Unit* who)
     DetectOrAttack(who);
 }
 
+// 进入战斗时启用法术列表并设置开场技能初始冷却
 void UnitAI::EnterCombat(Unit*)
 {
     if (!GetSpellList().Disabled && !GetSpellList().Spells.empty())
@@ -110,6 +113,7 @@ void UnitAI::EnterCombat(Unit*)
     }
 }
 
+// 脱离战斗：清除仅战斗定身、移除脱战应清除的光环、停止战斗并跑回出生点
 void UnitAI::EnterEvadeMode()
 {
     ClearCombatOnlyRoot();
@@ -118,7 +122,7 @@ void UnitAI::EnterEvadeMode()
 
     bool triggerHome = false;
 
-    // only alive creatures that are not on transport can return to home position
+    // only alive creatures that are not on transport can return to home position (仅存活且未搭乘交通工具的单位跑回出生点；若已被永久定身则直接触发归位事件)
     if (GetReactState() != REACT_PASSIVE && m_unit->IsAlive() && !m_unit->IsBoarded())
     {
         if (!m_unit->IsImmobilizedState()) // if still rooted after aura removal - permarooted
@@ -133,17 +137,20 @@ void UnitAI::EnterEvadeMode()
         m_unit->TriggerHomeEvents();
 }
 
+// 死亡时清理仅战斗期间生效的定身状态
 void UnitAI::JustDied(Unit* /*killer*/)
 {
     ClearCombatOnlyRoot();
 }
 
+// 遭到攻击时若未处于战斗中且无目标，则反击攻击者
 void UnitAI::AttackedBy(Unit* attacker)
 {
     if (!m_unit->IsInCombat() && !m_unit->GetVictim())
         AttackStart(attacker);
 }
 
+// 校验目标生物类型是否符合法术要求及是否重复激活下一击近战技能
 CanCastResult UnitAI::CanCastSpell(Unit* target, const SpellEntry* spellInfo, bool isTriggered) const
 {
     // If not triggered, we check
@@ -152,7 +159,7 @@ CanCastResult UnitAI::CanCastSpell(Unit* target, const SpellEntry* spellInfo, bo
         if (target && !Spell::CheckTargetCreatureType(target, spellInfo))
             return CAST_FAIL_OTHER;
 
-        // already active next melee swing spell
+        // already active next melee swing spell (若同 ID 下一击近战法术已激活则避免重复挂起)
         if (IsNextMeleeSwingSpell(spellInfo))
             if (Spell* autorepeatSpell = m_unit->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
                 if (autorepeatSpell->m_spellInfo->Id == spellInfo->Id)
@@ -161,6 +168,7 @@ CanCastResult UnitAI::CanCastSpell(Unit* target, const SpellEntry* spellInfo, bo
     return CAST_OK;
 }
 
+// 按 CastFlags 尝试施放法术，将 SpellCastResult 映射为 CanCastResult 并触发施法结果回调
 CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 castFlags)
 {
     Unit* caster = m_unit;
@@ -179,12 +187,12 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
     if (GetAIOrder() == ORDER_EVADE && !(castFlags & CAST_TRIGGERED))
         return CAST_FAIL_EVADE;
 
-    // Allowed to cast only if not casting (unless we interrupt ourself) or if spell is triggered
+    // Allowed to cast only if not casting (unless we interrupt ourself) or if spell is triggered (未在施法、或带有打断/触发标志时才允许施放)
     if (!caster->IsNonMeleeSpellCasted(false) || (castFlags & (CAST_TRIGGERED | CAST_INTERRUPT_PREVIOUS)))
     {
         if (const SpellEntry* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId))
         {
-            // If cast flag CAST_AURA_NOT_PRESENT is active, check if target already has aura on them
+            // If cast flag CAST_AURA_NOT_PRESENT is active, check if target already has aura on them (若带有不重复叠加光环标志则先检查光环)
             if (castFlags & CAST_AURA_NOT_PRESENT)
             {
                 if (!target)
@@ -228,7 +236,7 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
             if (result != SPELL_CAST_OK)
             {
                 CanCastResult canCastResult = CAST_FAIL_OTHER;
-                switch (result) // temporary adapter
+                switch (result) // temporary adapter (将底层 SpellCastResult 适配转换至 CanCastResult)
                 {
                     case SPELL_FAILED_OUT_OF_RANGE:
                         canCastResult = CAST_FAIL_TOO_FAR;
@@ -261,7 +269,7 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
                     case SPELL_FAILED_NO_POWER:
                         canCastResult = CAST_FAIL_POWER;
                         break;
-                    case SPELL_FAILED_CASTER_AURASTATE: // valid - doesnt need logging
+                    case SPELL_FAILED_CASTER_AURASTATE: // valid - doesnt need logging (常规条件不满足，无需刷屏日志)
                     case SPELL_FAILED_TARGET_AURASTATE:
                     case SPELL_FAILED_TARGET_NO_WEAPONS:
                     case SPELL_FAILED_BAD_TARGETS:
@@ -284,6 +292,7 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
     return CAST_FAIL_IS_CASTING;
 }
 
+// 开始攻击并建立与目标的战斗关系及追击移动
 void UnitAI::AttackStart(Unit* who)
 {
     if (!who || HasReactState(REACT_PASSIVE))
@@ -297,11 +306,13 @@ void UnitAI::AttackStart(Unit* who)
     }
 }
 
+// 若处于近战攻击状态且无高优先级移动命令，推进近战平砍状态机
 bool UnitAI::DoMeleeAttackIfReady() const
 {
     return m_unit->hasUnitState(UNIT_STAT_MELEE_ATTACKING) && GetAIOrder() == ORDER_NONE && m_unit->UpdateMeleeAttackingState();
 }
 
+// 开启或关闭战斗追击移动，并按需立即启动或停止当前 Chase 移动
 void UnitAI::SetCombatMovement(bool enable, bool stopOrStartMovement /*=false*/)
 {
     if (enable)
@@ -309,7 +320,7 @@ void UnitAI::SetCombatMovement(bool enable, bool stopOrStartMovement /*=false*/)
     else
         m_unit->addUnitState(UNIT_STAT_NO_COMBAT_MOVEMENT);
 
-    if (stopOrStartMovement && m_unit->GetVictim())     // Only change current movement while in combat
+    if (stopOrStartMovement && m_unit->GetVictim())     // Only change current movement while in combat (战斗中立即同步更新追击移动)
     {
         if (!m_unit->IsCrowdControlled())
         {
@@ -321,6 +332,7 @@ void UnitAI::SetCombatMovement(bool enable, bool stopOrStartMovement /*=false*/)
     }
 }
 
+// 开关跟随移动状态
 void UnitAI::SetFollowMovement(bool enable)
 {
     if (enable)
@@ -337,12 +349,13 @@ bool UnitAI::IsCombatMovement() const
     return !m_unit->hasUnitState(UNIT_STAT_NO_COMBAT_MOVEMENT);
 }
 
+// 开战或切换目标时：自动下马并按远程/近战距离参数发起 MoveChase 追击
 void UnitAI::HandleMovementOnAttackStart(Unit* victim, bool targetChange) const
 {
     if (!m_unit->hasUnitState(UNIT_STAT_CAN_NOT_REACT))
     {
         if (m_dismountOnAggro)
-            m_unit->Unmount(); // all ais should unmount here
+            m_unit->Unmount(); // all ais should unmount here (所有 AI 在此统一自动下马)
 
         MotionMaster* creatureMotion = m_unit->GetMotionMaster();
 
@@ -351,6 +364,7 @@ void UnitAI::HandleMovementOnAttackStart(Unit* victim, bool targetChange) const
     }
 }
 
+// 法术施法状态变化通知：处理打断移动、施法朝向锁定目标以及施法结束恢复注视目标
 void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject* target)
 {
     if (!state && spell != m_currentSpell)
@@ -360,7 +374,7 @@ void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject*
     if (spellInfo->HasAttribute(SPELL_ATTR_EX4_ALLOW_CAST_WHILE_CASTING) || spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING_NO_DAMAGE) || spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING))
         return;
 
-    // Creature should always stop before it will cast a non-instant spell
+    // Creature should always stop before it will cast a non-instant spell (施放非瞬发/移动打断型法术前停步)
     if (state)
         if ((spell->GetCastTime() && spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_MOVEMENT) || (IsChanneledSpell(spellInfo) && spellInfo->ChannelInterruptFlags & AURA_INTERRUPT_FLAG_MOVING))
             m_unit->InterruptMoving();
@@ -434,6 +448,7 @@ void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject*
     }
 }
 
+// 引导法术状态变化通知：按是否允许引导期间追踪目标更新朝向与注视目标
 void UnitAI::OnChannelStateChange(Spell const* spell, bool state, WorldObject* target)
 {
     if (state)
@@ -447,7 +462,7 @@ void UnitAI::OnChannelStateChange(Spell const* spell, bool state, WorldObject* t
             return;
     }
 
-    if (spellInfo->Id == 45661) // Felmyst Encapsulate - cast time tracks target but channel time ignores him
+    if (spellInfo->Id == 45661) // Felmyst Encapsulate - cast time tracks target but channel time ignores him (菲米丝压缩技能特例：读条追踪但引导不转向)
         return;
 
     bool forceTarget = true; // Different default than normal cast
@@ -491,6 +506,7 @@ void UnitAI::OnChannelStateChange(Spell const* spell, bool state, WorldObject* t
     }
 }
 
+// 瞬发法术完成后的注视目标恢复处理
 void UnitAI::HandleDelayedInstantAnimation(SpellEntry const* /*spellInfo*/)
 {
     if (m_unit->GetVictim() && !IsTargetingRestricted())
@@ -499,6 +515,7 @@ void UnitAI::HandleDelayedInstantAnimation(SpellEntry const* /*spellInfo*/)
         m_unit->SetTarget(nullptr);
 }
 
+// 检查附近友方生物是否处于战斗中，若满足距离与视线条件则主动加入战斗协助之
 void UnitAI::CheckForHelp(Unit* who, Unit* me, float distance)
 {
     Unit* victim = who->getAttackerForHelper();
@@ -511,6 +528,7 @@ void UnitAI::CheckForHelp(Unit* who, Unit* me, float distance)
 
     // pulling happens once panic/retreating ends
     // current theory is that help aggro is never done if owner has suspended AI function during CC
+    // 若友方正处于撤退、迷惑或昏迷状态，暂不触发连带进战（等恐慌/撤退结束或交由呼救逻辑）
     if (who->hasUnitState(UNIT_STAT_RETREATING) || who->IsConfused() || who->IsStunned())
         return;
 
@@ -528,6 +546,7 @@ void UnitAI::CheckForHelp(Unit* who, Unit* me, float distance)
     }
 }
 
+// 在视野中探测目标：若触发潜行警觉则原地转身张望，否则立即发起攻击或入战
 void UnitAI::DetectOrAttack(Unit* who)
 {
     float attackRadius = m_unit->GetAttackDistance(who);
@@ -554,6 +573,7 @@ void UnitAI::DetectOrAttack(Unit* who)
         m_unit->EngageInCombatWith(who);
 }
 
+// 判定潜行玩家是否进入了“听到动静但尚未暴露”的警觉距离区间
 bool UnitAI::CanTriggerStealthAlert(Unit* who, float /*attackRadius*/) const
 {
     if (who->GetTypeId() != TYPEID_PLAYER)
@@ -568,9 +588,10 @@ bool UnitAI::CanTriggerStealthAlert(Unit* who, float /*attackRadius*/) const
 }
 
 // ////////////////////////////////////////////////////////////////////////////////////////////////
-//                                      Event system
+//                                      Event system (AI 延迟事件系统)
 // ////////////////////////////////////////////////////////////////////////////////////////////////
 
+// 延迟向周围生物列表派发 AI 事件的事件处理器（按 GUID 存储防止延迟期间生物消失导致野指针）
 class AiDelayEventAround : public BasicEvent
 {
     public:
@@ -619,20 +640,21 @@ class AiDelayEventAround : public BasicEvent
         GuidVector m_receiverGuids;
 };
 
+// 向周围指定半径内的友方或所有生物广播 AI 事件（支持立即触发或延迟投递）
 void UnitAI::SendAIEventAround(AIEventType eventType, Unit* invoker, uint32 delay, float radius, uint32 miscValue /*=0*/) const
 {
     if (radius > 0)
     {
         CreatureList receiverList;
 
-        // Allow sending custom AI events to all units in range
+        // Allow sending custom AI events to all units in range (自定义事件或护送事件可广播至范围内所有生物)
         if ((eventType >= AI_EVENT_CUSTOM_EVENTAI_A && eventType <= AI_EVENT_CUSTOM_EVENTAI_F && eventType != AI_EVENT_GOT_CCED) || eventType > AI_EVENT_START_ESCORT)
         {
             MaNGOS::AnyUnitInObjectRangeCheck u_check(m_unit, radius);
             MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(receiverList, u_check);
             Cell::VisitAllObjects(m_unit, searcher, radius);
         }
-        else // TODO: Expand functionality in future if needed
+        else // TODO: Expand functionality in future if needed (默认按可协助战斗生物范围筛选)
         {
             MaNGOS::AnyAssistCreatureInRangeCheck u_check(m_unit, invoker, radius);
             MaNGOS::CreatureListSearcher<MaNGOS::AnyAssistCreatureInRangeCheck> searcher(receiverList, u_check);
@@ -660,17 +682,20 @@ void UnitAI::SendAIEventAround(AIEventType eventType, Unit* invoker, uint32 dela
     }
 }
 
+// 向单一接收者单位发送 AI 事件
 void UnitAI::SendAIEvent(AIEventType eventType, Unit* invoker, Unit* receiver, uint32 miscValue /*=0*/) const
 {
     MANGOS_ASSERT(receiver);
     receiver->AI()->ReceiveAIEvent(eventType, m_unit, invoker, miscValue);
 }
 
+// 判断目标单位是否在当前 AI 视野距离内且相互可见
 bool UnitAI::IsVisible(Unit* pl) const
 {
     return m_unit->IsWithinDist(pl, m_visibilityDistance) && pl->IsVisibleForOrDetect(m_unit, m_unit, true);
 }
 
+// 在范围内搜索损失血量最多（或百分比最低）的友方单位
 Unit* UnitAI::DoSelectLowestHpFriendly(float range, float minMissing, bool percent, bool targetSelf) const
 {
     Unit* unit = nullptr;
@@ -693,6 +718,7 @@ Unit* UnitAI::DoSelectLowestHpFriendly(float range, float minMissing, bool perce
     return unit;
 }
 
+// 在范围内查找满足指定 UnitCondition ID 的友方单位
 Unit* UnitAI::DoSelectConditionalFriendly(float range, int32 unitConditionId) const
 {
     Unit* unit = nullptr;
@@ -705,12 +731,13 @@ Unit* UnitAI::DoSelectConditionalFriendly(float range, int32 unitConditionId) co
     return unit;
 }
 
+// 计算法术的最大施放距离（含施法者的射程修正）
 float UnitAI::CalculateSpellRange(SpellEntry const* spellInfo) const
 {
     // optimized duplicate of Spell::GetMinMaxRange for just max range
     SpellRangeEntry const* spellRange = sSpellRangeStore.LookupEntry(spellInfo->rangeIndex);
     float maxRange = GetSpellMaxRange(spellRange);
-    if (Player* modOwner = m_unit->GetSpellModOwner()) // Player AI support
+    if (Player* modOwner = m_unit->GetSpellModOwner()) // Player AI support (支持玩家 AI 的射程修正)
         modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_RANGE, maxRange);
     return maxRange;
 }
@@ -720,6 +747,7 @@ CreatureList UnitAI::DoFindFriendlyEligibleDispel(uint32 spellId, bool self) con
     return DoFindFriendlyEligibleDispel(sSpellTemplate.LookupEntry<SpellEntry>(spellId), self);
 }
 
+// 根据驱散法术提取驱散类型/机制掩码并搜寻范围内可驱散友方生物
 CreatureList UnitAI::DoFindFriendlyEligibleDispel(SpellEntry const* spellInfo, bool self) const
 {
     uint32 dispelMask = 0;
@@ -740,6 +768,7 @@ CreatureList UnitAI::DoFindFriendlyMissingBuff(float /*range*/, uint32 spellId, 
     return DoFindFriendlyMissingBuff(sSpellTemplate.LookupEntry<SpellEntry>(spellId), inCombat, self, spawnGroupId);
 }
 
+// 在法术射程内查找缺少指定增益光环的友方生物列表
 CreatureList UnitAI::DoFindFriendlyMissingBuff(SpellEntry const* spellInfo, bool inCombat, bool self, uint32 spawnGroupId) const
 {
     CreatureList list;
@@ -762,6 +791,7 @@ CreatureList UnitAI::DoFindFriendlyMissingBuff(SpellEntry const* spellInfo, bool
     return list;
 }
 
+// 按自定义范围、驱散类型及机制掩码搜寻需要驱散的友方生物
 CreatureList UnitAI::DoFindFriendlyEligibleDispel(float range, uint32 dispelMask, uint32 mechanicMask, bool self) const
 {
     CreatureList list;
@@ -771,6 +801,7 @@ CreatureList UnitAI::DoFindFriendlyEligibleDispel(float range, uint32 dispelMask
     return list;
 }
 
+// 将仇恨列表所有敌对目标的仇恨清零
 void UnitAI::DoResetThreat()
 {
     if (!m_unit->CanHaveThreatList() || m_unit->getThreatManager().isThreatListEmpty())
@@ -782,16 +813,19 @@ void UnitAI::DoResetThreat()
     m_unit->getThreatManager().modifyAllThreatPercent(-100);
 }
 
+// 检查当前是否处于可自由执行战斗技能动作的状态
 bool UnitAI::CanExecuteCombatAction()
 {
     return m_unit->CanReactInCombat() && !(m_unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SILENCED) && m_unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED)) && !m_unit->hasUnitState(UNIT_STAT_PROPELLED | UNIT_STAT_RETREATING) && !m_unit->IsNonMeleeSpellCasted(false) && !m_combatScriptHappening;
 }
 
+// 检查当前是否可尝试施放法术
 bool UnitAI::CanCastSpell()
 {
     return m_unit->CanCastSpellInCombat() && !m_unit->hasUnitState(UNIT_STAT_PROPELLED | UNIT_STAT_RETREATING) && !m_unit->IsNonMeleeSpellCasted(false) && !m_combatScriptHappening;
 }
 
+// 开启/关闭普通近战攻击并即时同步 MeleeAttackStart/Stop
 void UnitAI::SetMeleeEnabled(bool state)
 {
     if (state == m_meleeEnabled)
@@ -810,12 +844,14 @@ void UnitAI::SetMeleeEnabled(bool state)
     }
 }
 
+// 启动朝向目标的 Chase 追击移动
 void UnitAI::DoStartMovement(Unit* victim)
 {
     if (victim)
         m_unit->GetMotionMaster()->MoveChase(victim, m_attackDistance, m_attackAngle, m_moveFurther, !m_chaseRun);
 }
 
+// 定时逃跑结束回调：恢复正常 AI 指令并重新追击目标
 void UnitAI::TimedFleeingEnded()
 {
     if (GetAIOrder() != ORDER_FLEEING)
@@ -827,6 +863,7 @@ void UnitAI::TimedFleeingEnded()
     DoStartMovement(m_unit->GetVictim());
 }
 
+// 触发指定持续时间的受惊逃跑移动
 bool UnitAI::DoFlee(uint32 duration)
 {
     if (!duration)
@@ -842,6 +879,7 @@ bool UnitAI::DoFlee(uint32 duration)
     return true;
 }
 
+// 若处于远程模式且主法术因缺蓝/过近/被沉默等失败，自动切回近战追击模式
 CanCastResult UnitAI::HandleSpellCastResult(CanCastResult result, SpellEntry const* spellInfo)
 {
     if (m_rangedMode)
@@ -867,6 +905,7 @@ CanCastResult UnitAI::HandleSpellCastResult(CanCastResult result, SpellEntry con
     return result;
 }
 
+// 遍历仇恨列表并使用外部比较器选定敌人开战
 void UnitAI::AttackSpecificEnemy(std::function<void(Unit*, Unit*&)> check)
 {
     Unit* chosenEnemy = nullptr;
@@ -880,6 +919,7 @@ void UnitAI::AttackSpecificEnemy(std::function<void(Unit*, Unit*&)> check)
     AttackStart(chosenEnemy);
 }
 
+// 攻击仇恨列表中距离最近的敌对单位
 void UnitAI::AttackClosestEnemy()
 {
     float distance = std::numeric_limits<float>::max();
@@ -894,6 +934,7 @@ void UnitAI::AttackClosestEnemy()
     });
 }
 
+// 设置 AI 主动定身状态（combatOnly=true 时脱战自动解除）
 void UnitAI::SetAIImmobilizedState(bool apply, bool combatOnly)
 {
     if (combatOnly)
@@ -907,6 +948,7 @@ void UnitAI::SetAIImmobilizedState(bool apply, bool combatOnly)
     m_unit->SetImmobilizedState(apply);
 }
 
+// 清除仅限战斗期间的 AI 定身
 void UnitAI::ClearCombatOnlyRoot()
 {
     if (m_combatOnlyRoot)
@@ -917,6 +959,7 @@ void UnitAI::ClearCombatOnlyRoot()
     }
 }
 
+// 强制销毁列表中所有已生成生物和游戏对象并清空 GUID 集合
 void UnitAI::DespawnGuids(GuidVector& spawns)
 {
     for (ObjectGuid& guid : spawns)
@@ -938,6 +981,7 @@ void UnitAI::DespawnGuids(GuidVector& spawns)
     spawns.clear();
 }
 
+// 执行所有已就绪的 CombatActions 战斗动作，并在必要时触发不可达目标传送
 void UnitAI::ExecuteActions()
 {
     if (!CanExecuteCombatAction())
@@ -945,7 +989,7 @@ void UnitAI::ExecuteActions()
 
     for (uint32 i = 0; i < GetCombatActionCount(); ++i)
     {
-        // can be changed on any action - prevent all additional ones
+        // can be changed on any action - prevent all additional ones (动作执行中若进入脚本接管状态则终止本轮剩余动作)
         if (GetCombatScriptStatus())
             return;
 
@@ -958,12 +1002,14 @@ void UnitAI::ExecuteActions()
             m_unit->CastSpell(m_unit->GetVictim(), 21727, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 主法术进入冷却后（纯施法者模式下）重新恢复远程站位模式
 void UnitAI::OnSpellCooldownAdded(SpellEntry const* spellInfo)
 {
     if (m_rangedModeSetting == TYPE_FULL_CASTER && m_mainSpells.find(spellInfo->Id) != m_mainSpells.end())
         SetCurrentRangedMode(true);
 }
 
+// 注册远程主攻击法术（首个注册的法术用于推导蓝耗、最小射程及学派掩码）
 void UnitAI::AddMainSpell(uint32 spellId)
 {
     if (!m_mainSpellId) // only for first
@@ -978,6 +1024,7 @@ void UnitAI::AddMainSpell(uint32 spellId)
     m_mainSpells.insert(spellId);
 }
 
+// 启用/禁用远程施法模式并设置期望追击距离与策略类型
 void UnitAI::SetRangedMode(bool state, float distance, RangeModeType type)
 {
     if (m_rangedMode == state)
@@ -996,6 +1043,7 @@ void UnitAI::SetRangedMode(bool state, float distance, RangeModeType type)
     }
 }
 
+// 动态切换当前处于远程追击还是近战追击（同步更新追击距离、近战开关与定身忽略远程标记）
 void UnitAI::SetCurrentRangedMode(bool state)
 {
     if (state)
@@ -1024,6 +1072,7 @@ enum EAIPoints
     POINT_MOVE_DISTANCE
 };
 
+// 若主目标处于近战范围且自身具备后撤条件（蓝量充足），主动向安全射程外拉扯移动
 void UnitAI::DistanceYourself()
 {
     Unit* victim = m_unit->GetVictim();
@@ -1050,6 +1099,7 @@ void UnitAI::DistancingEnded()
         SetCurrentRangedMode(true);
 }
 
+// 当通过控场技能限制住目标移动时，若该技能属于拉扯触发技能则顺势拉开距离
 void UnitAI::JustStoppedMovementOfTarget(SpellEntry const* spellInfo, Unit* victim)
 {
     if (m_unit->GetVictim() != victim)
@@ -1058,6 +1108,7 @@ void UnitAI::JustStoppedMovementOfTarget(SpellEntry const* spellInfo, Unit* vict
         DistanceYourself();
 }
 
+// 主法术被打断（反制/沉默等）时，若所有主法术均不可用，则切换为近战肉搏模式
 void UnitAI::OnSpellInterrupt(SpellEntry const* spellInfo)
 {
     if (m_mainSpells.find(spellInfo->Id) != m_mainSpells.end())
@@ -1065,6 +1116,7 @@ void UnitAI::OnSpellInterrupt(SpellEntry const* spellInfo)
         if (m_rangedMode && m_rangedModeSetting != TYPE_NO_MELEE_MODE && IsMainSpellPrevented(spellInfo))
         {
             // infrequently mobs have multiple main spells and only go into melee on interrupt when all are on cooldown
+            // 若怪物拥有多个主法术，仅当全部主法术均不可用时才转入近战模式
             if (m_mainSpells.size() > 1)
             {
                 bool success = false;
@@ -1081,13 +1133,14 @@ void UnitAI::OnSpellInterrupt(SpellEntry const* spellInfo)
                     }
                 }
                 if (success)
-                    return; // at least one main spell is off cooldown
+                    return; // at least one main spell is off cooldown (至少还有一个主法术未进入冷却)
             }
             SetCurrentRangedMode(false);
         }
     }
 }
 
+// UnitAI 主更新循环：更新计时器、刷新仇恨目标、维护远程/近战模式切换、执行动作与法术列表、推进近战平砍
 void UnitAI::UpdateAI(const uint32 diff)
 {
     UpdateTimers(diff, m_unit->IsInCombat());
@@ -1117,6 +1170,7 @@ void UnitAI::UpdateAI(const uint32 diff)
             }
         }
         // casters only display melee animation when in ranged mode when someone is actually close enough
+        // 远程施法者在处于远程模式时，仅当敌人贴近到近战范围才维持近战挥砍姿态
         if (m_currentRangedMode && m_meleeEnabled)
         {
             if (m_unit->hasUnitState(UNIT_STAT_MELEE_ATTACKING) && !m_unit->CanReachWithMeleeAttack(victim))
@@ -1126,18 +1180,20 @@ void UnitAI::UpdateAI(const uint32 diff)
         }
     }
 
-    ExecuteActions(); // before lists so phase transitions have higher priority
+    ExecuteActions(); // before lists so phase transitions have higher priority (先执行脚本/阶段动作，再轮询通用法术列表)
 
     UpdateSpellLists();
 
     DoMeleeAttackIfReady();
 }
 
+// 返回主攻击学派掩码（远程模式取主法术学派，否则取近战武器伤害学派）
 SpellSchoolMask UnitAI::GetMainAttackSchoolMask() const
 {
     return m_currentRangedMode ? m_mainAttackMask : m_unit->GetMeleeDamageSchoolMask();
 }
 
+// 判断法术当前是否因冷却、沉默或安抚而无法施放
 bool UnitAI::IsMainSpellPrevented(SpellEntry const* spellInfo) const
 {
     if (!m_unit->IsSpellReady(*spellInfo))
@@ -1151,6 +1207,7 @@ bool UnitAI::IsMainSpellPrevented(SpellEntry const* spellInfo) const
     return false;
 }
 
+// 判断单位是否有足够法力值支持远离拉扯（要求法力值大于主法术耗蓝的 2 倍）
 bool UnitAI::IsEligibleForDistancing() const
 {
     if (m_unit->GetPowerType() != POWER_MANA)
@@ -1159,6 +1216,7 @@ bool UnitAI::IsEligibleForDistancing() const
     return m_mainSpellInfo && m_mainSpellCost * 2 < m_unit->GetPower(POWER_MANA);
 }
 
+// 生物法术列表切换时重新收集远程主技能并刷新冷却状态
 void UnitAI::SpellListChanged()
 {
     m_mainSpellId = 0;
@@ -1185,6 +1243,7 @@ void UnitAI::SpellListChanged()
         AddInitialCooldowns();
 }
 
+// 法术列表轮询施法：按冷却、战斗条件、概率权重或顺序优先级筛选并施放技能
 void UnitAI::UpdateSpellLists()
 {
     if (m_spellListCooldown)
@@ -1199,11 +1258,12 @@ void UnitAI::UpdateSpellLists()
     CreatureSpellList const& spells = GetSpellList();
 
     // when probability is 0 for all spells, they will use priority based on positions
+    // 当所有法术概率权重之和为 0 时按列表位置顺序优先施放，否则按权重随机抽取
     std::vector<std::tuple<uint32, uint32, uint32, Unit*>> eligibleSpells;
     std::vector<std::tuple<uint32, uint32, uint32, Unit*>> nonBlockingSpells;
     uint32 sum = 0;
 
-    // one roll due to multiple spells
+    // one roll due to multiple spells (整轮辅助/远程动作共享一次掷骰判定)
     uint32 supportActionRoll = urand(0, 100);
     uint32 rangedActionRoll = urand(0, 100);
     for (auto& data : spells.Spells)
@@ -1227,6 +1287,7 @@ void UnitAI::UpdateSpellLists()
 
         // chance is either base in ranged mode or chance - 50 in melee mode
         // meant to simulate chaincasting in ranged mode and mostly not chaincasting in melee mode
+        // 远程法术在远程模式下采用基础概率，在近战模式下概率减 50%，以模拟远程连发与近战偶发施法行为
         if (spell.Flags & SPELL_LIST_FLAG_RANGED_ACTION)
             if (rangedActionRoll > (GetCurrentRangedMode() ? spells.ChanceRangedAttack : std::max((int32(spells.ChanceRangedAttack) - 50), 0)))
                 continue;
@@ -1264,6 +1325,7 @@ void UnitAI::UpdateSpellLists()
         return false;
     };
 
+    // 先触发所有非阻塞技能，再从阻塞队列中选出一个可成功施放的技能
     for (auto& data : nonBlockingSpells)
     {
         uint32 spellId; uint32 probability; uint32 scriptId; Unit* target;
@@ -1274,7 +1336,7 @@ void UnitAI::UpdateSpellLists()
     // will hit first eligible spell when sum is 0 because roll -1 < probability 0
     int32 spellRoll = sum == 0 ? -1 : irand(0, sum - 1);
     bool success = false;
-    // loop until either one spell was cast successfully or ran out of eligible spells
+    // loop until either one spell was cast successfully or ran out of eligible spells (持续尝试直至成功施放一个技能或候选耗尽)
     do
     {
         for (auto itr = eligibleSpells.begin(); itr != eligibleSpells.end();)
@@ -1294,6 +1356,7 @@ void UnitAI::UpdateSpellLists()
     while (!success && !eligibleSpells.empty());
 }
 
+// 根据法术列表目标配置（硬编码目标、敌对点名或友方支援）选择施法对象
 std::pair<bool, Unit*> UnitAI::ChooseTarget(CreatureSpellListTargeting* targetData, uint32 spellId) const
 {
     Unit* target = nullptr;
@@ -1345,7 +1408,7 @@ std::pair<bool, Unit*> UnitAI::ChooseTarget(CreatureSpellListTargeting* targetDa
             target = m_unit->SelectAttackingTarget(AttackingTarget(targetData->Param1), targetData->Param2, spellId, targetData->Param3, SelectAttackingTargetParams(), targetData->UnitCondition != -1 ? targetData->UnitCondition : 0);
             if (!target)
                 result = false;
-            if (targetData->Param3 & (SELECT_FLAG_USE_EFFECT_RADIUS | SELECT_FLAG_USE_EFFECT_RADIUS_OF_TRIGGERED_SPELL)) // these select flags only check if target exists but doesnt pass it to cast
+            if (targetData->Param3 & (SELECT_FLAG_USE_EFFECT_RADIUS | SELECT_FLAG_USE_EFFECT_RADIUS_OF_TRIGGERED_SPELL)) // these select flags only check if target exists but doesnt pass it to cast (仅检查范围内存在合法目标，施法时无需传目标指针)
                 target = nullptr;
             break;
         case SPELL_LIST_TARGETING_SUPPORT:
@@ -1363,6 +1426,7 @@ std::pair<bool, Unit*> UnitAI::ChooseTarget(CreatureSpellListTargeting* targetDa
     return { result, target };
 }
 
+// 进战时为法术列表中的所有技能施加初始随机冷却
 void UnitAI::AddInitialCooldowns()
 {
     CreatureSpellList const& spells = GetSpellList();

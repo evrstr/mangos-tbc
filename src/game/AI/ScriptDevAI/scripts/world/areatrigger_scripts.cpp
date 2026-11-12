@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Areatrigger_Scripts
 SD%Complete: 100
-SDComment: Quest support: 1126, 4291, 6681, 7632, 273, 10280, 10589/10604, 8735
+SDComment: Quest support: 1126, 4291, 6681, 7632, 273, 10280, 10589/10604, 8735 (世界通用区域触发器脚本集合)
 SDCategory: Areatrigger
 EndScriptData */
 
@@ -52,6 +52,7 @@ static uint32 TriggerOrphanSpell[6][3] =
     {3552, 14305, 65054}                                    // Spooky Lighthouse
 };
 
+// 儿童周景点区域触发器：玩家携带孤儿到达指定景点时触发法术完成目标
 bool AreaTrigger_at_childrens_week_spot(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
     for (auto& i : TriggerOrphanSpell)
@@ -75,6 +76,7 @@ enum
     GO_COILFANG_WATERFALL   = 184212
 };
 
+// 盘牙水库瀑布门触发器：玩家靠近瀑布时开启水帘门
 bool AreaTrigger_at_coilfang_waterfall(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
     if (GameObject* pGo = GetClosestGameObjectWithEntry(pPlayer, GO_COILFANG_WATERFALL, 35.0f))
@@ -98,6 +100,7 @@ enum
     QUEST_GAINING_ACCESS_H  = 10604
 };
 
+// 军团传送器触发器：传送玩家至灾变入侵点
 bool AreaTrigger_at_legion_teleporter(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
     if (pPlayer->IsAlive() && !pPlayer->IsInCombat())
@@ -128,6 +131,7 @@ enum
     NPC_RAVENHOLDT          = 13936
 };
 
+// 拉文霍德庄园区域触发器：引导盗贼职业任务剧情
 bool AreaTrigger_at_ravenholdt(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
     if (pPlayer->GetQuestStatus(QUEST_MANOR_RAVENHOLDT) == QUEST_STATUS_INCOMPLETE)
@@ -146,6 +150,7 @@ enum
     NPC_LARKORWI_MATE           = 9683
 };
 
+// 拉科维的气味触发器：安戈洛环形山诱捕拉科维任务
 bool AreaTrigger_at_scent_larkorwi(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
     if (pPlayer->IsAlive() && !pPlayer->IsGameMaster() && pPlayer->GetQuestStatus(QUEST_SCENT_OF_LARKORWI) == QUEST_STATUS_INCOMPLETE)
@@ -161,6 +166,7 @@ bool AreaTrigger_at_scent_larkorwi(Player* pPlayer, AreaTriggerEntry const* pAt)
 ## at_murkdeep
 ######*/
 
+// 黑渊水怪触发器：黑海岸任务召唤莫克迪普
 bool AreaTrigger_at_murkdeep(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
     // Handle Murkdeep event start
@@ -226,6 +232,7 @@ static const AncientSpawn afSpawnLocations[MAX_ANCIENTS] =
     { NPC_HASTAT,  6193.449219f, -1137.834106f, 366.260529f, 5.77332f },    // Hastat the Ancient
 };
 
+// 远古之叶触发器：猎人史诗弓任务召唤远古古树
 bool AreaTrigger_at_ancient_leaf(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
     if (pPlayer->IsGameMaster() || !pPlayer->IsAlive())
@@ -254,6 +261,7 @@ enum
     QUEST_SPECIAL_DELIVERY_TO_SHATTRATH = 10280
 };
 
+// 哈拉迈德法力陵墓传送触发器
 bool AreaTrigger_at_haramad_teleport(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
     if (pPlayer->IsCurrentQuest(QUEST_SPECIAL_DELIVERY_TO_SHATTRATH))
@@ -288,6 +296,7 @@ static const Position m_miranAmbushSpawns[] =
     { -5757.75f, -3437.61f, 304.32f, 2.56f },   // Dark Iron Ambusher 2
 };
 
+// 霍尔达尔与米兰触发器：洛克莫丹巡山人巡逻触发
 bool AreaTrigger_at_huldar_miran(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
     // Player is deaed, a GM, quest complete or no quest, do nothing
@@ -347,6 +356,7 @@ enum
     SPELL_A52_NEURALYZER = 34400
 };
 
+// 52区警报触发器：玩家踏入隐秘区域触发地精卫兵警报
 bool AreaTrigger_at_area_52(Player* player, AreaTriggerEntry const* at)
 {
     // ToDo: research if there should be other actions happening here
@@ -375,6 +385,7 @@ enum
 
 static const Position m_twilightCorrupterSpawn = { -10326.3f, -487.423f, 50.1127f, 5.73692f };
 
+// 暮色森林暮色树林触发器：靠近翡翠巨龙梦境传送门
 bool AreaTrigger_at_twilight_grove(Player* player, AreaTriggerEntry const* /*pAt*/)
 {
     // Player is deaed, a GM, quest complete, no quest or already got item: do nothing
@@ -411,6 +422,7 @@ enum
     GO_WONDERVOLT_TRAP = 180797
 };
 
+// 万伏特装置触发器：玩家踏入时给予静电视觉
 bool AreaTrigger_at_wondervolt(Player* player, AreaTriggerEntry const* /*at*/)
 {
     if (player->IsGameMaster())
@@ -445,6 +457,7 @@ enum
     QUEST_THE_FIRST_AND_THE_LAST = 6182
 };
 
+// 暴风城征兵员触发器：新兵指引
 bool AreaTrigger_at_stormwind_recruiter(Player* player, AreaTriggerEntry const* /*at*/)
 {
     if (player->IsGameMaster() || player->GetTeam() != ALLIANCE || player->GetQuestRewardStatus(QUEST_THE_FIRST_AND_THE_LAST))
@@ -457,6 +470,7 @@ bool AreaTrigger_at_stormwind_recruiter(Player* player, AreaTriggerEntry const* 
     return false;
 }
 
+// 注册世界区域触发器脚本
 void AddSC_areatrigger_scripts()
 {
     Script* pNewScript = new Script;

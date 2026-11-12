@@ -5,6 +5,7 @@
 #ifndef DEF_BLACK_TEMPLE_H
 #define DEF_BLACK_TEMPLE_H
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER                   = 9,
@@ -99,24 +100,35 @@ enum
     FACTION_ASHTONGUE_FRIENDLY      = 1820,
 };
 
+// instance_black_temple 副本数据管理类
 class instance_black_temple : public ScriptedInstance
 {
     public:
         instance_black_temple(Map* map);
 
+        // 初始化副本数据与状态
         void Initialize() override;
 
         bool IsEncounterInProgress() const override;
 
+        // 玩家进入副本回调
         void OnPlayerEnter(Player* player) override;
+        // 玩家在副本内复活回调
         void OnPlayerResurrect(Player* player) override;
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* creature) override;
+        // 副本生物重生处理
         void OnCreatureRespawn(Creature* creature) override;
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* go) override;
+        // 副本生物脱战脱逃处理
         void OnCreatureEvade(Creature* creature) override;
+        // 副本生物死亡处理
         void OnCreatureDeath(Creature* creature) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 type, uint32 data) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 type) const override;
 
         GuidVector const& GetChannelersGuidList() const { return m_channelersGuidVector; }

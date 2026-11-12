@@ -21,6 +21,8 @@ SDComment: Quest support: 9212.
 SDCategory: Ghostlands
 EndScriptData */
 
+// 幽魂之地（Ghostlands）血精灵区域任务与达尔坎·德拉希尔脚本
+
 /* ContentData
 npc_ranger_lilatha
 EndContentData */
@@ -32,30 +34,32 @@ EndContentData */
 ## npc_ranger_lilatha
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START                   = 15894,
-    SAY_PROGRESS1               = 12187,
-    SAY_PROGRESS2               = 12188,
-    SAY_PROGRESS3               = 12189,
-    SAY_END1                    = 12191,
-    SAY_END2                    = 12190,
-    CAPTAIN_ANSWER              = 12193,
+    SAY_START                   = 15894,                    // 开始 台词广播 ID
+    SAY_PROGRESS1               = 12187,                    // progress1 台词广播 ID
+    SAY_PROGRESS2               = 12188,                    // progress2 台词广播 ID
+    SAY_PROGRESS3               = 12189,                    // progress3 台词广播 ID
+    SAY_END1                    = 12191,                    // end1 台词广播 ID
+    SAY_END2                    = 12190,                    // end2 台词广播 ID
+    CAPTAIN_ANSWER              = 12193,                    // answer 标识 ID
 
-    WAYPOINT_PATH_ID            = 16295,
-    QUEST_CATACOMBS             = 9212,
-    GO_CAGE                     = 181152,
-    NPC_CAPTAIN_HELIOS          = 16220,
-    NPC_MUMMIFIED_HEADHUNTER    = 16342,
-    NPC_SHADOWPINE_ORACLE       = 16343,
+    WAYPOINT_PATH_ID            = 16295,                    // 路径ID 标识 ID
+    QUEST_CATACOMBS             = 9212,                     // catacombs 任务 ID
+    GO_CAGE                     = 181152,                   // cage 游戏对象 Entry ID
+    NPC_CAPTAIN_HELIOS          = 16220,                    // captainhelios Entry ID
+    NPC_MUMMIFIED_HEADHUNTER    = 16342,                    // mummifiedheadhunter Entry ID
+    NPC_SHADOWPINE_ORACLE       = 16343,                    // shadowpineoracle Entry ID
 };
 
+// 随从/NPC AI：lilatha（ranger_lilatha）
 struct npc_ranger_lilathaAI : public npc_escortAI
 {
     npc_ranger_lilathaAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    ObjectGuid m_goCageGuid;
-    ObjectGuid m_heliosGuid;
+    ObjectGuid m_goCageGuid;                                // goCage 实体 GUID
+    ObjectGuid m_heliosGuid;                                // helios 实体 GUID
 
     void JustRespawned() override
     {
@@ -137,6 +141,7 @@ struct npc_ranger_lilathaAI : public npc_escortAI
         }
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
@@ -147,6 +152,7 @@ struct npc_ranger_lilathaAI : public npc_escortAI
     }
 };
 
+// 任务接取回调函数：npc_ranger_lilatha
 bool QuestAccept_npc_ranger_lilatha(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_CATACOMBS)
@@ -163,6 +169,7 @@ bool QuestAccept_npc_ranger_lilatha(Player* pPlayer, Creature* pCreature, const 
     return true;
 }
 
+// 注册并载入脚本模块：ghostlands
 void AddSC_ghostlands()
 {
     Script* pNewScript = new Script;

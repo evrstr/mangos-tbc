@@ -21,18 +21,22 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 费尔默（Firemaw）4号首领战 AI（烈焰打击与火翼打击）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_SHADOW_FLAME          = 22539,
-    SPELL_WING_BUFFET           = 23339,
-    SPELL_FLAME_BUFFET          = 23341,
+    SPELL_SHADOW_FLAME          = 22539,                    // 暗影烈焰 法术 ID
+    SPELL_WING_BUFFET           = 23339,                    // 翼击震击 法术 ID
+    SPELL_FLAME_BUFFET          = 23341,                    // 烈焰震击 法术 ID
     SPELL_THRASH                = 3391, // confirmed not proc
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum FiremawActions
 {
     FIREMAW_SHADOW_FLAME,
@@ -42,6 +46,7 @@ enum FiremawActions
     FIREMAW_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（firemaw）
 struct boss_firemawAI : public CombatAI
 {
     boss_firemawAI(Creature* creature) : CombatAI(creature, FIREMAW_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -66,6 +71,7 @@ struct boss_firemawAI : public CombatAI
             m_instance->SetData(TYPE_FIREMAW, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -74,7 +80,7 @@ struct boss_firemawAI : public CombatAI
 
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo, SpellMissInfo /*missInfo*/) override
     {
-        if (spellInfo->Id == SPELL_WING_BUFFET) // reduces threat of everyone hit
+        if (spellInfo->Id == SPELL_WING_BUFFET) // reduces threat of everyone hit (降低所有受击目标的仇恨)
             m_creature->getThreatManager().modifyThreatPercent(target, -50);
     }
 
@@ -110,6 +116,7 @@ struct boss_firemawAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_firemaw
 void AddSC_boss_firemaw()
 {
     Script* pNewScript = new Script;

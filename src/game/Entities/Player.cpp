@@ -126,12 +126,13 @@ enum CharacterFlags
     CHARACTER_FLAG_UNK32                = 0x80000000
 };
 
-// corpse reclaim times
+// corpse reclaim times (尸体复活/拾取延迟时间表，单位：秒)
 #define DEATH_EXPIRE_STEP (5*MINUTE)
 #define MAX_DEATH_COUNT 3
 
 static const uint32 corpseReclaimDelay[MAX_DEATH_COUNT] = {30, 60, 120};
 
+/// 拉取并消费当前镜像计时器的待发送状态更新
 MirrorTimer::Status MirrorTimer::FetchStatus()
 {
     Status status = m_status;
@@ -139,6 +140,7 @@ MirrorTimer::Status MirrorTimer::FetchStatus()
     return status;
 }
 
+/// 停止镜像计时器并重置状态
 void MirrorTimer::Stop()
 {
     if (m_active)
@@ -150,6 +152,7 @@ void MirrorTimer::Stop()
     }
 }
 
+/// 启动镜像计时器（指定总时长与触发法术 ID）
 void MirrorTimer::Start(uint32 interval, uint32 spellId/* = 0*/)
 {
     if (m_scale < 0)
@@ -218,6 +221,7 @@ void MirrorTimer::SetScale(int32 scale)
     m_scale = scale;
 }
 
+/// 每帧推进镜像计时器并触发到期周期伤害/恢复脉冲
 bool MirrorTimer::Update(uint32 diff)
 {
     if (!IsActive() || IsFrozen())
@@ -225,7 +229,7 @@ bool MirrorTimer::Update(uint32 diff)
 
     diff *= uint32(std::abs(m_scale));
 
-    if (m_scale < 0)    // Timer running out
+    if (m_scale < 0)    // Timer running out (计时器递减消耗中)
     {
         m_tracker.Update(diff);
 
@@ -237,7 +241,7 @@ bool MirrorTimer::Update(uint32 diff)
 
         m_tracker.SetCurrent(interval);
 
-        if (overflow == diff)   // Pulse: subsequent ticks after instant tick on expiration
+        if (overflow == diff)   // Pulse: subsequent ticks after instant tick on expiration (到期立即触发首次效果后的后续周期脉冲)
         {
             m_pulse.Update(overflow);
 
@@ -249,7 +253,7 @@ bool MirrorTimer::Update(uint32 diff)
 
         return false;
     }
-    else                // Timer regenerating
+    else                // Timer regenerating (计时器恢复中)
     {
         const uint32 current = m_tracker.GetCurrent();
 
@@ -265,46 +269,49 @@ bool MirrorTimer::Update(uint32 diff)
     }
 }
 
-//== PlayerTaxi ================================================
+//== PlayerTaxi (玩家飞行路线管理器) ====================================
 
+/// 构造函数：清空飞行点位图掩码
 PlayerTaxi::PlayerTaxi()
 {
-    // Taxi nodes
+    // Taxi nodes (飞行点掩码初始化)
     memset(m_taximask, 0, sizeof(m_taximask));
 }
 
+/// 根据玩家种族和等级初始化默认已知飞行节点
 void PlayerTaxi::InitTaxiNodesForLevel(uint32 race, uint32 /*level*/)
 {
-    // race specific initial known nodes: capital and taxi hub masks
+    // race specific initial known nodes: capital and taxi hub masks (各种族初始已知飞行点：主城与核心交通枢纽掩码)
     switch (race)
     {
-        case RACE_HUMAN:    SetTaximaskNode(2);  break;     // Human
-        case RACE_ORC:      SetTaximaskNode(23); break;     // Orc
-        case RACE_DWARF:    SetTaximaskNode(6);  break;     // Dwarf
+        case RACE_HUMAN:    SetTaximaskNode(2);  break;     // Human (人类)
+        case RACE_ORC:      SetTaximaskNode(23); break;     // Orc (兽人)
+        case RACE_DWARF:    SetTaximaskNode(6);  break;     // Dwarf (矮人)
         case RACE_NIGHTELF: SetTaximaskNode(26);
-            SetTaximaskNode(27); break;     // Night Elf
-        case RACE_UNDEAD:   SetTaximaskNode(11); break;     // Undead
-        case RACE_TAUREN:   SetTaximaskNode(22); break;     // Tauren
-        case RACE_GNOME:    SetTaximaskNode(6);  break;     // Gnome
-        case RACE_TROLL:    SetTaximaskNode(23); break;     // Troll
-        case RACE_BLOODELF: SetTaximaskNode(82); break;     // Blood Elf
-        case RACE_DRAENEI:  SetTaximaskNode(94); break;     // Draenei
+            SetTaximaskNode(27); break;     // Night Elf (暗夜精灵)
+        case RACE_UNDEAD:   SetTaximaskNode(11); break;     // Undead (亡灵)
+        case RACE_TAUREN:   SetTaximaskNode(22); break;     // Tauren (牛头人)
+        case RACE_GNOME:    SetTaximaskNode(6);  break;     // Gnome (侏儒)
+        case RACE_TROLL:    SetTaximaskNode(23); break;     // Troll (巨魔)
+        case RACE_BLOODELF: SetTaximaskNode(82); break;     // Blood Elf (血精灵)
+        case RACE_DRAENEI:  SetTaximaskNode(94); break;     // Draenei (德莱尼)
     }
 
-    // new continent starting masks (It will be accessible only at new map)
+    // new continent starting masks (It will be accessible only at new map) (新大陆初始飞行点掩码，仅在新地图可访问)
     switch (Player::TeamForRace(race))
     {
         case ALLIANCE: SetTaximaskNode(100); break;
         case HORDE:    SetTaximaskNode(99);  break;
         default: break;
     }
-    // level dependent taxi hubs
+    // level dependent taxi hubs (随等级解锁的飞行枢纽)
 
 #ifndef PRENERF_2_4
-    SetTaximaskNode(213);                                   // Shattered Sun Staging Area
+    SetTaximaskNode(213);                                   // Shattered Sun Staging Area (破碎残阳集结地/奎尔丹纳斯岛)
 #endif
 }
 
+/// 从数据库字符串加载已解锁飞行节点位图
 void PlayerTaxi::LoadTaxiMask(const char* data)
 {
     Tokens tokens = StrSplit(data, " ");
@@ -314,22 +321,23 @@ void PlayerTaxi::LoadTaxiMask(const char* data)
     for (iter = tokens.begin(), index = 0;
             (index < TaxiMaskSize) && (iter != tokens.end()); ++iter, ++index)
     {
-        // load and set bits only for existing taxi nodes
+        // load and set bits only for existing taxi nodes (仅加载并设置数据库中存在的飞行节点位)
         m_taximask[index] = sTaxiNodesMask[index] & uint32(std::stoul(*iter));
     }
 }
 
+/// 将已知（或全部）飞行节点位图写入数据包发送给客户端
 void PlayerTaxi::AppendTaximaskTo(ByteBuffer& data, bool all)
 {
     if (all)
     {
         for (unsigned int i : sTaxiNodesMask)
-            data << uint32(i);              // all existing nodes
+            data << uint32(i);              // all existing nodes (所有存在的飞行节点)
     }
     else
     {
         for (unsigned int i : m_taximask)
-            data << uint32(i);                  // known nodes
+            data << uint32(i);                  // known nodes (玩家已知的飞行节点)
     }
 }
 
@@ -352,16 +360,17 @@ SpellModifier::SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, A
     mask = sSpellMgr.GetSpellAffectMask(aura->GetId(), aura->GetEffIndex());
 }
 
+/// 判断法术修正器是否作用于指定法术
 bool SpellModifier::isAffectedOnSpell(SpellEntry const* spell) const
 {
     SpellEntry const* affect_spell = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
-    // False if affect_spell == nullptr or spellFamily not equal
+    // False if affect_spell == nullptr or spellFamily not equal (若目标法术为空或法术族不匹配则返回 false)
     if (!affect_spell || affect_spell->SpellFamilyName != spell->SpellFamilyName)
         return false;
     return spell->IsFitToFamilyMask(mask);
 }
 
-//== TradeData =================================================
+//== TradeData (玩家交易数据) ============================================
 
 TradeData* TradeData::GetTraderData() const
 {
@@ -387,13 +396,14 @@ Item* TradeData::GetSpellCastItem() const
     return m_spellCastItem ?  m_player->GetItemByGuid(m_spellCastItem) : nullptr;
 }
 
+/// 设置交易栏指定槽位的物品并同步更新双方状态
 void TradeData::SetItem(TradeSlots slot, Item* item)
 {
     ObjectGuid itemGuid = item ? item->GetObjectGuid() : ObjectGuid();
 
     if (m_items[slot] == itemGuid)
     {
-        Update(false);                                      // the client drops the updates of its offer sent before this request
+        Update(false);                                      // the client drops the updates of its offer sent before this request (客户端会丢弃在此请求之前发送的己方报价更新)
         return;
     }
 
@@ -406,14 +416,15 @@ void TradeData::SetItem(TradeSlots slot, Item* item)
     Update(true);
     Update(false);
 
-    // need remove possible trader spell applied to changed item
+    // need remove possible trader spell applied to changed item (需要移除交易对手此前施加在变更物品上的附魔/开锁法术)
     if (slot == TRADE_SLOT_NONTRADED)
         GetTraderData()->SetSpell(0);
 
-    // need remove possible player spell applied (possible move reagent)
+    // need remove possible player spell applied (possible move reagent) (需要移除己方施加的法术，以防移动了施法材料物品)
     SetSpell(0);
 }
 
+/// 设置交易附魔/开锁槽位的法术与施法物品
 void TradeData::SetSpell(uint32 spell_id, Item* castItem /*= nullptr*/)
 {
     ObjectGuid itemGuid = castItem ? castItem->GetObjectGuid() : ObjectGuid();
@@ -428,15 +439,16 @@ void TradeData::SetSpell(uint32 spell_id, Item* castItem /*= nullptr*/)
     GetTraderData()->SetAccepted(false);
 
     ++m_serverStateIndex;
-    Update(true);                                           // send spell info to item owner
-    Update(false);                                          // send spell info to caster self
+    Update(true);                                           // send spell info to item owner (向物品拥有者发送附魔/法术信息)
+    Update(false);                                          // send spell info to caster self (向施法者自身发送附魔/法术信息)
 }
 
+/// 设置交易金币数额并刷新交易状态
 void TradeData::SetMoney(uint32 money)
 {
     if (m_money == money)
     {
-        Update(false);                                      // the client drops the updates of its offer sent before this request
+        Update(false);                                      // the client drops the updates of its offer sent before this request (客户端会丢弃在此请求之前发送的己方报价更新)
         return;
     }
 
@@ -459,14 +471,16 @@ void TradeData::SetMoney(uint32 money)
     Update(false);
 }
 
+/// 向交易双方发送当前交易栏状态数据包
 void TradeData::Update(bool for_trader /*= true*/) const
 {
     if (for_trader)
-        m_trader->GetSession()->SendUpdateTrade(true);      // player state for trader
+        m_trader->GetSession()->SendUpdateTrade(true);      // player state for trader (向交易对方发送己方交易状态)
     else
-        m_player->GetSession()->SendUpdateTrade(false);     // player state for player
+        m_player->GetSession()->SendUpdateTrade(false);     // player state for player (向己方发送己方交易状态)
 }
 
+/// 设置交易确认状态，并在双方均确认时完成物品与金币交换
 void TradeData::SetAccepted(bool state, bool crosssend /*= false*/)
 {
     m_accepted = state;
@@ -482,8 +496,9 @@ void TradeData::SetAccepted(bool state, bool crosssend /*= false*/)
     }
 }
 
-//== Player ====================================================
+//== Player (玩家核心实现) ================================================
 
+/// Player 构造函数：初始化玩家实体各子系统默认值与计时器
 Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(this), m_camera(this), m_reputationMgr(this), m_launched(false)
 {
 #ifdef ENABLE_PLAYERBOTS
@@ -498,7 +513,7 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
 
     m_valuesCount = PLAYER_END;
 
-    SetActiveObjectState(true);                             // player is always active object
+    SetActiveObjectState(true);                             // player is always active object (玩家始终作为地图中的活跃对象)
 
     m_session = session;
 
@@ -506,7 +521,7 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     if (GetSession()->GetSecurity() >= SEC_GAMEMASTER)
         SetAcceptTicket(true);
 
-    // players always accept
+    // players always accept (玩家默认始终接受请求)
     if (GetSession()->GetSecurity() == SEC_PLAYER)
         SetAcceptWhispers(true);
 
@@ -520,8 +535,8 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
 
     m_nextSave = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
 
-    // randomize first save time in range [CONFIG_UINT32_INTERVAL_SAVE] around [CONFIG_UINT32_INTERVAL_SAVE]
-    // this must help in case next save after mass player load after server startup
+    // randomize first save time in range [CONFIG_UINT32_INTERVAL_SAVE] around [CONFIG_UINT32_INTERVAL_SAVE] (在保存间隔配置范围内随机化首次自动保存时间)
+    // this must help in case next save after mass player load after server startup (用于错开开服后大量玩家同时登录导致的集中存盘峰值)
     m_nextSave = urand(m_nextSave / 2, m_nextSave * 3 / 2);
 
     clearResurrectRequestData();
@@ -532,7 +547,7 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
 
     m_social = nullptr;
 
-    // group is initialized in the reference constructor
+    // group is initialized in the reference constructor (队伍引用在成员引用构造函数中初始化)
     SetGroupInvite(nullptr);
     m_groupUpdateMask = 0;
 
@@ -549,7 +564,7 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     m_DelayedOperations = 0;
     m_bCanDelayTeleport = false;
     m_bHasDelayedTeleport = false;
-    m_bHasBeenAliveAtDelayedTeleport = true;                // overwrite always at setup teleport data, so not used infact
+    m_bHasBeenAliveAtDelayedTeleport = true;                // overwrite always at setup teleport data, so not used infact (设置传送数据时总是会被覆盖，实际未直接使用)
     m_teleport_options = 0;
 
     m_needsZoneUpdate = false;
@@ -594,12 +609,12 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     m_temporaryUnsummonedPetNumber = 0;
     m_BGPetSpell = 0;
 
-    //////////////////// Rest System/////////////////////
+    //////////////////// Rest System (休息系统) /////////////////////
     time_inn_enter = 0;
     inn_trigger_id = 0;
     m_rest_bonus = 0;
     m_restType = REST_TYPE_NO;
-    //////////////////// Rest System/////////////////////
+    //////////////////// Rest System (休息系统) /////////////////////
 
     m_mailsUpdated = false;
     unReadMails = 0;
@@ -614,7 +629,7 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
 
     m_stableSlots = 0;
 
-    /////////////////// Instance System /////////////////////
+    /////////////////// Instance System (副本系统) ////////////////////
 
     m_HomebindTimer = 0;
     m_InstanceValid = true;
@@ -632,10 +647,10 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     for (unsigned int& i : m_enchantmentFlatMod)
         i = 0;
 
-    // Honor System
+    // Honor System (荣誉系统)
     m_lastHonorUpdateTime = time(nullptr);
 
-    // Player summoning
+    // Player summoning (玩家召唤请求)
     m_summon_expire = 0;
     m_summon_mapid = 0;
     m_summon_x = 0.0f;
@@ -666,33 +681,34 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     m_lastGameObject = false;
 }
 
+/// Player 析构函数：释放邮件、社交及背包等堆内存对象
 Player::~Player()
 {
     CleanupsBeforeDelete();
 
-    // it must be unloaded already in PlayerLogout and accessed only for loggined player
+    // it must be unloaded already in PlayerLogout and accessed only for loggined player (社交数据须在登出时卸载，且仅在玩家在线期间访问)
     // m_social = nullptr;
 
-    // Note: buy back item already deleted from DB when player was saved
+    // Note: buy back item already deleted from DB when player was saved (注：回购栏物品在角色保存时已从数据库删除)
     for (auto& m_item : m_items)
     {
         delete m_item;
     }
     CleanupChannels();
 
-    // all mailed items should be deleted, also all mail should be deallocated
+    // all mailed items should be deleted, also all mail should be deallocated (释放所有邮件附件物品及邮件对象内存)
     for (PlayerMails::const_iterator itr =  m_mail.begin(); itr != m_mail.end(); ++itr)
         delete *itr;
 
     for (ItemMap::const_iterator iter = mMitems.begin(); iter != mMitems.end(); ++iter)
-        delete iter->second;                                // if item is duplicated... then server may crash ... but that item should be deallocated
+        delete iter->second;                                // if item is duplicated... then server may crash ... but that item should be deallocated (若同一物品指针被重复放入槽位可能导致崩溃，此处确保不重复释放)
 
     if (m_transport)
     {
         m_transport->RemovePassenger(this);
     }
 
-    // clean up player-instance binds, may unload some instance saves
+    // clean up player-instance binds, may unload some instance saves (清理玩家副本进度绑定，可能会卸载部分副本持久化状态)
     for (auto& m_boundInstance : m_boundInstances)
         for (BoundInstancesMap::iterator itr = m_boundInstance.begin(); itr != m_boundInstance.end(); ++itr)
             itr->second.state->RemovePlayer(this);
@@ -705,15 +721,16 @@ Player::~Player()
     delete m_declinedname;
 }
 
+/// 销毁前清理：解除世界引用、卸载社交数据并通知区域脚本
 void Player::CleanupsBeforeDelete()
 {
-    if (m_uint32Values)                                     // only for fully created Object
+    if (m_uint32Values)                                     // only for fully created Object (仅对已完整创建的实体执行清理)
     {
         TradeCancel(false);
         DuelComplete(DUEL_FLED);
     }
 
-    // notify zone scripts for player logout
+    // notify zone scripts for player logout (通知区域脚本玩家已登出)
     sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
     sWorldState.HandlePlayerLeaveZone(this, m_zoneUpdateId);
     sWorldState.HandlePlayerLeaveArea(this, m_areaUpdateId);
@@ -721,25 +738,26 @@ void Player::CleanupsBeforeDelete()
     Unit::CleanupsBeforeDelete();
 }
 
+/// 校验角色外观组合（种族、性别、发型、脸型、肤色等）在 DBC 中的合法性
 bool Player::ValidateAppearance(uint8 race, uint8 /*class_*/, uint8 gender, uint8 hairID, uint8 hairColor, uint8 faceID, uint8 facialHair, uint8 skinColor, bool /*create = false*/)
 {
-    // For Skin type is always 0
+    // For Skin type is always 0 (肤色在 CharSections 中类型始终为 0)
     CharSectionsEntry const* skinEntry = GetCharSectionEntry(race, SECTION_TYPE_SKIN, gender, 0, skinColor);
     if (!skinEntry)
         return false;
 
-    // Skin Color defined as Face color, too
+    // Skin Color defined as Face color, too (脸型颜色与肤色共用编号)
     CharSectionsEntry const* faceEntry = GetCharSectionEntry(race, SECTION_TYPE_FACE, gender, faceID, skinColor);
     if (!faceEntry)
         return false;
 
-    // Check Hair
+    // Check Hair (校验发型与发色)
     CharSectionsEntry const* hairEntry = GetCharSectionEntry(race, SECTION_TYPE_HAIR, gender, hairID, hairColor);
     if (!hairEntry)
         return false;
 
-    // TODO:: fill missing case in db when dbc will be in database
-    //// These combinations don't have an entry of Type SECTION_TYPE_FACIAL_HAIR, exclude them from that check
+    // TODO:: fill missing case in db when dbc will be in database (待办：DBC 入库后补全缺失的面部饰物校验)
+    //// These combinations don't have an entry of Type SECTION_TYPE_FACIAL_HAIR, exclude them from that check (这些种族/性别组合没有面部饰物 DBC 条目，跳过校验)
     //bool const excludeCheck = (race == RACE_TAUREN) || (gender == GENDER_FEMALE && race != RACE_NIGHTELF && race != RACE_UNDEAD);
     //if (!excludeCheck)
     //{
@@ -755,9 +773,10 @@ bool Player::ValidateAppearance(uint8 race, uint8 /*class_*/, uint8 gender, uint
     return true;
 }
 
+/// 创建新角色实体：初始化外观字节、基础属性、初始法术、动作条与初始装备
 bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 class_, uint8 gender, uint8 skin, uint8 face, uint8 hairStyle, uint8 hairColor, uint8 facialHair, uint8 /*outfitId */)
 {
-    // FIXME: outfitId not used in player creating
+    // FIXME: outfitId not used in player creating (待修复：创建角色时未使用 outfitId)
 
     Object::_Create(guidlow, guidlow, 0, HIGHGUID_PLAYER);
 
@@ -777,7 +796,7 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
         return false;
     }
 
-    // player store gender in single bit
+    // player store gender in single bit (玩家性别存储在单个比特位中)
     if (gender != uint8(GENDER_MALE) && gender != uint8(GENDER_FEMALE))
     {
         sLog.outError("Invalid gender %u at player creating", uint32(gender));
@@ -802,14 +821,14 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_GENDER, gender);
     SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_POWER_TYPE, powertype);
 
-    InitDisplayIds();                                       // model, scale and model data
+    InitDisplayIds();                                       // model, scale and model data (模型 ID、缩放比例与模型信息)
 
     SetByteValue(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_DEBUFF_LIMIT, UNIT_BYTE2_PLAYER_CONTROLLED_DEBUFF_LIMIT);
 
     SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
-    SetFloatValue(UNIT_MOD_CAST_SPEED, 1.0f);               // fix cast time showed in spell tooltip on client
+    SetFloatValue(UNIT_MOD_CAST_SPEED, 1.0f);               // fix cast time showed in spell tooltip on client (修正客户端法术提示中显示的施法时间倍率)
 
-    SetInt32Value(PLAYER_FIELD_WATCHED_FACTION_INDEX, -1);  // -1 is default value
+    SetInt32Value(PLAYER_FIELD_WATCHED_FACTION_INDEX, -1);  // -1 is default value (-1 为默认无效值)
 
     SetByteValue(PLAYER_BYTES, 0, skin);
     SetByteValue(PLAYER_BYTES, 1, face);
@@ -819,14 +838,14 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     SetByteValue(PLAYER_BYTES_2, 0, facialHair);
     SetByteValue(PLAYER_BYTES_2, 3, REST_STATE_NORMAL);
 
-    SetUInt16Value(PLAYER_BYTES_3, 0, gender);              // only GENDER_MALE/GENDER_FEMALE (1 bit) allowed, drunk state = 0
-    SetByteValue(PLAYER_BYTES_3, 3, 0);                     // BattlefieldArenaFaction (0 or 1)
+    SetUInt16Value(PLAYER_BYTES_3, 0, gender);              // only GENDER_MALE/GENDER_FEMALE (1 bit) allowed, drunk state = 0 (仅允许男/女 1 位性别值，初始醉酒度为 0)
+    SetByteValue(PLAYER_BYTES_3, 3, 0);                     // BattlefieldArenaFaction (0 or 1) (战场/竞技场阵营标志 0 或 1)
 
     SetUInt32Value(PLAYER_GUILDID, 0);
     SetUInt32Value(PLAYER_GUILDRANK, 0);
     SetUInt32Value(PLAYER_GUILD_TIMESTAMP, 0);
 
-    SetUInt64Value(PLAYER__FIELD_KNOWN_TITLES, 0);          // 0=disabled
+    SetUInt64Value(PLAYER__FIELD_KNOWN_TITLES, 0);          // 0=disabled (0 表示禁用动作条扩展栏)
     SetUInt32Value(PLAYER_CHOSEN_TITLE, 0);
 
     SetUInt32Value(PLAYER_FIELD_KILLS, 0);
@@ -834,7 +853,7 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     SetUInt32Value(PLAYER_FIELD_TODAY_CONTRIBUTION, 0);
     SetUInt32Value(PLAYER_FIELD_YESTERDAY_CONTRIBUTION, 0);
 
-    // set starting level
+    // set starting level (设置初始等级)
     if (GetSession()->GetSecurity() >= SEC_MODERATOR)
         SetUInt32Value(UNIT_FIELD_LEVEL, sWorld.getConfig(CONFIG_UINT32_START_GM_LEVEL));
     else
@@ -844,35 +863,35 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     SetHonorPoints(sWorld.getConfig(CONFIG_UINT32_START_HONOR_POINTS));
     SetArenaPoints(sWorld.getConfig(CONFIG_UINT32_START_ARENA_POINTS));
 
-    // Played time
+    // Played time (游戏时间统计初始化)
     m_Last_tick = time(nullptr);
     m_Played_time[PLAYED_TIME_TOTAL] = 0;
     m_Played_time[PLAYED_TIME_LEVEL] = 0;
 
-    // base stats and related field values
+    // base stats and related field values (初始化基础属性及相关字段)
     InitStatsForLevel();
     InitTaxiNodesForLevel();
     InitTalentForLevel();
-    InitPrimaryProfessions();                               // to max set before any spell added
+    InitPrimaryProfessions();                               // to max set before any spell added (在添加任何法术前先将生命/法力恢复至上限)
 
-    // apply original stats mods before spell loading or item equipment that call before equip _RemoveStatsMods()
-    UpdateMaxHealth();                                      // Update max Health (for add bonus from stamina)
+    // apply original stats mods before spell loading or item equipment that call before equip _RemoveStatsMods() (在加载法术和装备前先应用初始属性加成)
+    UpdateMaxHealth();                                      // Update max Health (for add bonus from stamina) (更新最大生命值以计入耐力加成)
     SetHealth(GetMaxHealth());
 
     if (GetPowerType() == POWER_MANA)
     {
-        UpdateMaxPower(POWER_MANA);                         // Update max Mana (for add bonus from intellect)
+        UpdateMaxPower(POWER_MANA);                         // Update max Mana (for add bonus from intellect) (更新最大法力值以计入智力加成)
         SetPower(POWER_MANA, GetMaxPower(POWER_MANA));
     }
 
     LearnDefaultSkills();
     learnDefaultSpells();
 
-    // original action bar
+    // original action bar (初始化默认动作条按钮)
     for (auto action_itr : info->action)
         addActionButton(action_itr.button, action_itr.action, action_itr.type);
 
-    // original items
+    // original items (发放创建角色初始物品)
     uint32 raceClassGender = GetUInt32Value(UNIT_FIELD_BYTES_0) & 0x00FFFFFF;
 
     CharStartOutfitEntry const* oEntry = nullptr;
@@ -897,24 +916,24 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
 
             uint32 item_id = j;
 
-            // just skip, reported in ObjectMgr::LoadItemPrototypes
+            // just skip, reported in ObjectMgr::LoadItemPrototypes (跳过无效物品，ObjectMgr::LoadItemPrototypes 已报错)
             ItemPrototype const* iProto = ObjectMgr::GetItemPrototype(item_id);
             if (!iProto)
                 continue;
 
-            // BuyCount by default
+            // BuyCount by default (默认按物品购买堆叠数发放)
             int32 count = iProto->BuyCount;
 
-            // special amount for foor/drink
+            // special amount for foor/drink (食物与饮水的特殊初始发放数量)
             if (iProto->Class == ITEM_CLASS_CONSUMABLE && iProto->SubClass == ITEM_SUBCLASS_FOOD)
             {
                 switch (iProto->Spells[0].SpellCategory)
                 {
-                    case 11:                                // food
+                    case 11:                                // food (食物)
                         if (iProto->Stackable > 4)
                             count = 4;
                         break;
-                    case 59:                                // drink
+                    case 59:                                // drink (饮水)
                         if (iProto->Stackable > 2)
                             count = 2;
                         break;
@@ -928,22 +947,22 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     for (auto item_id_itr : info->item)
         StoreNewItemInBestSlots(item_id_itr.item_id, item_id_itr.item_amount);
 
-    // bags and main-hand weapon must equipped at this moment
-    // now second pass for not equipped (offhand weapon/shield if it attempt equipped before main-hand weapon)
-    // or ammo not equipped in special bag
+    // bags and main-hand weapon must equipped at this moment (此时背包和主手武器应已完成装备)
+    // now second pass for not equipped (offhand weapon/shield if it attempt equipped before main-hand weapon) (第二轮处理首轮未能装备的副手武器/盾牌)
+    // or ammo not equipped in special bag (或未能放入专用箭袋/弹药袋的弹药)
     for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
     {
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
         {
             uint16 eDest;
-            // equip offhand weapon/shield if it attempt equipped before main-hand weapon
+            // equip offhand weapon/shield if it attempt equipped before main-hand weapon (补充装备先于主手处理的副手武器/盾牌)
             InventoryResult msg = CanEquipItem(NULL_SLOT, eDest, pItem, false);
             if (msg == EQUIP_ERR_OK)
             {
                 RemoveItem(INVENTORY_SLOT_BAG_0, i, true);
                 EquipItem(eDest, pItem, true);
             }
-            // move other items to more appropriate slots (ammo not equipped in special bag)
+            // move other items to more appropriate slots (ammo not equipped in special bag) (将其余物品移动至更合适的专用背包槽位)
             else
             {
                 ItemPosCountVec sDest;
@@ -955,14 +974,14 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
                     pItem = StoreItem(sDest, pItem, true);
                 }
 
-                // if  this is ammo then use it
+                // if  this is ammo then use it (若为弹药则自动设为当前使用弹药)
                 msg = CanUseAmmo(pItem->GetEntry());
                 if (msg == EQUIP_ERR_OK)
                     SetAmmo(pItem->GetEntry());
             }
         }
     }
-    // all item positions resolved
+    // all item positions resolved (所有初始物品位置均已妥善放置)
 
     return true;
 }
@@ -971,7 +990,7 @@ bool Player::StoreNewItemInBestSlots(uint32 titem_id, uint32 titem_amount)
 {
     DEBUG_LOG("STORAGE: Creating initial item, itemId = %u, count = %u", titem_id, titem_amount);
 
-    // attempt equip by one
+    // attempt equip by one (尝试逐个直接装备初始物品)
     while (titem_amount > 0)
     {
         uint16 eDest;
@@ -985,24 +1004,24 @@ bool Player::StoreNewItemInBestSlots(uint32 titem_id, uint32 titem_amount)
     }
 
     if (titem_amount == 0)
-        return true;                                        // equipped
+        return true;                                        // equipped (已成功装备)
 
-    // attempt store
+    // attempt store (尝试放入行囊存储)
     ItemPosCountVec sDest;
-    // store in main bag to simplify second pass (special bags can be not equipped yet at this moment)
+    // store in main bag to simplify second pass (special bags can be not equipped yet at this moment) (先存入主行囊以便第二轮整理，此时专用包可能尚未装备)
     uint8 msg = CanStoreNewItem(INVENTORY_SLOT_BAG_0, NULL_SLOT, sDest, titem_id, titem_amount);
     if (msg == EQUIP_ERR_OK)
     {
         StoreNewItem(sDest, titem_id, true, Item::GenerateItemRandomPropertyId(titem_id));
-        return true;                                        // stored
+        return true;                                        // stored (已存入背包)
     }
 
-    // item can't be added
+    // item can't be added (无法添加该物品)
     sLog.outError("STORAGE: Can't equip or store initial item %u for race %u class %u , error msg = %u", titem_id, getRace(), getClass(), msg);
     return false;
 }
 
-// helper function, mainly for script side, but can be used for simple task in mangos also.
+// helper function, mainly for script side, but can be used for simple task in mangos also. (辅助函数：主要供脚本侧使用，也可用于核心简单物品发放)
 Item* Player::StoreNewItemInInventorySlot(uint32 itemEntry, uint32 amount)
 {
     ItemPosCountVec vDest;
@@ -1020,17 +1039,18 @@ Item* Player::StoreNewItemInInventorySlot(uint32 itemEntry, uint32 amount)
     return nullptr;
 }
 
+/// 对玩家造成环境伤害（溺水、疲劳、坠落、岩浆、软泥、火焰）并按需扣除装备耐久
 uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
 {
     if (!IsAlive() || IsGameMaster())
         return 0;
 
-    // Absorb, resist some environmental damage type
+    // Absorb, resist some environmental damage type (计算护甲/抗性与法术吸收对环境伤害的减免)
     uint32 absorb = 0;
     int32 resist = 0;
     if (type == DAMAGE_LAVA)
     {
-        // TODO: Find out if we should sent packet
+        // TODO: Find out if we should sent packet (待办：确认此处是否应发送环境伤害数据包)
         if (IsImmuneToDamage(SPELL_SCHOOL_MASK_FIRE))
             return 0;
 
@@ -1052,11 +1072,11 @@ uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
 
     uint32 final_damage = Unit::DealDamage(this, this, damage, nullptr, damageType, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 
-    if (type == DAMAGE_FALL && !IsAlive())                  // DealDamage not apply item durability loss at self damage
+    if (type == DAMAGE_FALL && !IsAlive())                  // DealDamage not apply item durability loss at self damage (DealDamage 不会对自伤扣除装备耐久)
     {
         DEBUG_LOG("We are fall to death, loosing 10 percents durability");
         DurabilityLossAll(0.10f, false);
-        // durability lost message
+        // durability lost message (扣除 10% 装备耐久并发送通知)
         WorldPacket data2(SMSG_DURABILITY_DAMAGE_DEATH, 0);
         GetSession()->SendPacket(data2);
     }
@@ -1064,7 +1084,7 @@ uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
     return final_damage;
 }
 
-/// The player sobers by 256 every 10 seconds
+/// The player sobers by 256 every 10 seconds (玩家每 10 秒自动醒酒 256 点)
 void Player::HandleSobering()
 {
     m_drunkTimer = 0;
@@ -1093,7 +1113,7 @@ void Player::SetDrunkValue(uint16 newDrunkenValue, uint32 itemId)
 
     uint32 newDrunkenState = Player::GetDrunkenstateByValue(m_drunk);
 
-    // special drunk invisibility detection
+    // special drunk invisibility detection (根据醉酒程度更新特殊的隐形侦测光环)
     if (newDrunkenState >= DRUNKEN_DRUNK)
         GetVisibilityData().SetInvisibilityDetectMask(INVISIBILITY_DRUNK, true);
     else
@@ -1130,6 +1150,7 @@ void Player::SetWaterBreathingIntervalMultiplier(float multiplier)
         m_mirrorTimers[MirrorTimer::BREATH].SetScale(10);
 }
 
+/// 设置或清除环境液体状态标志并同步更新仇恨与镜像计时器
 void Player::SetEnvironmentFlags(EnvironmentFlags flags, bool apply)
 {
     if (bool(m_environmentFlags & flags) == apply)
@@ -1140,29 +1161,29 @@ void Player::SetEnvironmentFlags(EnvironmentFlags flags, bool apply)
     else
         m_environmentFlags &= ~flags;
 
-    // On liquid in/out
+    // On liquid in/out (进出液体区域状态变更处理)
     if (flags & ENVIRONMENT_MASK_IN_LIQUID)
     {
-        // move player's guid into HateOfflineList of those mobs
-        // which can't swim and move guid back into ThreatList when
-        // on surface.
-        // TODO: exist also swimming mobs, and function must be symmetric to enter/leave water
+        // move player's guid into HateOfflineList of those mobs (将无法游泳的怪物仇恨列表中的玩家移入离线仇恨列表，)
+        // which can't swim and move guid back into ThreatList when (待玩家返回水面或陆地时再移回)
+        // on surface. (返回水面时恢复)
+        // TODO: exist also swimming mobs, and function must be symmetric to enter/leave water (待办：游泳怪物与进出水域处理应对称)
         getHostileRefManager().updateThreatTables();
     }
 
-    // Remove auras that need land or water
+    // Remove auras that need land or water (移除仅限陆地或仅限水中生效的光环)
     if (flags & ENVIRONMENT_FLAG_HIGH_LIQUID)
         RemoveAurasWithInterruptFlags(apply ?  AURA_INTERRUPT_FLAG_UNDERWATER_CANCELS : AURA_INTERRUPT_FLAG_ABOVEWATER_CANCELS);
 
-    // On moving in/out high sea area: affect fatigue timer
+    // On moving in/out high sea area: affect fatigue timer (进出深海区域：更新疲劳计时器)
     if (flags & ENVIRONMENT_FLAG_HIGH_SEA)
         m_mirrorTimers[MirrorTimer::FATIGUE].SetScale(apply ? -1 : 10);
 
-    // On swimming down/up liquid surface level: affect breath timer
+    // On swimming down/up liquid surface level: affect breath timer (潜入/浮出液面：更新水下呼吸计时器)
     if (flags & ENVIRONMENT_FLAG_UNDERWATER)
         m_mirrorTimers[MirrorTimer::BREATH].SetScale((apply && GetWaterBreathingInterval()) ? -1 : 10);
 
-    // On moving in/out hazardous liquids: affect environmental timer
+    // On moving in/out hazardous liquids: affect environmental timer (进出岩浆/软泥等危险液体：更新环境伤害计时器)
     if ((flags & ENVIRONMENT_MASK_LIQUID_HAZARD))
         m_mirrorTimers[MirrorTimer::ENVIRONMENTAL].SetScale((m_environmentFlags & ENVIRONMENT_MASK_LIQUID_HAZARD) ? -1 : 10);
 }
@@ -1188,8 +1209,8 @@ void Player::SendMirrorTimerStop(uint32 type)
 
 void Player::SendMirrorTimerPause(uint32 type, bool state)
 {
-    // Note: Default UI handler for this is bugged, args dont match
-    // Gotta do a full update with SMSG_START_MIRROR_TIMER to avoid lua errors
+    // Note: Default UI handler for this is bugged, args dont match (注：客户端默认 UI 处理此包存在参数不匹配的缺陷)
+    // Gotta do a full update with SMSG_START_MIRROR_TIMER to avoid lua errors (必须通过 SMSG_START_MIRROR_TIMER 全量重发以避免客户端 Lua 报错)
     WorldPacket data(SMSG_PAUSE_MIRROR_TIMER, (4 + 1));
     data << uint32(type);
     data << uint8(state);
@@ -1227,7 +1248,7 @@ void Player::SendMirrorTimers(bool forced/*= false*/)
                     SendMirrorTimerStop(timer.GetType());
                 else
                 {
-                    // NOTE: Replaced with full resend due to clientside UI bug, details inside
+                    // NOTE: Replaced with full resend due to clientside UI bug, details inside (注：因客户端 UI 缺陷改为完整重发镜像计时器)
                     // SendMirrorTimerPause(timer.GetType(), timer.IsFrozen());
                     SendMirrorTimerStart(timer.GetType(), timer.GetRemaining(), timer.GetDuration(), timer.GetScale(), timer.IsFrozen(), timer.GetSpellId());
                 }
@@ -1298,7 +1319,7 @@ bool Player::CheckMirrorTimerActivation(MirrorTimer::Type timer) const
 
 bool Player::CheckMirrorTimerDeactivation(MirrorTimer::Type timer) const
 {
-    // Spirit of redemption: just drop all mirror timers at once
+    // Spirit of redemption: just drop all mirror timers at once (救赎之魂状态下立即停用所有镜像计时器)
     if (GetShapeshiftForm() == FORM_SPIRITOFREDEMPTION)
         return true;
 
@@ -1322,19 +1343,19 @@ void Player::OnMirrorTimerExpirationPulse(MirrorTimer::Type timer)
     switch (timer)
     {
         case MirrorTimer::FATIGUE:
-            if (IsAlive())                                      // Deal damage to living player
+            if (IsAlive())                                      // Deal damage to living player (对存活玩家造成呼吸耗尽/疲劳/环境伤害)
                 EnvironmentalDamage(DAMAGE_EXHAUSTED, ((GetMaxHealth() / 5) + urand(0, (GetLevel() - 1))));
-            else if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST)) // Teleport ghost to graveyard
+            else if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST)) // Teleport ghost to graveyard (幽灵疲劳耗尽则传送回墓地)
                 RepopAtGraveyard();
             break;
         case MirrorTimer::BREATH:
-            // TODO: Check this formula
+            // TODO: Check this formula (待办：核对溺水/疲劳伤害公式)
             EnvironmentalDamage(DAMAGE_DROWNING, ((GetMaxHealth() / 5) + urand(0, (GetLevel() - 1))));
             break;
         case MirrorTimer::ENVIRONMENTAL:
             if (IsInMagma())
                 EnvironmentalDamage(DAMAGE_LAVA, urand(sWorld.getConfig(CONFIG_UINT32_ENVIRONMENTAL_DAMAGE_MIN), sWorld.getConfig(CONFIG_UINT32_ENVIRONMENTAL_DAMAGE_MAX)));
-            // FIXME: Need to skip slime damage in Undercity, maybe someone can find better way to handle environmental damage
+            // FIXME: Need to skip slime damage in Undercity, maybe someone can find better way to handle environmental damage (待修复：需跳过幽暗城软泥伤害)
             //if (IsInSlime() && m_zoneUpdateId != 1497)
             //    EnvironmentalDamage(DAMAGE_SLIME, urand(sWorld.getConfig(CONFIG_UINT32_ENVIRONMENTAL_DAMAGE_MIN), sWorld.getConfig(CONFIG_UINT32_ENVIRONMENTAL_DAMAGE_MAX)));
             break;
@@ -1401,41 +1422,42 @@ uint32 Player::getCorpseReclaimDelayHelper(time_t deathExpirationTime, time_t ti
     return corpseReclaimDelay[count];
 }
 
+/// Player 帧更新主循环：处理计时器、延迟传送、限时任务、区域更新、自动存盘与游戏时间
 void Player::Update(const uint32 diff)
 {
     if (!IsInWorld())
         return;
 
-    // Update ticket squelch timer
+    // Update ticket squelch timer (更新 GM 密语禁言计时器)
     if (WorldSession* session = GetSession())
         session->m_ticketSquelchTimer.Update(diff);
 
-    // Undelivered mail
+    // Undelivered mail (处理延迟投递的未送达邮件)
     if (m_nextMailDelivereTime && m_nextMailDelivereTime <= time(nullptr))
     {
         SendNewMail();
         ++unReadMails;
 
-        // It will be recalculate at mailbox open (for unReadMails important non-0 until mailbox open, it also will be recalculated)
+        // It will be recalculate at mailbox open (for unReadMails important non-0 until mailbox open, it also will be recalculated) (打开邮箱时会重新精确计算未读邮件数)
         m_nextMailDelivereTime = 0;
     }
 
-    // Update cinematic location
+    // Update cinematic location (更新过场动画摄像机位置)
     if (m_cinematicMgr)
     {
         m_cinematicMgr->m_cinematicDiff += diff;
-        // update only if CINEMATIC_UPDATEDIFF have passed
+        // update only if CINEMATIC_UPDATEDIFF have passed (仅在达到过场动画更新间隔时更新)
         if (WorldTimer::getMSTimeDiff(m_cinematicMgr->m_lastCinematicCheck, WorldTimer::getMSTime()) > CINEMATIC_UPDATEDIFF)
         {
             m_cinematicMgr->m_lastCinematicCheck = WorldTimer::getMSTime();
             if (!m_cinematicMgr->UpdateCinematicLocation(diff))
-                m_cinematicMgr.reset(nullptr);             // if any problem occur during cinematic update we can delete it
+                m_cinematicMgr.reset(nullptr);             // if any problem occur during cinematic update we can delete it (若过场动画更新出错可中止)
         }
     }
 
     UpdateMirrorTimers(diff);
 
-    // Used to implement delayed far teleports
+    // Used to implement delayed far teleports (处理延迟执行的跨地图远距离传送)
     SetCanDelayTeleport(true);
     Unit::Update(diff);
     SetCanDelayTeleport(false);
@@ -1455,7 +1477,7 @@ void Player::Update(const uint32 diff)
 
     UpdateAfkReport(now);
 
-    // Update items that have just a limited lifetime
+    // Update items that have just a limited lifetime (更新限时物品的剩余存在时间)
     if (now > m_Last_tick)
         UpdateItemDuration(uint32(now - m_Last_tick));
 
@@ -1468,7 +1490,7 @@ void Player::Update(const uint32 diff)
             if (q_status.m_timer <= diff)
             {
                 uint32 quest_id  = *iter;
-                ++iter;                                     // Current iter will be removed in FailQuest
+                ++iter;                                     // Current iter will be removed in FailQuest (FailQuest 会移除当前迭代器，须先递增)
                 FailQuest(quest_id);
             }
             else
@@ -1498,10 +1520,10 @@ void Player::Update(const uint32 diff)
 
     if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING))
     {
-        if (GetTimeInnEnter() > 0)                          // Freeze update
+        if (GetTimeInnEnter() > 0)                          // Freeze update (暂停更新)
         {
             time_t time_inn = now - GetTimeInnEnter();
-            if (time_inn >= 10)                             // Freeze update
+            if (time_inn >= 10)                             // Freeze update (暂停更新)
             {
                 SetRestBonus(GetRestBonus() + ComputeRest(time_inn));
                 UpdateInnerTime(now);
@@ -1525,11 +1547,11 @@ void Player::Update(const uint32 diff)
             GetZoneAndAreaId(newzone, newarea);
 
             if (m_zoneUpdateId != newzone)
-                UpdateZone(newzone, newarea);               // Also update area
+                UpdateZone(newzone, newarea);               // Also update area (同时刷新子区域信息)
             else
             {
-                // Use area updates as well
-                // Needed for free for all arenas for example
+                // Use area updates as well (同时启用子区域状态更新，)
+                // Needed for free for all arenas for example (例如自由混战竞技场区域检测需要)
                 if (m_areaUpdateId != newarea)
                     UpdateArea(newarea);
 
@@ -1554,7 +1576,7 @@ void Player::Update(const uint32 diff)
     {
         if (diff >= m_nextSave)
         {
-            // m_nextSave reseted in SaveToDB call
+            // m_nextSave reseted in SaveToDB call (m_nextSave 会在 SaveToDB 内重置)
             SaveToDB();
             DETAIL_LOG("Player '%s' (GUID: %u) saved", GetName(), GetGUIDLow());
         }
@@ -1562,12 +1584,12 @@ void Player::Update(const uint32 diff)
             m_nextSave -= diff;
     }
 
-    // Played time
+    // Played time (累计游戏时间更新)
     if (now > m_Last_tick)
     {
         uint32 elapsed = uint32(now - m_Last_tick);
-        m_Played_time[PLAYED_TIME_TOTAL] += elapsed;        // Total played time
-        m_Played_time[PLAYED_TIME_LEVEL] += elapsed;        // Level played time
+        m_Played_time[PLAYED_TIME_TOTAL] += elapsed;        // Total played time (总游戏时间)
+        m_Played_time[PLAYED_TIME_LEVEL] += elapsed;        // Level played time (当前等级游戏时间)
         m_Last_tick = now;
     }
 
@@ -1579,7 +1601,7 @@ void Player::Update(const uint32 diff)
             HandleSobering();
     }
 
-    // Not auto-free ghost from body in instances
+    // Not auto-free ghost from body in instances (副本中死亡不自动释放灵魂)
     if (m_deathTimer > 0  && !GetMap()->Instanceable())
     {
         if (diff >= m_deathTimer)
@@ -1654,6 +1676,7 @@ void Player::UpdateAI(const uint32 diff, bool minimal)
 }
 #endif
 
+/// 设置玩家死亡状态（存活、刚死亡、尸体、幽灵）并处理宠物/光环/荣誉击杀
 void Player::SetDeathState(DeathState s)
 {
     uint32 ressSpellId = 0;
@@ -1662,26 +1685,26 @@ void Player::SetDeathState(DeathState s)
 
     if (s == JUST_DIED && cur)
     {
-        // drunken state is cleared on death
+        // drunken state is cleared on death (死亡时清除醉酒状态)
         SetDrunkValue(0);
-        // lost combo points at any target (targeted combo points clear in Unit::SetDeathState)
+        // lost combo points at any target (targeted combo points clear in Unit::SetDeathState) (死亡时清空所有目标上的连击点数)
         ClearComboPoints();
 
         clearResurrectRequestData();
 
-        bool petAlive = true; // PET_SAVE_REAGENTS when pet is unsummoned
+        bool petAlive = true; // PET_SAVE_REAGENTS when pet is unsummoned (宠物解散时按 PET_SAVE_REAGENTS 保存状态)
         if (Pet* pet = GetPet())
             petAlive = pet->IsAlive();
 
         RemovePet(petAlive ? PET_SAVE_REAGENTS : PET_SAVE_AS_CURRENT);
 
-        // Remove guardians (only players are supposed to have pets/guardians removed on death)
+        // Remove guardians (only players are supposed to have pets/guardians removed on death) (移除所有守护者随从，仅玩家死亡需清理)
         RemoveGuardians();
 
-        // save value before aura remove in Unit::SetDeathState
+        // save value before aura remove in Unit::SetDeathState (在 Unit::SetDeathState 移除光环前保存可复活法术 ID)
         ressSpellId = GetUInt32Value(PLAYER_SELF_RES_SPELL);
 
-        // passive spell
+        // passive spell (被动复活法术)
         if (!ressSpellId)
             ressSpellId = GetResurrectionSpellId();
 
@@ -1691,18 +1714,19 @@ void Player::SetDeathState(DeathState s)
 
     Unit::SetDeathState(s);
 
-    // restore resurrection spell id for player after aura remove
+    // restore resurrection spell id for player after aura remove (光环移除后恢复记录的复活法术 ID)
     if (s == JUST_DIED && cur && ressSpellId)
         SetUInt32Value(PLAYER_SELF_RES_SPELL, ressSpellId);
 
     if (IsAlive() && !cur)
-        // clear aura case after resurrection by another way (spells will be applied before next death)
+        // clear aura case after resurrection by another way (spells will be applied before next death) (若通过其他方式复活则清空相关光环缓存)
         SetUInt32Value(PLAYER_SELF_RES_SPELL, 0);
 
     if (GetGroup())
         SetGroupUpdateFlag(GROUP_UPDATE_FLAG_STATUS);
 }
 
+/// 从角色枚举查询结果构建发送给客户端选人界面的角色数据包
 bool Player::BuildEnumData(QueryResult* result, WorldPacket& p_data)
 {
     //             0               1                2                3                 4                  5                       6                        7
@@ -1726,34 +1750,34 @@ bool Player::BuildEnumData(QueryResult* result, WorldPacket& p_data)
     }
 
     p_data << ObjectGuid(HIGHGUID_PLAYER, guid);
-    p_data << fields[1].GetString();                       // name
-    p_data << uint8(pRace);                                // race
-    p_data << uint8(pClass);                               // class
-    p_data << uint8(fields[4].GetUInt8());                 // gender
+    p_data << fields[1].GetString();                       // name (角色名)
+    p_data << uint8(pRace);                                // race (种族)
+    p_data << uint8(pClass);                               // class (职业)
+    p_data << uint8(fields[4].GetUInt8());                 // gender (性别)
 
     uint32 playerBytes = fields[5].GetUInt32();
-    p_data << uint8(playerBytes);                          // skin
-    p_data << uint8(playerBytes >> 8);                     // face
-    p_data << uint8(playerBytes >> 16);                    // hair style
-    p_data << uint8(playerBytes >> 24);                    // hair color
+    p_data << uint8(playerBytes);                          // skin (肤色)
+    p_data << uint8(playerBytes >> 8);                     // face (脸型)
+    p_data << uint8(playerBytes >> 16);                    // hair style (发型)
+    p_data << uint8(playerBytes >> 24);                    // hair color (发色)
 
     uint32 playerBytes2 = fields[6].GetUInt32();
-    p_data << uint8(playerBytes2 & 0xFF);                  // facial hair
+    p_data << uint8(playerBytes2 & 0xFF);                  // facial hair (面部毛发/饰物)
 
     uint32 atLoginFlags = fields[15].GetUInt32();
 
-    // a character that has never entered the world is sent at level 0, which shows as level 1;
-    // one created above level 1 keeps its level
+    // a character that has never entered the world is sent at level 0, which shows as level 1; (从未进入过世界的角色发送等级 0，客户端显示为 1 级；)
+    // one created above level 1 keeps its level (初始等级高于 1 级的角色保留其等级)
     uint8 level = fields[7].GetUInt8();
-    p_data << uint8((atLoginFlags & AT_LOGIN_FIRST) && level == 1 ? 0 : level); // level
-    p_data << uint32(fields[8].GetUInt32());               // zone
-    p_data << uint32(fields[9].GetUInt32());               // map
+    p_data << uint8((atLoginFlags & AT_LOGIN_FIRST) && level == 1 ? 0 : level); // level (等级)
+    p_data << uint32(fields[8].GetUInt32());               // zone (所在区域 ID)
+    p_data << uint32(fields[9].GetUInt32());               // map (所在地图 ID)
 
-    p_data << fields[10].GetFloat();                       // x
-    p_data << fields[11].GetFloat();                       // y
-    p_data << fields[12].GetFloat();                       // z
+    p_data << fields[10].GetFloat();                       // x (X 坐标)
+    p_data << fields[11].GetFloat();                       // y (Y 坐标)
+    p_data << fields[12].GetFloat();                       // z (Z 坐标)
 
-    p_data << uint32(fields[13].GetUInt32());              // guild id
+    p_data << uint32(fields[13].GetUInt32());              // guild id (公会 ID)
 
     uint32 char_flags = 0;
     uint32 playerFlags = fields[14].GetUInt32();
@@ -1773,18 +1797,18 @@ bool Player::BuildEnumData(QueryResult* result, WorldPacket& p_data)
     else
         char_flags |= CHARACTER_FLAG_DECLINED;
 
-    p_data << uint32(char_flags);                          // character flags
+    p_data << uint32(char_flags);                          // character flags (角色列表状态标志位)
 
-    // First login
+    // First login (首次登录标记)
     p_data << uint8(atLoginFlags & AT_LOGIN_FIRST ? 1 : 0);
 
-    // Pets info
+    // Pets info (宠物展示信息)
     {
         uint32 petDisplayId = 0;
         uint32 petLevel = 0;
         uint32 petFamily = 0;
 
-        // show pet at selection character in character list only for non-ghost character
+        // show pet at selection character in character list only for non-ghost character (仅非幽灵状态角色在选人界面展示宠物)
         if (result && !(playerFlags & PLAYER_FLAGS_GHOST) && (pClass == CLASS_WARLOCK || pClass == CLASS_HUNTER))
         {
             uint32 entry = fields[16].GetUInt32();
@@ -1806,7 +1830,7 @@ bool Player::BuildEnumData(QueryResult* result, WorldPacket& p_data)
     Tokens data = StrSplit(fields[19].GetCppString(), " ");
     for (uint8 slot = 0; slot < INVENTORY_SLOT_BAG_START + 1; ++slot)
     {
-        uint32 visualbase = slot * 2;                       // entry, perm ench., temp ench.
+        uint32 visualbase = slot * 2;                       // entry, perm ench., temp ench. (装备预览：物品条目、永久附魔、临时附魔)
         uint32 item_id = GetUInt32ValueFromArray(data, visualbase);
         const ItemPrototype* proto = ObjectMgr::GetItemPrototype(item_id);
         if (!proto)
@@ -1822,7 +1846,7 @@ bool Player::BuildEnumData(QueryResult* result, WorldPacket& p_data)
         uint32 enchants = GetUInt32ValueFromArray(data, visualbase + 1);
         for (uint8 enchantSlot = PERM_ENCHANTMENT_SLOT; enchantSlot <= TEMP_ENCHANTMENT_SLOT; ++enchantSlot)
         {
-            // values stored in 2 uint16
+            // values stored in 2 uint16 (附魔拆分为两个 uint16 读取)
             uint32 enchantId = 0x0000FFFF & (enchants >> enchantSlot * 16);
             if (!enchantId)
                 continue;
@@ -1845,10 +1869,10 @@ bool Player::Mount(uint32 displayid, const Aura* aura/* = nullptr*/)
     if (!Unit::Mount(displayid, aura))
         return false;
 
-    // Custom mount (non-aura such as taxi or command) or in flight: unsummon any pet
+    // Custom mount (non-aura such as taxi or command) or in flight: unsummon any pet (自定义坐骑或飞行状态：临时解散所有宠物)
     if (!aura || IsFreeFlying() || IsSpellHaveAura(aura->GetSpellProto(), SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED))
         UnsummonPetTemporaryIfAny();
-    // Land mount aura: unsummon only permanent pet
+    // Land mount aura: unsummon only permanent pet (地面坐骑光环：仅临时解散永久宠物)
     else if (aura)
     {
         if (Pet* pet = GetPet())
@@ -1868,12 +1892,12 @@ bool Player::Unmount(const Aura* aura/* = nullptr*/)
     if (!Unit::Unmount(aura))
         return false;
 
-    // only resummon old pet if the player is already added to a map
-    // this prevents adding a pet to a not created map which would otherwise cause a crash
-    // (it could probably happen when logging in after a previous crash)
+    // only resummon old pet if the player is already added to a map (仅当玩家已加入地图时才重新召唤暂存宠物，)
+    // this prevents adding a pet to a not created map which would otherwise cause a crash (避免将宠物加入未创建的地图导致崩溃)
+    // (it could probably happen when logging in after a previous crash) (可能发生在异常宕机后的重连阶段)
     if (Pet* pet = GetPet())
     {
-        // Get reaction state and display appropriately
+        // Get reaction state and display appropriately (根据对玩家与尸体的声望阵营获取对应敌友反应)
         if (CharmInfo* charmInfo = pet->GetCharmInfo())
             pet->SetModeFlags(PetModeFlags(pet->AI()->GetReactState() | charmInfo->GetCommandState() * 0x100));
     }
@@ -1890,7 +1914,7 @@ void Player::ToggleAFK()
     if (GetGroup())
         SetGroupUpdateFlag(GROUP_UPDATE_FLAG_STATUS);
 
-    // afk player not allowed in battleground
+    // afk player not allowed in battleground (战场中不允许玩家进入暂离 AFK 状态)
     if (isAFK() && InBattleGround() && !InArena() && !IsGameMaster())
         LeaveBattleground();
 
@@ -1939,9 +1963,10 @@ bool Player::isGMChat() const
     return false;
 }
 
+/// 将玩家传送至指定地图与坐标（支持近距离瞬移、跨图切图、延迟传送及载具传送）
 bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientation, uint32 options /*=0*/, AreaTrigger const* at /*=nullptr*/, GenericTransport* transport /*=nullptr*/)
 {
-    // do not let charmed players/creatures teleport
+    // do not let charmed players/creatures teleport (不允许被魅惑的玩家或生物传送)
     if (HasCharmer())
         return false;
 
@@ -1951,14 +1976,14 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         return false;
     }
 
-    MapEntry const* mEntry = sMapStore.LookupEntry(mapid);  // Validity checked in IsValidMapCoord
+    MapEntry const* mEntry = sMapStore.LookupEntry(mapid);  // Validity checked in IsValidMapCoord (坐标合法性由 IsValidMapCoord 校验)
 
-    // don't let enter battlegrounds without assigned battleground id (for example through areatrigger)...
-    // don't let gm level > 1 either
+    // don't let enter battlegrounds without assigned battleground id (for example through areatrigger)... (禁止未分配战场 ID 的玩家进入战场地表)
+    // don't let gm level > 1 either (即使是高等级 GM 也不允许无战场 ID 进入)
     if (!InBattleGround() && mEntry->IsBattleGroundOrArena())
         return false;
 
-    // Get MapEntrance trigger if teleport to other -nonBG- map
+    // Get MapEntrance trigger if teleport to other -nonBG- map (若传送至非战场地图，获取其入口区域触发器)
     bool assignedAreaTrigger = false;
     if (GetMapId() != mapid && !mEntry->IsBattleGroundOrArena() && !at)
     {
@@ -1966,26 +1991,26 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         assignedAreaTrigger = true;
     }
 
-    // Check requirements for teleport
+    // Check requirements for teleport (检查目标地图与副本的准入条件)
     if (at)
     {
         uint32 miscRequirement = 0;
         AreaLockStatus lockStatus = GetAreaTriggerLockStatus(at, miscRequirement);
         if (lockStatus != AREA_LOCKSTATUS_OK)
         {
-            // Teleport not requested by area-trigger
-            // TODO - Assume a player with expansion 0 travels from BootyBay to Ratched, and he is attempted to be teleported to outlands
-            //        then he will repop near BootyBay instead of normally continuing his journey
-            // This code is probably added to catch passengers on ships to northrend who shouldn't go there
+            // Teleport not requested by area-trigger (非区域触发器发起的传送，如法术或指令)
+            // TODO - Assume a player with expansion 0 travels from BootyBay to Ratched, and he is attempted to be teleported to outlands (待办：若无资料片权限玩家搭乘跨大陆载具，)
+            //        then he will repop near BootyBay instead of normally continuing his journey (将其遣返至附近墓地以免卡死)
+            // This code is probably added to catch passengers on ships to northrend who shouldn't go there (用于拦截无权限搭乘船只前往受限大陆的乘客)
             if (lockStatus == AREA_LOCKSTATUS_INSUFFICIENT_EXPANSION && !assignedAreaTrigger && GetTransport())
-                RepopAtGraveyard();                         // Teleport to near graveyard if on transport, looks blizz like :)
+                RepopAtGraveyard();                         // Teleport to near graveyard if on transport, looks blizz like :) (若在载具上则传送至附近墓地，符合官服行为)
 
             SendTransferAbortedByLockStatus(mEntry, at, lockStatus, miscRequirement);
             return false;
         }
     }
 
-    // if we were on a transport, leave
+    // if we were on a transport, leave (若当前在载具/船只上则先脱离)
     if (!(options & TELE_TO_NOT_LEAVE_TRANSPORT) && m_transport)
     {
         m_transport->RemovePassenger(this);
@@ -1993,14 +2018,14 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         m_movementInfo.ClearTransportData();
     }
 
-    // The player was ported to another map and looses the duel immediately.
-    // We have to perform this check before the teleport, otherwise the
-    // ObjectAccessor won't find the flag.
+    // The player was ported to another map and looses the duel immediately. (玩家被传送到其他地图时立即判为逃离决斗失败)
+    // We have to perform this check before the teleport, otherwise the (必须在传送前完成检查，否则)
+    // ObjectAccessor won't find the flag. (传送后 ObjectAccessor 将找不到决斗旗帜)
     if (duel && GetMapId() != mapid)
         if (GetMap()->GetGameObject(GetGuidValue(PLAYER_DUEL_ARBITER)))
             DuelComplete(DUEL_FLED);
 
-    // reset movement flags at teleport, because player will continue move with these flags after teleport
+    // reset movement flags at teleport, because player will continue move with these flags after teleport (传送时重置移动标志位，防止传送后保持原有移动状态)
     m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
     DisableSpline();
 
@@ -2016,7 +2041,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
 
             if (Pet* pet = GetPet())
             {
-                // same map, only remove pet if out of range for new position
+                // same map, only remove pet if out of range for new position (同地图传送：仅当宠物超出新位置距离限制时才移除)
                 if (!pet->IsWithinDist3d(x, y, z, 50.f))
                     UnsummonPetTemporaryIfAny();
             }
@@ -2031,25 +2056,25 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         }
     }
 
-    // the client takes only the world position of a near teleport of its own player and leaves any transport: onto a transport,
-    // whose deck may be moving, the world is reloaded instead and the player created aboard (not for a passenger the transport
-    // itself moves along)
+    // the client takes only the world position of a near teleport of its own player and leaves any transport: onto a transport, (同地图近距离传送时客户端只认世界坐标且会脱离载具；)
+    // whose deck may be moving, the world is reloaded instead and the player created aboard (not for a passenger the transport (若目标是移动中的载具甲板，必须触发重载世界以登上载具)
+    // itself moves along) (自身随载具移动除外)
     GenericTransport* destTransport = transport;
     if (!destTransport && m_teleportTransport && GetMapId() == mapid)
         destTransport = GetMap()->GetTransport(m_teleportTransport);
     bool const nearOntoTransport = destTransport && destTransport != m_transport;
 
-    if ((GetMapId() == mapid) && (!m_transport) && !nearOntoTransport) // TODO the !m_transport might have unexpected effects when teleporting from transport to other place on same map
+    if ((GetMapId() == mapid) && (!m_transport) && !nearOntoTransport) // TODO the !m_transport might have unexpected effects when teleporting from transport to other place on same map (待办：同图从载具传往他处时需留意 !m_transport 边界)
     {
-        // lets reset far teleport flag if it wasn't reset during chained teleports
+        // lets reset far teleport flag if it wasn't reset during chained teleports (连环传送时确保清除远距离传送标记)
         SetSemaphoreTeleportFar(false);
-        // setup delayed teleport flag
-        // if teleport spell is casted in Unit::Update() func
-        // then we need to delay it until update process will be finished
+        // setup delayed teleport flag (设置延迟传送标志)
+        // if teleport spell is casted in Unit::Update() func (若在 Unit::Update() 迭代期间触发传送，)
+        // then we need to delay it until update process will be finished (必须延迟至更新循环结束后执行)
         if (SetDelayedTeleportFlagIfCan())
         {
             SetSemaphoreTeleportNear(true);
-            // lets save teleport destination for player
+            // lets save teleport destination for player (保存玩家传送目标坐标)
             m_teleport_dest = WorldLocation(mapid, x, y, z, orientation);
             m_teleport_options = options;
             m_teleportTransport = transport ? transport->GetObjectGuid() : ObjectGuid();
@@ -2071,7 +2096,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             m_movementInfo.t_guid = GetObjectGuid();
             m_movementInfo.t_time = currentTransport->GetPathProgress();
 
-            if (!HasAtClient(currentTransport)) // in sniff, this aggregates all surroundings and sends them at once
+            if (!HasAtClient(currentTransport)) // in sniff, this aggregates all surroundings and sends them at once (参照抓包：聚合周围实体更新并一次性下发)
             {
                 AddAtClient(currentTransport);
                 UpdateData data;
@@ -2080,13 +2105,13 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             }
         }
 
-        // this will be used instead of the current location in SaveToDB
+        // this will be used instead of the current location in SaveToDB (SaveToDB 将使用此目标位置代替当前位置)
         m_teleport_dest = WorldLocation(mapid, x, y, z, orientation);
 
-        // code for finish transfer called in WorldSession::HandleMovementOpcodes()
-        // at client packet MSG_MOVE_TELEPORT_ACK
+        // code for finish transfer called in WorldSession::HandleMovementOpcodes() (近距离传送确认逻辑在 HandleMovementOpcodes 中完成)
+        // at client packet MSG_MOVE_TELEPORT_ACK (客户端回传 MSG_MOVE_TELEPORT_ACK 时触发)
         SetSemaphoreTeleportNear(true);
-        // near teleport, triggering send MSG_MOVE_TELEPORT_ACK from client at landing
+        // near teleport, triggering send MSG_MOVE_TELEPORT_ACK from client at landing (近距离传送：通知客户端落地后发送 MSG_MOVE_TELEPORT_ACK)
         if (!GetSession()->PlayerLogout())
             SendTeleportPacket(x, y, z, orientation, currentTransport);
 
@@ -2095,32 +2120,32 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     }
     else
     {
-        // far teleport to another map
+        // far teleport to another map (跨地图或重载世界远距离传送)
         Map* oldmap = IsInWorld() ? GetMap() : nullptr;
-        // check if we can enter before stopping combat / removing pet / totems / interrupting spells
+        // check if we can enter before stopping combat / removing pet / totems / interrupting spells (在脱战/收宠/打断施法前先检查是否可进入目标地图)
 
-        // If the map is not created, assume it is possible to enter it.
-        // It will be created in the WorldPortAck.
+        // If the map is not created, assume it is possible to enter it. (若目标地图实例尚未创建，暂定允许进入；)
+        // It will be created in the WorldPortAck. (将在 WorldPortAck 中创建)
         DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(mapid);
         Map* map = sMapMgr.FindMap(mapid, state ? state->GetInstanceId() : 0);
-        if (!map || (nearOntoTransport && map == GetMap()) || map->CanEnter(this)) // the world reload onto a transport stays on the current map
+        if (!map || (nearOntoTransport && map == GetMap()) || map->CanEnter(this)) // the world reload onto a transport stays on the current map (登船重载世界仍停留在当前地图)
         {
-            // lets reset near teleport flag if it wasn't reset during chained teleports
+            // lets reset near teleport flag if it wasn't reset during chained teleports (连环传送时确保清除近距离传送标记)
             SetSemaphoreTeleportNear(false);
-            // set when this call carries out a teleport delayed by an earlier call
+            // set when this call carries out a teleport delayed by an earlier call (标记本次调用正执行先前延迟的传送)
             bool const delayedTeleport = m_bHasDelayedTeleport;
-            // setup delayed teleport flag
-            // if teleport spell is casted in Unit::Update() func
-            // then we need to delay it until update process will be finished
+            // setup delayed teleport flag (设置延迟传送标志)
+            // if teleport spell is casted in Unit::Update() func (若在 Unit::Update() 迭代期间触发传送，)
+            // then we need to delay it until update process will be finished (必须延迟至更新循环结束后执行)
             if (!GetSession()->PlayerLogout() && SetDelayedTeleportFlagIfCan())
             {
                 SetSemaphoreTeleportFar(true);
-                // lets save teleport destination for player
+                // lets save teleport destination for player (保存玩家传送目标位置)
                 m_teleport_dest = WorldLocation(mapid, x, y, z, orientation);
                 m_teleport_options = options;
                 m_teleportTransport = transport ? transport->GetObjectGuid() : ObjectGuid();
-                // the delayed teleport may be done in the thread of another map: the world position is taken here, where the
-                // caller can read the transport
+                // the delayed teleport may be done in the thread of another map: the world position is taken here, where the (延迟传送可能由另一地图线程执行，故在此处先取世界坐标)
+                // caller can read the transport (确保调用方安全读取载具位置)
                 if (transport)
                 {
                     m_teleportWorldDest = Position(x, y, z, orientation);
@@ -2135,30 +2160,30 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
 
             UpdatePvPContested(false, true);
 
-            // remove player from battleground on far teleport (when changing maps)
+            // remove player from battleground on far teleport (when changing maps) (跨地图传送时将玩家移出当前战场)
             if (BattleGround const* bg = GetBattleGround())
             {
-                // Note: at battleground join battleground id set before teleport
-                // and we already will found "current" battleground
-                // just need check that this is targeted map or leave
+                // Note: at battleground join battleground id set before teleport (注：进入战场时传送前已设置新战场 ID，)
+                // and we already will found "current" battleground (此时会查到目标战场对象，)
+                // just need check that this is targeted map or leave (只需检查目标地图是否匹配该战场，否则离开战场)
                 if (bg->GetMapId() != mapid)
-                    LeaveBattleground(false);               // don't teleport to entry point
+                    LeaveBattleground(false);               // don't teleport to entry point (不要再传送回战场入口点)
             }
 
-            // remove all dyn objects
+            // remove all dyn objects (移除所有动态法术区域对象)
             RemoveAllDynObjects();
 
-            // stop spellcasting
-            // not attempt interrupt teleportation spell at caster teleport
+            // stop spellcasting (打断当前施法)
+            // not attempt interrupt teleportation spell at caster teleport (不打断正在施放的传送类法术自身)
             if (!(options & TELE_TO_SPELL))
                 if (IsNonMeleeSpellCasted(true))
                     InterruptNonMeleeSpells(true);
 
-            // remove auras before removing from map...
+            // remove auras before removing from map... (移出地图前先清理相关光环)
             RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_LEAVE_WORLD | AURA_INTERRUPT_FLAG_MOVING | AURA_INTERRUPT_FLAG_TURNING);
 
-            // x, y, z are offsets on the given transport. A delayed teleport is done without the transport, which may be on another
-            // map updated by another thread: the guid and the world position taken when the teleport was asked are used instead
+            // x, y, z are offsets on the given transport. A delayed teleport is done without the transport, which may be on another (x/y/z 为载具局部偏移坐标；延迟传送因可能跨线程，)
+            // map updated by another thread: the guid and the world position taken when the teleport was asked are used instead (改用传送请求时记录的载具 GUID 与世界坐标)
             ObjectGuid targetTransportGuid;
             Position worldDest(x, y, z, orientation);
             if (transport)
@@ -2173,12 +2198,12 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             }
             else if (m_transport)
                 targetTransportGuid = m_transport->GetObjectGuid();
-            // only a passenger crossing to another map with the transport is sent transport offsets: a player joining a transport
-            // is told the world position, as for a teleport without transport
+            // only a passenger crossing to another map with the transport is sent transport offsets: a player joining a transport (仅随船跨图的乘客发送载具局部坐标；)
+            // is told the world position, as for a teleport without transport (新登船的玩家仍按无载具传送发送世界坐标)
             bool const withTransport = m_transport && m_transport->GetObjectGuid() == targetTransportGuid;
             if (!GetSession()->PlayerLogout())
             {
-                // send transfer packet to display load screen
+                // send transfer packet to display load screen (向客户端发送切图数据包以显示加载界面)
                 WorldPacket data(SMSG_TRANSFER_PENDING, (4 + 4 + 4));
                 data << uint32(mapid);
                 if (withTransport)
@@ -2192,11 +2217,11 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             if (Loot* loot = sLootMgr.GetLoot(this))
                 loot->Release(this);
 
-            // remove from old map now
+            // remove from old map now (立即从旧地图中移除玩家)
             if (oldmap)
                 oldmap->Remove(this, false);
 
-            // new final coordinates
+            // new final coordinates (更新为新的最终坐标)
             float final_x = x;
             float final_y = y;
             float final_z = z;
@@ -2207,16 +2232,16 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             m_teleport_dest = WorldLocation(mapid, final_x, final_y, final_z, final_o);
             m_teleportTransport = targetTransportGuid;
             SetFallInformation(0, worldDest.z);
-            // if the player is saved before worldport ack (at logout for example)
-            // this will be used instead of the current location in SaveToDB
+            // if the player is saved before worldport ack (at logout for example) (若在 WorldPortAck 之前触发保存，如登出，)
+            // this will be used instead of the current location in SaveToDB (SaveToDB 将使用传送目标坐标)
 
-            // move packet sent by client always after far teleport
-            // code for finish transfer to new map called in WorldSession::HandleMoveWorldportAckOpcode at client packet
+            // move packet sent by client always after far teleport (跨地图传送后客户端会发送移动确认包)
+            // code for finish transfer to new map called in WorldSession::HandleMoveWorldportAckOpcode at client packet (切图完成逻辑在 HandleMoveWorldportAckOpcode 中处理)
             SetSemaphoreTeleportFar(true);
 
             if (!GetSession()->PlayerLogout())
             {
-                // transfer finished, inform client to start load
+                // transfer finished, inform client to start load (切图准备就绪，通知客户端开始加载新世界)
                 WorldPacket data(SMSG_NEW_WORLD, (20));
                 data << uint32(mapid);
                 if (withTransport)
@@ -2238,7 +2263,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
                 SendSavedInstances();
             }
         }
-        else                                                // !map->CanEnter(this)
+        else                                                // !map->CanEnter(this) (无法进入目标地图)
             return false;
     }
 
@@ -2264,6 +2289,7 @@ void Player::SetSemaphoreTeleportFar(bool semphsetting)
         GetSession()->DeleteMovementPackets();
 }
 
+/// 执行排队的延迟操作（保存、复活、逃亡者法术）
 void Player::ProcessDelayedOperations()
 {
     if (m_DelayedOperations == 0)
@@ -2276,19 +2302,20 @@ void Player::ProcessDelayedOperations()
         SaveToDB();
 
     if (m_DelayedOperations & DELAYED_SPELL_CAST_DESERTER)
-        CastSpell(this, SPELL_ID_BATTLEGROUND_DESERTER, TRIGGERED_OLD_TRIGGERED);               // Deserter
+        CastSpell(this, SPELL_ID_BATTLEGROUND_DESERTER, TRIGGERED_OLD_TRIGGERED);               // Deserter (逃亡者减益法术)
 
-    // we have executed ALL delayed ops, so clear the flag
+    // we have executed ALL delayed ops, so clear the flag (所有延迟操作执行完毕，清除掩码)
     m_DelayedOperations = 0;
 }
 
+/// 将玩家实体加入地图世界并初始化状态
 void Player::AddToWorld()
 {
     if (!IsInWorld())
         sWorld.SetOnlinePlayer(GetTeam(), getRace(), getClass(), true);
-    ///- Do not add/remove the player from the object storage
-    ///- It will crash when updating the ObjectAccessor
-    ///- The player should only be added when logging in
+    ///- Do not add/remove the player from the object storage (- 请勿从全局对象仓库中增删玩家)
+    ///- It will crash when updating the ObjectAccessor (- 更新 ObjectAccessor 时会导致崩溃)
+    ///- The player should only be added when logging in (- 玩家仅应在登录时加入全局对象仓库)
     Unit::AddToWorld();
 
     for (int i = PLAYER_SLOT_START; i < PLAYER_SLOT_END; ++i)
@@ -2298,12 +2325,13 @@ void Player::AddToWorld()
     }
 }
 
+/// 将玩家实体从地图世界移除并清理宠物、图腾与决斗旗帜
 void Player::RemoveFromWorld()
 {
-    // cleanup
+    // cleanup (清理临时状态与控制器)
     if (IsInWorld())
     {
-        ///- Release charmed creatures, unsummon totems and remove pets/guardians
+        ///- Release charmed creatures, unsummon totems and remove pets/guardians (- 释放魅惑生物、收回图腾并移除宠物/守护者)
         sWorld.SetOnlinePlayer(GetTeam(), getRace(), getClass(), false);
         UnsummonAllTotems();
     }
@@ -2314,13 +2342,13 @@ void Player::RemoveFromWorld()
             m_items[i]->RemoveFromWorld();
     }
 
-    // remove duel before calling Unit::RemoveFromWorld
-    // otherwise there will be an existing duel flag pointer but no entry in m_gameObj
+    // remove duel before calling Unit::RemoveFromWorld (必须在 Unit::RemoveFromWorld 前移除决斗旗帜)
+    // otherwise there will be an existing duel flag pointer but no entry in m_gameObj (否则会导致 m_gameObj 中已无对象而决斗指针悬空)
     DuelComplete(DUEL_INTERRUPTED);
 
-    ///- Do not add/remove the player from the object storage
-    ///- It will crash when updating the ObjectAccessor
-    ///- The player should only be removed when logging out
+    ///- Do not add/remove the player from the object storage (- 请勿从全局对象仓库中增删玩家)
+    ///- It will crash when updating the ObjectAccessor (- 更新 ObjectAccessor 时会导致崩溃)
+    ///- The player should only be removed when logging out (- 玩家仅应在登出时移出全局对象仓库)
     if (IsInWorld())
     {
         GetSession()->GetAnticheat()->LeaveWorld();
@@ -2340,14 +2368,14 @@ void Player::RewardRage(uint32 damage, uint32 weaponSpeedHitFactor, bool attacke
     {
         addRage = ((damage / rageconversion * 7.5f + weaponSpeedHitFactor) / 2.0f);
 
-        // talent who gave more rage on attack
+        // talent who gave more rage on attack (增加攻击怒气获取的天赋加成)
         addRage *= 1.0f + GetTotalAuraModifier(SPELL_AURA_MOD_RAGE_FROM_DAMAGE_DEALT) / 100.0f;
     }
     else
     {
         addRage = damage / rageconversion * 2.5f;
 
-        // Berserker Rage effect
+        // Berserker Rage effect (狂暴之怒额外怒气加成)
         if (HasAura(18499, EFFECT_INDEX_0))
             addRage *= 1.3f;
     }
@@ -2357,9 +2385,10 @@ void Player::RewardRage(uint32 damage, uint32 weaponSpeedHitFactor, bool attacke
     ModifyPower(POWER_RAGE, uint32(addRage * 10));
 }
 
+/// 每帧周期性恢复玩家生命值与能量值（法力/怒气/能量）
 void Player::RegenerateAll(uint32 diff)
 {
-    // Not in combat or they have regeneration
+    // Not in combat or they have regeneration (脱战状态或具备战中回复光环)
     if (!IsInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT) ||
             HasAuraType(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT))
     {
@@ -2382,7 +2411,7 @@ void Player::Regenerate(Powers power, uint32 diff)
 
     float addvalue = 0.0f;
 
-    // all powers are precalculated for 2 seconds
+    // all powers are precalculated for 2 seconds (所有能量值均按 2 秒周期预计算)
     switch (power)
     {
         case POWER_MANA:
@@ -2391,7 +2420,7 @@ void Player::Regenerate(Powers power, uint32 diff)
             float ManaIncreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_MANA);
             if (recentCast)
             {
-                // Mangos Updates Mana in intervals of 2s, which is correct
+                // Mangos Updates Mana in intervals of 2s, which is correct (MaNGOS 按 2 秒间隔更新法力恢复)
                 addvalue = GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN_INTERRUPT) *  ManaIncreaseRate * uint32(float(diff) / 1000);
             }
             else
@@ -2399,17 +2428,17 @@ void Player::Regenerate(Powers power, uint32 diff)
                 addvalue = GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN) * ManaIncreaseRate * uint32(float(diff) / 1000);
             }
         }   break;
-        case POWER_RAGE:                                    // Regenerate rage
+        case POWER_RAGE:                                    // Regenerate rage (怒气自然衰减/恢复)
         {
             float RageDecreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_RAGE_LOSS);
-            addvalue = uint32(float(diff) / 200) * 2.5 * RageDecreaseRate; // decay 2.5 rage per 2 seconds
+            addvalue = uint32(float(diff) / 200) * 2.5 * RageDecreaseRate; // decay 2.5 rage per 2 seconds (脱战时每 2 秒衰减 2.5 点怒气)
 
             AuraList const& ModPowerRegenPCTAuras = GetAurasByType(SPELL_AURA_MOD_POWER_REGEN_PERCENT);
             for (auto ModPowerRegenPCTAura : ModPowerRegenPCTAuras)
                 if (ModPowerRegenPCTAura->GetModifier()->m_miscvalue == int32(power))
                     addvalue *= (ModPowerRegenPCTAura->GetModifier()->m_amount + 100) / 100.0f;
         }   break;
-        case POWER_ENERGY:                                  // Regenerate energy
+        case POWER_ENERGY:                                  // Regenerate energy (能量恢复)
         {
             float EnergyRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_ENERGY);
             addvalue = uint32(float(diff) / 100) * EnergyRate * m_energyRegenRate;
@@ -2448,7 +2477,7 @@ void Player::RegenerateHealth(uint32 diff)
 
     float addvalue = 0.0f;
 
-    // normal regen case (maybe partly in combat case)
+    // normal regen case (maybe partly in combat case) (常规生命恢复，含战斗中部分恢复)
     if (!IsInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT))
     {
         addvalue = OCTRegenHPPerSpirit() * HealthIncreaseRate;
@@ -2465,7 +2494,7 @@ void Player::RegenerateHealth(uint32 diff)
             addvalue *= 1.5;
     }
 
-    // always regeneration bonus (including combat)
+    // always regeneration bonus (including combat) (始终生效的生命回复加成，含战斗中)
     addvalue += GetTotalAuraModifier(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT);
 
     if (addvalue < 0)
@@ -2476,23 +2505,23 @@ void Player::RegenerateHealth(uint32 diff)
 
 Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
 {
-    // some basic checks
+    // some basic checks (基础存活/晕眩等状态检查)
     if (!guid || !IsInWorld() || IsTaxiFlying())
         return nullptr;
 
-    // set player as interacting
+    // set player as interacting (标记玩家正在交互，移除潜行等非交互光环)
     DoInteraction();
 
-    // not in interactive state
+    // not in interactive state (当前不处于可交互状态)
     if (hasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
         return nullptr;
 
-    // exist (we need look pets also for some interaction (quest/etc)
+    // exist (we need look pets also for some interaction (quest/etc) (查找目标生物或宠物以支持任务等交互)
     Creature* unit = GetMap()->GetAnyTypeCreature(guid);
     if (!unit)
         return nullptr;
 
-    // appropriate npc type
+    // appropriate npc type (校验 NPC 标志位是否符合交互类型)
     if (npcflagmask && !unit->HasFlag(UNIT_NPC_FLAGS, npcflagmask))
         return nullptr;
 
@@ -2508,7 +2537,7 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
     if (IsAlive() && unit->isInvisibleForAlive())
         return nullptr;
 
-    // not too far
+    // not too far (距离校验：不能超出最大交互距离)
     if (!unit->IsWithinDistInMap(this, INTERACTION_DISTANCE))
         return nullptr;
 
@@ -2517,14 +2546,14 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
 
 GameObject* Player::GetGameObjectIfCanInteractWith(ObjectGuid guid, uint32 gameobject_type)
 {
-    // some basic checks
+    // some basic checks (基础状态检查)
     if (!guid || !IsInWorld() || IsTaxiFlying())
         return nullptr;
 
-    // set player as interacting
+    // set player as interacting (标记玩家正在交互)
     DoInteraction();
 
-    // not in interactive state
+    // not in interactive state (当前不处于可交互状态)
     if (hasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
         return nullptr;
 
@@ -2574,6 +2603,7 @@ struct SetGameMasterOffHelper
     uint32 faction;
 };
 
+/// 开关玩家的 GM 模式并刷新标志位、阵营状态与聊天徽章
 void Player::SetGameMaster(bool on)
 {
     if (on)
@@ -2605,15 +2635,15 @@ void Player::SetGameMaster(bool on)
 
         FreezeMirrorTimers(false);
 
-        // restore FFA PvP Server state
+        // restore FFA PvP Server state (恢复自由混战 PvP 服务器标志)
         if (sWorld.IsFFAPvPRealm())
             SetPvPFreeForAll(true);
 
-        // restore FFA PvP area state, remove not allowed for GM mounts
+        // restore FFA PvP area state, remove not allowed for GM mounts (恢复自由混战区域状态，并移除非 GM 禁用坐骑)
         UpdateArea(m_areaUpdateId);
     }
 
-    // update dead corpse sparkles
+    // update dead corpse sparkles (刷新可拾取尸体的闪光状态)
     UnitList deadUnits;
     MaNGOS::AnyDeadUnitCheck u_check(this);
     MaNGOS::UnitListSearcher<MaNGOS::AnyDeadUnitCheck > searcher(deadUnits, u_check);
@@ -2635,9 +2665,9 @@ void Player::SetGMVisible(bool on)
 {
     if (on)
     {
-        m_ExtraFlags &= ~PLAYER_EXTRA_GM_INVISIBLE;         // remove flag
+        m_ExtraFlags &= ~PLAYER_EXTRA_GM_INVISIBLE;         // remove flag (移除 GM 不可见标记)
 
-        // Reapply stealth/invisibility if active or show if not any
+        // Reapply stealth/invisibility if active or show if not any (重新应用潜行/隐形光环，若无则显形)
         if (HasAuraType(SPELL_AURA_MOD_STEALTH))
             SetVisibility(VISIBILITY_GROUP_STEALTH);
         else if (HasAuraType(SPELL_AURA_MOD_INVISIBILITY))
@@ -2647,7 +2677,7 @@ void Player::SetGMVisible(bool on)
     }
     else
     {
-        m_ExtraFlags |= PLAYER_EXTRA_GM_INVISIBLE;          // add flag
+        m_ExtraFlags |= PLAYER_EXTRA_GM_INVISIBLE;          // add flag (添加 GM 不可见标记)
 
         SetAcceptWhispers(false);
         SetGameMaster(true);
@@ -2673,7 +2703,7 @@ bool Player::isAllowedWhisperFrom(ObjectGuid guid)
     return false;
 }
 
-///- If the player is invited, remove him. If the group if then only 1 person, disband the group.
+///- If the player is invited, remove him. If the group if then only 1 person, disband the group. (- 若玩家受邀则移出；若队伍仅剩 1 人则解散队伍)
 void Player::UninviteFromGroup()
 {
     Group* group = GetGroupInvite();
@@ -2684,7 +2714,7 @@ void Player::UninviteFromGroup()
 
     if (group->IsCreated())
     {
-        if (group->GetMembersCount() < group->GetMembersMinCount()) // group has not enough members to exist => disband and destroy
+        if (group->GetMembersCount() < group->GetMembersMinCount()) // group has not enough members to exist => disband and destroy (队伍成员不足，解散并销毁队伍)
         {
             group->Disband(true);
             sObjectMgr.RemoveGroup(group);
@@ -2693,7 +2723,7 @@ void Player::UninviteFromGroup()
     }
     else
     {
-        if (group->GetInviteesCount() <= 1) // group creation was cancelled due to everyone declining invitations => destroy
+        if (group->GetInviteesCount() <= 1) // group creation was cancelled due to everyone declining invitations => destroy (所有人拒绝邀请导致组队取消，销毁队伍)
         {
             group->RemoveAllInvites();
             delete group;
@@ -2707,10 +2737,10 @@ void Player::RemoveFromGroup(Group* group, ObjectGuid guid)
     {
         if (group->RemoveMember(guid, 0) <= 1)
         {
-            // group->Disband(); already disbanded in RemoveMember
+            // group->Disband(); already disbanded in RemoveMember (RemoveMember 内部已处理队伍解散)
             sObjectMgr.RemoveGroup(group);
             delete group;
-            // removemember sets the player's group pointer to nullptr
+            // removemember sets the player's group pointer to nullptr (RemoveMember 会将玩家的队伍指针置空)
         }
     }
 }
@@ -2718,18 +2748,19 @@ void Player::RemoveFromGroup(Group* group, ObjectGuid guid)
 void Player::SendLogXPGain(uint32 GivenXP, Unit* victim, uint32 RestXP, bool recruitAFriend, float groupRate) const
 {
     WorldPacket data(SMSG_LOG_XPGAIN, 21);
-    data << (victim ? victim->GetObjectGuid() : ObjectGuid());// guid
-    data << uint32(GivenXP + RestXP);                       // given experience
-    data << uint8(victim ? 0 : 1);                          // 00-kill_xp type, 01-non_kill_xp type
+    data << (victim ? victim->GetObjectGuid() : ObjectGuid());// guid (击杀目标 GUID)
+    data << uint32(GivenXP + RestXP);                       // given experience (实际获得经验值)
+    data << uint8(victim ? 0 : 1);                          // 00-kill_xp type, 01-non_kill_xp type (类型：0 为击杀经验，1 为非击杀经验)
     if (victim)
     {
-        data << uint32(GivenXP);                            // experience without rested bonus
-        data << float(groupRate);                           // 1 - none 0 - 100% raid bonus penalty 100%+ group bonus
+        data << uint32(GivenXP);                            // experience without rested bonus (未计入双倍加成的经验值)
+        data << float(groupRate);                           // 1 - none 0 - 100% raid bonus penalty 100%+ group bonus (组队/团队经验倍率)
     }
-    data << uint8(recruitAFriend);                          // Refer-A-Friend bonus used
+    data << uint8(recruitAFriend);                          // Refer-A-Friend bonus used (是否触发战友招募 3 倍经验加成)
     GetSession()->SendPacket(data);
 }
 
+/// 给予玩家经验值（处理双倍休息加成、战友招募加成及满级拦截）
 void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
 {
     if (xp < 1)
@@ -2740,21 +2771,21 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
 
     uint32 level = GetLevel();
 
-    // XP to money conversion processed in Player::RewardQuest
+    // XP to money conversion processed in Player::RewardQuest (满级任务经验转金币在 Player::RewardQuest 中处理)
     if (level >= GetMaxAttainableLevel())
         return;
 
-    // handle SPELL_AURA_MOD_XP_PCT auras
+    // handle SPELL_AURA_MOD_XP_PCT auras (应用经验百分比加成光环)
     Unit::AuraList const& ModXPPctAuras = GetAurasByType(SPELL_AURA_MOD_XP_PCT);
     for (auto ModXPPctAura : ModXPPctAuras)
         xp = uint32(xp * (1.0f + ModXPPctAura->GetModifier()->m_amount / 100.0f));
 
-    // XP resting bonus for kill
+    // XP resting bonus for kill (计算击杀的休息双倍经验加成)
     uint32 bonus_xp;
     bool recruitAFriend = GetsRecruitAFriendBonus();
-    // RaF does NOT stack with rested experience
+    // RaF does NOT stack with rested experience (战友招募经验加成不与休息双倍经验叠加)
     if (recruitAFriend)
-        bonus_xp = 2 * xp; // xp + bonus_xp must add up to 3 * xp for RaF; calculation for quests done client-side
+        bonus_xp = 2 * xp; // xp + bonus_xp must add up to 3 * xp for RaF; calculation for quests done client-side (战友招募总经验为 3 倍；任务经验的加成显示由客户端处理)
     else
         bonus_xp = victim ? GetXPRestBonus(xp) : 0;
 
@@ -2778,8 +2809,9 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
     SetUInt32Value(PLAYER_XP, newXP);
 }
 
-// Update player to next level
-// Current player experience not update (must be update by caller)
+// Update player to next level (将玩家升级至指定等级)
+// Current player experience not update (must be update by caller) (当前经验值不在此处更新，由调用方处理)
+/// 将玩家提升至指定等级并刷新属性、技能上限、天赋与宠物等级
 void Player::GiveLevel(uint32 level)
 {
     if (level == GetLevel())
@@ -2794,31 +2826,31 @@ void Player::GiveLevel(uint32 level)
     PlayerClassLevelInfo classInfo;
     sObjectMgr.GetPlayerClassLevelInfo(plClass, level, &classInfo);
 
-    // send levelup info to client
+    // send levelup info to client (向客户端发送升级通知包)
     WorldPacket data(SMSG_LEVELUP_INFO, (4 + 4 + MAX_POWERS * 4 + MAX_STATS * 4));
     data << uint32(level);
     data << uint32(int32(classInfo.basehealth) - int32(GetCreateHealth()));
-    // for(int i = 0; i < MAX_POWERS; ++i)                  // Powers loop (0-6)
+    // for(int i = 0; i < MAX_POWERS; ++i)                  // Powers loop (0-6) (能量循环 0-6)
     data << uint32(int32(classInfo.basemana)   - int32(GetCreateMana()));
     data << uint32(0);
     data << uint32(0);
     data << uint32(0);
     data << uint32(0);
-    // end for
-    for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)         // Stats loop (0-4)
+    // end for (循环结束)
+    for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)         // Stats loop (0-4) (五大基础属性变化循环 0-4)
         data << uint32(int32(info.stats[i]) - GetCreateStat(Stats(i)));
 
     GetSession()->SendPacket(data);
 
     SetUInt32Value(PLAYER_NEXT_LEVEL_XP, GetMaxAttainableLevel() <= level ? 0 : sObjectMgr.GetXPForLevel(level));
 
-    // update level, max level of skills
+    // update level, max level of skills (更新角色等级与技能上限)
     if (GetLevel() != level)
-        m_Played_time[PLAYED_TIME_LEVEL] = 0;               // Level Played Time reset
+        m_Played_time[PLAYED_TIME_LEVEL] = 0;               // Level Played Time reset (重置当前等级游戏时间统计)
     SetLevel(level);
     UpdateSkillsForLevel();
 
-    // save base values (bonuses already included in stored stats
+    // save base values (bonuses already included in stored stats (保存基础属性值)
     for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
         SetCreateStat(Stats(i), info.stats[i]);
 
@@ -2830,7 +2862,7 @@ void Player::GiveLevel(uint32 level)
 
     UpdateAllStats();
 
-    // set current level health and mana/energy to maximum after applying all mods.
+    // set current level health and mana/energy to maximum after applying all mods. (应用所有属性修正后将生命与法力/能量设为满值)
     if (IsAlive())
         SetHealth(GetMaxHealth());
     SetPower(POWER_MANA, GetMaxPower(POWER_MANA));
@@ -2838,7 +2870,7 @@ void Player::GiveLevel(uint32 level)
     if (GetPower(POWER_RAGE) > GetMaxPower(POWER_RAGE))
         SetPower(POWER_RAGE, GetMaxPower(POWER_RAGE));
 
-    // update level to hunter/summon pet
+    // update level to hunter/summon pet (同步更新猎人/术士宠物等级)
     if (Pet* pet = GetPet())
         pet->SynchronizeLevelWithOwner();
 
@@ -2848,7 +2880,7 @@ void Player::GiveLevel(uint32 level)
             MailDraft(mailReward->mailTemplateId).SendMailTo(this, MailSender(MAIL_CREATURE, mailReward->senderEntry));
     }
 
-    // Refer-A-Friend
+    // Refer-A-Friend (战友招募可赠送等级计算)
     if (!GetSession()->IsARecruiter() && GetSession()->GetRecruitingFriendId())
         if (level < sWorld.getConfig(CONFIG_UINT32_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL))
             if (level % 2 == 0)
@@ -2859,7 +2891,7 @@ void Player::GiveLevel(uint32 level)
                     SetByteFlag(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_RAF_GRANTABLE_LEVEL, 0x01);
             }
 
-    // resend quests status directly
+    // resend quests status directly (刷新可接/可交任务 NPC 状态图标)
     GetSession()->SetCurrentPlayerLevel(level);
     SendQuestGiverStatusMultiple();
 }
@@ -2867,11 +2899,11 @@ void Player::GiveLevel(uint32 level)
 void Player::UpdateFreeTalentPoints(bool resetIfNeed)
 {
     uint32 level = GetLevel();
-    // talents base at level diff ( talents = level - 9 but some can be used already)
+    // talents base at level diff ( talents = level - 9 but some can be used already) (根据等级差计算可用天赋点总数)
     if (level < 10)
     {
-        // Remove all talent points
-        if (m_usedTalentCount > 0)                          // Free any used talents
+        // Remove all talent points (10 级以下清空所有天赋点)
+        if (m_usedTalentCount > 0)                          // Free any used talents (退还已点天赋)
         {
             if (resetIfNeed)
                 resetTalents(true);
@@ -2882,7 +2914,7 @@ void Player::UpdateFreeTalentPoints(bool resetIfNeed)
     {
         uint32 talentPointsForLevel = CalculateTalentsPoints();
 
-        // if used more that have then reset
+        // if used more that have then reset (若已用天赋点超出当前等级上限则重置天赋)
         if (m_usedTalentCount > talentPointsForLevel)
         {
             if (resetIfNeed && GetSession()->GetSecurity() < SEC_ADMINISTRATOR)
@@ -2890,7 +2922,7 @@ void Player::UpdateFreeTalentPoints(bool resetIfNeed)
             else
                 SetFreeTalentPoints(0);
         }
-        // else update amount of free points
+        // else update amount of free points (否则更新剩余可用天赋点数)
         else
             SetFreeTalentPoints(talentPointsForLevel - m_usedTalentCount);
     }
@@ -2901,9 +2933,10 @@ void Player::InitTalentForLevel()
     UpdateFreeTalentPoints();
 }
 
+/// 按当前等级与种族/职业模板重新初始化基础属性、生命法力与战斗字段
 void Player::InitStatsForLevel(bool reapplyMods)
 {
-    if (reapplyMods)                                        // reapply stats values only on .reset stats (level) command
+    if (reapplyMods)                                        // reapply stats values only on .reset stats (level) command (仅在执行 .reset stats/level 命令时重算属性)
         _RemoveAllStatBonuses();
 
     PlayerClassLevelInfo classInfo;
@@ -2918,15 +2951,15 @@ void Player::InitStatsForLevel(bool reapplyMods)
     SetUInt32Value(PLAYER_FIELD_MAX_LEVEL, sObjectMgr.GetMaxLevelForExpansion(GetSession()->GetExpansion()));
     SetUInt32Value(PLAYER_NEXT_LEVEL_XP, GetMaxAttainableLevel() <= level ? 0 : sObjectMgr.GetXPForLevel(level));
 
-    // reset before any aura state sources (health set/aura apply)
+    // reset before any aura state sources (health set/aura apply) (在应用任何光环前重置角色基础状态)
     SetUInt32Value(UNIT_FIELD_AURASTATE, 0);
 
     UpdateSkillsForLevel();
 
-    // set default cast time multiplier
+    // set default cast time multiplier (设置默认施法时间倍率)
     SetFloatValue(UNIT_MOD_CAST_SPEED, 1.0f);
 
-    // save base values (bonuses already included in stored stats
+    // save base values (bonuses already included in stored stats (保存当前等级基础五维属性)
     for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
         SetCreateStat(Stats(i), info.stats[i]);
 
@@ -2935,14 +2968,14 @@ void Player::InitStatsForLevel(bool reapplyMods)
 
     SetCreateHealth(classInfo.basehealth);
 
-    // set create powers
+    // set create powers (初始化能量类型与基础能量值)
     SetCreateMana(classInfo.basemana);
 
     SetArmor(int32(m_createStats[STAT_AGILITY] * 2));
 
     InitStatBuffMods();
 
-    // reset rating fields values
+    // reset rating fields values (重置所有战斗等级字段)
     for (uint16 index = PLAYER_FIELD_COMBAT_RATING_1; index < PLAYER_FIELD_COMBAT_RATING_1 + MAX_COMBAT_RATING; ++index)
         SetUInt32Value(index, 0);
 
@@ -2954,9 +2987,9 @@ void Player::InitStatsForLevel(bool reapplyMods)
         SetFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT + i, 1.00f);
     }
 
-    // reset attack power, damage and attack speed fields
+    // reset attack power, damage and attack speed fields (重置攻击强度、伤害与攻击速度字段)
     SetFloatValue(UNIT_FIELD_BASEATTACKTIME, 2000.0f);
-    SetFloatValue(UNIT_FIELD_BASEATTACKTIME + 1, 2000.0f);  // offhand attack time
+    SetFloatValue(UNIT_FIELD_BASEATTACKTIME + 1, 2000.0f);  // offhand attack time (副手攻击间隔)
     SetFloatValue(UNIT_FIELD_RANGEDATTACKTIME, 2000.0f);
 
     SetFloatValue(UNIT_FIELD_MINDAMAGE, 0.0f);
@@ -2973,12 +3006,12 @@ void Player::InitStatsForLevel(bool reapplyMods)
     SetInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER_MODS, 0);
     SetFloatValue(UNIT_FIELD_RANGED_ATTACK_POWER_MULTIPLIER, 0.0f);
 
-    // Base crit values (will be recalculated in UpdateAllStats() at loading and in _ApplyAllStatBonuses() at reset
+    // Base crit values (will be recalculated in UpdateAllStats() at loading and in _ApplyAllStatBonuses() at reset (重置基础暴击率，后续在 UpdateAllStats 中重算)
     SetFloatValue(PLAYER_CRIT_PERCENTAGE, 0.0f);
     SetFloatValue(PLAYER_OFFHAND_CRIT_PERCENTAGE, 0.0f);
     SetFloatValue(PLAYER_RANGED_CRIT_PERCENTAGE, 0.0f);
 
-    // Init spell schools (will be recalculated in UpdateAllStats() at loading and in _ApplyAllStatBonuses() at reset
+    // Init spell schools (will be recalculated in UpdateAllStats() at loading and in _ApplyAllStatBonuses() at reset (初始化各系法术暴击/伤害字段)
     for (uint8 i = 0; i < MAX_SPELL_SCHOOL; ++i)
         SetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1 + i, 0.0f);
 
@@ -2986,14 +3019,14 @@ void Player::InitStatsForLevel(bool reapplyMods)
     SetFloatValue(PLAYER_BLOCK_PERCENTAGE, 0.0f);
     SetUInt32Value(PLAYER_SHIELD_BLOCK, 0);
 
-    // Dodge percentage
+    // Dodge percentage (躲闪率)
     SetFloatValue(PLAYER_DODGE_PERCENTAGE, 0.0f);
 
-    // set armor (resistance 0) to original value (create_agility*2)
+    // set armor (resistance 0) to original value (create_agility*2) (将基础护甲重置为初始敏捷*2)
     SetArmor(int32(m_createStats[STAT_AGILITY] * 2));
     SetResistanceBuffMods(SpellSchools(0), true, 0.0f);
     SetResistanceBuffMods(SpellSchools(0), false, 0.0f);
-    // set other resistance to original value (0)
+    // set other resistance to original value (0) (重置其余魔法抗性为 0)
     for (int i = 1; i < MAX_SPELL_SCHOOL; ++i)
     {
         SetResistance(SpellSchools(i), 0);
@@ -3008,19 +3041,19 @@ void Player::InitStatsForLevel(bool reapplyMods)
         SetUInt32Value(UNIT_FIELD_POWER_COST_MODIFIER + i, 0);
         SetFloatValue(UNIT_FIELD_POWER_COST_MULTIPLIER + i, 0.0f);
     }
-    // Init data for form but skip reapply item mods for form
+    // Init data for form but skip reapply item mods for form (初始化变形形态数据，暂不重算装备加成)
     InitDataForForm(reapplyMods);
 
-    // save new stats
+    // save new stats (保存重新初始化后的属性)
     for (int i = POWER_MANA; i < MAX_POWERS; ++i)
         SetMaxPower(Powers(i),  GetCreatePowers(Powers(i)));
 
-    SetMaxHealth(classInfo.basehealth);                     // stamina bonus will applied later
+    SetMaxHealth(classInfo.basehealth);                     // stamina bonus will applied later (耐力额外加成将在后续应用)
 
-    // cleanup mounted state (it will set correctly at aura loading if player saved at mount.
+    // cleanup mounted state (it will set correctly at aura loading if player saved at mount. (清理坐骑状态，加载光环时会按需恢复)
     SetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID, 0);
 
-    // cleanup unit flags (will be re-applied if need at aura load).
+    // cleanup unit flags (will be re-applied if need at aura load). (清理单位标志位，加载光环时按需恢复)
     RemoveFlag(UNIT_FIELD_FLAGS,
                UNIT_FLAG_UNK_0 | UNIT_FLAG_SPAWNING | UNIT_FLAG_CLIENT_CONTROL_LOST | UNIT_FLAG_NOT_ATTACKABLE_1 |
                UNIT_FLAG_IMMUNE_TO_PLAYER | UNIT_FLAG_IMMUNE_TO_NPC    | UNIT_FLAG_LOOTING          |
@@ -3029,27 +3062,27 @@ void Player::InitStatsForLevel(bool reapplyMods)
                UNIT_FLAG_CONFUSED       | UNIT_FLAG_FLEEING      | UNIT_FLAG_POSSESSED        |
                UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_SKINNABLE    | UNIT_FLAG_MOUNT            |
                UNIT_FLAG_TAXI_FLIGHT    | UNIT_FLAG_PREVENT_ANIM);
-    SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);    // must be set
+    SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);    // must be set (必须保留玩家控制标志位)
 
-    // cleanup player flags (will be re-applied if need at aura load), to avoid have ghost flag without ghost aura, for example.
+    // cleanup player flags (will be re-applied if need at aura load), to avoid have ghost flag without ghost aura, for example. (清理玩家标志位，避免出现无幽灵光环却残留幽灵标志等异常)
     RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_AFK | PLAYER_FLAGS_DND | PLAYER_FLAGS_GM | PLAYER_FLAGS_GHOST | PLAYER_FLAGS_PVP_DESIRED | PLAYER_FLAGS_FFA_PVP | PLAYER_FLAGS_TAXI_BENCHMARK | PLAYER_FLAGS_COMMENTATOR | PLAYER_FLAGS_COMMENTATOR_UBER);
 
-    RemoveVisFlags(UNIT_VIS_FLAGS_ALL);                   // one form stealth modified bytes
+    RemoveVisFlags(UNIT_VIS_FLAGS_ALL);                   // one form stealth modified bytes (重置潜行/侦测相关字节标志)
 
-    // restore if need some important flags
-    SetUInt32Value(PLAYER_FIELD_BYTES2, 0);                 // flags empty by default
+    // restore if need some important flags (按需恢复关键玩家标志位)
+    SetUInt32Value(PLAYER_FIELD_BYTES2, 0);                 // flags empty by default (默认不保留标志位)
 
-    if (reapplyMods)                                        // reapply stats values only on .reset stats (level) command
+    if (reapplyMods)                                        // reapply stats values only on .reset stats (level) command (重算物品与光环属性加成)
         _ApplyAllStatBonuses();
 
-    // set current level health and mana/energy to maximum after applying all mods.
+    // set current level health and mana/energy to maximum after applying all mods. (应用修正后将生命与能量恢复至上限)
     SetHealth(GetMaxHealth());
     SetPower(POWER_MANA, GetMaxPower(POWER_MANA));
     SetPower(POWER_ENERGY, GetMaxPower(POWER_ENERGY));
     if (GetPower(POWER_RAGE) > GetMaxPower(POWER_RAGE))
         SetPower(POWER_RAGE, GetMaxPower(POWER_RAGE));
 
-    // update level to hunter/summon pet
+    // update level to hunter/summon pet (同步更新宠物等级)
     if (Pet* pet = GetPet())
         pet->SynchronizeLevelWithOwner();
 }
@@ -3068,7 +3101,7 @@ void Player::SendInitialSpells() const
     data << uint8(0);
 
     size_t countPos = data.wpos();
-    data << uint16(spellCount);                             // spell count placeholder
+    data << uint16(spellCount);                             // spell count placeholder (法术数量占位符)
 
     for (const auto& m_spell : m_spells)
     {
@@ -3081,14 +3114,14 @@ void Player::SendInitialSpells() const
             continue;
 
         data << uint16(m_spell.first);
-        data << uint16(0);                                  // it's not slot id
+        data << uint16(0);                                  // it's not slot id (此处为 0 占位，非槽位 ID)
 
         spellCount += 1;
     }
 
-    data.put<uint16>(countPos, spellCount);                 // write real count value
+    data.put<uint16>(countPos, spellCount);                 // write real count value (回填实际发送的法术数量)
 
-    // write cooldown data
+    // write cooldown data (写入法术冷却数据)
     uint32 cdCount = 0;
     const size_t cdCountPos = data.wpos();
     data << uint16(0);
@@ -3113,15 +3146,15 @@ void Player::SendInitialSpells() const
 
         if (cdData->IsPermanent())
         {
-            spellCDDuration = uint32(1);                              // cooldown
+            spellCDDuration = uint32(1);                              // cooldown (剩余单法术冷却毫秒数)
             catCDDuration |= 0x80000000;
         }
 
         data << uint16(cdData->GetSpellId());
-        data << uint16(cdData->GetItemId());                // cast item id
-        data << uint16(cdData->GetCategory());              // spell category
-        data << uint32(spellCDDuration);                    // cooldown
-        data << uint32(catCDDuration);                      // category cooldown
+        data << uint16(cdData->GetItemId());                // cast item id (触发冷却的物品 ID)
+        data << uint16(cdData->GetCategory());              // spell category (法术冷却类别)
+        data << uint32(spellCDDuration);                    // cooldown (单法术冷却时间)
+        data << uint32(catCDDuration);                      // category cooldown (类别冷却时间)
         ++cdCount;
     }
 
@@ -3138,7 +3171,7 @@ void Player::SendUnlearnSpells() const
 
     uint32 spellCount = 0;
     size_t countPos = data.wpos();
-    data << uint32(spellCount);                             // spell count placeholder
+    data << uint32(spellCount);                             // spell count placeholder (数量占位符)
 
     for (auto& spellData : m_spells)
     {
@@ -3174,7 +3207,7 @@ void Player::SendUnlearnSpells() const
         ++spellCount;
     }
 
-    data.put<uint32>(countPos, spellCount);                  // write real count value
+    data.put<uint32>(countPos, spellCount);                  // write real count value (回填实际写入数量)
 
     SendDirectMessage(data);
 }
@@ -3200,7 +3233,7 @@ void Player::RemoveMail(uint32 id)
     {
         if ((*itr)->messageID == id)
         {
-            // do not delete item, because Player::removeMail() is called when returning mail to sender.
+            // do not delete item, because Player::removeMail() is called when returning mail to sender. (不在此处删除物品，退信时仍需保留附件)
             m_mail.erase(itr);
             return;
         }
@@ -3217,15 +3250,15 @@ void Player::SendMailResult(uint32 mailId, MailResponseType mailAction, MailResp
         data << (uint32) equipError;
     else if (mailAction == MAIL_ITEM_TAKEN)
     {
-        data << (uint32) item_guid;                         // item guid low?
-        data << (uint32) item_count;                        // item count?
+        data << (uint32) item_guid;                         // item guid low? (物品低位 GUID，非附件操作填 0)
+        data << (uint32) item_count;                        // item count? (物品数量，非附件操作填 0)
     }
     GetSession()->SendPacket(data);
 }
 
 void Player::SendNewMail() const
 {
-    // deliver undelivered mail
+    // deliver undelivered mail (投递已到时间的未送达邮件)
     WorldPacket data(SMSG_RECEIVED_MAIL, 4);
     data << (uint32) 0;
     GetSession()->SendPacket(data);
@@ -3233,8 +3266,8 @@ void Player::SendNewMail() const
 
 void Player::UpdateNextMailTimeAndUnreads()
 {
-    // calculate next delivery time (min. from non-delivered mails
-    // and recalculate unReadMail
+    // calculate next delivery time (min. from non-delivered mails (计算下次邮件投递时间，取未送达邮件的最早投递时刻，)
+    // and recalculate unReadMail (并重新统计未读邮件数)
     time_t cTime = time(nullptr);
     m_nextMailDelivereTime = 0;
     unReadMails = 0;
@@ -3252,12 +3285,12 @@ void Player::UpdateNextMailTimeAndUnreads()
 
 void Player::AddNewMailDeliverTime(time_t deliver_time)
 {
-    if (deliver_time <= time(nullptr))                         // ready now
+    if (deliver_time <= time(nullptr))                         // ready now (立即就绪)
     {
         ++unReadMails;
         SendNewMail();
     }
-    else                                                    // not ready and no have ready mails
+    else                                                    // not ready and no have ready mails (尚未就绪且当前无待投递邮件)
     {
         if (!m_nextMailDelivereTime || m_nextMailDelivereTime > deliver_time)
             m_nextMailDelivereTime =  deliver_time;
@@ -3269,13 +3302,14 @@ static inline bool IsUnlearnSpellsPacketNeededForSpell(uint32 spellId)
     return sSpellMgr.GetSpellBookSuccessorSpellId(spellId);
 }
 
+/// 向玩家添加或更新法术（处理分级替换、依赖技能、天赋点数与被动激活）
 bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependent, bool disabled)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spell_id);
     if (!spellInfo)
     {
-        // do character spell book cleanup (all characters)
-        if (!IsInWorld() && !learning)                      // spell load case
+        // do character spell book cleanup (all characters) (清理角色法术书中的冗余低阶法术)
+        if (!IsInWorld() && !learning)                      // spell load case (法术加载时保留完整学习链)
         {
             sLog.outError("Player::addSpell: nonexistent in SpellStore spell #%u request, deleting for all characters in `character_spell`.", spell_id);
             CharacterDatabase.PExecute("DELETE FROM character_spell WHERE spell = '%u'", spell_id);
@@ -3288,8 +3322,8 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
 
     if (!SpellMgr::IsSpellValid(spellInfo, this, false))
     {
-        // do character spell book cleanup (all characters)
-        if (!IsInWorld() && !learning)                      // spell load case
+        // do character spell book cleanup (all characters) (非加载时清理)
+        if (!IsInWorld() && !learning)                      // spell load case (法术加载时检查是否需要发送遗忘包)
         {
             sLog.outError("Player::addSpell: Broken spell #%u learning not allowed, deleting for all characters in `character_spell`.", spell_id);
             CharacterDatabase.PExecute("DELETE FROM character_spell WHERE spell = '%u'", spell_id);
@@ -3311,12 +3345,12 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
         uint32 next_active_spell_id = 0;
         bool dependent_set = false;
 
-        // fix activate state for non-stackable low rank (and find next spell for !active case)
+        // fix activate state for non-stackable low rank (and find next spell for !active case) (修正不可叠加法术的激活状态并查找高阶/低阶法术)
         if (uint32 nextId = sSpellMgr.GetSpellBookSuccessorSpellId(spellInfo->Id))
         {
             if (HasSpell(nextId))
             {
-                // high rank already known so this must !active
+                // high rank already known so this must !active (已学会更高阶法术，故当前阶设为非激活)
                 active = false;
                 next_active_spell_id = nextId;
             }
@@ -3324,17 +3358,17 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
 
         PlayerSpell& playerSpell = itr->second;
 
-        // not do anything if already known in expected state
+        // not do anything if already known in expected state (若法术已处于预期状态则跳过)
         if (playerSpell.state != PLAYERSPELL_REMOVED && playerSpell.active == active &&
                 playerSpell.dependent == dependent && playerSpell.disabled == disabled)
         {
-            if (!IsInWorld() && !learning)                  // explicitly load from DB and then exist in it already and set correctly
+            if (!IsInWorld() && !learning)                  // explicitly load from DB and then exist in it already and set correctly (从数据库加载时记录已存在，直接标记为未变更)
                 playerSpell.state = PLAYERSPELL_UNCHANGED;
 
             return false;
         }
 
-        // dependent spell known as not dependent, overwrite state
+        // dependent spell known as not dependent, overwrite state (已独立学会的法术覆盖为非依赖状态)
         if (playerSpell.state != PLAYERSPELL_REMOVED && !playerSpell.dependent && dependent)
         {
             playerSpell.dependent = dependent;
@@ -3343,12 +3377,12 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
             dependent_set = true;
         }
 
-        // update active state for known spell
+        // update active state for known spell (更新已知法术的激活状态)
         if (playerSpell.active != active && playerSpell.state != PLAYERSPELL_REMOVED && !playerSpell.disabled)
         {
             playerSpell.active = active;
 
-            if (!IsInWorld() && !learning && !dependent_set)// explicitly load from DB and then exist in it already and set correctly
+            if (!IsInWorld() && !learning && !dependent_set)// explicitly load from DB and then exist in it already and set correctly (从数据库加载时设为未变更)
                 playerSpell.state = PLAYERSPELL_UNCHANGED;
             else if (playerSpell.state != PLAYERSPELL_NEW)
                 playerSpell.state = PLAYERSPELL_CHANGED;
@@ -3362,7 +3396,7 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
             {
                 if (next_active_spell_id)
                 {
-                    // update spell ranks in spellbook and action bar
+                    // update spell ranks in spellbook and action bar (更新法术书与动作条中的法术等级显示)
                     SendSupercededSpell(spell_id, next_active_spell_id);
                     if (IsUnlearnSpellsPacketNeededForSpell(spell_id))
                         SendUnlearnSpells();
@@ -3371,7 +3405,7 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
                     SendRemovedSpell(spell_id);
             }
 
-            return active;                                  // learn (show in spell book if active now)
+            return active;                                  // learn (show in spell book if active now) (新增学习该法术)
         }
 
         if (playerSpell.disabled != disabled && playerSpell.state != PLAYERSPELL_REMOVED)
@@ -3387,17 +3421,17 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
         }
         else switch (playerSpell.state)
             {
-                case PLAYERSPELL_UNCHANGED:                 // known saved spell
+                case PLAYERSPELL_UNCHANGED:                 // known saved spell (已知且已存库的法术)
                     return false;
-                case PLAYERSPELL_REMOVED:                   // re-learning removed not saved spell
+                case PLAYERSPELL_REMOVED:                   // re-learning removed not saved spell (重新学习此前标记移除但尚未存库的法术)
                 {
                     m_spells.erase(itr);
                     state = PLAYERSPELL_CHANGED;
-                    break;                                  // need re-add
+                    break;                                  // need re-add (需重新标记为新增或已变更)
                 }
-                default:                                    // known not saved yet spell (new or modified)
+                default:                                    // known not saved yet spell (new or modified) (已知但尚未存库的法术)
                 {
-                    // can be in case spell loading but learned at some previous spell loading
+                    // can be in case spell loading but learned at some previous spell loading (可能在加载前期关联法术时已顺带习得)
                     if (!IsInWorld() && !learning && !dependent_set)
                         playerSpell.state = PLAYERSPELL_UNCHANGED;
 
@@ -3408,16 +3442,16 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
 
     TalentSpellPos const* talentPos = GetTalentSpellPos(spell_id);
 
-    if (!disabled_case) // skip new spell adding if spell already known (disabled spells case)
+    if (!disabled_case) // skip new spell adding if spell already known (disabled spells case) (若法术已存在则跳过添加)
     {
-        // talent: unlearn all lower talent ranks
+        // talent: unlearn all lower talent ranks (天赋法术：遗忘所有低等级天赋)
         if (talentPos)
         {
             if (TalentEntry const* talentInfo = sTalentStore.LookupEntry(talentPos->talent_id))
             {
                 for (unsigned int rankSpellId : talentInfo->RankID)
                 {
-                    // skip learning spell and no rank spell case
+                    // skip learning spell and no rank spell case (跳过学习型法术及无等级法术)
                     if (!rankSpellId)
                         continue;
 
@@ -3428,10 +3462,10 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
                 }
             }
         }
-        // non talent spell: learn low ranks (recursive call)
+        // non talent spell: learn low ranks (recursive call) (非天赋法术：若需要则递归学习前置低等级)
         else if (uint32 prev_spell = sSpellMgr.GetPrevSpellInChain(spell_id))
         {
-            // Check if a spell is learned by a talent first
+            // Check if a spell is learned by a talent first (先检查低等级法术是否属于当前未学的天赋)
             bool talent = false;
             for (uint32 i = 0; i < sTalentStore.GetNumRows(); ++i)
             {
@@ -3459,10 +3493,10 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
 
             if (!talent)
             {
-                // We do not learn previous rank if its owned by a talent we don't know
-                if (!IsInWorld() || disabled)        // at spells loading, no output, but allow save
+                // We do not learn previous rank if its owned by a talent we don't know (若前置等级由未点亮的天赋授予则不自动学习)
+                if (!IsInWorld() || disabled)        // at spells loading, no output, but allow save (法术加载阶段不向客户端发包，但允许存库)
                     addSpell(prev_spell, active, true, true, disabled);
-                else                                            // at normal learning
+                else                                            // at normal learning (正常游戏内学习阶段，向客户端通知)
                     learnSpell(prev_spell, true);
             }
         }
@@ -3475,7 +3509,7 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
 
         bool needsUnlearnSpellsPacket = false;
 
-        // replace spells in action bars and spellbook to bigger rank if only one spell rank must be accessible
+        // replace spells in action bars and spellbook to bigger rank if only one spell rank must be accessible (若仅允许保留最高阶，则替换动作条与法术书中的旧等级)
         if (newspell.active && !newspell.disabled)
         {
             for (auto& m_spell : m_spells)
@@ -3491,27 +3525,27 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
                     {
                         if (nextId == spell_id)
                         {
-                            if (IsInWorld())                // not send spell (re-/over-)learn packets at loading
+                            if (IsInWorld())                // not send spell (re-/over-)learn packets at loading (加载阶段不发送覆盖/重学法术数据包)
                             {
                                 SendSupercededSpell(m_spell.first, spell_id);
                                 needsUnlearnSpellsPacket = needsUnlearnSpellsPacket || IsUnlearnSpellsPacketNeededForSpell(m_spell.first);
                             }
 
-                            // mark old spell as disable (SMSG_SUPERCEDED_SPELL replace it in client by new)
+                            // mark old spell as disable (SMSG_SUPERCEDED_SPELL replace it in client by new) (将旧等级法术标记为禁用，客户端将由新法术替代)
                             playerSpell2.active = false;
                             if (playerSpell2.state != PLAYERSPELL_NEW)
                                 playerSpell2.state = PLAYERSPELL_CHANGED;
-                            superceded_old = true;          // new spell replace old in action bars and spell book.
+                            superceded_old = true;          // new spell replace old in action bars and spell book. (新法术在动作条与法术书中替换旧法术)
                         }
                         else if (m_spell.first == spell_id)
                         {
-                            if (IsInWorld())                // not send spell (re-/over-)learn packets at loading
+                            if (IsInWorld())                // not send spell (re-/over-)learn packets at loading (加载阶段不发送覆盖法术数据包)
                             {
                                 SendSupercededSpell(spell_id, m_spell.first);
                                 needsUnlearnSpellsPacket = needsUnlearnSpellsPacket || IsUnlearnSpellsPacketNeededForSpell(spell_id);
                             }
 
-                            // mark new spell as disable (not learned yet for client and will not learned)
+                            // mark new spell as disable (not learned yet for client and will not learned) (将新等级标记为禁用：当前未向客户端下发学习)
                             newspell.active = false;
                             if (newspell.state != PLAYERSPELL_NEW)
                                 newspell.state = PLAYERSPELL_CHANGED;
@@ -3528,33 +3562,33 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
         if (needsUnlearnSpellsPacket)
             SendUnlearnSpells();
 
-        // return false if spell disabled
+        // return false if spell disabled (若法术被禁用则返回 false)
         if (newspell.disabled)
             return false;
     }
 
     if (talentPos)
     {
-        // update used talent points count
+        // update used talent points count (更新已使用天赋点计数)
         m_usedTalentCount += GetTalentSpellCost(talentPos);
         UpdateFreeTalentPoints(false);
     }
 
-    // update free primary prof.points (if any, can be none in case GM .learn prof. learning)
+    // update free primary prof.points (if any, can be none in case GM .learn prof. learning) (更新剩余专业技能点数)
     if (uint32 freeProfs = GetFreePrimaryProfessionPoints())
     {
         if (sSpellMgr.IsPrimaryProfessionFirstRankSpell(spell_id))
             SetFreePrimaryProfessions(freeProfs - 1);
     }
 
-    // cast talents with SPELL_EFFECT_LEARN_SPELL (other dependent spells will learned later as not auto-learned)
-    // note: all spells with SPELL_EFFECT_LEARN_SPELL isn't passive
+    // cast talents with SPELL_EFFECT_LEARN_SPELL (other dependent spells will learned later as not auto-learned) (施放带 SPELL_EFFECT_LEARN_SPELL 效果的天赋法术)
+    // note: all spells with SPELL_EFFECT_LEARN_SPELL isn't passive (注：带学习效果的法术本身并非被动法术)
     if (talentPos && IsSpellHaveEffect(spellInfo, SPELL_EFFECT_LEARN_SPELL))
     {
-        // ignore stance requirement for talent learn spell (stance set for spell only for client spell description show)
+        // ignore stance requirement for talent learn spell (stance set for spell only for client spell description show) (施放天赋学习法术时忽略姿态限制，姿态仅用于客户端说明展示)
         CastSpell(this, spell_id, TRIGGERED_OLD_TRIGGERED);
     }
-    // also cast passive (and passive like) spells (including all talents without SPELL_EFFECT_LEARN_SPELL) with additional checks
+    // also cast passive (and passive like) spells (including all talents without SPELL_EFFECT_LEARN_SPELL) with additional checks (同时施放被动及类被动法术，含无学习效果的天赋)
     else if (IsNeedCastPassiveLikeSpellAtLearn(spellInfo))
     {
         CastSpell(this, spell_id, TRIGGERED_OLD_TRIGGERED);
@@ -3565,10 +3599,10 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
         return false;
     }
 
-    // Add dependent skills
+    // Add dependent skills (添加关联技能)
     UpdateSpellTrainedSkills(spell_id, true);
 
-    // learn dependent spells
+    // learn dependent spells (学习关联派生法术)
     SpellLearnSpellMapBounds spell_bounds = sSpellMgr.GetSpellLearnSpellMapBounds(spell_id);
 
     for (SpellLearnSpellMap::const_iterator itr2 = spell_bounds.first; itr2 != spell_bounds.second; ++itr2)
@@ -3576,14 +3610,14 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
         SpellLearnSpellNode const& spellLearn = itr2->second;
         if (!spellLearn.autoLearned)
         {
-            if (!IsInWorld() || !spellLearn.active)       // at spells loading, no output, but allow save
+            if (!IsInWorld() || !spellLearn.active)       // at spells loading, no output, but allow save (法术加载阶段无通知输出，但允许存库)
                 addSpell(spellLearn.spell, spellLearn.active, true, true, false);
-            else                                            // at normal learning
+            else                                            // at normal learning (正常游戏内学习阶段)
                 learnSpell(spellLearn.spell, true);
         }
     }
 
-    // return true (for send learn packet) only if spell active (in case ranked spells) and not replace old spell
+    // return true (for send learn packet) only if spell active (in case ranked spells) and not replace old spell (仅当法术激活且未直接替代旧法术时返回 true 以便发送学习通知)
     return active && !disabled && !superceded_old;
 }
 
@@ -3594,20 +3628,21 @@ bool Player::IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) cons
     if (spellInfo->HasAttribute(SPELL_ATTR_EX_CAST_WHEN_LEARNED))
         return true;
 
-    if (IsNeedCastSpellAtFormApply(spellInfo, form))        // SPELL_ATTR_PASSIVE | SPELL_ATTR_DO_NOT_DISPLAY spells
-        return true;                                        // all stance req. cases, not have auarastate cases
+    if (IsNeedCastSpellAtFormApply(spellInfo, form))        // SPELL_ATTR_PASSIVE | SPELL_ATTR_DO_NOT_DISPLAY spells (被动或隐藏显示法术)
+        return true;                                        // all stance req. cases, not have auarastate cases (仅检查姿态要求，不涉及光环状态)
 
     if (!spellInfo->HasAttribute(SPELL_ATTR_PASSIVE))
         return false;
 
-    // note: form passives activated with shapeshift spells be implemented by HandleShapeshiftBoosts instead of spell_learn_spell
-    // talent dependent passives activated at form apply have proper stance data
+    // note: form passives activated with shapeshift spells be implemented by HandleShapeshiftBoosts instead of spell_learn_spell (注：变形形态被动由 HandleShapeshiftBoosts 处理，不通过 spell_learn_spell)
+    // talent dependent passives activated at form apply have proper stance data (随变形激活的天赋被动自带正确姿态数据)
     bool need_cast = !spellInfo->Stances || (!form && spellInfo->HasAttribute(SPELL_ATTR_EX2_ALLOW_WHILE_NOT_SHAPESHIFTED));
 
-    // Check CasterAuraStates
+    // Check CasterAuraStates (检查施法者光环状态要求)
     return need_cast && (!spellInfo->CasterAuraState || HasAuraState(AuraState(spellInfo->CasterAuraState)));
 }
 
+/// 正式学习指定法术并递归处理低阶前置与高阶依赖
 void Player::learnSpell(uint32 spell_id, bool dependent, bool talent)
 {
     PlayerSpellMap::iterator itr = m_spells.find(spell_id);
@@ -3617,7 +3652,7 @@ void Player::learnSpell(uint32 spell_id, bool dependent, bool talent)
 
     bool learning = addSpell(spell_id, active, true, dependent, false);
 
-    // prevent duplicated entires in spell book, also not send if not in world (loading)
+    // prevent duplicated entires in spell book, also not send if not in world (loading) (防止法术书出现重复条目；未在世界中时不发送学习包)
     if (learning && IsInWorld())
     {
         WorldPacket data(SMSG_LEARNED_SPELL, 4);
@@ -3625,7 +3660,7 @@ void Player::learnSpell(uint32 spell_id, bool dependent, bool talent)
         GetSession()->SendPacket(data);
     }
 
-    // learn all disabled higher ranks (recursive) - skip for talent spells
+    // learn all disabled higher ranks (recursive) - skip for talent spells (递归学习此前禁用的更高阶法术，天赋除外)
     if (disabled || talent)
     {
         SpellChainMapNext const& nextMap = sSpellMgr.GetSpellChainNext();
@@ -3638,6 +3673,7 @@ void Player::learnSpell(uint32 spell_id, bool dependent, bool talent)
     }
 }
 
+/// 遗忘或禁用指定法术并清理相关光环、技能与降级动作条
 void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bool sendUpdate)
 {
     PlayerSpellMap::iterator itr = m_spells.find(spell_id);
@@ -3649,14 +3685,14 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
         return;
 
     PlayerSpellState savedState = playerSpell.state;
-    playerSpell.state = PLAYERSPELL_REMOVED; // recursion protection
+    playerSpell.state = PLAYERSPELL_REMOVED; // recursion protection (递归防重入保护)
 
-    // Always try to remove all dependent spells if present (needed to reset some talents properly)
+    // Always try to remove all dependent spells if present (needed to reset some talents properly) (始终尝试移除所有关联派生法术，确保某些天赋可正确重置)
     SpellLearnSpellMapBounds spell_bounds = sSpellMgr.GetSpellLearnSpellMapBounds(spell_id);
     for (SpellLearnSpellMap::const_iterator child_itr = spell_bounds.first; child_itr != spell_bounds.second; ++child_itr)
         removeSpell(child_itr->second.spell, !IsPassiveSpell(child_itr->second.spell), !IsPassiveSpell(child_itr->second.spell));
 
-    // search again just in case
+    // search again just in case (为防迭代器失效重新查找)
     itr = m_spells.find(spell_id);
     if (itr == m_spells.end())
         return;
@@ -3666,18 +3702,18 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
         return;
 
     if (disabled && GetTalentSpellPos(spell_id))
-        disabled = false; // talents should never be marked as disabled
+        disabled = false; // talents should never be marked as disabled (天赋法术不应标记为禁用状态)
 
-    // unlearn non talent higher ranks (recursive)
+    // unlearn non talent higher ranks (recursive) (递归遗忘非天赋类的更高阶法术)
     SpellChainMapNext const& nextMap = sSpellMgr.GetSpellChainNext();
     for (SpellChainMapNext::const_iterator itr2 = nextMap.lower_bound(spell_id); itr2 != nextMap.upper_bound(spell_id); ++itr2)
         if (HasSpell(itr2->second) && !GetTalentSpellPos(itr2->second))
             removeSpell(itr2->second, !IsPassiveSpell(itr2->second), false, sendUpdate);
 
-    // re-search, it can be corrupted in prev loop
+    // re-search, it can be corrupted in prev loop (前一循环可能修改容器，重新查找)
     itr = m_spells.find(spell_id);
     if (itr == m_spells.end() || playerSpell.state == PLAYERSPELL_REMOVED)
-        return;                                             // already unleared
+        return;                                             // already unleared (已被遗忘)
 
     bool cur_active = playerSpell.active;
     bool cur_dependent = playerSpell.dependent;
@@ -3699,14 +3735,14 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
     RemoveAurasByCasterSpell(spell_id, GetObjectGuid());
     RemoveAurasTriggeredBySpell(spell_id, GetObjectGuid());
 
-    // remove pet auras
+    // remove pet auras (移除相关宠物光环)
     if (PetAura const* petSpell = sSpellMgr.GetPetAura(spell_id))
         RemovePetAura(petSpell);
 
     TalentSpellPos const* talentPos = GetTalentSpellPos(spell_id);
     if (talentPos)
     {
-        // free talent points
+        // free talent points (返还天赋点数)
         uint32 talentCosts = GetTalentSpellCost(talentPos);
 
         if (talentCosts < m_usedTalentCount)
@@ -3717,7 +3753,7 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
         UpdateFreeTalentPoints(false);
     }
 
-    // update free primary prof.points (if not overflow setting, can be in case GM use before .learn prof. learning)
+    // update free primary prof.points (if not overflow setting, can be in case GM use before .learn prof. learning) (返还主专业技能点，防止超出上限)
     if (sSpellMgr.IsPrimaryProfessionFirstRankSpell(spell_id))
     {
         uint32 freeProfs = GetFreePrimaryProfessionPoints() + 1;
@@ -3726,10 +3762,10 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
             SetFreePrimaryProfessions(freeProfs);
     }
 
-    // Remove dependent skills
+    // Remove dependent skills (移除关联技能)
     UpdateSpellTrainedSkills(spell_id, false);
 
-    // activate lesser rank in spellbook/action bar, and cast it if need
+    // activate lesser rank in spellbook/action bar, and cast it if need (在法术书和动作条中激活较低等级并按需施放)
     bool prev_activate = false;
     bool needsUnlearnSpellsPacket = false;
 
@@ -3737,16 +3773,16 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
     {
         uint32 nextId = sSpellMgr.GetSpellBookSuccessorSpellId(prev_id);
 
-        // if talent then lesser rank also talent and need learn
+        // if talent then lesser rank also talent and need learn (若为天赋则低等级同样为天赋，需重新学习)
         if (talentPos)
         {
             if (learn_low_rank)
                 learnSpell(prev_id, false);
         }
-        // if ranked non-stackable spell: need activate lesser rank and update dependence state
+        // if ranked non-stackable spell: need activate lesser rank and update dependence state (不可叠加的分级法术：激活低等级并更新依赖状态)
         else if (cur_active && nextId == spell_id)
         {
-            // need manually update dependence state (learn spell ignore like attempts)
+            // need manually update dependence state (learn spell ignore like attempts) (手动更新依赖标记)
             PlayerSpellMap::iterator prev_itr = m_spells.find(prev_id);
             if (prev_itr != m_spells.end())
             {
@@ -3758,12 +3794,12 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
                         spell.state = PLAYERSPELL_CHANGED;
                 }
 
-                // now re-learn if need re-activate
+                // now re-learn if need re-activate (若需重新激活则执行重学)
                 if (cur_active && !spell.active && learn_low_rank)
                 {
                     if (addSpell(prev_id, true, false, spell.dependent, spell.disabled))
                     {
-                        // downgrade spell ranks in spellbook and action bar
+                        // downgrade spell ranks in spellbook and action bar (在法术书和动作条中将法术降级为低阶版本)
                         SendSupercededSpell(spell_id, prev_id);
                         needsUnlearnSpellsPacket = IsUnlearnSpellsPacketNeededForSpell(prev_id);
                         prev_activate = true;
@@ -3773,7 +3809,7 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
         }
     }
 
-    // for shaman Dual-wield
+    // for shaman Dual-wield (适用于萨满双持天赋)
     if (CanDualWield())
     {
         SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spell_id);
@@ -3782,21 +3818,21 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
             SetCanDualWield(false);
     }
 
-    // for talents and normal spell unlearn that allow offhand use for some weapons
+    // for talents and normal spell unlearn that allow offhand use for some weapons (用于遗忘允许副手使用特定武器的天赋或法术后自动卸下)
     if (sWorld.getConfig(CONFIG_BOOL_OFFHAND_CHECK_AT_TALENTS_RESET))
         AutoUnequipOffhandIfNeed();
 
     if (needsUnlearnSpellsPacket)
         SendUnlearnSpells();
 
-    // remove from spell book if not replaced by lesser rank
+    // remove from spell book if not replaced by lesser rank (若无低阶替代则从法术书中移除)
     if (!prev_activate && sendUpdate)
         SendRemovedSpell(spell_id);
 }
 
 void Player::RemoveArenaSpellCooldowns()
 {
-    // remove cooldowns on spells that has < 15 min CD - has to by in sync with spell check
+    // remove cooldowns on spells that has < 15 min CD - has to by in sync with spell check (移除冷却时间小于 15 分钟的法术冷却，用于竞技场进入/重置)
     const uint32 MaxCDDelay = 15 * MINUTE * IN_MILLISECONDS;
     auto cdCheck = [&](SpellEntry const & spellEntry) -> bool { return (spellEntry.RecoveryTime <= MaxCDDelay && (spellEntry.CategoryRecoveryTime <= MaxCDDelay)); };
     RemoveSomeCooldown(cdCheck);
@@ -3804,7 +3840,7 @@ void Player::RemoveArenaSpellCooldowns()
 
 void Player::_LoadSpellCooldowns(std::unique_ptr<QueryResult> queryResult)
 {
-    // some cooldowns can be already set at aura loading...
+    // some cooldowns can be already set at aura loading... (加载光环时可能已设置部分冷却)
     // QueryResult *result = CharacterDatabase.PQuery("SELECT SpellId, SpellExpireTime, Category, CategoryExpireTime, ItemId FROM character_spell_cooldown WHERE guid = '%u'",GetGUIDLow());
 
     if (queryResult)
@@ -3848,7 +3884,7 @@ void Player::_LoadSpellCooldowns(std::unique_ptr<QueryResult> queryResult)
             if (catExpireTime > curTime)
                 catRecTime = std::chrono::duration_cast<std::chrono::milliseconds>(catExpireTime - curTime);
 
-            // skip outdated cooldown
+            // skip outdated cooldown (跳过已过期的冷却记录)
             if (spellRecTime == std::chrono::milliseconds::zero() && catRecTime == std::chrono::milliseconds::zero())
                 continue;
 
@@ -3871,7 +3907,7 @@ void Player::_SaveSpellCooldowns()
 {
     static SqlStatementID deleteSpellCooldown;
 
-    // delete all old cooldown
+    // delete all old cooldown (删除旧的法术冷却数据库记录)
     SqlStatement stmt = CharacterDatabase.CreateStatement(deleteSpellCooldown, "DELETE FROM character_spell_cooldown WHERE guid = ?");
     stmt.PExecute(GetGUIDLow());
 
@@ -3888,7 +3924,7 @@ void Player::_SaveSpellCooldowns()
             cdData->GetSpellCDExpireTime(sTime);
             cdData->GetCatCDExpireTime(cTime);
 
-            // Skip entries where both cooldowns have already expired - no point persisting them
+            // Skip entries where both cooldowns have already expired - no point persisting them (跳过法术与类别冷却均已过期的条目，无需存库)
             if (sTime <= now && cTime <= now)
                 continue;
 
@@ -3910,34 +3946,35 @@ void Player::_SaveSpellCooldowns()
 
 uint32 Player::resetTalentsCost() const
 {
-    // The first time reset costs 1 gold
+    // The first time reset costs 1 gold (首次重置天赋花费 1 金币)
     if (m_resetTalentsCost < 1 * GOLD)
         return 1 * GOLD;
-    // then 5 gold
+    // then 5 gold (第二次花费 5 金币)
     if (m_resetTalentsCost < 5 * GOLD)
         return 5 * GOLD;
-    // After that it increases in increments of 5 gold
+    // After that it increases in increments of 5 gold (之后每次递增 5 金币)
     if (m_resetTalentsCost < 10 * GOLD)
         return 10 * GOLD;
     time_t months = (sWorld.GetGameTime() - m_resetTalentsTime) / MONTH;
     if (months > 0)
     {
-        // This cost will be reduced by a rate of 5 gold per month
+        // This cost will be reduced by a rate of 5 gold per month (每月未重置费用递减 5 金币)
         int32 new_cost = int32((m_resetTalentsCost) - 5 * GOLD * months);
-        // to a minimum of 10 gold.
+        // to a minimum of 10 gold. (最低降至 10 金币)
         return uint32(new_cost < 10 * GOLD ? 10 * GOLD : new_cost);
     }
-    // After that it increases in increments of 5 gold
+    // After that it increases in increments of 5 gold (之后再次按每次 5 金币递增)
     int32 new_cost = m_resetTalentsCost + 5 * GOLD;
-    // until it hits a cap of 50 gold.
+    // until it hits a cap of 50 gold. (最高封顶 50 金币)
     if (new_cost > 50 * GOLD)
         new_cost = 50 * GOLD;
     return new_cost;
 }
 
+/// 重置玩家所有已点天赋并退还天赋点数
 bool Player::resetTalents(bool no_cost)
 {
-    // not need after this call
+    // not need after this call (此处无需重复计算，后续或已扣费)
     if (HasAtLoginFlag(AT_LOGIN_RESET_TALENTS))
         RemoveAtLoginFlag(AT_LOGIN_RESET_TALENTS, true);
 
@@ -3969,9 +4006,9 @@ bool Player::resetTalents(bool no_cost)
         if (!talentTabInfo)
             continue;
 
-        // unlearn only talents for character class
-        // some spell learned by one class as normal spells or know at creation but another class learn it as talent,
-        // to prevent unexpected lost normal learned spell skip another class talents
+        // unlearn only talents for character class (仅遗忘当前角色所属职业的天赋)
+        // some spell learned by one class as normal spells or know at creation but another class learn it as talent, (某些法术在甲职业为常规法术而在乙职业为天赋，)
+        // to prevent unexpected lost normal learned spell skip another class talents (跳过其他职业天赋以免误删常规法术)
         if ((getClassMask() & talentTabInfo->ClassMask) == 0)
             continue;
 
@@ -3990,7 +4027,7 @@ bool Player::resetTalents(bool no_cost)
         m_resetTalentsTime = time(nullptr);
     }
 
-    // FIXME: remove pet before or after unlearn spells? for now after unlearn to allow removing of talent related, pet affecting auras
+    // FIXME: remove pet before or after unlearn spells? for now after unlearn to allow removing of talent related, pet affecting auras (待修复：在遗忘法术之后解散宠物以便正确移除受天赋影响的宠物光环)
     RemovePet(PET_SAVE_REAGENTS);
     return true;
 }
@@ -4052,7 +4089,7 @@ void Player::SaveItemToInventory(Item* item)
             throw std::domain_error("Unrecognized item state");
     }
 
-    item->SaveToDB();                                   // item have unchanged inventory record and can be save standalone
+    item->SaveToDB();                                   // item have unchanged inventory record and can be save standalone (物品背包位置未变，可单独存库)
 }
 
 void Player::BuildCreateUpdateBlockForPlayer(UpdateData& data, Player* target) const
@@ -4148,17 +4185,17 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
     if (!trainer_spell)
         return TRAINER_SPELL_RED;
 
-    // known spell
+    // known spell (已学法术)
     if (HasSpell(trainer_spell->spell))
         return TRAINER_SPELL_GRAY;
 
-    // check race/class requirement
+    // check race/class requirement (检查种族与职业限制)
     if (!IsSpellFitByClassAndRace(trainer_spell->spell))
         return TRAINER_SPELL_RED;
 
     bool prof = SpellMgr::IsProfessionSpell(trainer_spell->spell);
 
-    // check level requirement
+    // check level requirement (检查等级要求)
     if (!prof || GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_LEVEL)))
         if (GetLevel() < reqLevel)
             return TRAINER_SPELL_RED;
@@ -4172,26 +4209,26 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
 
         if (SpellChainNode const* spell_chain = sSpellMgr.GetSpellChainNode(learnedSpell))
         {
-            // check prev.rank requirement
+            // check prev.rank requirement (检查前置等级法术要求)
             if (spell_chain->prev && !HasSpell(spell_chain->prev))
                 return TRAINER_SPELL_RED;
 
-            // check additional spell requirement
+            // check additional spell requirement (检查额外前置法术要求)
             if (spell_chain->req && !HasSpell(spell_chain->req) &&
                 std::find(trainer_spell->learnedSpell.begin(), trainer_spell->learnedSpell.end(), spell_chain->req) == trainer_spell->learnedSpell.end())
                 return TRAINER_SPELL_RED;
         }
 
-            // exist, already checked at loading
+            // exist, already checked at loading (法术条目存在，加载时已校验)
         SpellEntry const* spell = sSpellTemplate.LookupEntry<SpellEntry>(learnedSpell);
 
-        // secondary prof. or not prof. spell
+        // secondary prof. or not prof. spell (辅助专业或非专业技能法术)
         uint32 skill = spell->EffectMiscValue[1];
 
         if (spell->Effect[1] != SPELL_EFFECT_SKILL || !IsPrimaryProfessionSkill(skill))
             continue;
 
-        // check primary prof. limit
+        // check primary prof. limit (检查主专业数量上限)
         if (sSpellMgr.IsPrimaryProfessionFirstRankSpell(spell->Id) && GetFreePrimaryProfessionPoints() == 0)
             return TRAINER_SPELL_GREEN_DISABLED;
     }
@@ -4199,7 +4236,7 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
     if (hasLearnSpellEffect && knowsAllLearnedSpells)
         return TRAINER_SPELL_GRAY;
 
-    // check skill requirement
+    // check skill requirement (检查技能点要求)
     if (!prof || GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_SKILL)))
         if (trainer_spell->reqSkill && GetSkillValueBase(trainer_spell->reqSkill) < trainer_spell->reqSkillValue)
             return TRAINER_SPELL_RED;
@@ -4213,49 +4250,51 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
 }
 
 /**
- * Deletes a character from the database
+ * Deletes a character from the database (从数据库中删除角色)
  *
  * The way, how the characters will be deleted is decided based on the config option.
+ * 角色删除方式（软删除或彻底清除）由服务器配置项决定。
  *
  * @see Player::DeleteOldCharacters
  *
- * @param playerguid       the low-GUID from the player which should be deleted
- * @param accountId        the account id from the player
- * @param updateRealmChars when this flag is set, the amount of characters on that realm will be updated in the realmlist
- * @param deleteFinally    if this flag is set, the config option will be ignored and the character will be permanently removed from the database
+ * @param playerguid       the low-GUID from the player which should be deleted (待删除角色的低位 GUID)
+ * @param accountId        the account id from the player (角色所属账号 ID)
+ * @param updateRealmChars when this flag is set, the amount of characters on that realm will be updated in the realmlist (是否更新服务器分区角色数量)
+ * @param deleteFinally    if this flag is set, the config option will be ignored and the character will be permanently removed from the database (是否忽略配置直接永久物理删除)
  */
+/// 从数据库删除指定角色（支持软删除保留与彻底物理清除）
 void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRealmChars, bool deleteFinally)
 {
-    // the guid can come from a client packet: only its counter is trusted, whatever type its high part claims
+    // the guid can come from a client packet: only its counter is trusted, whatever type its high part claims (GUID 可能来自客户端包，仅信任低位计数器并重新构造玩家 GUID)
     playerguid = ObjectGuid(HIGHGUID_PLAYER, playerguid.GetCounter());
 
-    // for nonexistent account avoid update realm
+    // for nonexistent account avoid update realm (账号不存在时不更新分区角色计数)
     if (accountId == 0)
         updateRealmChars = false;
 
     uint32 charDelete_method = sWorld.getConfig(CONFIG_UINT32_CHARDELETE_METHOD);
     uint32 charDelete_minLvl = sWorld.getConfig(CONFIG_UINT32_CHARDELETE_MIN_LEVEL);
 
-    // if we want to finally delete the character or the character does not meet the level requirement, we set it to mode 0
+    // if we want to finally delete the character or the character does not meet the level requirement, we set it to mode 0 (若需彻底删除或未达保留等级门槛，则强制模式为 0 物理删除)
     if (deleteFinally || Player::GetLevelFromDB(playerguid) < charDelete_minLvl)
         charDelete_method = 0;
 
     uint32 lowguid = playerguid.GetCounter();
 
-    // convert corpse to bones if exist (to prevent exiting Corpse in World without DB entry)
-    // bones will be deleted by corpse/bones deleting thread shortly
+    // convert corpse to bones if exist (to prevent exiting Corpse in World without DB entry) (若存在尸体则转为白骨，避免世界中残留无数据库记录的尸体)
+    // bones will be deleted by corpse/bones deleting thread shortly (白骨将由后续清理线程自动清除)
     sObjectAccessor.ConvertCorpseForPlayer(playerguid);
 
-    // remove from guild
+    // remove from guild (从公会中移除)
     if (uint32 guildId = GetGuildIdFromDB(playerguid))
         if (Guild* guild = sGuildMgr.GetGuildById(guildId))
             if (guild->DelMember(playerguid))
                 guild->Disband();
 
-    // remove from arena teams
+    // remove from arena teams (从所有竞技场战队中移除)
     LeaveAllArenaTeams(playerguid);
 
-    // the player was uninvited already on logout so just remove from group
+    // the player was uninvited already on logout so just remove from group (登出时已撤销邀请，此处直接移出队伍)
     auto resultGroup = CharacterDatabase.PQuery("SELECT groupId FROM group_member WHERE memberGuid='%u'", lowguid);
     if (resultGroup)
     {
@@ -4264,19 +4303,19 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             RemoveFromGroup(group, playerguid);
     }
 
-    // remove signs from petitions (also remove petitions if owner);
+    // remove signs from petitions (also remove petitions if owner); (移除请愿书签名；若为发起人则删除请愿书)
     RemovePetitionsAndSigns(playerguid, 10);
 
-    // Sends mail, so it has to come before the transaction below
+    // Sends mail, so it has to come before the transaction below (内部会发送退信邮件，须在下方数据库事务前执行)
     if (charDelete_method == 0)
         sAuctionMgr.RemovePlayerAuctions(playerguid);
 
     switch (charDelete_method)
     {
-        // completely remove from the database
+        // completely remove from the database (从数据库中彻底抹除角色数据)
         case 0:
         {
-            // return back all mails with COD and Item         0  1           2              3      4       5          6     7
+            // return back all mails with COD and Item         0  1           2              3      4       5          6     7 (退回所有带付费或附件的邮件)
             auto resultMail = CharacterDatabase.PQuery("SELECT id,messageType,mailTemplateId,sender,subject,itemTextId,money,has_items FROM mail WHERE receiver='%u' AND has_items<>0 AND cod<>0", lowguid);
             if (resultMail)
             {
@@ -4293,11 +4332,11 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
                     uint32 money         = fields[6].GetUInt32();
                     bool has_items       = fields[7].GetBool();
 
-                    // we can return mail now
-                    // so firstly delete the old one
+                    // we can return mail now (执行退信并删除原邮件)
+                    // so firstly delete the old one (先删除旧邮件记录)
                     CharacterDatabase.PExecute("DELETE FROM mail WHERE id = '%u'", mail_id);
 
-                    // mail not from player
+                    // mail not from player (非玩家寄出的系统/拍卖行邮件)
                     if (mailType != MAIL_NORMAL)
                     {
                         if (has_items)
@@ -4307,13 +4346,13 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
 
                     MailDraft draft;
                     if (mailTemplateId)
-                        draft.SetMailTemplate(mailTemplateId, false);// items already included
+                        draft.SetMailTemplate(mailTemplateId, false);// items already included (退信时物品已随邮件归还)
                     else
                         draft.SetSubjectAndBodyId(subject, itemTextId);
 
                     if (has_items)
                     {
-                        // data needs to be at first place for Item::LoadFromDB
+                        // data needs to be at first place for Item::LoadFromDB (字段顺序须与 Item::LoadFromDB 保持一致)
                         //                                                  0          1            2                3      4         5        6      7             8                 9           10          11         12
                         auto resultItems = CharacterDatabase.PQuery("SELECT itemEntry, creatorGuid, giftCreatorGuid, count, duration, charges, flags, enchantments, randomPropertyId, durability, itemTextId, item_guid, item_template FROM mail_items JOIN item_instance ON item_guid = guid WHERE mail_id='%u'", mail_id);
                         if (resultItems)
@@ -4336,7 +4375,7 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
                                 if (!pItem->LoadFromDB(item_guidlow, fields2, playerguid))
                                 {
                                     pItem->FSetState(ITEM_REMOVED);
-                                    pItem->SaveToDB();      // it also deletes item object !
+                                    pItem->SaveToDB();      // it also deletes item object ! (同时释放物品内存对象)
                                     continue;
                                 }
 
@@ -4355,14 +4394,14 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
                 while (resultMail->NextRow());
             }
 
-            // unsummon and delete for pets in world is not required: player deleted from CLI or character list with not loaded pet.
-            // Get guids of character's pets, will deleted in transaction
+            // unsummon and delete for pets in world is not required: player deleted from CLI or character list with not loaded pet. (从命令行或选人界面删角时宠物未加载，无需在世界中解散)
+            // Get guids of character's pets, will deleted in transaction (查询角色名下所有宠物 GUID 以便在事务中删除)
             auto resultPets = CharacterDatabase.PQuery("SELECT id FROM character_pet WHERE owner = '%u'", lowguid);
 
-            // delete char from friends list when selected chars is online (non existing - error)
+            // delete char from friends list when selected chars is online (non existing - error) (清理好友关系及离线记录)
             auto  resultFriend = CharacterDatabase.PQuery("SELECT DISTINCT guid FROM character_social WHERE friend = '%u'", lowguid);
 
-            // NOW we can finally clear other DB data related to character
+            // NOW we can finally clear other DB data related to character (现在可以清理与该角色关联的所有数据库表)
             CharacterDatabase.BeginTransaction();
             if (resultPets)
             {
@@ -4370,13 +4409,13 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
                 {
                     Field* fields3 = resultPets->Fetch();
                     uint32 petguidlow = fields3[0].GetUInt32();
-                    // do not create separate transaction for pet delete otherwise we will get fatal error!
+                    // do not create separate transaction for pet delete otherwise we will get fatal error! (切勿在事务内另开宠物删除事务，否则会引发数据库致命错误)
                     Pet::DeleteFromDB(petguidlow, false);
                 }
                 while (resultPets->NextRow());
             }
 
-            // cleanup friends for online players, offline case will cleanup later in code
+            // cleanup friends for online players, offline case will cleanup later in code (清理在线玩家的好友列表；离线情况由上文 SQL 处理)
             if (resultFriend)
             {
                 do
@@ -4399,7 +4438,7 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             CharacterDatabase.PExecute("DELETE FROM character_action WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_aura WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_battleground_data WHERE guid = '%u'", lowguid);
-            // A gift it wrapped and already sent belongs to its receiver: only the ones it still holds go
+            // A gift it wrapped and already sent belongs to its receiver: only the ones it still holds go (已寄出的礼物归收件人所有，仅销毁角色当前持有的礼物记录)
             CharacterDatabase.PExecute("DELETE FROM character_gifts WHERE guid = '%u' AND item_guid IN (SELECT guid FROM item_instance WHERE owner_guid = '%u')", lowguid, lowguid);
             CharacterDatabase.PExecute("UPDATE character_gifts SET guid = 0 WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_homebind WHERE guid = '%u'", lowguid);
@@ -4421,20 +4460,20 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             CharacterDatabase.PExecute("DELETE FROM guild_eventlog WHERE PlayerGuid1 = '%u' OR PlayerGuid2 = '%u'", lowguid, lowguid);
             CharacterDatabase.PExecute("DELETE FROM guild_bank_eventlog WHERE PlayerGuid = '%u'", lowguid);
 
-            // What other tables still keep of the character, so that nothing is left to name it
+            // What other tables still keep of the character, so that nothing is left to name it (清理其他表对该角色 GUID/名称的引用)
             CharacterDatabase.PExecute("DELETE FROM character_account_data WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_stats WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_queststatus_monthly WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_queststatus_weekly WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM item_loot WHERE owner_guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM pvpstats_players WHERE character_guid = '%u'", lowguid);
-            // Auras it cast on others: caster_guid holds the full guid
+            // Auras it cast on others: caster_guid holds the full guid (清理该角色施放在他人身上的持久化光环)
             CharacterDatabase.PExecute("DELETE FROM character_aura WHERE caster_guid = '" UI64FMTD "'", playerguid.GetRawValue());
             CharacterDatabase.PExecute("DELETE FROM pet_aura WHERE caster_guid = '" UI64FMTD "'", playerguid.GetRawValue());
-            // Items it crafted that now belong to others. The gift creator is left alone: a wrapped item is
-            // recognised by a non-empty one.
+            // Items it crafted that now belong to others. The gift creator is left alone: a wrapped item is (清除已流转到他人身上的制造者签名；礼物签名保留)
+            // recognised by a non-empty one. (用于区分包裹礼物)
             CharacterDatabase.PExecute("UPDATE item_instance SET creatorGuid = 0 WHERE creatorGuid = '%u'", lowguid);
-            // GM tickets: its own are removed, the ones it handled as a GM go back to unassigned
+            // GM tickets: its own are removed, the ones it handled as a GM go back to unassigned (删除自身提交的 GM 工单，并释放其作为 GM 接手的工单)
             CharacterDatabase.PExecute("DELETE FROM gm_tickets WHERE author_guid = '%u'", lowguid);
             CharacterDatabase.PExecute("UPDATE gm_tickets SET assignee_guid = 0, assignee_name = '', status = CASE WHEN status = '%u' THEN '%u' ELSE status END "
                                        "WHERE assignee_guid = '%u'", uint32(GMTICKET_ASSIGNEDTOGM_STATUS_ASSIGNED), uint32(GMTICKET_ASSIGNEDTOGM_STATUS_NOT_ASSIGNED), lowguid);
@@ -4442,7 +4481,7 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             CharacterDatabase.CommitTransaction();
             break;
         }
-        // The character gets unlinked from the account, the name gets freed up and appears as deleted ingame
+        // The character gets unlinked from the account, the name gets freed up and appears as deleted ingame (软删除：解除账号绑定、释放角色名并标记为已删除)
         case 1:
             CharacterDatabase.PExecute("UPDATE characters SET deleteInfos_Name=name, deleteInfos_Account=account, deleteDate='" UI64FMTD "', name='', account=0 WHERE guid=%u", uint64(time(nullptr)), lowguid);
             break;
@@ -4456,6 +4495,7 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
 
 /**
  * Characters which were kept back in the database after being deleted and are now too old (see config option "CharDelete.KeepDays"), will be completely deleted.
+ * 彻底清理数据库中超过保留天数（CharDelete.KeepDays）的已删除角色。
  *
  * @see Player::DeleteFromDB
  */
@@ -4470,10 +4510,11 @@ void Player::DeleteOldCharacters()
 
 /**
  * Characters which were kept back in the database after being deleted and are older than the specified amount of days, will be completely deleted.
+ * 彻底清理数据库中保留超过指定天数的已删除角色。
  *
  * @see Player::DeleteFromDB
  *
- * @param keepDays overrite the config option by another amount of days
+ * @param keepDays overrite the config option by another amount of days (覆盖配置选项的保留天数)
  */
 void Player::DeleteOldCharacters(uint32 keepDays)
 {
@@ -4494,28 +4535,29 @@ void Player::DeleteOldCharacters(uint32 keepDays)
     sLog.outString();
 }
 
-/* Preconditions:
-  - a resurrectable corpse must not be loaded for the player (only bones)
-  - the player must be in world
+/* Preconditions (前置条件):
+  - a resurrectable corpse must not be loaded for the player (only bones) (玩家当前不可已有可复活尸体，最多仅允许白骨)
+  - the player must be in world (玩家必须处于世界中)
 */
+/// 释放灵魂并在玩家死亡位置生成可复活尸体，角色转为幽灵形态
 void Player::BuildPlayerRepop()
 {
     if (getRace() == RACE_NIGHTELF)
-        CastSpell(this, 20584, TRIGGERED_OLD_TRIGGERED);                       // auras SPELL_AURA_INCREASE_SPEED(+speed in wisp form), SPELL_AURA_INCREASE_SWIM_SPEED(+swim speed in wisp form), SPELL_AURA_TRANSFORM (to wisp form)
-    CastSpell(this, 8326, TRIGGERED_OLD_TRIGGERED);                            // auras SPELL_AURA_GHOST, SPELL_AURA_INCREASE_SPEED(why?), SPELL_AURA_INCREASE_SWIM_SPEED(why?)
+        CastSpell(this, 20584, TRIGGERED_OLD_TRIGGERED);                       // auras SPELL_AURA_INCREASE_SPEED(+speed in wisp form), SPELL_AURA_INCREASE_SWIM_SPEED(+swim speed in wisp form), SPELL_AURA_TRANSFORM (to wisp form) (暗夜精灵小精灵形态加速、游泳加速与变身光环)
+    CastSpell(this, 8326, TRIGGERED_OLD_TRIGGERED);                            // auras SPELL_AURA_GHOST, SPELL_AURA_INCREASE_SPEED(why?), SPELL_AURA_INCREASE_SWIM_SPEED(why?) (常规幽灵光环与移速/游速光环)
 
-    // there must be SMSG.FORCE_RUN_SPEED_CHANGE, SMSG.FORCE_SWIM_SPEED_CHANGE, SMSG.MOVE_WATER_WALK (inside ghost aura handler)
-    // there must be SMSG.STOP_MIRROR_TIMER
-    // there we must send 888 opcode
+    // there must be SMSG.FORCE_RUN_SPEED_CHANGE, SMSG.FORCE_SWIM_SPEED_CHANGE, SMSG.MOVE_WATER_WALK (inside ghost aura handler) (幽灵光环处理器会下发速度变更与水上行走数据包)
+    // there must be SMSG.STOP_MIRROR_TIMER (停止呼吸/疲劳等镜像计时器)
+    // there we must send 888 opcode (下发尸体位置与灵魂释放相关操作码)
 
-    // the player cannot have a corpse already, only bones which are not returned by GetCorpse
+    // the player cannot have a corpse already, only bones which are not returned by GetCorpse (玩家不能已有未腐化的尸体，GetCorpse 不返回白骨)
     if (GetCorpse())
     {
         sLog.outError("BuildPlayerRepop: player %s(%d) already has a corpse", GetName(), GetGUIDLow());
         MANGOS_ASSERT(false);
     }
 
-    // create a corpse and place it at the player's location
+    // create a corpse and place it at the player's location (在玩家当前位置创建尸体)
     Corpse* corpse = CreateCorpse();
     if (!corpse)
     {
@@ -4524,45 +4566,46 @@ void Player::BuildPlayerRepop()
     }
     GetMap()->Add(corpse);
 
-    // convert player body to ghost
+    // convert player body to ghost (将玩家角色转换为幽灵状态)
     SetHealth(1);
 
     if (!IsImmobilizedState())
         SendMoveRoot(false);
 
-    // BG - remove insignia related
+    // BG - remove insignia related (清除战场徽记可拾取标记)
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
 
     SendCorpseReclaimDelay();
 
-    // to prevent cheating
+    // to prevent cheating (清除飞行标记以防作弊)
     corpse->ResetGhostTime();
 
-    // set and clear other
+    // set and clear other (更新死亡释放计时并发送尸体回收延迟)
     SetByteValue(UNIT_FIELD_BYTES_1, UNIT_BYTES_1_OFFSET_MISC_FLAGS, UNIT_BYTE1_FLAG_ALWAYS_STAND);
 
-    FailQuestsOnDeath(); // confirmed to be on release
+    FailQuestsOnDeath(); // confirmed to be on release (确认释放灵魂时触发)
 }
 
+/// 复活玩家并按比例恢复生命与能量，可选施加复活虚弱
 void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 {
-    WorldPacket data(SMSG_DEATH_RELEASE_LOC, 4 * 4);        // remove spirit healer position
+    WorldPacket data(SMSG_DEATH_RELEASE_LOC, 4 * 4);        // remove spirit healer position (清除客户端显示的灵魂医者位置标记)
     data << uint32(-1);
     data << float(0);
     data << float(0);
     data << float(0);
     GetSession()->SendPacket(data);
 
-    // speed change, land walk
+    // speed change, land walk (通知地面行走与速度恢复)
 
-    // remove death flag + set aura
+    // remove death flag + set aura (移除死亡状态标记并恢复存活态)
     SetByteValue(UNIT_FIELD_BYTES_1, UNIT_BYTES_1_OFFSET_MISC_FLAGS, 0x00);
 
     SetDeathState(ALIVE);
 
     if (getRace() == RACE_NIGHTELF)
-        RemoveAurasDueToSpell(20584);                       // speed bonuses
-    RemoveAurasDueToSpell(8326);                            // SPELL_AURA_GHOST
+        RemoveAurasDueToSpell(20584);                       // speed bonuses (重新计算移动速度加成)
+    RemoveAurasDueToSpell(8326);                            // SPELL_AURA_GHOST (移除幽灵光环)
 
     if ((GetSession()->GetRecruitingFriendId() != 0))
         SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_REFER_A_FRIEND);
@@ -4571,7 +4614,7 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 
     m_deathTimer = 0;
 
-    // set health/powers (0- will be set in caller)
+    // set health/powers (0- will be set in caller) (按比例恢复生命与能量，若为 0 则由调用方设置)
     if (restore_percent > 0.0f)
     {
         SetHealth(uint32(GetMaxHealth()*restore_percent));
@@ -4580,13 +4623,13 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
         SetPower(POWER_ENERGY, uint32(GetMaxPower(POWER_ENERGY)*restore_percent));
     }
 
-    // trigger update zone for alive state zone updates
+    // trigger update zone for alive state zone updates (触发存活状态下的区域更新)
     uint32 newzone, newarea;
     GetZoneAndAreaId(newzone, newarea);
-    UpdateZone(newzone, newarea, true); // must force zone script updates too to reapply auras
+    UpdateZone(newzone, newarea, true); // must force zone script updates too to reapply auras (强制触发区域脚本以重新应用区域光环)
 
-    // update visibility of world around viewpoint
-    // update visibility of player for nearby cameras
+    // update visibility of world around viewpoint (刷新视点周围世界对象的可见性)
+    // update visibility of player for nearby cameras (刷新周围观察者视角对玩家的可见性)
     if (IsInWorld())
     {
         GetMap()->AddUpdateCreateObject(this);
@@ -4598,18 +4641,18 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     if (!applySickness)
         return;
 
-    // Characters from level 1-10 are not affected by resurrection sickness.
-    // Characters from level 11-19 will suffer from one minute of sickness
-    // for each level they are above 10.
-    // Characters level 20 and up suffer from ten minutes of sickness.
+    // Characters from level 1-10 are not affected by resurrection sickness. (1-10 级角色不受复活虚弱影响)
+    // Characters from level 11-19 will suffer from one minute of sickness (11-19 级角色每高于 10 级承受 1 分钟复活虚弱)
+    // for each level they are above 10. (每超过 10 级增加 1 分钟)
+    // Characters level 20 and up suffer from ten minutes of sickness. (20 级及以上角色承受 10 分钟复活虚弱)
     int32 startLevel = sWorld.getConfig(CONFIG_INT32_DEATH_SICKNESS_LEVEL);
 
     if (int32(GetLevel()) >= startLevel)
     {
-        // set resurrection sickness
+        // set resurrection sickness (施加复活虚弱法术)
         CastSpell(this, SPELL_ID_PASSIVE_RESURRECTION_SICKNESS, TRIGGERED_OLD_TRIGGERED);
 
-        // not full duration
+        // not full duration (11-19 级缩短复活虚弱持续时间)
         if (int32(GetLevel()) < startLevel + 9)
         {
             int32 delta = (int32(GetLevel()) - startLevel + 1) * MINUTE;
@@ -4631,11 +4674,11 @@ std::pair<bool, AreaTrigger const*> Player::CheckAndRevivePlayerOnDungeonEnter(M
     if (Corpse* corpse = GetCorpse())
         corpseMapId = corpse->GetMapId();
 
-    // check back way from corpse to entrance
+    // check back way from corpse to entrance (检查从尸体所在副本返回入口传送触发器)
     uint32 instance_map = corpseMapId;
     do
     {
-        // most often fast case
+        // most often fast case (最常见的快速路径：直接命中或无需重连)
         if (instance_map == targetMapEntry->MapID)
             break;
 
@@ -4643,7 +4686,7 @@ std::pair<bool, AreaTrigger const*> Player::CheckAndRevivePlayerOnDungeonEnter(M
         instance_map = instance ? instance->parent : 0;
     } while (instance_map);
 
-    // corpse not in dungeon or some linked deep dungeons
+    // corpse not in dungeon or some linked deep dungeons (尸体不在副本内或位于多层关联地下城中)
     if (!instance_map)
     {
         GetSession()->SendAreaTriggerMessage("You cannot enter %s while in a ghost mode",
@@ -4651,7 +4694,7 @@ std::pair<bool, AreaTrigger const*> Player::CheckAndRevivePlayerOnDungeonEnter(M
         return { false, nullptr };
     }
 
-    // need find areatrigger to inner dungeon for landing point
+    // need find areatrigger to inner dungeon for landing point (查找通往深层副本的入口区域触发器作为落脚点)
     if (targetMapId != corpseMapId)
     {
         if (AreaTrigger const* corpseAt = sObjectMgr.GetMapEntranceTrigger(corpseMapId))
@@ -4663,12 +4706,13 @@ std::pair<bool, AreaTrigger const*> Player::CheckAndRevivePlayerOnDungeonEnter(M
         }
     }
 
-    // now we can resurrect player, and then check teleport requirements
+    // now we can resurrect player, and then check teleport requirements (先复活玩家，随后检查副本进入权限)
     ResurrectPlayer(0.5f);
     SpawnCorpseBones();
     return { true, resultingAt };
 }
 
+/// 击杀玩家并设置 PvP 死亡状态与释放倒计时
 void Player::KillPlayer()
 {
     SendMoveRoot(true);
@@ -4679,17 +4723,17 @@ void Player::KillPlayer()
     SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_NONE);
     ApplyModByteFlag(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_FLAGS, PLAYER_FIELD_BYTE_RELEASE_TIMER, !sMapStore.LookupEntry(GetMapId())->Instanceable());
 
-    // 6 minutes until repop at graveyard
+    // 6 minutes until repop at graveyard (6 分钟后自动释放灵魂至墓地)
     m_deathTimer = 6 * MINUTE * IN_MILLISECONDS;
 
-    UpdateCorpseReclaimDelay();                             // dependent at use SetDeathPvP() call before kill
+    UpdateCorpseReclaimDelay();                             // dependent at use SetDeathPvP() call before kill (取决于击杀前设置的 PvP 死亡标志)
 
-    // don't create corpse at this moment, player might be falling
+    // don't create corpse at this moment, player might be falling (此时暂不生成尸体，玩家可能处于坠落中)
 }
 
 Corpse* Player::CreateCorpse()
 {
-    // prevent existence 2 corpse for player
+    // prevent existence 2 corpse for player (防止同时存在两个属于同一玩家的尸体)
     SpawnCorpseBones();
 
     Corpse* corpse = new Corpse((m_ExtraFlags & PLAYER_EXTRA_PVP_DEATH) ? CORPSE_RESURRECTABLE_PVP : CORPSE_RESURRECTABLE_PVE);
@@ -4724,7 +4768,7 @@ Corpse* Player::CreateCorpse()
     if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_CLOAK))
         flags |= CORPSE_FLAG_HIDE_CLOAK;
     if (InBattleGround() && !InArena())
-        flags |= CORPSE_FLAG_LOOTABLE;                      // to be able to remove insignia
+        flags |= CORPSE_FLAG_LOOTABLE;                      // to be able to remove insignia (战场中允许敌方玩家拔除徽记)
     corpse->SetUInt32Value(CORPSE_FIELD_FLAGS, flags);
 
     corpse->SetUInt32Value(CORPSE_FIELD_DISPLAY_ID, GetNativeDisplayId());
@@ -4743,11 +4787,11 @@ Corpse* Player::CreateCorpse()
         }
     }
 
-    // we not need saved corpses for BG/arenas
+    // we not need saved corpses for BG/arenas (战场与竞技场中的尸体无需持久化到数据库)
     if (!GetMap()->IsBattleGroundOrArena())
         corpse->SaveToDB();
 
-    // register for player, but not show
+    // register for player, but not show (注册尸体但不立即对存活可见对象展示)
     sObjectAccessor.AddCorpse(corpse);
     return corpse;
 }
@@ -4755,8 +4799,8 @@ Corpse* Player::CreateCorpse()
 void Player::SpawnCorpseBones()
 {
     if (sObjectAccessor.ConvertCorpseForPlayer(GetObjectGuid()))
-        if (!GetSession()->PlayerLogoutWithSave())          // at logout we will already store the player
-            SaveToDB();                                     // prevent loading as ghost without corpse
+        if (!GetSession()->PlayerLogoutWithSave())          // at logout we will already store the player (登出时玩家已被保存，此处无需额外保存)
+            SaveToDB();                                     // prevent loading as ghost without corpse (将尸体转为白骨以避免玩家作为无尸幽灵加载)
 }
 
 Corpse* Player::GetCorpse() const
@@ -4772,14 +4816,14 @@ void Player::DurabilityLossAll(double percent, bool inventory)
 
     if (inventory)
     {
-        // bags not have durability
+        // bags not have durability (背包栏本身无耐久度)
         // for(int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
 
         for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
             if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
                 DurabilityLoss(pItem, percent);
 
-        // keys not have durability
+        // keys not have durability (钥匙链无耐久度)
         // for(int i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
 
         for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -4825,14 +4869,14 @@ void Player::DurabilityPointsLossAll(int32 points, bool inventory)
 
     if (inventory)
     {
-        // bags not have durability
+        // bags not have durability (背包栏本身无耐久度)
         // for(int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
 
         for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
             if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
                 DurabilityPointsLoss(pItem, points);
 
-        // keys not have durability
+        // keys not have durability (钥匙链无耐久度)
         // for(int i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
 
         for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -4856,13 +4900,13 @@ void Player::DurabilityPointsLoss(Item* item, int32 points)
 
     if (pOldDurability != pNewDurability)
     {
-        // modify item stats _before_ Durability set to 0 to pass _ApplyItemMods internal check
+        // modify item stats _before_ Durability set to 0 to pass _ApplyItemMods internal check (在耐久度归 0 前移除装备属性，以通过 _ApplyItemMods 内部检查)
         if (pNewDurability == 0 && pOldDurability > 0 && item->IsEquipped())
             _ApplyItemMods(item, item->GetSlot(), false);
 
         item->SetUInt32Value(ITEM_FIELD_DURABILITY, pNewDurability);
 
-        // modify item stats _after_ restore durability to pass _ApplyItemMods internal check
+        // modify item stats _after_ restore durability to pass _ApplyItemMods internal check (恢复耐久度后再重新应用装备属性，以通过内部检查)
         if (pNewDurability > 0 && pOldDurability == 0 && item->IsEquipped())
             _ApplyItemMods(item, item->GetSlot(), true);
 
@@ -4879,19 +4923,20 @@ void Player::DurabilityPointLossForEquipSlot(EquipmentSlots slot)
 uint32 Player::DurabilityRepairAll(bool cost, float discountMod, bool guildBank)
 {
     uint32 TotalCost = 0;
-    // equipped, backpack, bags itself
+    // equipped, backpack, bags itself (修理已装备部位与行囊主格物品)
     for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
         TotalCost += DurabilityRepair(((INVENTORY_SLOT_BAG_0 << 8) | i), cost, discountMod, guildBank);
 
-    // bank, buyback and keys not repaired
+    // bank, buyback and keys not repaired (银行、回购栏与钥匙链不修理)
 
-    // items in inventory bags
+    // items in inventory bags (修理背包内各格物品)
     for (int j = INVENTORY_SLOT_BAG_START; j < INVENTORY_SLOT_BAG_END; ++j)
         for (int i = 0; i < MAX_BAG_SIZE; ++i)
             TotalCost += DurabilityRepair(((j << 8) | i), cost, discountMod, guildBank);
     return TotalCost;
 }
 
+/// 修理指定背包/装备槽位的物品耐久度并返回花费金币
 uint32 Player::DurabilityRepair(uint16 pos, bool cost, float discountMod, bool guildBank)
 {
     Item* item = GetItemByPos(pos);
@@ -4900,7 +4945,7 @@ uint32 Player::DurabilityRepair(uint16 pos, bool cost, float discountMod, bool g
     if (!item)
         return TotalCost;
 
-    // a wrapped item shows no durability
+    // a wrapped item shows no durability (已包装的礼物不参与修理)
     if (item->HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED))
         return TotalCost;
 
@@ -4961,20 +5006,21 @@ uint32 Player::DurabilityRepair(uint16 pos, bool cost, float discountMod, bool g
     item->SetUInt32Value(ITEM_FIELD_DURABILITY, maxDurability);
     item->SetState(ITEM_CHANGED, this);
 
-    // reapply mods for total broken and repaired item if equipped
+    // reapply mods for total broken and repaired item if equipped (若受损归零装备被修好且已穿戴，重新应用属性加成)
     if (IsEquipmentPos(pos) && !curDurability)
         _ApplyItemMods(item, pos & 255, true);
     return TotalCost;
 }
 
+/// 将灵魂状态的玩家传送至最近可用墓地（不可达区域则自动复活）
 void Player::RepopAtGraveyard()
 {
-    // note: this can be called also when the player is alive
-    // for example from WorldSession::HandleMovementOpcodes
+    // note: this can be called also when the player is alive (注：玩家存活时也可能调用此函数，)
+    // for example from WorldSession::HandleMovementOpcodes (例如落入虚空时从移动处理器调用)
 
     AreaTableEntry const* zone = GetAreaEntryByAreaID(GetAreaId());
 
-    // Such zones are considered unreachable as a ghost and the player must be automatically revived
+    // Such zones are considered unreachable as a ghost and the player must be automatically revived (此类区域幽灵无法抵达，须自动原地/墓地复活)
     if ((!IsAlive() && zone && zone->flags & AREA_FLAG_NEED_FLY) || GetTransport())
     {
         ResurrectPlayer(0.5f);
@@ -4984,18 +5030,18 @@ void Player::RepopAtGraveyard()
     WorldSafeLocsEntry const* ClosestGrave;
     ClosestGrave = GetMap()->GetGraveyardManager().GetClosestGraveYard(GetPositionX(), GetPositionY(), GetPositionZ(), GetMapId(), GetTeam());
 
-    // stop countdown until repop
+    // stop countdown until repop (停止自动释放/传送倒计时)
     m_deathTimer = 0;
 
-    // if no grave found, stay at the current location
-    // and don't show spirit healer location
+    // if no grave found, stay at the current location (若未找到安全墓地则留在当前位置)
+    // and don't show spirit healer location (且不显示灵魂医者位置)
     if (ClosestGrave)
     {
         bool updateVisibility = IsInWorld() && GetMapId() == ClosestGrave->map_id;
         TeleportTo(ClosestGrave->map_id, ClosestGrave->x, ClosestGrave->y, ClosestGrave->z, ClosestGrave->o);
-        if (IsDead())                                       // not send if alive, because it used in TeleportTo()
+        if (IsDead())                                       // not send if alive, because it used in TeleportTo() (存活状态下不发送，避免影响常规传送)
         {
-            WorldPacket data(SMSG_DEATH_RELEASE_LOC, 4 * 4);// show spirit healer position on minimap
+            WorldPacket data(SMSG_DEATH_RELEASE_LOC, 4 * 4);// show spirit healer position on minimap (向客户端发送灵魂医者墓地坐标标记)
             data << ClosestGrave->map_id;
             data << ClosestGrave->x;
             data << ClosestGrave->y;
@@ -5022,10 +5068,10 @@ void Player::CleanupChannels()
     while (!m_channels.empty())
     {
         Channel* ch = *m_channels.begin();
-        m_channels.erase(m_channels.begin());               // remove from player's channel list
-        ch->Leave(this, false);                             // not send to client, not remove from player's channel list
+        m_channels.erase(m_channels.begin());               // remove from player's channel list (从玩家已加入频道列表中移除)
+        ch->Leave(this, false);                             // not send to client, not remove from player's channel list (清理时直接退出，不向客户端发包)
         if (ChannelMgr* cMgr = channelMgr(GetTeam()))
-            cMgr->LeftChannel(ch->GetName());               // deleted channel if empty
+            cMgr->LeftChannel(ch->GetName());               // deleted channel if empty (若频道已无成员则销毁频道)
     }
     DEBUG_LOG("Player: channels cleaned up!");
 }
@@ -5051,24 +5097,24 @@ void Player::UpdateLocalChannels(uint32 newZone)
 
         ChatChannelsEntry const* ch = (*i)->GetChannelEntry();
 
-        // skip non built-in channels or global channel without zone name in pattern
+        // skip non built-in channels or global channel without zone name in pattern (跳过自定义频道或不带区域名的全局频道)
         if (!ch || (ch->flags & 4) == 4)
             continue;
 
-        //  new channel
+        //  new channel (构造新区域的本地频道名称)
         char new_channel_name_buf[100];
         snprintf(new_channel_name_buf, 100, ch->pattern[m_session->GetSessionDbcLocale()], current_zone_name.c_str());
         Channel* new_channel = cMgr->GetJoinChannel(new_channel_name_buf, ch->ChannelID);
 
         if ((*i) != new_channel)
         {
-            new_channel->Join(this, "");                    // will output Changed Channel: N. Name
+            new_channel->Join(this, "");                    // will output Changed Channel: N. Name (向客户端发送切换本地频道通知)
 
-            // leave old channel
-            (*i)->Leave(this, false);                       // not send leave channel, it already replaced at client
-            std::string name = (*i)->GetName();             // store name, (*i)erase in LeftChannel
-            LeftChannel(*i);                                // remove from player's channel list
-            cMgr->LeftChannel(name);                        // delete if empty
+            // leave old channel (离开旧区域本地频道)
+            (*i)->Leave(this, false);                       // not send leave channel, it already replaced at client (不发送退出消息，客户端已自动替换)
+            std::string name = (*i)->GetName();             // store name, (*i)erase in LeftChannel (先保存频道名，LeftChannel 会删除迭代器)
+            LeftChannel(*i);                                // remove from player's channel list (从玩家频道列表移除)
+            cMgr->LeftChannel(name);                        // delete if empty (若旧频道无人则销毁)
         }
     }
     DEBUG_LOG("Player: channels cleaned up!");
@@ -5189,21 +5235,21 @@ float Player::GetMeleeCritFromAgility() const
     return crit * 100.0f;
 }
 
-// Static multipliers for converting agi into dodge based on agi to crit conversion ratio
+// Static multipliers for converting agi into dodge based on agi to crit conversion ratio (各职业敏捷转躲闪静态系数，基于敏捷转暴击比率)
 static const float PLAYER_AGI_TO_CRIT_TO_DODGE[MAX_CLASSES] =
 {
-    0.0f, // [0]  <Unused>
-    1.1f, // [1]  Warrior
-    1.0f, // [2]  Paladin
-    1.6f, // [3]  Hunter
-    2.0f, // [4]  Rogue
-    1.0f, // [5]  Priest
-    1.0f, // [6]  DK
-    1.0f, // [7]  Shaman
-    1.0f, // [8]  Mage
-    1.0f, // [9]  Warlock
-    0.0f, // [10] <Unused>
-    1.7f, // [11] Druid
+    0.0f, // [0]  <Unused> ([0] 未使用)
+    1.1f, // [1]  Warrior ([1] 战士)
+    1.0f, // [2]  Paladin ([2] 圣骑士)
+    1.6f, // [3]  Hunter ([3] 猎人)
+    2.0f, // [4]  Rogue ([4] 潜行者)
+    1.0f, // [5]  Priest ([5] 牧师)
+    1.0f, // [6]  DK ([6] 死亡骑士)
+    1.0f, // [7]  Shaman ([7] 萨满祭司)
+    1.0f, // [8]  Mage ([8] 法师)
+    1.0f, // [9]  Warlock ([9] 术士)
+    0.0f, // [10] <Unused> ([10] 未使用)
+    1.7f, // [11] Druid ([11] 德鲁伊)
 };
 
 float Player::GetDodgeFromAgility(float amount) const
@@ -5214,7 +5260,7 @@ float Player::GetDodgeFromAgility(float amount) const
     const uint32 level = std::min(GetLevel(), uint32(GT_MAX_LEVEL));
     const uint32 index = ((pclass - 1) * GT_MAX_LEVEL) + (level - 1);
 
-    // Dodge per agility is proportional to crit per agility, which is available from DBC files
+    // Dodge per agility is proportional to crit per agility, which is available from DBC files (每点敏捷提供的躲闪率与 DBC 中的敏捷暴击系数成正比)
     const GtChanceToMeleeCritEntry* entry = sGtChanceToMeleeCritStore.LookupEntry(index);
     if (!entry)
         return 0.0f;
@@ -5245,7 +5291,7 @@ float Player::GetRatingMultiplier(CombatRating cr) const
 
     GtCombatRatingsEntry const* Rating = sGtCombatRatingsStore.LookupEntry(cr * GT_MAX_LEVEL + level - 1);
     if (!Rating)
-        return 1.0f;                                        // By default use minimum coefficient (not must be called)
+        return 1.0f;                                        // By default use minimum coefficient (not must be called) (默认返回最低系数，正常不应命中)
 
     return 1.0f / Rating->ratio;
 }
@@ -5259,7 +5305,7 @@ void Player::ApplyRatingMod(CombatRating cr, int32 value, bool apply)
 {
     m_baseRatingValue[cr] += (apply ? value : -value);
 
-    // explicit affected values
+    // explicit affected values (同步更新受战斗等级影响的衍生属性)
     switch (cr)
     {
         case CR_HASTE_MELEE:
@@ -5299,7 +5345,7 @@ void Player::UpdateRating(CombatRating cr)
 
     switch (cr)
     {
-        case CR_WEAPON_SKILL:                               // Implemented in Unit::RollMeleeOutcomeAgainst
+        case CR_WEAPON_SKILL:                               // Implemented in Unit::RollMeleeOutcomeAgainst (招架/防御技能在 Unit::RollMeleeOutcomeAgainst 中应用)
         case CR_DEFENSE_SKILL:
             UpdateDefenseBonusesMod();
             break;
@@ -5337,21 +5383,21 @@ void Player::UpdateRating(CombatRating cr)
             if (affectStats)
                 UpdateAllSpellCritChances();
             break;
-        case CR_HIT_TAKEN_MELEE:                            // Implemented in Unit::MeleeMissChanceCalc
+        case CR_HIT_TAKEN_MELEE:                            // Implemented in Unit::MeleeMissChanceCalc (近战未命中率在 Unit::MeleeMissChanceCalc 中计算)
         case CR_HIT_TAKEN_RANGED:
             break;
-        case CR_HIT_TAKEN_SPELL:                            // Implemented in Unit::MagicSpellHitResult
+        case CR_HIT_TAKEN_SPELL:                            // Implemented in Unit::MagicSpellHitResult (法术命中率在 Unit::MagicSpellHitResult 中计算)
             break;
-        case CR_CRIT_TAKEN_MELEE:                           // Implemented in Unit::CalculateEffectiveCritChance (only for chance to crit)
+        case CR_CRIT_TAKEN_MELEE:                           // Implemented in Unit::CalculateEffectiveCritChance (only for chance to crit) (韧性免爆在 Unit::CalculateEffectiveCritChance 中计算)
         case CR_CRIT_TAKEN_RANGED:
             break;
-        case CR_CRIT_TAKEN_SPELL:                           // Implemented in Unit::SpellCriticalBonus (only for chance to crit)
+        case CR_CRIT_TAKEN_SPELL:                           // Implemented in Unit::SpellCriticalBonus (only for chance to crit) (法术爆伤韧性减免在 Unit::SpellCriticalBonus 中计算)
             break;
-        case CR_HASTE_MELEE:                                // Implemented in Player::ApplyRatingMod
+        case CR_HASTE_MELEE:                                // Implemented in Player::ApplyRatingMod (武器技能等级在 ApplyRatingMod 中处理)
         case CR_HASTE_RANGED:
         case CR_HASTE_SPELL:
             break;
-        case CR_WEAPON_SKILL_MAINHAND:                      // Implemented in Unit::RollMeleeOutcomeAgainst
+        case CR_WEAPON_SKILL_MAINHAND:                      // Implemented in Unit::RollMeleeOutcomeAgainst (精准等级在 Unit::RollMeleeOutcomeAgainst 中计算)
         case CR_WEAPON_SKILL_OFFHAND:
         case CR_WEAPON_SKILL_RANGED:
             break;
@@ -5387,6 +5433,7 @@ void Player::SetRegularAttackTime()
     }
 }
 
+/// 更新玩家指定技能的当前熟练度并判定是否成功升级
 void Player::UpdateSkill(uint16 id, uint16 diff)
 {
     if (!id)
@@ -5447,7 +5494,7 @@ bool Player::UpdateCraftSkill(uint32 spellid)
         {
             uint32 SkillValue = GetSkillValuePure(skill->skillId);
 
-            // Alchemy Discoveries here
+            // Alchemy Discoveries here (炼金领悟等商业技能制造触发)
             SpellEntry const* spellEntry = sSpellTemplate.LookupEntry<SpellEntry>(spellid);
             if (spellEntry && spellEntry->Mechanic == MECHANIC_DISCOVERY)
             {
@@ -5473,10 +5520,10 @@ bool Player::UpdateGatherSkill(uint32 SkillId, uint32 SkillValue, uint32 RedLeve
 
     uint32 gathering_skill_gain = sWorld.getConfig(CONFIG_UINT32_SKILL_GAIN_GATHERING);
 
-    if (RedLevel == 1) // stuff that starts at 1 should stop at 105 not 101
+    if (RedLevel == 1) // stuff that starts at 1 should stop at 105 not 101 (初始 1 点的采集技能在 105 点变灰而非 101 点)
         RedLevel = 5;
 
-    // For skinning and Mining chance decrease with level. 1-74 - no decrease, 75-149 - 2 times, 225-299 - 8 times
+    // For skinning and Mining chance decrease with level. 1-74 - no decrease, 75-149 - 2 times, 225-299 - 8 times (剥皮与采矿随技能段提升衰减升级概率)
     switch (SkillId)
     {
         case SKILL_HERBALISM:
@@ -5501,7 +5548,7 @@ bool Player::UpdateGatherSkill(uint32 SkillId, uint32 SkillValue, uint32 RedLeve
 
 uint8 GetFishingStepsNeededToLevelUp(uint32 SkillValue)
 {
-    // These formulas are guessed to be as close as possible to how the skill difficulty curve for fishing was on Retail.
+    // These formulas are guessed to be as close as possible to how the skill difficulty curve for fishing was on Retail. (钓鱼升级所需成功次数曲线，尽量贴近官服)
     if (SkillValue < 75)
         return 1;
 
@@ -5522,12 +5569,12 @@ bool Player::UpdateFishingSkill()
 
     uint8 stepsNeededToLevelUp = GetFishingStepsNeededToLevelUp(SkillValue);
     ++m_fishingSteps;
-    // random component, gets more rare as skill gets higher - evidence - when 4 skillups are needed, can be between 2 and 4
-    // actual chances unknown - fishing steps acts as a grace mechanism and random component acts as quasi-normal skillup
+    // random component, gets more rare as skill gets higher - evidence - when 4 skillups are needed, can be between 2 and 4 (随机波动分量：技能越高越稀有)
+    // actual chances unknown - fishing steps acts as a grace mechanism and random component acts as quasi-normal skillup (钓鱼步数作为保底机制，随机项模拟准正态升级)
     if (urand(0, stepsNeededToLevelUp) == 0)
         ++m_fishingSteps;
 
-    // impl of SPELL_ATTR_EX_SPECIAL_SKILLUP
+    // impl of SPELL_ATTR_EX_SPECIAL_SKILLUP (SPELL_ATTR_EX_SPECIAL_SKILLUP 特殊钓鱼提升逻辑)
     if (m_fishingSteps >= stepsNeededToLevelUp)
     {
         m_fishingSteps -= stepsNeededToLevelUp;
@@ -5544,7 +5591,7 @@ bool Player::UpdateSkillPro(uint16 SkillId, int32 Chance, uint16 diff)
     if (!SkillId)
         return false;
 
-    if (Chance <= 0)                                        // speedup in 0 chance case
+    if (Chance <= 0)                                        // speedup in 0 chance case (概率为 0 时快速返回)
     {
         DEBUG_LOG("Player::UpdateSkillPro Chance=%3.1f%% missed", Chance / 10.0);
         return false;
@@ -5590,7 +5637,7 @@ bool Player::UpdateSkillPro(uint16 SkillId, int32 Chance, uint16 diff)
 
 void Player::UpdateWeaponSkill(WeaponAttackType attType)
 {
-    // no skill gain in pvp
+    // no skill gain in pvp (PvP 战斗中不提升武器/防御技能)
     Unit* victim = GetVictim();
     if (victim)
     {
@@ -5623,19 +5670,19 @@ void Player::UpdateCombatSkills(uint32 procEx, WeaponAttackType attType, bool de
     const int32 room = int32(skillMax - skill);
     const int32 level = GetLevel();
 
-    // Skill already capped or invalid state: nothing to gain
+    // Skill already capped or invalid state: nothing to gain (技能已满或状态无效，无法提升)
     if (skillMax == 0 || level == 0 || skill >= skillMax)
         return;
 
-    // skillGapLogGrowth controls the slope of the logarithmic catch-up portion
+    // skillGapLogGrowth controls the slope of the logarithmic catch-up portion (skillGapLogGrowth 控制追赶区段对数增长斜率)
     const double skillGapLogGrowth = 0.22 * (1.0 + (12.0 / level));
-    // levelCapScale normalizes the curve across realm caps and anchors the seam at room = 7
-    // TODO: Figure out if scaling of 295 to 300 is same in vanilla, tbc and wotlk when level 60
+    // levelCapScale normalizes the curve across realm caps and anchors the seam at room = 7 (levelCapScale 归一化跨等级上限曲线并在差值 7 处平滑衔接)
+    // TODO: Figure out if scaling of 295 to 300 is same in vanilla, tbc and wotlk when level 60 (待办：确认 60 级时 295-300 区段在各资料片的缩放规律)
     const double levelCapScale = 1;
 
     double baseChance = 0.0;
 
-    // Piecewise curve: logarithmic growth for catch-up, quadratic decay near the cap
+    // Piecewise curve: logarithmic growth for catch-up, quadratic decay near the cap (分段概率曲线：低技能对数追赶，临近上限二次衰减)
     if (room >= 7)
         baseChance = (7.0 / skillMax) * levelCapScale
                    + skillGapLogGrowth * std::log((room + 5.0) / 12.0);
@@ -5644,20 +5691,20 @@ void Player::UpdateCombatSkills(uint32 procEx, WeaponAttackType attType, bool de
 
     baseChance = std::clamp(baseChance, 0.0, 1.0);
 
-    // Weapon skills gain a small bonus from intellect
+    // Weapon skills gain a small bonus from intellect (智力对武器技能提升速度提供小幅加成)
     double intellectBonus = 0.0;
     if (!defence)
     {
         const double maxIntellectBonus = 0.10;
         const double intellect = GetStat(STAT_INTELLECT);
-        // TODO: Figure out actual intellect scaling contribution - likely a per level value like everything else and not linearly
+        // TODO: Figure out actual intellect scaling contribution - likely a per level value like everything else and not linearly (待办：确认智力对技能提升的准确等级缩放公式)
         const int levelBracket =    (level <= 60) ? 60 :
                                     (level <= 70) ? 70 :
                                     (level <= 80) ? 80 : 255;
 
         const double intellectMax = (level <= 60) ? 750 :
                                     (level <= 70) ? 1500 :
-                                    (level <= 80) ? 3000 : 6000; // default fallback
+                                    (level <= 80) ? 3000 : 6000; // default fallback (默认回退值)
 
         intellectBonus = maxIntellectBonus *
                          (intellect / intellectMax) *
@@ -5666,7 +5713,7 @@ void Player::UpdateCombatSkills(uint32 procEx, WeaponAttackType attType, bool de
         intellectBonus = std::clamp(intellectBonus, 0.0, maxIntellectBonus);
     }
 
-    // Final skill-up probability
+    // Final skill-up probability (最终技能提升概率)
     const float finalChance = std::clamp(baseChance + intellectBonus, 0.0, 1.0) * 100.0f;
 
     if (roll_chance_f(finalChance))
@@ -5682,11 +5729,11 @@ uint16 Player::GetWeaponSkillIdForAttack(WeaponAttackType attType) const
 {
     Item* item = GetWeaponForAttack(attType, true, true);
 
-    // unarmed only with base attack
+    // unarmed only with base attack (徒手攻击仅适用于主手基础攻击)
     if (attType != BASE_ATTACK && !item)
         return 0;
 
-    // weapon skill or (unarmed for base attack)
+    // weapon skill or (unarmed for base attack) (返回武器对应技能或主手徒手技能)
     return (item ? item->GetSkill() : uint16(SKILL_UNARMED));
 }
 
@@ -5726,8 +5773,8 @@ bool Player::HasSkill(uint16 id) const
     return (itr != mSkillStatus.end() && itr->second.uState != SKILL_DELETED);
 }
 
-// This functions sets a skill line value (and adds if doesn't exist yet)
-// To "remove" a skill line, set it's values to zero
+// This functions sets a skill line value (and adds if doesn't exist yet) (设置技能条数值，若不存在则新增)
+// To "remove" a skill line, set it's values to zero (将当前值与上限均设为 0 即可移除该技能条)
 void Player::SetSkill(SkillStatusMap::iterator itr, uint16 value, uint16 max, uint16 step/* = 0*/)
 {
     if (itr == mSkillStatus.end())
@@ -5739,7 +5786,7 @@ void Player::SetSkill(SkillStatusMap::iterator itr, uint16 value, uint16 max, ui
     if (status.uState == SKILL_DELETED)
         return;
 
-    if (value)  // Update
+    if (value)  // Update (更新现有技能值)
     {
         if (step)
             SetUInt32Value(PLAYER_SKILL_INDEX(status.pos), MAKE_PAIR32(id, step));
@@ -5749,7 +5796,7 @@ void Player::SetSkill(SkillStatusMap::iterator itr, uint16 value, uint16 max, ui
         if (status.uState != SKILL_NEW)
             status.uState = SKILL_CHANGED;
     }
-    else        // Remove
+    else        // Remove (移除技能条)
     {
         SetUInt32Value(PLAYER_SKILL_INDEX(status.pos), 0);
         SetUInt32Value(PLAYER_SKILL_VALUE_INDEX(status.pos), 0);
@@ -5761,10 +5808,10 @@ void Player::SetSkill(SkillStatusMap::iterator itr, uint16 value, uint16 max, ui
             status.uState = SKILL_DELETED;
     }
 
-    // Learn/unlearn all spells auto-trained by this skill on change
+    // Learn/unlearn all spells auto-trained by this skill on change (技能变更时自动学习或遗忘关联的自动训练法术)
     UpdateSkillTrainedSpells(id, value);
 
-    // On updating specific skills values
+    // On updating specific skills values (更新特定技能时的连带刷新，如骑术刷新光环、防御刷新抗暴等)
     switch (id)
     {
         case SKILL_DEFENSE:     UpdateDefenseBonusesMod();  break;
@@ -5779,9 +5826,9 @@ void Player::SetSkill(uint16 id, uint16 value, uint16 max, uint16 step/* = 0*/)
     auto itr = mSkillStatus.find(id);
     const bool exists = (itr != mSkillStatus.end());
 
-    if (exists && itr->second.uState != SKILL_DELETED)  // Update/remove existing
+    if (exists && itr->second.uState != SKILL_DELETED)  // Update/remove existing (已存在该技能，执行更新或移除)
         SetSkill(itr, value, max, step);
-    else if (value)                                     // Add new
+    else if (value)                                     // Add new (新增技能条)
     {
         if (!exists)
         {
@@ -5798,25 +5845,25 @@ void Player::SetSkill(uint16 id, uint16 value, uint16 max, uint16 step/* = 0*/)
             if (GetUInt32Value(PLAYER_SKILL_INDEX(pos)))
                 continue;
 
-            if (exists) // Re-use and move data for old status entry if not deleted yet
+            if (exists) // Re-use and move data for old status entry if not deleted yet (若此前存在被删除但未存库的技能槽，则复用其槽位)
             {
                 itr->second.pos = pos;
                 itr->second.uState = SKILL_CHANGED;
             }
-            else        // Add a completely new status entry
+            else        // Add a completely new status entry (查找空闲槽位以添加全新技能状态)
             {
                 auto result = mSkillStatus.insert(SkillStatusMap::value_type(id, SkillStatusData(pos, SKILL_NEW)));
 
-                if (!result.second) // Insert failed
+                if (!result.second) // Insert failed (找不到空槽位，插入失败)
                     return;
 
                 itr = result.first;
             }
 
-            SetUInt32Value(PLAYER_SKILL_INDEX(pos), MAKE_PAIR32(id, step));         // Set/reset skill id and step
-            SetSkill(itr, value, max);                                              // Set current and max values
-            SetUInt32Value(PLAYER_SKILL_BONUS_INDEX(pos), 0);                       // Reset bonus data
-            for (auto type : { SPELL_AURA_MOD_SKILL, SPELL_AURA_MOD_SKILL_TALENT }) // Set temporary, permanent bonuses
+            SetUInt32Value(PLAYER_SKILL_INDEX(pos), MAKE_PAIR32(id, step));         // Set/reset skill id and step (写入技能 ID 与进阶阶段)
+            SetSkill(itr, value, max);                                              // Set current and max values (写入当前值与最大值)
+            SetUInt32Value(PLAYER_SKILL_BONUS_INDEX(pos), 0);                       // Reset bonus data (重置加成数据)
+            for (auto type : { SPELL_AURA_MOD_SKILL, SPELL_AURA_MOD_SKILL_TALENT }) // Set temporary, permanent bonuses (设置临时加成与永久加成)
             {
                 for (auto aura : GetAurasByType(type))
                 {
@@ -5842,10 +5889,10 @@ uint16 Player::GetSkill(uint16 id, bool bonusPerm, bool bonusTemp, bool max/* = 
 
     uint32 field = GetUInt32Value(PLAYER_SKILL_VALUE_INDEX(skillStatus.pos));
 
-    // Pure value
+    // Pure value (纯基础技能值)
     int32 value = (max ? SKILL_MAX(field) : SKILL_VALUE(field));
 
-    // Bonus values
+    // Bonus values (计算永久与临时加成)
     if (bonusPerm || bonusTemp)
     {
         uint32 bonus = GetUInt32Value(PLAYER_SKILL_BONUS_INDEX(skillStatus.pos));
@@ -5865,7 +5912,7 @@ void Player::SetSkillStep(uint16 id, uint16 step)
     if (!id || step > MAX_SKILL_STEP)
         return;
 
-    if (step)   // Set step
+    if (step)   // Set step (设置技能阶位)
     {
         uint16 val = 0;
         uint16 max = 0;
@@ -5891,12 +5938,12 @@ void Player::SetSkillStep(uint16 id, uint16 step)
 
         if (max)
         {
-            // Note: Some SkillTiers entries contain 0 as starting value for first step, needs investigation (sanitized for now)
+            // Note: Some SkillTiers entries contain 0 as starting value for first step, needs investigation (sanitized for now) (注：部分 SkillTiers 首阶起始值为 0，暂做容错处理)
             const uint16 value = std::max(uint16(1), uint16(maxed ? max : GetSkillValuePure(id)));
             SetSkill(id, value, max, step);
         }
     }
-    else        // Unlearn
+    else        // Unlearn (当 max 传 0 时触发遗忘技能)
         SetSkill(id, 0, 0);
 }
 
@@ -5929,11 +5976,11 @@ bool Player::ModifySkillBonus(uint16 id, int16 diff, bool permanent/* = false*/)
     const int16 bonusPermanent = SKILL_PERM_BONUS(bonus);
 
     if (permanent)
-        SetUInt32Value(bonusIndex, MAKE_SKILL_BONUS(bonusTemporary, (bonusPermanent + diff))); // permanent bonus stored in high part
+        SetUInt32Value(bonusIndex, MAKE_SKILL_BONUS(bonusTemporary, (bonusPermanent + diff))); // permanent bonus stored in high part (永久加成存储在高 16 位)
     else
-        SetUInt32Value(bonusIndex, MAKE_SKILL_BONUS((bonusTemporary + diff), bonusPermanent)); // temporary/item bonus stored in low part
+        SetUInt32Value(bonusIndex, MAKE_SKILL_BONUS((bonusTemporary + diff), bonusPermanent)); // temporary/item bonus stored in low part (临时/装备加成存储在低 16 位)
 
-    // On updating specific skills values
+    // On updating specific skills values (更新特定技能时的连带刷新)
     switch (id)
     {
         case SKILL_DEFENSE:     UpdateDefenseBonusesMod();  break;
@@ -6017,25 +6064,25 @@ void Player::UpdateSkillTrainedSpells(uint16 id, uint16 currVal)
     {
         if (SkillLineAbilityEntry const* pAbility = itr->second)
         {
-            // Update training: skill removal mode, wipe all dependent spells regardless of training method
+            // Update training: skill removal mode, wipe all dependent spells regardless of training method (技能移除模式：清除所有关联派生法术)
             if (!currVal)
             {
                 removeSpell(pAbility->spellId, false, false, true);
                 continue;
             }
 
-            // Check race if set
+            // Check race if set (检查种族匹配)
             if (pAbility->racemask && !(pAbility->racemask & raceMask))
                 continue;
 
-            // Check class if set
+            // Check class if set (检查职业匹配)
             if (pAbility->classmask && !(pAbility->classmask & classMask))
                 continue;
 
-            // Check if auto-training method is set, skip if not
+            // Check if auto-training method is set, skip if not (检查是否设置了自动学习方式，未设置则跳过)
             if (!pAbility->learnOnGetSkill)
             {
-                // Check if its actually an original profession/tradeskill spell and we miss it somehow - repair
+                // Check if its actually an original profession/tradeskill spell and we miss it somehow - repair (若为遗漏的基础商业技能法术则自动补学)
                 if (SpellLearnSkillNode const* training = sSpellMgr.GetSpellLearnSkill(pAbility->spellId))
                 {
                     if (training->skill == id && training->effect == SPELL_EFFECT_SKILL && training->step < step)
@@ -6052,10 +6099,10 @@ void Player::UpdateSkillTrainedSpells(uint16 id, uint16 currVal)
                 continue;
             }
 
-            // Update training: needs unlearning spell if current value is too low
+            // Update training: needs unlearning spell if current value is too low (当前技能不足时遗忘对应法术)
             if (currVal < pAbility->req_skill_value)
                 removeSpell(pAbility->spellId);
-            // Update training: needs learning
+            // Update training: needs learning (达到所需技能点时自动学习)
             else if (!IsInWorld())
                 addSpell(pAbility->spellId, true, true, true, false);
             else
@@ -6068,7 +6115,7 @@ void Player::UpdateSpellTrainedSkills(uint32 spellId, bool apply)
 {
     if (SpellLearnSkillNode const* skillLearnInfo = sSpellMgr.GetSpellLearnSkill(spellId))
     {
-        // Specifically defined: no checks needed
+        // Specifically defined: no checks needed (显式定义的目标技能：无需额外过滤)
         if (apply)
             SetSkillStep(skillLearnInfo->skill, skillLearnInfo->step);
         else if (HasSkill(skillLearnInfo->skill))
@@ -6076,7 +6123,7 @@ void Player::UpdateSpellTrainedSkills(uint32 spellId, bool apply)
     }
     else
     {
-        // Detect obtained child spells of specific skills
+        // Detect obtained child spells of specific skills (检测由特定技能获取的子法术)
         auto bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(spellId);
 
         for (auto itr = bounds.first; itr != bounds.second; ++itr)
@@ -6089,14 +6136,14 @@ void Player::UpdateSpellTrainedSkills(uint32 spellId, bool apply)
 
             const uint16 skillId = uint16(pSkill->id);
 
-            switch (skillId)            // Legacy workarounds:
+            switch (skillId)            // Legacy workarounds: (历史兼容处理：)
             {
-                case SKILL_POISONS:     // Poisons/lockpicking special case: no ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL
+                case SKILL_POISONS:     // Poisons/lockpicking special case: no ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL (制毒与开锁特例：不依赖常规技能自动获取标记)
                 case SKILL_LOCKPICKING:
                     if (info->max_value)
                         continue;
                     break;
-                default:                // Spells obtained via ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL only
+                default:                // Spells obtained via ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL only (仅通过种族/职业技能获得标记学习的法术)
                     if (info->learnOnGetSkill != ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL)
                         continue;
             }
@@ -6106,7 +6153,7 @@ void Player::UpdateSpellTrainedSkills(uint32 spellId, bool apply)
                 if (HasSkill(skillId))
                     continue;
 
-                // Check if obtainable
+                // Check if obtainable (检查玩家种族/职业是否可获得)
                 SkillRaceClassInfoEntry const* entry = GetSkillInfo(skillId);
                 if (!entry)
                     continue;
@@ -6131,11 +6178,11 @@ void Player::UpdateSpellTrainedSkills(uint32 spellId, bool apply)
             }
             else
             {
-                switch (pSkill->categoryId)         // Legacy workarounds:
+                switch (pSkill->categoryId)         // Legacy workarounds: (历史兼容处理：)
                 {
-                    case SKILL_CATEGORY_CLASS:      // not unlearn class skills (spellbook/talent pages)
+                    case SKILL_CATEGORY_CLASS:      // not unlearn class skills (spellbook/talent pages) (不遗忘职业核心技能页)
                         continue;
-                    case SKILL_CATEGORY_SECONDARY:  // not reset skills for professions and racial abilities
+                    case SKILL_CATEGORY_SECONDARY:  // not reset skills for professions and racial abilities (不重置商业技能与种族特长技能)
                     case SKILL_CATEGORY_PROFESSION:
                         if (IsProfessionSkill(skillId) || info->racemask != 0)
                             continue;
@@ -6152,7 +6199,7 @@ void Player::UpdateSpellTrainedSkills(uint32 spellId, bool apply)
 
 void Player::LearnDefaultSkills()
 {
-    // learn default race/class skills
+    // learn default race/class skills (学习默认种族与职业技能)
     PlayerInfo const* info = sObjectMgr.GetPlayerInfo(getRace(), getClass());
 
     for (auto tskill : info->skill)
@@ -6317,7 +6364,7 @@ bool Player::IsActionButtonDataValid(uint8 button, uint32 action, uint8 type, Pl
             break;
         }
         default:
-            break;                                          // other cases not checked at this moment
+            break;                                          // other cases not checked at this moment (其余动作条类型暂不做额外校验)
     }
 
     return true;
@@ -6328,10 +6375,10 @@ ActionButton* Player::addActionButton(uint8 button, uint32 action, uint8 type)
     if (!IsActionButtonDataValid(button, action, type, this))
         return nullptr;
 
-    // it create new button (NEW state) if need or return existing
+    // it create new button (NEW state) if need or return existing (查找已有按钮或创建新按钮条目)
     ActionButton& ab = m_actionButtons[button];
 
-    // set data and update to CHANGED if not NEW
+    // set data and update to CHANGED if not NEW (更新按钮内容并在非 NEW 时标记为 CHANGED)
     ab.SetActionAndType(action, ActionButtonType(type));
 
     DETAIL_LOG("Player '%u' Added Action '%u' (type %u) to Button '%u'", GetGUIDLow(), action, uint32(type), button);
@@ -6345,16 +6392,17 @@ void Player::removeActionButton(uint8 button)
         return;
 
     if (buttonItr->second.uState == ACTIONBUTTON_NEW)
-        m_actionButtons.erase(buttonItr);                   // new and not saved
+        m_actionButtons.erase(buttonItr);                   // new and not saved (新建且尚未存库，直接从内存移除)
     else
-        buttonItr->second.uState = ACTIONBUTTON_DELETED;    // saved, will deleted at next save
+        buttonItr->second.uState = ACTIONBUTTON_DELETED;    // saved, will deleted at next save (已存库按钮，标记为 DELETED 待下次存盘删除)
 
     DETAIL_LOG("Action Button '%u' Removed from Player '%u'", button, GetGUIDLow());
 }
 
+/// 更新玩家服务端位置坐标、可见性及定时地形/探索状态
 bool Player::SetPosition(float x, float y, float z, float orientation, bool teleport)
 {
-    // prevent crash when a bad coord is sent by the client
+    // prevent crash when a bad coord is sent by the client (校验坐标合法性，防止客户端发来非法坐标导致崩溃)
     if (!MaNGOS::IsValidMapCoord(x, y, z, orientation))
     {
         DEBUG_LOG("Player::SetPosition(%f, %f, %f, %f, %d) .. bad coordinates for player %d!", x, y, z, orientation, teleport, GetGUIDLow());
@@ -6375,16 +6423,16 @@ bool Player::SetPosition(float x, float y, float z, float orientation, bool tele
         else
             RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TURNING);
 
-        // move and update visible state if need
+        // move and update visible state if need (执行地图重定位并更新周围可见性)
         m->PlayerRelocation(this, x, y, z, orientation);
 
-        // reread after Map::Relocation
+        // reread after Map::Relocation (重定位后重新读取坐标)
         m = GetMap();
         x = GetPositionX();
         y = GetPositionY();
         z = GetPositionZ();
 
-        // group update
+        // group update (标记队伍位置更新)
         if (GetGroup() && (old_x != x || old_y != y))
             SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POSITION);
 
@@ -6393,7 +6441,7 @@ bool Player::SetPosition(float x, float y, float z, float orientation, bool tele
 
         if (m_needsZoneUpdate)
         {
-            // Get server side data
+            // Get server side data (读取服务端真实区域信息)
             uint32 newzone, newarea;
             GetZoneAndAreaId(newzone, newarea);
             if (newzone != m_newZone)
@@ -6407,14 +6455,14 @@ bool Player::SetPosition(float x, float y, float z, float orientation, bool tele
         }
     }
 
-    if (m_positionStatusUpdateTimer)                        // Update position's state only on interval
+    if (m_positionStatusUpdateTimer)                        // Update position's state only on interval (按间隔节流更新位置相关环境状态)
         return true;
     m_positionStatusUpdateTimer = 100;
 
-    // code block for underwater state update
+    // code block for underwater state update (水下/地形环境状态更新)
     UpdateTerainEnvironmentFlags(m, x, y, z);
 
-    // code block for outdoor state and area-explore check
+    // code block for outdoor state and area-explore check (室外状态与地图探索检查)
     CheckAreaExploreAndOutdoor();
 
     return true;
@@ -6434,8 +6482,8 @@ void Player::SendMessageToSet(WorldPacket const& data, bool self) const
     if (IsInWorld())
         GetMap()->MessageBroadcast(this, data, false);
 
-    // if player is not in world and map in not created/already destroyed
-    // no need to create one, just send packet for itself!
+    // if player is not in world and map in not created/already destroyed (若玩家不在世界中或地图未就绪/已销毁，)
+    // no need to create one, just send packet for itself! (无需访问地图，仅向自身发送数据包)
     if (self)
         GetSession()->SendPacket(data);
 }
@@ -6479,12 +6527,13 @@ void Player::SendCinematicStart(uint32 CinematicSequenceId)
 
     if (CinematicSequencesEntry const* sequence = sCinematicSequencesStore.LookupEntry(CinematicSequenceId))
     {
-        // we can start server side dynamic follow
+        // we can start server side dynamic follow (触发过场动画开始)
         m_cinematicMgr.reset(new CinematicMgr(this));
         m_cinematicMgr->SetActiveCinematicCamera(sequence->cinematicCamera);
     }
 }
 
+/// 检查当前区域探索发现状态、旅店休息区与室外被动光环
 void Player::CheckAreaExploreAndOutdoor()
 {
     if (!IsAlive())
@@ -6503,11 +6552,11 @@ void Player::CheckAreaExploreAndOutdoor()
             AreaTriggerEntry const* at = sAreaTriggerStore.LookupEntry(inn_trigger_id);
             if (!at || !IsPointInAreaTriggerZone(at, GetMapId(), GetPositionX(), GetPositionY(), GetPositionZ()))
             {
-                // Player left inn (REST_TYPE_IN_CITY overrides REST_TYPE_IN_TAVERN, so just clear rest)
+                // Player left inn (REST_TYPE_IN_CITY overrides REST_TYPE_IN_TAVERN, so just clear rest) (离开旅店触发器；主城休息状态优先并覆盖旅店状态)
                 SetRestType(REST_TYPE_NO);
             }
         }
-        // Check if we need to reaply outdoor only passive spells
+        // Check if we need to reaply outdoor only passive spells (检查是否需刷新仅限室外生效的被动法术)
         const PlayerSpellMap& sp_list = GetSpellMap();
         for (const auto& itr : sp_list)
         {
@@ -6640,14 +6689,15 @@ ReputationRank Player::GetReputationRank(uint32 faction) const
     return GetReputationMgr().GetRank(factionEntry);
 }
 
-// Calculate total reputation percent player gain with quest/creature level
+// Calculate total reputation percent player gain with quest/creature level (计算任务或击杀生物的最终声望收益)
+/// 计算任务或击杀生物的最终声望增减值（含等级差衰减与倍率加成）
 int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 maxRep, int32 faction, uint32 creatureOrQuestLevel, bool noAuraBonus)
 {
     float percent = 100.0f;
 
     float repMod = noAuraBonus ? 0.0f : (float)GetTotalAuraModifier(SPELL_AURA_MOD_REPUTATION_GAIN);
 
-    // faction specific auras only seem to apply to kills
+    // faction specific auras only seem to apply to kills (阵营专属声望加成光环似乎仅对击杀生效)
     if (source == REPUTATION_SOURCE_KILL)
         repMod += GetTotalAuraModifierByMiscValue(SPELL_AURA_MOD_FACTION_REPUTATION_GAIN, faction);
 
@@ -6669,7 +6719,7 @@ int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 
 
     uint32 currentLevel = GetLevel();
 
-    // Level zero seems to be treated as always equal to players current level in IsTrivialLevelDifference therefore I have skipped level difference penalty computations for that value
+    // Level zero seems to be treated as always equal to players current level in IsTrivialLevelDifference therefore I have skipped level difference penalty computations for that value (等级 0 视为与玩家同级，跳过灰名等级衰减)
     if (creatureOrQuestLevel > 0)
     {
         if (source == REPUTATION_SOURCE_KILL)
@@ -6682,7 +6732,7 @@ int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 
         }
         else if (source == REPUTATION_SOURCE_QUEST)
         {
-            // Pre-3.0.8: Declines with 20% for each level if 6 levels or more below the player down to a minimum (default: 20%)
+            // Pre-3.0.8: Declines with 20% for each level if 6 levels or more below the player down to a minimum (default: 20%) (3.0.8 前规则：低于玩家 6 级及以上时每级衰减 20%，保底 20%)
             const uint32 treshold = (creatureOrQuestLevel + 5);
 
             if (currentLevel > treshold)
@@ -6693,7 +6743,7 @@ int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 
     if (percent <= 0.0f)
         return 0;
 
-    // Multiply result with the faction specific rate
+    // Multiply result with the faction specific rate (乘以阵营专属声望倍率)
     if (const RepRewardRate* repData = sObjectMgr.GetRepRewardRate(faction))
     {
         float repRate = 0.0f;
@@ -6710,7 +6760,7 @@ int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 
                 break;
         }
 
-        // for custom, a rate of 0.0 will totally disable reputation gain for this faction/type
+        // for custom, a rate of 0.0 will totally disable reputation gain for this faction/type (若自定义倍率为 0.0 则完全禁用该类型声望获取)
         if (repRate <= 0.0f)
             return 0;
 
@@ -6740,13 +6790,13 @@ int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 
     return result;
 }
 
-// Calculates how many reputation points player gains in victim's enemy factions
+// Calculates how many reputation points player gains in victim's enemy factions (计算击杀生物时在关联阵营获得的声望)
 void Player::RewardReputation(Creature* victim, float rate)
 {
     if (victim->IsNoReputation())
         return;
 
-    // used current difficulty creature entry instead normal version (GetEntry())
+    // used current difficulty creature entry instead normal version (GetEntry()) (使用当前副本难度对应的生物条目)
     ReputationOnKillEntry const* Rep = sObjectMgr.GetReputationOnKillEntry(victim->GetCreatureInfo()->Entry);
 
     if (!Rep)
@@ -6761,7 +6811,7 @@ void Player::RewardReputation(Creature* victim, float rate)
         if (factionEntry1 && current_reputation_rank1 <= Rep->reputation_max_cap1)
             GetReputationMgr().ModifyReputation(factionEntry1, donerep1);
 
-        // Wiki: Team factions value divided by 2
+        // Wiki: Team factions value divided by 2 (主城阵营溢出声望按 1/2 折算)
         if (factionEntry1 && Rep->is_teamaward1)
         {
             FactionEntry const* team1_factionEntry = sFactionStore.LookupEntry<FactionEntry>(factionEntry1->team);
@@ -6779,7 +6829,7 @@ void Player::RewardReputation(Creature* victim, float rate)
         if (factionEntry2 && current_reputation_rank2 <= Rep->reputation_max_cap2)
             GetReputationMgr().ModifyReputation(factionEntry2, donerep2);
 
-        // Wiki: Team factions value divided by 2
+        // Wiki: Team factions value divided by 2 (同阵营联动声望按 1/2 折算)
         if (factionEntry2 && Rep->is_teamaward2)
         {
             FactionEntry const* team2_factionEntry = sFactionStore.LookupEntry<FactionEntry>(factionEntry2->team);
@@ -6789,10 +6839,10 @@ void Player::RewardReputation(Creature* victim, float rate)
     }
 }
 
-// Calculate how many reputation points player gain with the quest
+// Calculate how many reputation points player gain with the quest (计算完成任务获得的声望奖励/惩罚)
 void Player::RewardReputation(Quest const* pQuest)
 {
-    // quest reputation reward/loss
+    // quest reputation reward/loss (处理任务固定及可变声望增减)
     for (int i = 0; i < QUEST_REPUTATIONS_COUNT; ++i)
     {
         if (!pQuest->RewRepFaction[i])
@@ -6811,12 +6861,12 @@ void Player::RewardReputation(Quest const* pQuest)
 
 void Player::UpdateArenaFields(void)
 {
-    /* arena calcs go here */
+    /* arena calcs go here (竞技场字段计算预留) */
 }
 
 void Player::UpdateHonorFields()
 {
-    /// called when rewarding honor and at each save
+    /// called when rewarding honor and at each save (在奖励荣誉和每次保存角色时调用，跨午夜刷新昨日/今日统计)
     time_t now = time(nullptr);
     time_t today = (time(nullptr) / DAY) * DAY;
 
@@ -6826,18 +6876,18 @@ void Player::UpdateHonorFields()
 
         uint16 kills_today = PAIR32_LOPART(GetUInt32Value(PLAYER_FIELD_KILLS));
 
-        // update yesterday's contribution
+        // update yesterday's contribution (将昨日数据结转为前一日累计并重置今日数据)
         if (m_lastHonorUpdateTime >= yesterday)
         {
             SetUInt32Value(PLAYER_FIELD_YESTERDAY_CONTRIBUTION, GetUInt32Value(PLAYER_FIELD_TODAY_CONTRIBUTION));
 
-            // this is the first update today, reset today's contribution
+            // this is the first update today, reset today's contribution (今日首次更新，将昨日数据移入昨日字段并清空今日计数)
             SetUInt32Value(PLAYER_FIELD_TODAY_CONTRIBUTION, 0);
             SetUInt32Value(PLAYER_FIELD_KILLS, MAKE_PAIR32(0, kills_today));
         }
         else
         {
-            // no honor/kills yesterday or today, reset
+            // no honor/kills yesterday or today, reset (前天及昨天均无荣誉或击杀，全部清零)
             SetUInt32Value(PLAYER_FIELD_YESTERDAY_CONTRIBUTION, 0);
             SetUInt32Value(PLAYER_FIELD_KILLS, 0);
         }
@@ -6846,12 +6896,13 @@ void Player::UpdateHonorFields()
     m_lastHonorUpdateTime = now;
 }
 
-/// Calculate the amount of honor gained based on the victim
-/// and the size of the group for which the honor is divided
-/// An exact honor value can also be given (overriding the calcs)
+/// Calculate the amount of honor gained based on the victim (根据击杀目标、分摊人数或指定荣誉值计算并奖励荣誉)
+/// and the size of the group for which the honor is divided (支持按队伍人数平摊荣誉)
+/// An exact honor value can also be given (overriding the calcs) (也可直接传入精确荣誉值覆盖公式计算)
+/// 击杀敌对玩家或阵营领袖后计算并奖励荣誉点数与击杀统计
 bool Player::RewardHonor(Unit* uVictim, uint32 groupsize, float honor)
 {
-    // do not reward honor in arenas, but enable onkill spellproc
+    // do not reward honor in arenas, but enable onkill spellproc (竞技场内不直接奖励荣誉点，但仍触发击杀法术特效)
     if (InArena())
     {
         if (!uVictim || uVictim == this || uVictim->GetTypeId() != TYPEID_PLAYER)
@@ -6863,14 +6914,14 @@ bool Player::RewardHonor(Unit* uVictim, uint32 groupsize, float honor)
         return true;
     }
 
-    // 'Inactive' this aura prevents the player from gaining honor points and battleground tokens
+    // 'Inactive' this aura prevents the player from gaining honor points and battleground tokens (战场“暂离/不活跃”光环阻止玩家获得荣誉与战场奖章)
     if (GetDummyAura(SPELL_AURA_PLAYER_INACTIVE))
         return false;
 
     ObjectGuid victim_guid;
     uint32 victim_rank = 0;
 
-    // need call before fields update to have chance move yesterday data to appropriate fields before today data change.
+    // need call before fields update to have chance move yesterday data to appropriate fields before today data change. (需在修改今日字段前调用以先完成跨日数据结转)
     UpdateHonorFields();
 
     if (honor <= 0)
@@ -6887,7 +6938,7 @@ bool Player::RewardHonor(Unit* uVictim, uint32 groupsize, float honor)
             if (GetTeam() == pVictim->GetTeam() && !sWorld.IsFFAPvPRealm())
                 return false;
 
-            float f = 1;                                    // need for total kills (?? need more info)
+            float f = 1;                                    // need for total kills (?? need more info) (计入总击杀统计)
             uint32 k_level = GetLevel();
             uint32 v_level = pVictim->GetLevel();
 
@@ -6900,14 +6951,14 @@ bool Player::RewardHonor(Unit* uVictim, uint32 groupsize, float honor)
 
             float diff_level = (k_level == k_grey) ? 1 : ((float(v_level) - float(k_grey)) / (float(k_level) - float(k_grey)));
 
-            int32 v_rank = 1;                               // need more info
+            int32 v_rank = 1;                               // need more info (击杀等级/职业系数占位)
 
             honor = ((f * diff_level * (190 + v_rank * 10)) / 6);
-            honor *= float(k_level) / 70.0f;                // factor of dependence on levels of the killer
+            honor *= float(k_level) / 70.0f;                // factor of dependence on levels of the killer (根据击杀者等级计算基础荣誉系数)
 
-            // count the number of playerkills in one day
+            // count the number of playerkills in one day (累计今日击杀人数)
             ApplyModUInt32Value(PLAYER_FIELD_KILLS, 1, true);
-            // and those in a lifetime
+            // and those in a lifetime (累计生涯总击杀人数)
             ApplyModUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS, 1, true);
         }
         else
@@ -6917,8 +6968,8 @@ bool Player::RewardHonor(Unit* uVictim, uint32 groupsize, float honor)
             if (!cVictim->IsRacialLeader())
                 return false;
 
-            honor = 100;                                    // ??? need more info
-            victim_rank = 19;                               // HK: Leader
+            honor = 100;                                    // ??? need more info (未知字段：目标阵营/类型)
+            victim_rank = 19;                               // HK: Leader (荣誉击杀：阵营领袖)
         }
     }
 
@@ -6929,21 +6980,21 @@ bool Player::RewardHonor(Unit* uVictim, uint32 groupsize, float honor)
         if (groupsize > 1)
             honor /= groupsize;
 
-        honor *= (((float)urand(8, 12)) / 10);              // approx honor: 80% - 120% of real honor
+        honor *= (((float)urand(8, 12)) / 10);              // approx honor: 80% - 120% of real honor (同日重复击杀递减系数：100% 递减至 10%)
     }
 
-    // honor - for show honor points in log
-    // victim_guid - for show victim name in log
-    // victim_rank 0       HK: <lowest alliance\horde rank>
-    // victim_rank [1..4]  HK: <dishonored rank>
-    // victim_rank [5..19] HK: <alliance\horde rank>
+    // honor - for show honor points in log (日志显示的荣誉值)
+    // victim_guid - for show victim name in log (受害者 GUID)
+    // victim_rank 0       HK: <lowest alliance\horde rank> (0 级显示最低军衔)
+    // victim_rank [1..4]  HK: <dishonored rank> (1-4 为非荣誉阶)
+    // victim_rank [5..19] HK: <alliance\horde rank> (5-19 为联盟/部落军衔)
     WorldPacket data(SMSG_PVP_CREDIT, 4 + 8 + 4);
     data << uint32(honor);
     data << ObjectGuid(victim_guid);
     data << uint32(victim_rank);
     GetSession()->SendPacket(data);
 
-    // add honor points
+    // add honor points (增加玩家荣誉点数)
     ModifyHonorPoints(int32(honor));
 
     ApplyModUInt32Value(PLAYER_FIELD_TODAY_CONTRIBUTION, uint32(honor), true);
@@ -7030,7 +7081,7 @@ uint32 Player::GetZoneIdFromDB(ObjectGuid guid)
 
     if (!zone)
     {
-        // stored zone is zero, use generic and slow zone detection
+        // stored zone is zero, use generic and slow zone detection (数据库缓存区域为 0 时通过坐标反查区域 ID)
         queryResult = CharacterDatabase.PQuery("SELECT map,position_x,position_y,position_z FROM characters WHERE guid='%u'", lowguid);
         if (!queryResult)
             return 0;
@@ -7065,7 +7116,7 @@ uint32 Player::GetLevelFromDB(ObjectGuid guid)
 
 void Player::UpdateArea(uint32 newArea)
 {
-    // group update
+    // group update (标记队伍区域更新)
     if (m_areaUpdateId != newArea && GetGroup())
         SetGroupUpdateFlag(GROUP_UPDATE_FLAG_ZONE);
 
@@ -7073,8 +7124,8 @@ void Player::UpdateArea(uint32 newArea)
 
     AreaTableEntry const* area = GetAreaEntryByAreaID(newArea);
 
-    // FFA_PVP flags are area and not zone id dependent
-    // so apply them accordingly
+    // FFA_PVP flags are area and not zone id dependent (自由混战 FFA PvP 标志取决于子区域而非主区域，)
+    // so apply them accordingly (据此按子区域刷新标志)
     if (area && (area->flags & AREA_FLAG_ARENA))
     {
         if (!IsGameMaster())
@@ -7082,8 +7133,8 @@ void Player::UpdateArea(uint32 newArea)
     }
     else
     {
-        // remove ffa flag only if not ffapvp realm
-        // removal in sanctuaries and capitals is handled in zone update
+        // remove ffa flag only if not ffapvp realm (仅非自由混战服务器才移除 FFA 标志，)
+        // removal in sanctuaries and capitals is handled in zone update (庇护所与主城的移除在 UpdateZone 中处理)
         if (IsPvPFreeForAll() && !sWorld.IsFFAPvPRealm())
             SetPvPFreeForAll(false);
     }
@@ -7093,15 +7144,16 @@ void Player::UpdateArea(uint32 newArea)
 
 bool Player::CanUseCapturePoint() const
 {
-    return IsAlive() &&                                     // living
-           !HasStealthAura() &&                             // not stealthed
-           !HasInvisibilityAura() &&                        // visible
+    return IsAlive() &&                                     // living (必须存活)
+           !HasStealthAura() &&                             // not stealthed (不可处于潜行状态)
+           !HasInvisibilityAura() &&                        // visible (必须对世界可见，非 GM 隐身)
            (IsPvP() || sWorld.IsPvPRealm()) &&
            !HasMovementFlag(MOVEFLAG_FLYING) &&
            !IsTaxiFlying() &&
            !IsGameMaster();
 }
 
+/// 玩家切换主区域或子区域时刷新 PvP 状态、休息区、频道与区域光环
 void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
 {
     AreaTableEntry const* zone = GetAreaEntryByAreaID(newZone);
@@ -7111,7 +7163,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
     bool updateZone = m_zoneUpdateId != newZone || force;
     if (updateZone)
     {
-        // handle outdoor pvp zones
+        // handle outdoor pvp zones (通知野外 PvP 管理器处理区域切换)
         sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
         sWorldState.HandlePlayerLeaveZone(this, m_zoneUpdateId);
         sOutdoorPvPMgr.HandlePlayerEnterZone(this, newZone);
@@ -7127,7 +7179,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
     bool updateArea = m_areaUpdateId != newArea || force;
     if (updateArea)
     {
-        SendInitWorldStates(newZone, newArea); // only if really enters to new zone, not just area change, works strange...
+        SendInitWorldStates(newZone, newArea); // only if really enters to new zone, not just area change, works strange... (仅当真正进入新主区域时更新探索发现状态)
 
         sWorldState.HandlePlayerLeaveArea(this, m_areaUpdateId);
         sWorldState.HandlePlayerEnterArea(this, newArea);
@@ -7139,11 +7191,11 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
     m_zoneUpdateId    = newZone;
     m_zoneUpdateTimer = ZONE_UPDATE_INTERVAL;
 
-    // zone changed, so area changed as well, update it
+    // zone changed, so area changed as well, update it (主区域变更必然伴随子区域变更，同步更新)
     UpdateArea(newArea);
 
-    // in PvP, any not controlled zone (except zone->team == 6, default case)
-    // in PvE, only opposition team capital
+    // in PvP, any not controlled zone (except zone->team == 6, default case) (PvP 服中任何中立或敌对区域均自动开启 PvP)
+    // in PvE, only opposition team capital (PvE 服仅进入敌对阵营主城才强制开启 PvP)
     switch (zone->team)
     {
         case AREATEAM_ALLY:
@@ -7153,18 +7205,18 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
             pvpInfo.inPvPEnforcedArea = GetTeam() != HORDE && (sWorld.IsPvPRealm() || zone->flags & AREA_FLAG_CAPITAL);
             break;
         case AREATEAM_NONE:
-            // overwrite for battlegrounds, maybe batter some zone flags but current known not 100% fit to this
+            // overwrite for battlegrounds, maybe batter some zone flags but current known not 100% fit to this (战场地图强制开启 PvP 标志)
             pvpInfo.inPvPEnforcedArea = sWorld.IsPvPRealm() || InBattleGround();
             break;
-        default:                                            // 6 in fact
+        default:                                            // 6 in fact (实际上属于安全/中立类)
             pvpInfo.inPvPEnforcedArea = false;
             break;
     }
 
-    if (pvpInfo.inPvPEnforcedArea)                              // in hostile area
+    if (pvpInfo.inPvPEnforcedArea)                              // in hostile area (处于敌对区域，激活 PvP 标志)
         UpdatePvP(true);
 
-    if (zone->flags & AREA_FLAG_SANCTUARY)                  // in sanctuary
+    if (zone->flags & AREA_FLAG_SANCTUARY)                  // in sanctuary (处于庇护所安全区，清除 PvP 并冻结计时)
     {
         SetPvPSanctuary(true);
 
@@ -7178,28 +7230,28 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
         SetPvPSanctuary(false);
     }
 
-    if (zone->flags & AREA_FLAG_CAPITAL)                    // in capital city
+    if (zone->flags & AREA_FLAG_CAPITAL)                    // in capital city (处于己方主城，开启主城休息双倍状态)
         SetRestType(REST_TYPE_IN_CITY);
     else if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) && GetRestType() != REST_TYPE_IN_TAVERN)
-        // resting and not in tavern (leave city then); tavern leave handled in CheckAreaExploreAndOutdoor
+        // resting and not in tavern (leave city then); tavern leave handled in CheckAreaExploreAndOutdoor (离开主城时清除城市休息状态；离开旅店由 CheckAreaExploreAndOutdoor 处理)
         SetRestType(REST_TYPE_NO);
 
-    // remove items with area/map limitations (delete only for alive player to allow back in ghost mode)
-    // if player resurrected at teleport this will be applied in resurrect code
+    // remove items with area/map limitations (delete only for alive player to allow back in ghost mode) (移除受地图/区域限制的物品，仅对存活玩家执行以免灵魂跑尸被删)
+    // if player resurrected at teleport this will be applied in resurrect code (若传送后复活则会在复活流程中再次检查)
     if (IsAlive())
         DestroyZoneLimitedItem(true, newZone);
 
-    // check some item equip limitations (in result lost CanTitanGrip at talent reset, for example)
+    // check some item equip limitations (in result lost CanTitanGrip at talent reset, for example) (检查装备区域或天赋限制，如遗忘泰坦之握等)
     AutoUnequipOffhandIfNeed();
 
-    // recent client version not send leave/join channel packets for built-in local channels
+    // recent client version not send leave/join channel packets for built-in local channels (更新本地内置聊天频道)
     UpdateLocalChannels(newZone);
 
     UpdateZoneDependentAuras();
     UpdateZoneDependentPets();
 }
 
-// If players are too far way of duel flag... then player loose the duel
+// If players are too far way of duel flag... then player loose the duel (若玩家远离决斗旗帜超时则判逃离失败)
 void Player::CheckDuelDistance(time_t currTime)
 {
     if (!duel)
@@ -7208,7 +7260,7 @@ void Player::CheckDuelDistance(time_t currTime)
     GameObject* obj = GetMap()->GetGameObject(GetGuidValue(PLAYER_DUEL_ARBITER));
     if (!obj)
     {
-        // player not at duel start map
+        // player not at duel start map (玩家已离开决斗发起所在地图)
         DuelComplete(DUEL_FLED);
         return;
     }
@@ -7239,9 +7291,10 @@ void Player::CheckDuelDistance(time_t currTime)
     }
 }
 
+/// 结束决斗（胜出、逃离或中断）并清理决斗旗帜与双方状态
 void Player::DuelComplete(DuelCompleteType type)
 {
-    // duel not requested
+    // duel not requested (当前未处于决斗状态)
     if (!duel)
         return;
 
@@ -7252,18 +7305,18 @@ void Player::DuelComplete(DuelCompleteType type)
 
     if (type != DUEL_INTERRUPTED)
     {
-        data.Initialize(SMSG_DUEL_WINNER, (1 + 20));        // we guess size
-        data << (uint8)((type == DUEL_WON) ? 0 : 1);        // 0 = just won; 1 = fled
+        data.Initialize(SMSG_DUEL_WINNER, (1 + 20));        // we guess size (发送决斗胜负结果)
+        data << (uint8)((type == DUEL_WON) ? 0 : 1);        // 0 = just won; 1 = fled (0 = 正常胜出，1 = 逃离)
         data << duel->opponent->GetName();
         data << GetName();
         SendMessageToSet(data, true);
     }
 
-    // Remove Duel Flag object
+    // Remove Duel Flag object (从地图中移除决斗旗帜对象)
     if (GameObject* obj = GetMap()->GetGameObject(GetGuidValue(PLAYER_DUEL_ARBITER)))
         duel->initiator->RemoveGameObject(obj, true);
 
-    /* remove auras */
+    /* remove auras (移除决斗相关减益与光环) */
     std::vector<uint32> auras2remove;
     SpellAuraHolderMap const& vAuras = duel->opponent->GetSpellAuraHolderMap();
     for (const auto& vAura : vAuras)
@@ -7287,7 +7340,7 @@ void Player::DuelComplete(DuelCompleteType type)
     for (unsigned int i : auras2remove)
         RemoveAurasDueToSpell(i);
 
-    // cleanup combo points
+    // cleanup combo points (清空决斗产生的连击点数)
     if (GetComboTargetGuid() == duel->opponent->GetObjectGuid())
         ClearComboPoints();
     else if (GetComboTargetGuid() == duel->opponent->GetPetGuid())
@@ -7298,7 +7351,7 @@ void Player::DuelComplete(DuelCompleteType type)
     else if (duel->opponent->GetComboTargetGuid() == GetPetGuid())
         duel->opponent->ClearComboPoints();
 
-    // cleanups
+    // cleanups (重置双方决斗指针并释放 DuelInfo)
     SetGuidValue(PLAYER_DUEL_ARBITER, ObjectGuid());
     SetUInt32Value(PLAYER_DUEL_TEAM, 0);
     duel->opponent->SetGuidValue(PLAYER_DUEL_ARBITER, ObjectGuid());
@@ -7312,12 +7365,13 @@ void Player::DuelComplete(DuelCompleteType type)
 
 //---------------------------------------------------------//
 
+/// 应用或移除指定槽位装备的属性修正与多彩宝石激活状态
 void Player::_ApplyItemMods(Item* item, uint8 slot, bool apply)
 {
     if (slot >= INVENTORY_SLOT_BAG_END || !item)
         return;
 
-    // not apply/remove mods for broken item
+    // not apply/remove mods for broken item (耐久度为 0 的破损装备不应用属性加成)
     if (item->IsBroken())
         return;
 
@@ -7340,7 +7394,7 @@ void Player::_ApplyItemMods(Item* item, uint8 slot, bool apply)
     ApplyItemEquipSpell(item, apply);
     ApplyEnchantment(item, apply);
 
-    if (proto->Socket[0].Color)                             // only (un)equipping of items with sockets can influence metagems, so no need to waste time with normal items
+    if (proto->Socket[0].Color)                             // only (un)equipping of items with sockets can influence metagems, so no need to waste time with normal items (仅带插槽的装备穿脱才会影响多彩宝石激活条件)
         CorrectMetaGemEnchants(slot, apply);
 
     DEBUG_LOG("_ApplyItemMods complete.");
@@ -7363,26 +7417,26 @@ void Player::_ApplyItemBonuses(ItemPrototype const* proto, uint8 slot, bool appl
             case ITEM_MOD_MANA:
                 HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(val), apply);
                 break;
-            case ITEM_MOD_HEALTH:                           // modify HP
+            case ITEM_MOD_HEALTH:                           // modify HP (修改最大生命值)
                 HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(val), apply);
                 break;
-            case ITEM_MOD_AGILITY:                          // modify agility
+            case ITEM_MOD_AGILITY:                          // modify agility (修改敏捷)
                 HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(val), apply);
                 ApplyStatBuffMod(STAT_AGILITY, float(val), apply);
                 break;
-            case ITEM_MOD_STRENGTH:                         // modify strength
+            case ITEM_MOD_STRENGTH:                         // modify strength (修改力量)
                 HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(val), apply);
                 ApplyStatBuffMod(STAT_STRENGTH, float(val), apply);
                 break;
-            case ITEM_MOD_INTELLECT:                        // modify intellect
+            case ITEM_MOD_INTELLECT:                        // modify intellect (修改智力)
                 HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(val), apply);
                 ApplyStatBuffMod(STAT_INTELLECT, float(val), apply);
                 break;
-            case ITEM_MOD_SPIRIT:                           // modify spirit
+            case ITEM_MOD_SPIRIT:                           // modify spirit (修改精神)
                 HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(val), apply);
                 ApplyStatBuffMod(STAT_SPIRIT, float(val), apply);
                 break;
-            case ITEM_MOD_STAMINA:                          // modify stamina
+            case ITEM_MOD_STAMINA:                          // modify stamina (修改耐力)
                 HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(val), apply);
                 ApplyStatBuffMod(STAT_STAMINA, float(val), apply);
                 break;
@@ -7477,9 +7531,9 @@ void Player::_ApplyItemBonuses(ItemPrototype const* proto, uint8 slot, bool appl
     }
 
     uint32 armor = proto->Armor;
-    // Add armor bonus from ArmorDamageModifier if > 0
+    // Add armor bonus from ArmorDamageModifier if > 0 (额外护甲加成说明)
     /*if (proto->ArmorDamageModifier > 0) This is wrong, the member is used by client to determine bonus armor. proto->Armor already has full armor
-        armor += uint32(proto->ArmorDamageModifier);*/
+        armor += uint32(proto->ArmorDamageModifier); (注：proto->Armor 已包含完整护甲，无需再叠加 ArmorDamageModifier)*/
 
     if (armor)
         HandleStatModifier(UNIT_MOD_ARMOR, BASE_VALUE, float(armor), apply);
@@ -7580,7 +7634,7 @@ void Player::_ApplyWeaponDependentAuraMods(Item* item, WeaponAttackType attackTy
 
 void Player::_ApplyWeaponDependentAuraCritMod(Item* item, WeaponAttackType attackType, Aura* aura, bool apply)
 {
-    // generic not weapon specific case processes in aura code
+    // generic not weapon specific case processes in aura code (非限定武器的通用暴击修正由光环代码处理)
     if (aura->GetSpellProto()->EquippedItemClass == -1)
         return;
 
@@ -7601,12 +7655,12 @@ void Player::_ApplyWeaponDependentAuraCritMod(Item* item, WeaponAttackType attac
 
 void Player::_ApplyWeaponDependentAuraDamageMod(Item* item, WeaponAttackType attackType, Aura* aura, bool apply)
 {
-    // ignore spell mods for not wands
+    // ignore spell mods for not wands (非法杖类武器不应用此类光环)
     Modifier const* modifier = aura->GetModifier();
     if ((modifier->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL) == 0 && (getClassMask() & CLASSMASK_WAND_USERS) == 0)
         return;
 
-    // generic not weapon specific case processes in aura code
+    // generic not weapon specific case processes in aura code (非限定武器的通用伤害修正由光环代码处理)
     if (aura->GetSpellProto()->EquippedItemClass == -1)
         return;
 
@@ -7644,26 +7698,26 @@ void Player::ApplyItemEquipSpell(Item* item, bool apply, bool form_change)
 
     for (const auto& spellData : proto->Spells)
     {
-        // no spell
+        // no spell (无绑定法术)
         if (!spellData.SpellId)
             continue;
 
         if (apply)
         {
-            // apply only at-equip spells
+            // apply only at-equip spells (仅处理装备时触发型法术)
             if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_EQUIP)
                 continue;
         }
         else
         {
-            // at un-apply remove all spells (not only at-apply, so any at-use active affects from item and etc)
-            // except on form change and with at-use with negative charges, so allow consuming item spells (including with extra flag that prevent consume really)
-            // applied to player after item remove from equip slot
+            // at un-apply remove all spells (not only at-apply, so any at-use active affects from item and etc) (卸下时移除物品所有关联光环，含使用型法术效果)
+            // except on form change and with at-use with negative charges, so allow consuming item spells (including with extra flag that prevent consume really) (变形切换及消耗品负充能情况除外)
+            // applied to player after item remove from equip slot (卸下装备后清理残余光环)
             if (spellData.SpellTrigger == ITEM_SPELLTRIGGER_ON_USE && (form_change || spellData.SpellCharges < 0))
                 continue;
         }
 
-        // check if it is valid spell
+        // check if it is valid spell (校验法术模板有效性)
         SpellEntry const* spellproto = sSpellTemplate.LookupEntry<SpellEntry>(spellData.SpellId);
         if (!spellproto)
             continue;
@@ -7676,11 +7730,11 @@ void Player::ApplyEquipSpell(SpellEntry const* spellInfo, Item* item, bool apply
 {
     if (apply)
     {
-        // Cannot be used in this stance/form
+        // Cannot be used in this stance/form (在当前变形形态下无法生效)
         if (GetErrorAtShapeshiftedCast(spellInfo, GetShapeshiftForm()) != SPELL_CAST_OK)
             return;
 
-        if (form_change)                                    // check aura active state from other form
+        if (form_change)                                    // check aura active state from other form (检查其他形态下是否已激活该光环)
         {
             bool found = false;
             for (int k = 0; k < MAX_EFFECT_INDEX; ++k)
@@ -7698,7 +7752,7 @@ void Player::ApplyEquipSpell(SpellEntry const* spellInfo, Item* item, bool apply
                     break;
             }
 
-            if (found)                                      // and skip re-cast already active aura at form change
+            if (found)                                      // and skip re-cast already active aura at form change (变形切换时若光环已激活且兼容则跳过重复施放)
                 return;
         }
 
@@ -7708,17 +7762,17 @@ void Player::ApplyEquipSpell(SpellEntry const* spellInfo, Item* item, bool apply
     }
     else
     {
-        if (form_change)                                    // check aura compatibility
+        if (form_change)                                    // check aura compatibility (检查光环移除与形态兼容性)
         {
-            // Cannot be used in this stance/form
+            // Cannot be used in this stance/form (当前形态不兼容该装备法术)
             if (GetErrorAtShapeshiftedCast(spellInfo, GetShapeshiftForm()) == SPELL_CAST_OK)
-                return;                                     // and remove only not compatible at form change
+                return;                                     // and remove only not compatible at form change (变形时仅移除不兼容的装备法术光环)
         }
 
         if (item)
-            RemoveAurasDueToItemSpell(item, spellInfo->Id); // un-apply all spells , not only at-equipped
+            RemoveAurasDueToItemSpell(item, spellInfo->Id); // un-apply all spells , not only at-equipped (完全卸下装备时移除所有相关光环)
         else
-            RemoveAurasDueToSpell(spellInfo->Id);           // un-apply spell (item set case)
+            RemoveAurasDueToSpell(spellInfo->Id);           // un-apply spell (item set case) (非特定物品触发的套装法术直接按法术 ID 移除)
     }
 }
 
@@ -7728,12 +7782,12 @@ void Player::UpdateEquipSpellsAtFormChange()
     {
         if (m_items[i] && !m_items[i]->IsBroken())
         {
-            ApplyItemEquipSpell(m_items[i], false, true);   // remove spells that not fit to form
-            ApplyItemEquipSpell(m_items[i], true, true);    // add spells that fit form but not active
+            ApplyItemEquipSpell(m_items[i], false, true);   // remove spells that not fit to form (移除不适应当前变形形态的装备法术)
+            ApplyItemEquipSpell(m_items[i], true, true);    // add spells that fit form but not active (补加适应当前形态但尚未激活的装备法术)
         }
     }
 
-    // item set bonuses not dependent from item broken state
+    // item set bonuses not dependent from item broken state (套装效果不随单件耐久归零失效)
     for (auto& setData : m_itemSetEffects)
     {
         for (auto spellInfo : setData.second.spells)
@@ -7741,23 +7795,25 @@ void Player::UpdateEquipSpellsAtFormChange()
             if (!spellInfo)
                 continue;
 
-            ApplyEquipSpell(spellInfo, nullptr, false, true);  // remove spells that not fit to form
-            ApplyEquipSpell(spellInfo, nullptr, true, true);   // add spells that fit form but not active
+            ApplyEquipSpell(spellInfo, nullptr, false, true);  // remove spells that not fit to form (移除不适应当前形态的套装法术)
+            ApplyEquipSpell(spellInfo, nullptr, true, true);   // add spells that fit form but not active (补加适应当前形态的套装法术)
         }
     }
 }
 
 /**
  * (un-)Apply item spells triggered at adding item to inventory ITEM_SPELLTRIGGER_ON_STORE
+ * 应用或移除放入背包时触发的物品法术 (ITEM_SPELLTRIGGER_ON_STORE)
  *
- * @param item  added/removed item to/from inventory
- * @param apply (un-)apply spell affects.
+ * @param item  added/removed item to/from inventory (加入或移出背包的物品)
+ * @param apply (un-)apply spell affects. (true 应用 / false 移除)
  *
  * Note: item moved from slot to slot in 2 steps RemoveItem and StoreItem/EquipItem
  * In result function not called in RemoveItem for prevent unexpected re-apply auras from related spells
  * with duration reset and etc. Instead unapply done in StoreItem/EquipItem and in specialized
  * functions for item final remove/destroy from inventory. If new RemoveItem calls added need be sure that
  * function will call after it in some way if need.
+ * 注：物品在背包槽位间移动分为 RemoveItem 与 StoreItem/EquipItem 两步，故不在 RemoveItem 中直接移除以免重置持续时间，而是在目标槽位不合法或最终销毁时移除。
  */
 
 void Player::ApplyItemOnStoreSpell(Item* item, bool apply)
@@ -7771,17 +7827,17 @@ void Player::ApplyItemOnStoreSpell(Item* item, bool apply)
 
     for (const auto& spellData : proto->Spells)
     {
-        // no spell
+        // no spell (无绑定法术)
         if (!spellData.SpellId)
             continue;
 
-        // apply/unapply only at-store spells
+        // apply/unapply only at-store spells (仅处理入包触发型法术)
         if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_STORE)
             continue;
 
         if (apply)
         {
-            // can be attempt re-applied at move in inventory slots
+            // can be attempt re-applied at move in inventory slots (在背包内移动时可能重复触发，已存在则跳过)
             if (!HasAura(spellData.SpellId))
                 CastSpell(this, spellData.SpellId, TRIGGERED_OLD_TRIGGERED, item);
         }
@@ -7804,7 +7860,7 @@ void Player::DestroyItemWithOnStoreSpell(Item* item, uint32 spellId)
         if (spellData.SpellId != spellId)
             continue;
 
-        // apply/unapply only at-store spells
+        // apply/unapply only at-store spells (仅处理入包触发型法术)
         if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_STORE)
             continue;
 
@@ -7813,6 +7869,7 @@ void Player::DestroyItemWithOnStoreSpell(Item* item, uint32 spellId)
     }
 }
 
+/// 触发物理/法术攻击时物品自带及武器附魔的战斗特效
 void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType, bool spellProc)
 {
     Item* item = GetWeaponForAttack(attType, true, true);
@@ -7828,11 +7885,11 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType, bool sp
 
     for (const auto& spellData : proto->Spells)
     {
-        // no spell
+        // no spell (无触发法术)
         if (!spellData.SpellId)
             continue;
 
-        // wrong triggering type
+        // wrong triggering type (非击中触发型)
         if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_CHANCE_ON_HIT)
             continue;
 
@@ -7843,11 +7900,11 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType, bool sp
             continue;
         }
 
-        // check if spell is under CD. TODO : this may be fixed in better way using TRIGGERED_ITEM_TRIGGERED enum for castspell
+        // check if spell is under CD. TODO : this may be fixed in better way using TRIGGERED_ITEM_TRIGGERED enum for castspell (检查法术冷却状态)
         if (HasGCD(spellInfo) || !IsSpellReady(*spellInfo, proto))
             return;
 
-        // not allow proc extra attack spell at extra attack
+        // not allow proc extra attack spell at extra attack (额外攻击期间不再触发物品额外攻击特效)
         if (m_extraAttacks && IsSpellHaveEffect(spellInfo, SPELL_EFFECT_ADD_EXTRA_ATTACKS))
             return;
 
@@ -7867,7 +7924,7 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType, bool sp
             CastSpell(Target, spellInfo->Id, TRIGGERED_OLD_TRIGGERED, item);
     }
 
-    // item combat enchantments
+    // item combat enchantments (触发武器临时/永久战斗附魔效果)
     for (int e_slot = 0; e_slot < MAX_ENCHANTMENT_SLOT; ++e_slot)
     {
         uint32 enchant_id = item->GetEnchantmentId(EnchantmentSlot(e_slot));
@@ -7887,16 +7944,16 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType, bool sp
                 continue;
             }
 
-            // not allow proc extra attack spell at extra attack
+            // not allow proc extra attack spell at extra attack (额外攻击期间不再触发附魔额外攻击)
             if (m_extraAttacks && IsSpellHaveEffect(spellInfo, SPELL_EFFECT_ADD_EXTRA_ATTACKS))
                 continue;
 
-            // some weapon enchantments have proc flags which need to be checked
+            // some weapon enchantments have proc flags which need to be checked (部分武器附魔带有需校验的触发标志位)
             if (spellInfo->procFlags)
                 if (!(spellInfo->procFlags & PROC_FLAG_DEAL_MELEE_ABILITY) && spellProc)
                     continue;
 
-            // Use first rank to access spell item enchant procs
+            // Use first rank to access spell item enchant procs (通过一阶法术 ID 查询武器附魔触发几率表)
             float ppmRate = sSpellMgr.GetItemEnchantProcChance(spellInfo->Id);
 
             float chance = ppmRate
@@ -7919,7 +7976,7 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType, bool sp
 void Player::CastItemUseSpell(Item* item, SpellCastTargets& targets, uint8 cast_count, uint8 spell_index)
 {
     ItemPrototype const* proto = item->GetProto();
-    // special learning case
+    // special learning case (特殊学习物品使用情况)
     if (proto->Spells[0].SpellId == SPELL_ID_GENERIC_LEARN)
     {
         uint32 learn_spell_id = proto->Spells[0].SpellId;
@@ -7936,25 +7993,25 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets& targets, uint8 cast_
         Spell* spell = new Spell(this, spellInfo, TRIGGERED_NONE);
         spell->SetCastItem(item);
         item->SetUsedInSpell(true);
-        spell->m_cast_count = cast_count;                   // set count of casts
+        spell->m_cast_count = cast_count;                   // set count of casts (消耗一次物品使用次数)
         spell->m_clientCast = true;
         spell->m_currentBasePoints[EFFECT_INDEX_0] = learning_spell_id;
         spell->SpellStart(&targets);
         return;
     }
 
-    // use triggered flag only for items with many spell casts and for not first cast
+    // use triggered flag only for items with many spell casts and for not first cast (同一物品多次施法时，后续法术使用自动触发标记)
     int count = 0;
 
     for (int i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
     {
         _Spell const& spellData = proto->Spells[i];
 
-        // no spell
+        // no spell (无绑定法术)
         if (!spellData.SpellId)
             continue;
 
-        // wrong triggering type
+        // wrong triggering type (非使用触发或无延迟使用型)
         if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_USE)
             continue;
 
@@ -7974,7 +8031,7 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets& targets, uint8 cast_
         Spell* spell = new Spell(this, spellInfo, (count > 0) ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
         spell->SetCastItem(item);
         item->SetUsedInSpell(true);
-        spell->m_cast_count = cast_count;                   // set count of casts
+        spell->m_cast_count = cast_count;                   // set count of casts (记录物品剩余使用次数)
         spell->m_clientCast = true;
         spell->SpellStart(&targets);
 
@@ -7994,7 +8051,7 @@ void Player::_RemoveAllItemMods()
             if (!proto)
                 continue;
 
-            // item set bonuses not dependent from item broken state
+            // item set bonuses not dependent from item broken state (套装属性不依赖装备是否破损)
             if (proto->ItemSet)
                 RemoveItemsSetItem(this, proto);
 
@@ -8064,7 +8121,7 @@ void Player::_ApplyAllItemMods()
             if (!proto)
                 continue;
 
-            // item set bonuses not dependent from item broken state
+            // item set bonuses not dependent from item broken state (套装属性不依赖装备是否破损)
             if (proto->ItemSet)
                 AddItemsSetItem(this, m_items[i]);
 
@@ -8081,7 +8138,7 @@ void Player::_ApplyAllItemMods()
 
 void Player::_ApplyAmmoBonuses()
 {
-    // check ammo
+    // check ammo (检查当前装备的弹药合法性)
     uint32 ammo_id = GetUInt32Value(PLAYER_AMMO_ID);
     if (!ammo_id)
         return;
@@ -8116,7 +8173,7 @@ bool Player::CheckAmmoCompatibility(const ItemPrototype* ammo_proto) const
     if (!ammo_proto)
         return false;
 
-    // check ranged weapon
+    // check ranged weapon (检查远程武器是否已装备且未破损)
     Item* weapon = GetWeaponForAttack(RANGED_ATTACK, true, false);
     if (!weapon)
         return false;
@@ -8125,7 +8182,7 @@ bool Player::CheckAmmoCompatibility(const ItemPrototype* ammo_proto) const
     if (!weapon_proto || weapon_proto->Class != ITEM_CLASS_WEAPON)
         return false;
 
-    // check ammo ws. weapon compatibility
+    // check ammo ws. weapon compatibility (校验弹药与远程武器类型匹配度，如弓配箭、枪配弹)
     switch (weapon_proto->SubClass)
     {
         case ITEM_SUBCLASS_WEAPON_BOW:
@@ -8145,13 +8202,14 @@ bool Player::CheckAmmoCompatibility(const ItemPrototype* ammo_proto) const
 }
 
 /*  If in a battleground a player dies, and an enemy removes the insignia, the player's bones is lootable
-    Called by remove insignia spell effect    */
+    Called by remove insignia spell effect
+    在战场中玩家死亡并被敌方拔除徽记后，其尸骨变为可拾取状态（由移除徽记法术效果调用） */
 void Player::RemovedInsignia(Player* looterPlr)
 {
     if (!GetBattleGroundId())
         return;
 
-    // If not released spirit, do it !
+    // If not released spirit, do it ! (若尚未释放灵魂则强制释放)
     bool repop = false;
     if (m_deathTimer > 0)
     {
@@ -8169,17 +8227,17 @@ void Player::RemovedInsignia(Player* looterPlr)
     data << uint8(repop);
     GetSession()->SendPacket(data);
 
-    // We have to convert player corpse to bones, not to be able to resurrect there
-    // SpawnCorpseBones isn't handy, 'cos it saves player while he in BG
+    // We have to convert player corpse to bones, not to be able to resurrect there (将玩家尸体转为白骨，使其无法原地复活)
+    // SpawnCorpseBones isn't handy, 'cos it saves player while he in BG (不使用 SpawnCorpseBones 以免在战场中触发角色存库)
     Corpse* bones = sObjectAccessor.ConvertCorpseForPlayer(GetObjectGuid(), true);
     if (!bones)
         return;
 
-    // Now we must make bones lootable, and send player loot
+    // Now we must make bones lootable, and send player loot (使白骨变为可拾取战利品状态)
     bones->SetFlag(CORPSE_FIELD_DYNAMIC_FLAGS, CORPSE_DYNFLAG_LOOTABLE);
 
-    // We store the level of our player in the gold field
-    // We retrieve this information at Player::SendLoot()
+    // We store the level of our player in the gold field (将玩家等级暂存于金币字段中，)
+    // We retrieve this information at Player::SendLoot() (供 Player::SendLoot() 读取计算)
     bones->lootRecipient = looterPlr;
 
     Loot*& bonesLoot = bones->m_loot;
@@ -8207,32 +8265,32 @@ void Player::SendUpdateWorldState(uint32 Field, uint32 Value) const
 
 void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid) const
 {
-    // data depends on zoneid/mapid...
+    // data depends on zoneid/mapid... (世界状态数据取决于当前区域或地图 ID)
     BattleGround* bg = GetBattleGround();
     uint32 mapid = GetMapId();
 
     DEBUG_LOG("Sending SMSG_INIT_WORLD_STATES to Map:%u, Zone: %u", mapid, zoneid);
 
-    uint32 count = 0;                                       // count of world states in packet
+    uint32 count = 0;                                       // count of world states in packet (数据包中世界状态条目数)
 
-    WorldPacket data(SMSG_INIT_WORLD_STATES, (4 + 4 + 4 + 2 + 8 * 8)); // guess
-    data << uint32(mapid);                                  // mapid
-    data << uint32(zoneid);                                 // zone id
-    data << uint32(areaid);                                 // area id, new 2.1.0
+    WorldPacket data(SMSG_INIT_WORLD_STATES, (4 + 4 + 4 + 2 + 8 * 8)); // guess (未知字段，通常为 0)
+    data << uint32(mapid);                                  // mapid (地图 ID)
+    data << uint32(zoneid);                                 // zone id (区域 ID)
+    data << uint32(areaid);                                 // area id, new 2.1.0 (子区域 ID，2.1.0 新增)
     size_t count_pos = data.wpos();
-    data << uint16(0);                                      // count of uint64 blocks, placeholder
+    data << uint16(0);                                      // count of uint64 blocks, placeholder (世界状态数量占位符)
 
-    // Current arena season
+    // Current arena season (当前竞技场赛季编号)
     FillInitialWorldState(data, count, 0xC77, sWorld.getConfig(CONFIG_UINT32_ARENA_SEASON_ID));
 
     switch (zoneid)
     {
-        case 139:                                           // Eastern Plaguelands
-        case 1377:                                          // Silithus
-        case 3483:                                          // Hellfire Peninsula
-        case 3518:                                          // Nagrand
-        case 3519:                                          // Terokkar Forest
-        case 3521:                                          // Zangarmarsh
+        case 139:                                           // Eastern Plaguelands (东瘟疫之地)
+        case 1377:                                          // Silithus (希利苏斯)
+        case 3483:                                          // Hellfire Peninsula (地狱火半岛)
+        case 3518:                                          // Nagrand (纳格兰)
+        case 3519:                                          // Terokkar Forest (泰罗卡森林)
+        case 3521:                                          // Zangarmarsh (赞加沼泽)
             if (OutdoorPvP* outdoorPvP = sOutdoorPvPMgr.GetScript(zoneid))
                 outdoorPvP->FillInitialWorldStates(data, count);
             break;
@@ -8245,16 +8303,16 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid) const
 
     GetMap()->GetVariableManager().FillInitialWorldStates(data, count, zoneid, areaid);
 
-    data.put<uint16>(count_pos, count);                     // set actual world state amount
+    data.put<uint16>(count_pos, count);                     // set actual world state amount (回填实际世界状态条目数量)
 
     GetSession()->SendPacket(data);
 }
 
 uint32 Player::GetXPRestBonus(uint32 xp)
 {
-    uint32 rested_bonus = (uint32)GetRestBonus();           // xp for each rested bonus
+    uint32 rested_bonus = (uint32)GetRestBonus();           // xp for each rested bonus (计算双倍精力经验加成：每点双倍额度抵 1 点额外经验)
 
-    if (rested_bonus > xp)                                  // max rested_bonus == xp or (r+x) = 200% xp
+    if (rested_bonus > xp)                                  // max rested_bonus == xp or (r+x) = 200% xp (双倍经验上限等于基础经验，即总计 200%)
         rested_bonus = xp;
 
     SetRestBonus(GetRestBonus() - rested_bonus);
@@ -8290,7 +8348,7 @@ void Player::SendPetSkillWipeConfirm() const
 }
 
 /*********************************************************/
-/***                    STORAGE SYSTEM                 ***/
+/***             STORAGE SYSTEM (物品存储系统)           ***/
 /*********************************************************/
 
 void Player::SetVirtualItemSlot(uint8 i, Item* item)
@@ -8317,19 +8375,19 @@ void Player::SetSheath(SheathState sheathed)
 {
     switch (sheathed)
     {
-        case SHEATH_STATE_UNARMED:                          // no prepared weapon
+        case SHEATH_STATE_UNARMED:                          // no prepared weapon (收起所有武器)
             SetVirtualItemSlot(0, nullptr);
             SetVirtualItemSlot(1, nullptr);
             SetVirtualItemSlot(2, nullptr);
             break;
-        case SHEATH_STATE_MELEE:                            // prepared melee weapon
+        case SHEATH_STATE_MELEE:                            // prepared melee weapon (拔出近战武器)
         {
             SetVirtualItemSlot(0, GetWeaponForAttack(BASE_ATTACK, true, true));
             SetVirtualItemSlot(1, GetWeaponForAttack(OFF_ATTACK, true, true));
             SetVirtualItemSlot(2, nullptr);
         }
         break;
-        case SHEATH_STATE_RANGED:                           // prepared ranged weapon
+        case SHEATH_STATE_RANGED:                           // prepared ranged weapon (拔出远程武器)
             SetVirtualItemSlot(0, nullptr);
             SetVirtualItemSlot(1, nullptr);
             SetVirtualItemSlot(2, GetWeaponForAttack(RANGED_ATTACK, true, true));
@@ -8340,9 +8398,10 @@ void Player::SetSheath(SheathState sheathed)
             SetVirtualItemSlot(2, nullptr);
             break;
     }
-    Unit::SetSheath(sheathed);                              // this must visualize Sheath changing for other players...
+    Unit::SetSheath(sheathed);                              // this must visualize Sheath changing for other players... (更新武器拔出/收起状态字节以同步给其他玩家)
 }
 
+/// 为物品查找最合适的装备槽位（优先空位，必要时替换）
 uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) const
 {
     uint8 slots[4];
@@ -8366,14 +8425,14 @@ uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) 
     }
     else
     {
-        // search free slot at first
+        // search free slot at first (优先查找空闲装备槽位)
         for (uint8 currentSlot : slots)
         {
             if (currentSlot != NULL_SLOT && !GetItemByPos(INVENTORY_SLOT_BAG_0, currentSlot))
             {
-                // not considered free if equipping 1H into offhand slot while wielding 2H
-                // also not free if equipping 2H into offhand slot while wielding 1H
-                // in both scenarios, a swap is required
+                // not considered free if equipping 1H into offhand slot while wielding 2H (手持双手武器时，副手槽位不视为空闲)
+                // also not free if equipping 2H into offhand slot while wielding 1H (手持单手武器时，向副手装双手武器也不视为空闲)
+                // in both scenarios, a swap is required (上述两种情况均须执行替换操作)
                 if (currentSlot == EQUIPMENT_SLOT_OFFHAND && (IsTwoHandUsed() || proto->InventoryType == INVTYPE_2HWEAPON))
                     continue;
 
@@ -8381,7 +8440,7 @@ uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) 
             }
         }
 
-        // if not found free and can swap return first appropriate from used
+        // if not found free and can swap return first appropriate from used (若无空闲槽位且允许替换，则返回首个可用槽位)
         for (uint8 currentSlot : slots)
         {
             if (currentSlot != NULL_SLOT && swap)
@@ -8389,7 +8448,7 @@ uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) 
         }
     }
 
-    // no free position
+    // no free position (无可用装备位置)
     return NULL_SLOT;
 }
 
@@ -8651,7 +8710,7 @@ InventoryResult Player::CanUnequipItems(uint32 item, uint32 count) const
         }
     }
 
-    // not found req. item count and have unequippable items
+    // not found req. item count and have unequippable items (未满足物品数量要求且存在不可卸下物品)
     return res;
 }
 
@@ -8904,72 +8963,72 @@ bool Player::IsBagPos(uint16 pos)
 
 bool Player::IsValidPos(uint8 bag, uint8 slot, bool explicit_pos) const
 {
-    // post selected
+    // post selected (指定了具体背包与槽位)
     if (bag == NULL_BAG && !explicit_pos)
         return true;
 
     if (bag == INVENTORY_SLOT_BAG_0)
     {
-        // any post selected
+        // any post selected (允许任意槽位)
         if (slot == NULL_SLOT && !explicit_pos)
             return true;
 
-        // equipment
+        // equipment (装备栏槽位)
         if (slot < EQUIPMENT_SLOT_END)
             return true;
 
-        // bag equip slots
+        // bag equip slots (背包栏位)
         if (slot >= INVENTORY_SLOT_BAG_START && slot < INVENTORY_SLOT_BAG_END)
             return true;
 
-        // backpack slots
+        // backpack slots (主行囊槽位)
         if (slot >= INVENTORY_SLOT_ITEM_START && slot < INVENTORY_SLOT_ITEM_END)
             return true;
 
-        // keyring slots
+        // keyring slots (钥匙链槽位)
         if (slot >= KEYRING_SLOT_START && slot < KEYRING_SLOT_END)
             return true;
 
-        // bank main slots
+        // bank main slots (银行主格槽位)
         if (slot >= BANK_SLOT_ITEM_START && slot < BANK_SLOT_ITEM_END)
             return true;
 
-        // bank bag slots
+        // bank bag slots (银行背包栏位)
         if (slot >= BANK_SLOT_BAG_START && slot < BANK_SLOT_BAG_END)
             return true;
 
         return false;
     }
 
-    // bag content slots
+    // bag content slots (已装备背包内部槽位)
     if (bag >= INVENTORY_SLOT_BAG_START && bag < INVENTORY_SLOT_BAG_END)
     {
         Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
         if (!pBag)
             return false;
 
-        // any post selected
+        // any post selected (背包内任意槽位)
         if (slot == NULL_SLOT && !explicit_pos)
             return true;
 
         return slot < pBag->GetBagSize();
     }
 
-    // bank bag content slots
+    // bank bag content slots (银行背包内部槽位)
     if (bag >= BANK_SLOT_BAG_START && bag < BANK_SLOT_BAG_END)
     {
         Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
         if (!pBag)
             return false;
 
-        // any post selected
+        // any post selected (银行背包内任意槽位)
         if (slot == NULL_SLOT && !explicit_pos)
             return true;
 
         return slot < pBag->GetBagSize();
     }
 
-    // where this?
+    // where this? (未知非法位置)
     return false;
 }
 
@@ -9095,7 +9154,7 @@ InventoryResult Player::_CanTakeMoreSimilarItems(uint32 entry, uint32 count, Ite
         return EQUIP_ERR_CANT_CARRY_MORE_OF_THIS;
     }
 
-    // no maximum
+    // no maximum (无最大堆叠持有上限)
     if (pProto->MaxCount > 0)
     {
         uint32 curcount = GetItemCount(pProto->ItemId, true, pItem);
@@ -9146,25 +9205,25 @@ InventoryResult Player::_CanStoreItem_InSpecificSlot(uint8 bag, uint8 slot, Item
 {
     Item* pItem2 = GetItemByPos(bag, slot);
 
-    // ignore move item (this slot will be empty at move)
+    // ignore move item (this slot will be empty at move) (忽略正在移动的源物品所在格，移动后该格将腾空)
     if (pItem2 == pSrcItem)
         pItem2 = nullptr;
 
     uint32 need_space;
 
-    // empty specific slot - check item fit to slot
+    // empty specific slot - check item fit to slot (目标指定槽位为空：校验物品是否可放入)
     if (!pItem2 || swap)
     {
         if (bag == INVENTORY_SLOT_BAG_0)
         {
-            // keyring case
+            // keyring case (钥匙链仅允许存放钥匙)
             if (slot >= KEYRING_SLOT_START && slot < KEYRING_SLOT_START + GetMaxKeyringSize() && !(pProto->BagFamily & BAG_FAMILY_MASK_KEYS))
             {
                 bagSlot = bag;
                 return EQUIP_ERR_ITEM_DOESNT_GO_INTO_BAG2;
             }
 
-            // prevent cheating
+            // prevent cheating (禁止将非空背包放入背包内部，防止套娃作弊)
             if ((slot >= BUYBACK_SLOT_START && slot < BUYBACK_SLOT_END) || slot >= PLAYER_SLOT_END)
             {
                 bagSlot = bag;
@@ -9200,13 +9259,13 @@ InventoryResult Player::_CanStoreItem_InSpecificSlot(uint8 bag, uint8 slot, Item
             }
         }
 
-        // non empty stack with space
+        // non empty stack with space (目标格已有可叠加物品且尚有堆叠余量)
         need_space = pProto->Stackable;
     }
-    // non empty slot, check item type
+    // non empty slot, check item type (目标格非空，检查是否为同类物品)
     else
     {
-        // can be merged at least partly
+        // can be merged at least partly (至少可以部分合并堆叠)
         InventoryResult res  = pItem2->CanBeMergedPartlyWith(pProto);
         if (res != EQUIP_ERR_OK)
             return res;
@@ -9228,14 +9287,14 @@ InventoryResult Player::_CanStoreItem_InSpecificSlot(uint8 bag, uint8 slot, Item
 
 InventoryResult Player::_CanStoreItem_InBag(uint8 bag, ItemPosCountVec& dest, ItemPrototype const* pProto, uint32& count, bool merge, bool non_specialized, Item* pSrcItem, uint8 skip_bag, uint8 skip_slot, uint8& bagSlot) const
 {
-    // skip specific bag already processed in first called _CanStoreItem_InBag
+    // skip specific bag already processed in first called _CanStoreItem_InBag (跳过首次已检查过的指定背包)
     if (bag == skip_bag)
     {
         bagSlot = bag;
         return EQUIP_ERR_ITEM_DOESNT_GO_INTO_BAG2;
     }
 
-    // skip nonexistent bag or self targeted bag
+    // skip nonexistent bag or self targeted bag (跳过不存在的背包或物品自身所在的背包)
     Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
     if (!pBag || pBag == pSrcItem)
     {
@@ -9250,7 +9309,7 @@ InventoryResult Player::_CanStoreItem_InBag(uint8 bag, ItemPosCountVec& dest, It
         return EQUIP_ERR_INT_BAG_ERROR;
     }
 
-    // specialized bag mode or non-specialized
+    // specialized bag mode or non-specialized (按专用背包模式或普通背包模式匹配)
     if (non_specialized != (pBagProto->Class == ITEM_CLASS_CONTAINER && pBagProto->SubClass == ITEM_SUBCLASS_CONTAINER))
     {
         bagSlot = bag;
@@ -9265,17 +9324,17 @@ InventoryResult Player::_CanStoreItem_InBag(uint8 bag, ItemPosCountVec& dest, It
 
     for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
     {
-        // skip specific slot already processed in first called _CanStoreItem_InSpecificSlot
+        // skip specific slot already processed in first called _CanStoreItem_InSpecificSlot (跳过已单独检查过的指定槽位)
         if (j == skip_slot)
             continue;
 
         Item* pItem2 = GetItemByPos(bag, j);
 
-        // ignore move item (this slot will be empty at move)
+        // ignore move item (this slot will be empty at move) (忽略待移动源物品所在格)
         if (pItem2 == pSrcItem)
             pItem2 = nullptr;
 
-        // if merge skip empty, if !merge skip non-empty
+        // if merge skip empty, if !merge skip non-empty (合并阶段跳过空格，找空格阶段跳过非空格)
         if ((pItem2 != nullptr) != merge)
             continue;
 
@@ -9283,12 +9342,12 @@ InventoryResult Player::_CanStoreItem_InBag(uint8 bag, ItemPosCountVec& dest, It
 
         if (pItem2)
         {
-            // can be merged at least partly
+            // can be merged at least partly (至少可部分叠加)
             uint8 res  = pItem2->CanBeMergedPartlyWith(pProto);
             if (res != EQUIP_ERR_OK)
                 continue;
 
-            // decrease at current stacksize
+            // decrease at current stacksize (扣减可合并的剩余数量)
             need_space -= pItem2->GetCount();
         }
 
@@ -9312,17 +9371,17 @@ InventoryResult Player::_CanStoreItem_InInventorySlots(uint8 slot_begin, uint8 s
 {
     for (uint32 j = slot_begin; j < slot_end; ++j)
     {
-        // skip specific slot already processed in first called _CanStoreItem_InSpecificSlot
+        // skip specific slot already processed in first called _CanStoreItem_InSpecificSlot (跳过已单独检查过的指定槽位)
         if (INVENTORY_SLOT_BAG_0 == skip_bag && j == skip_slot)
             continue;
 
         Item* pItem2 = GetItemByPos(INVENTORY_SLOT_BAG_0, j);
 
-        // ignore move item (this slot will be empty at move)
+        // ignore move item (this slot will be empty at move) (忽略待移动源物品所在格)
         if (pItem2 == pSrcItem)
             pItem2 = nullptr;
 
-        // if merge skip empty, if !merge skip non-empty
+        // if merge skip empty, if !merge skip non-empty (合并阶段跳过空格，找空格阶段跳过非空格)
         if ((pItem2 != nullptr) != merge)
             continue;
 
@@ -9330,12 +9389,12 @@ InventoryResult Player::_CanStoreItem_InInventorySlots(uint8 slot_begin, uint8 s
 
         if (pItem2)
         {
-            // can be merged at least partly
+            // can be merged at least partly (至少可部分叠加)
             uint8 res  = pItem2->CanBeMergedPartlyWith(pProto);
             if (res != EQUIP_ERR_OK)
                 continue;
 
-            // descrease at current stacksize
+            // descrease at current stacksize (扣减可合并的剩余数量)
             need_space -= pItem2->GetCount();
         }
 
@@ -9355,6 +9414,7 @@ InventoryResult Player::_CanStoreItem_InInventorySlots(uint8 slot_begin, uint8 s
     return EQUIP_ERR_OK;
 }
 
+/// 检查背包/银行/行囊是否有足够空间存放指定物品并输出目标位置列表
 InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& dest, uint32 entry, uint32 count, uint8& bagSlot, Item* pItem, bool swap, uint32* no_space_count) const
 {
     DEBUG_LOG("STORAGE: CanStoreItem bag = %u, slot = %u, item = %u, count = %u", bag, slot, entry, count);
@@ -9369,7 +9429,7 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
 
     if (pItem)
     {
-        // item used
+        // item used (物品当前正在被使用或处于不可移动状态)
         if (pItem->HasTemporaryLoot())
         {
             if (no_space_count)
@@ -9385,8 +9445,8 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
         }
     }
 
-    // check count of items (skip for auto move for same player from bank)
-    uint32 no_similar_count = 0;                            // can't store this amount similar items
+    // check count of items (skip for auto move for same player from bank) (检查唯一持有数量限制，自身银行取回除外)
+    uint32 no_similar_count = 0;                            // can't store this amount similar items (超出同类物品最大持有数量)
     InventoryResult res = _CanTakeMoreSimilarItems(entry, count, pItem, &no_similar_count);
     if (res != EQUIP_ERR_OK)
     {
@@ -9399,7 +9459,7 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
         count -= no_similar_count;
     }
 
-    // in specific slot
+    // in specific slot (指定了具体存放槽位)
     if (bag != NULL_BAG && slot != NULL_SLOT)
     {
         res = _CanStoreItem_InSpecificSlot(bag, slot, dest, pProto, count, swap, pItem, bagSlot);
@@ -9421,15 +9481,15 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
         }
     }
 
-    // not specific slot or have space for partly store only in specific slot
+    // not specific slot or have space for partly store only in specific slot (未指定槽位或指定槽位仅能部分存放)
 
-    // in specific bag
+    // in specific bag (指定了具体背包)
     if (bag != NULL_BAG)
     {
-        // search stack in bag for merge to
+        // search stack in bag for merge to (在指定背包中查找可叠加堆叠)
         if (pProto->Stackable > 1)
         {
-            if (bag == INVENTORY_SLOT_BAG_0)               // inventory
+            if (bag == INVENTORY_SLOT_BAG_0)               // inventory (主行囊区域)
             {
                 res = _CanStoreItem_InInventorySlots(KEYRING_SLOT_START, KEYRING_SLOT_END, dest, pProto, count, true, pItem, bag, slot);
                 if (res != EQUIP_ERR_OK)
@@ -9467,9 +9527,9 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
                     return EQUIP_ERR_CANT_CARRY_MORE_OF_THIS;
                 }
             }
-            else                                            // equipped bag
+            else                                            // equipped bag (已装备背包)
             {
-                // we need check 2 time (specialized/non_specialized), use NULL_BAG to prevent skipping bag
+                // we need check 2 time (specialized/non_specialized), use NULL_BAG to prevent skipping bag (需按专用/通用检查两次，传 NULL_BAG 以免跳过)
                 res = _CanStoreItem_InBag(bag, dest, pProto, count, true, false, pItem, NULL_BAG, slot, bagSlot);
                 if (res != EQUIP_ERR_OK)
                     res = _CanStoreItem_InBag(bag, dest, pProto, count, true, true, pItem, NULL_BAG, slot, bagSlot);
@@ -9493,10 +9553,10 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
             }
         }
 
-        // search free slot in bag for place to
-        if (bag == INVENTORY_SLOT_BAG_0)                    // inventory
+        // search free slot in bag for place to (在指定背包中查找空闲槽位)
+        if (bag == INVENTORY_SLOT_BAG_0)                    // inventory (主行囊)
         {
-            // search free slot - keyring case
+            // search free slot - keyring case (在钥匙链中查找空闲槽位)
             if (pProto->BagFamily & BAG_FAMILY_MASK_KEYS)
             {
                 uint32 keyringSize = GetMaxKeyringSize();
@@ -9537,7 +9597,7 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
                 return EQUIP_ERR_CANT_CARRY_MORE_OF_THIS;
             }
         }
-        else                                                // equipped bag
+        else                                                // equipped bag (已装备背包)
         {
             res = _CanStoreItem_InBag(bag, dest, pProto, count, false, false, pItem, NULL_BAG, slot, bagSlot);
             if (res != EQUIP_ERR_OK)
@@ -9562,9 +9622,9 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
         }
     }
 
-    // not specific bag or have space for partly store only in specific bag
+    // not specific bag or have space for partly store only in specific bag (未指定背包或指定背包仅能部分存放)
 
-    // search stack for merge to
+    // search stack for merge to (全局查找可叠加物品堆叠)
     if (pProto->Stackable > 1)
     {
         res = _CanStoreItem_InInventorySlots(KEYRING_SLOT_START, KEYRING_SLOT_END, dest, pProto, count, true, pItem, bag, slot);
@@ -9641,7 +9701,7 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
         }
     }
 
-    // search free slot - special bag case
+    // search free slot - special bag case (优先在专用背包如箭袋/草药袋中查找空位)
     if (pProto->BagFamily)
     {
         if (pProto->BagFamily & BAG_FAMILY_MASK_KEYS)
@@ -9684,11 +9744,11 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
         }
     }
 
-    // Normally it would be impossible to autostore not empty bags
+    // Normally it would be impossible to autostore not empty bags (通常非空背包不应直接自动存入)
     if (pItem && pItem->IsBag() && !((Bag*)pItem)->IsEmpty())
         return EQUIP_ERR_NONEMPTY_BAG_OVER_OTHER_BAG;
 
-    // search free slot
+    // search free slot (查找普通空位)
     res = _CanStoreItem_InInventorySlots(INVENTORY_SLOT_ITEM_START, INVENTORY_SLOT_ITEM_END, dest, pProto, count, false, pItem, bag, slot);
     if (res != EQUIP_ERR_OK)
     {
@@ -9735,7 +9795,7 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
 {
     Item*    pItem2;
 
-    // fill space table
+    // fill space table (统计行囊及各背包现有空闲槽位表)
     int inv_slot_items[INVENTORY_SLOT_ITEM_END - INVENTORY_SLOT_ITEM_START];
     int inv_bags[INVENTORY_SLOT_BAG_END - INVENTORY_SLOT_BAG_START][MAX_BAG_SIZE];
     int inv_keys[KEYRING_SLOT_END - KEYRING_SLOT_START];
@@ -9779,38 +9839,38 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
         }
     }
 
-    // check free space for all items
+    // check free space for all items (逐一校验待存入物品列表是否有足够空间)
     for (int k = 0; k < count; ++k)
     {
         Item*  pItem = pItems[k];
 
-        // no item
+        // no item (跳过空物品指针)
         if (!pItem)  continue;
 
         DEBUG_LOG("STORAGE: CanStoreItems %i. item = %u, count = %u", k + 1, pItem->GetEntry(), pItem->GetCount());
         ItemPrototype const* pProto = pItem->GetProto();
 
-        // strange item
+        // strange item (找不到物品模板原型)
         if (!pProto)
             return EQUIP_ERR_ITEM_NOT_FOUND;
 
-        // item used
+        // item used (物品正在使用中)
         if (pItem->HasTemporaryLoot())
             return EQUIP_ERR_ALREADY_LOOTED;
 
-        // item it 'bind'
+        // item it 'bind' (已灵魂绑定物品不可交易给他人)
         if (pItem->IsBindedNotWith(this))
             return EQUIP_ERR_DONT_OWN_THAT_ITEM;
 
         Bag* pBag;
         ItemPrototype const* pBagProto;
 
-        // item is 'one item only'
+        // item is 'one item only' (唯一物品校验)
         InventoryResult res = CanTakeMoreSimilarItems(pItem);
         if (res != EQUIP_ERR_OK)
             return res;
 
-        // search stack for merge to
+        // search stack for merge to (在虚拟空间表中查找可合并堆叠)
         if (pProto->Stackable > 1)
         {
             bool b_found = false;
@@ -9859,7 +9919,7 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
             if (b_found) continue;
         }
 
-        // special bag case
+        // special bag case (优先尝试存入专用背包)
         if (pProto->BagFamily)
         {
             bool b_found = false;
@@ -9886,7 +9946,7 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
                 {
                     pBagProto = pBag->GetProto();
 
-                    // not plain container check
+                    // not plain container check (非空背包不可存入其他背包)
                     if (pBagProto && (pBagProto->Class != ITEM_CLASS_CONTAINER || pBagProto->SubClass != ITEM_SUBCLASS_CONTAINER) &&
                             ItemCanGoIntoBag(pProto, pBagProto))
                     {
@@ -9905,7 +9965,7 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
             if (b_found) continue;
         }
 
-        // search free slot
+        // search free slot (在行囊及普通背包中查找空闲槽位)
         bool b_found = false;
         for (int t = INVENTORY_SLOT_ITEM_START; t < INVENTORY_SLOT_ITEM_END; ++t)
         {
@@ -9918,7 +9978,7 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
         }
         if (b_found) continue;
 
-        // search free slot in bags
+        // search free slot in bags (遍历各背包查找空位)
         for (int t = INVENTORY_SLOT_BAG_START; !b_found && t < INVENTORY_SLOT_BAG_END; ++t)
         {
             pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, t);
@@ -9926,7 +9986,7 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
             {
                 pBagProto = pBag->GetProto();
 
-                // special bag already checked
+                // special bag already checked (专用背包此前已检查过)
                 if (pBagProto && (pBagProto->Class != ITEM_CLASS_CONTAINER || pBagProto->SubClass != ITEM_SUBCLASS_CONTAINER))
                     continue;
 
@@ -9942,7 +10002,7 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count) const
             }
         }
 
-        // no free slot found?
+        // no free slot found? (未找到空闲槽位则空间不足)
         if (!b_found)
             return EQUIP_ERR_BAG_FULL;
     }
@@ -9965,6 +10025,7 @@ InventoryResult Player::CanEquipNewItem(uint8 slot, uint16& dest, uint32 item, b
     return EQUIP_ERR_ITEM_NOT_FOUND;
 }
 
+/// 校验指定物品是否允许装备到目标装备槽位
 InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool swap, bool direct_action) const
 {
     dest = 0;
@@ -9974,29 +10035,29 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
         ItemPrototype const* pProto = pItem->GetProto();
         if (pProto)
         {
-            // item used
+            // item used (物品正在使用中)
             if (pItem->HasTemporaryLoot())
                 return EQUIP_ERR_ALREADY_LOOTED;
 
             if (pItem->IsBindedNotWith(this))
                 return EQUIP_ERR_DONT_OWN_THAT_ITEM;
 
-            // check count of items (skip for auto move for same player from bank)
+            // check count of items (skip for auto move for same player from bank) (校验唯一持有上限)
             InventoryResult res = CanTakeMoreSimilarItems(pItem);
             if (res != EQUIP_ERR_OK)
                 return res;
 
-            // check this only in game
+            // check this only in game (仅在角色进入世界后执行战斗/状态限制检查)
             if (direct_action)
             {
-                // May be here should be more stronger checks; STUNNED checked
-                // ROOT, CONFUSED, DISTRACTED, FLEEING this needs to be checked.
+                // May be here should be more stronger checks; STUNNED checked (后续可加强限制；目前已检查晕眩状态)
+                // ROOT, CONFUSED, DISTRACTED, FLEEING this needs to be checked. (定身、迷惑、扰乱、恐惧等状态校验)
                 if (IsStunned())
                     return EQUIP_ERR_YOU_ARE_STUNNED;
 
-                // do not allow equipping gear except weapons, offhands, projectiles, relics in
-                // - combat
-                // - in-progress arenas
+                // do not allow equipping gear except weapons, offhands, projectiles, relics in (除武器、副手、弹药、圣物外，以下场景禁止更换装备：)
+                // - combat (- 战斗中)
+                // - in-progress arenas (- 进行中的竞技场内)
                 if (!pProto->CanChangeEquipStateInCombat())
                 {
                     if (IsInCombat())
@@ -10007,14 +10068,14 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
                             return EQUIP_ERR_NOT_DURING_ARENA_MATCH;
                 }
 
-                // prevent equip item in process logout
+                // prevent equip item in process logout (登出过程中禁止装备物品)
                 if (GetSession()->isLogingOut())
                     return EQUIP_ERR_YOU_ARE_STUNNED;
 
                 if (IsNonMeleeSpellCasted(false, false, false, false, false, true))
                     return EQUIP_ERR_CANT_DO_RIGHT_NOW;
 
-                // prevent equip item in Spirit of Redemption (Aura: 27827)
+                // prevent equip item in Spirit of Redemption (Aura: 27827) (救赎之魂状态下禁止更换装备)
                 if (HasAuraType(SPELL_AURA_SPIRIT_OF_REDEMPTION))
                     return EQUIP_ERR_CANT_DO_RIGHT_NOW;
             }
@@ -10029,11 +10090,11 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
             if (!swap && GetItemByPos(INVENTORY_SLOT_BAG_0, eslot))
                 return EQUIP_ERR_NO_EQUIPMENT_SLOT_AVAILABLE;
 
-            // if swap ignore item (equipped also)
+            // if swap ignore item (equipped also) (替换装备时忽略当前目标槽位已装备的唯一性冲突)
             if (InventoryResult res2 = CanEquipUniqueItem(pItem, swap ? eslot : uint8(NULL_SLOT)))
                 return res2;
 
-            // check unique-equipped special item classes
+            // check unique-equipped special item classes (校验唯一装备及珠宝唯一装备限制)
             if (pProto->Class == ITEM_CLASS_QUIVER)
             {
                 for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -10072,13 +10133,13 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
                     return EQUIP_ERR_CANT_EQUIP_WITH_TWOHANDED;
             }
 
-            // equip two-hand weapon case (with possible unequip 2 items)
+            // equip two-hand weapon case (with possible unequip 2 items) (装备双手武器时可能需要同时卸下主手和副手两件装备)
             if (type == INVTYPE_2HWEAPON)
             {
                 if (eslot != EQUIPMENT_SLOT_MAINHAND)
                     return EQUIP_ERR_ITEM_CANT_BE_EQUIPPED;
 
-                // offhand item must can be stored in inventory for offhand item and it also must be unequipped
+                // offhand item must can be stored in inventory for offhand item and it also must be unequipped (副手物品必须能够退回背包且允许卸下)
                 Item* offItem = GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
                 ItemPosCountVec off_dest;
                 uint8 bagSlot = 0;
@@ -10097,13 +10158,13 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
 
 InventoryResult Player::CanUnequipItem(uint16 pos, bool swap) const
 {
-    // Applied only to equipped items and bank bags
+    // Applied only to equipped items and bank bags (仅适用于已装备物品或银行背包栏)
     if (!IsEquipmentPos(pos) && !IsBagPos(pos))
         return EQUIP_ERR_OK;
 
     Item* pItem = GetItemByPos(pos);
 
-    // Applied only to existing equipped item
+    // Applied only to existing equipped item (仅适用于当前实际存在的已装备物品)
     if (!pItem)
         return EQUIP_ERR_OK;
 
@@ -10113,13 +10174,13 @@ InventoryResult Player::CanUnequipItem(uint16 pos, bool swap) const
     if (!pProto)
         return EQUIP_ERR_ITEM_NOT_FOUND;
 
-    // item used
+    // item used (物品正在使用中)
     if (pItem->HasTemporaryLoot())
         return EQUIP_ERR_ALREADY_LOOTED;
 
-    // do not allow unequipping gear except weapons, offhands, projectiles, relics in
-    // - combat
-    // - in-progress arenas
+    // do not allow unequipping gear except weapons, offhands, projectiles, relics in (除武器、副手、弹药、圣物外，以下场景禁止卸下装备：)
+    // - combat (- 战斗中)
+    // - in-progress arenas (- 进行中的竞技场内)
     if (!pProto->CanChangeEquipStateInCombat())
     {
         if (IsInCombat())
@@ -10130,7 +10191,7 @@ InventoryResult Player::CanUnequipItem(uint16 pos, bool swap) const
                 return EQUIP_ERR_NOT_DURING_ARENA_MATCH;
     }
 
-    // prevent unequip item in process logout
+    // prevent unequip item in process logout (登出过程中禁止卸下装备)
     if (GetSession()->isLogingOut())
         return EQUIP_ERR_YOU_ARE_STUNNED;
 
@@ -10152,19 +10213,19 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
     if (!pProto)
         return swap ? EQUIP_ERR_ITEMS_CANT_BE_SWAPPED : EQUIP_ERR_ITEM_NOT_FOUND;
 
-    // item used
+    // item used (物品正在使用中)
     if (pItem->HasTemporaryLoot())
         return EQUIP_ERR_ALREADY_LOOTED;
 
     if (pItem->IsBindedNotWith(this))
         return EQUIP_ERR_DONT_OWN_THAT_ITEM;
 
-    // check count of items (skip for auto move for same player from bank)
+    // check count of items (skip for auto move for same player from bank) (校验唯一持有上限)
     InventoryResult res = CanTakeMoreSimilarItems(pItem);
     if (res != EQUIP_ERR_OK)
         return res;
 
-    // in specific slot
+    // in specific slot (指定银行具体槽位)
     if (bag != NULL_BAG && slot != NULL_SLOT)
     {
         if (slot >= BANK_SLOT_BAG_START && slot < BANK_SLOT_BAG_END)
@@ -10188,9 +10249,9 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
             return EQUIP_ERR_OK;
     }
 
-    // not specific slot or have space for partly store only in specific slot
+    // not specific slot or have space for partly store only in specific slot (未指定槽位或仅部分存入)
 
-    // in specific bag
+    // in specific bag (指定银行背包)
     if (bag != NULL_BAG)
     {
         if (pProto->InventoryType == INVTYPE_BAG)
@@ -10200,7 +10261,7 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
                 return EQUIP_ERR_NONEMPTY_BAG_OVER_OTHER_BAG;
         }
 
-        // search stack in bag for merge to
+        // search stack in bag for merge to (在指定银行背包中查找可叠加堆叠)
         if (pProto->Stackable > 1)
         {
             if (bag == INVENTORY_SLOT_BAG_0)
@@ -10226,7 +10287,7 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
             }
         }
 
-        // search free slot in bag
+        // search free slot in bag (在指定银行背包中查找空位)
         if (bag == INVENTORY_SLOT_BAG_0)
         {
             res = _CanStoreItem_InInventorySlots(BANK_SLOT_ITEM_START, BANK_SLOT_ITEM_END, dest, pProto, count, false, pItem, bag, slot);
@@ -10250,12 +10311,12 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
         }
     }
 
-    // not specific bag or have space for partly store only in specific bag
+    // not specific bag or have space for partly store only in specific bag (未指定银行背包或仅部分存入)
 
-    // search stack for merge to
+    // search stack for merge to (在银行主格与银行背包中查找可叠加堆叠)
     if (pProto->Stackable > 1)
     {
-        // in slots
+        // in slots (银行主格)
         res = _CanStoreItem_InInventorySlots(BANK_SLOT_ITEM_START, BANK_SLOT_ITEM_END, dest, pProto, count, true, pItem, bag, slot);
         if (res != EQUIP_ERR_OK)
             return res;
@@ -10263,7 +10324,7 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
         if (count == 0)
             return EQUIP_ERR_OK;
 
-        // in special bags
+        // in special bags (银行专用背包)
         if (pProto->BagFamily)
         {
             for (int i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; ++i)
@@ -10288,7 +10349,7 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
         }
     }
 
-    // search free place in special bag
+    // search free place in special bag (在银行专用背包中查找空位)
     if (pProto->BagFamily)
     {
         for (int i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; ++i)
@@ -10302,7 +10363,7 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
         }
     }
 
-    // search free space
+    // search free space (在银行主格与普通银行背包中查找空位)
     res = _CanStoreItem_InInventorySlots(BANK_SLOT_ITEM_START, BANK_SLOT_ITEM_END, dest, pProto, count, false, pItem, bag, slot);
     if (res != EQUIP_ERR_OK)
         return res;
@@ -10346,7 +10407,7 @@ InventoryResult Player::CanUseItem(Item* pItem, bool direct_action) const
 
             if (uint32 skill = pItem->GetSkill())
             {
-                // Fist weapons use unarmed skill calculations, but we must query fist weapon skill presence to use this item
+                // Fist weapons use unarmed skill calculations, but we must query fist weapon skill presence to use this item (拳套使用徒手技能计算，但装备使用仍需检查拳套技能)
                 if (pProto->SubClass == ITEM_SUBCLASS_WEAPON_FIST)
                     skill = SKILL_FIST_WEAPONS;
                 if (!GetSkillValue(skill))
@@ -10364,7 +10425,7 @@ InventoryResult Player::CanUseItem(Item* pItem, bool direct_action) const
 
 InventoryResult Player::CanUseItem(ItemPrototype const* pProto) const
 {
-    // Used by group, function NeedBeforeGreed, to know if a prototype can be used by a player
+    // Used by group, function NeedBeforeGreed, to know if a prototype can be used by a player (供队伍需求优先分配规则判断玩家是否可使用该物品)
 
     if (pProto)
     {
@@ -10411,7 +10472,7 @@ InventoryResult Player::CanUseAmmo(uint32 item) const
         return EQUIP_ERR_CANT_EQUIP_REPUTATION;
         */
 
-        // Requires No Ammo
+        // Requires No Ammo (该武器类型无需弹药)
         if (GetDummyAura(46699))
             return EQUIP_ERR_BAG_FULL6;
 
@@ -10425,11 +10486,11 @@ void Player::SetAmmo(uint32 item)
     if (!item)
         return;
 
-    // already set
+    // already set (已设置为当前弹药，无需重复应用)
     if (GetUInt32Value(PLAYER_AMMO_ID) == item)
         return;
 
-    // check ammo
+    // check ammo (校验弹药可用性与数量)
     if (item)
     {
         InventoryResult msg = CanUseAmmo(item);
@@ -10456,7 +10517,7 @@ void Player::RemoveAmmo()
         UpdateDamagePhysical(RANGED_ATTACK);
 }
 
-// Return stored item (if stored to stack, it can diff. from pItem). And pItem ca be deleted in this case.
+// Return stored item (if stored to stack, it can diff. from pItem). And pItem ca be deleted in this case. (返回最终存入的物品指针；若已合并至现有堆叠，原 pItem 可能被销毁)
 Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update, int32 randomPropertyId)
 {
     uint32 count = 0;
@@ -10498,7 +10559,8 @@ Item* Player::StoreItem(ItemPosCountVec const& dest, Item* pItem, bool update)
     return lastItem;
 }
 
-// Return stored item (if stored to stack, it can diff. from pItem). And pItem ca be deleted in this case.
+// Return stored item (if stored to stack, it can diff. from pItem). And pItem ca be deleted in this case. (返回最终存入的物品指针；若已合并堆叠则可能销毁原对象)
+/// 内部核心存入实现：将物品放入或合并到指定背包槽位并触发入包法术与任务计数
 Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool update)
 {
     if (!pItem)
@@ -10561,7 +10623,7 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
         AddItemDurations(pItem);
         sScriptDevAIMgr.OnItemLoot(this, pItem, true);
 
-        // at place into not appropriate slot (bank, for example) remove aura
+        // at place into not appropriate slot (bank, for example) remove aura (放入银行等非背包槽位时移除入包触发光环)
         ApplyItemOnStoreSpell(pItem, IsEquipmentPos(pItem->GetBagSlot(), pItem->GetSlot()) || IsInventoryPos(pItem->GetBagSlot(), pItem->GetSlot()));
 
         return pItem;
@@ -10580,7 +10642,7 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
 
     if (!clone)
     {
-        // delete item (it not in any slot currently)
+        // delete item (it not in any slot currently) (完整合并后删除已耗尽的源物品)
         if (IsInWorld() && update)
         {
             pItem->RemoveFromWorld();
@@ -10590,11 +10652,11 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
         RemoveEnchantmentDurations(pItem);
         RemoveItemDurations(pItem);
 
-        pItem->SetOwnerGuid(GetObjectGuid());           // prevent error at next SetState in case trade/mail/buy from vendor
+        pItem->SetOwnerGuid(GetObjectGuid());           // prevent error at next SetState in case trade/mail/buy from vendor (重置物品变更状态，避免交易/邮件/购买后续保存冲突)
         pItem->SetState(ITEM_REMOVED, this);
     }
 
-    // AddItemDurations(pItem2); - pItem2 already have duration listed for player
+    // AddItemDurations(pItem2); - pItem2 already have duration listed for player (目标堆叠物品已登记限时计时器)
     AddEnchantmentDurations(pItem2);
 
     pItem2->SetState(ITEM_CHANGED, this);
@@ -10613,6 +10675,7 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
     return nullptr;
 }
 
+/// 将物品装备到指定部位并应用属性、套装、外观及灵魂绑定
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 {
     AddEnchantmentDurations(pItem);
@@ -10630,7 +10693,7 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
         {
             ItemPrototype const* pProto = pItem->GetProto();
 
-            // item set bonuses applied only at equip and removed at unequip, and still active for broken items
+            // item set bonuses applied only at equip and removed at unequip, and still active for broken items (套装效果仅在穿脱时增减，破损仍有效)
             if (pProto && pProto->ItemSet)
                 AddItemsSetItem(this, pItem);
 
@@ -10638,7 +10701,7 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 
             ApplyItemOnStoreSpell(pItem, true);
 
-            // Weapons and also Totem/Relic/Sigil/etc
+            // Weapons and also Totem/Relic/Sigil/etc (更新武器及圣物/图腾/魔印相关的攻击属性)
             if (pProto && IsInCombat() && (pProto->Class == ITEM_CLASS_WEAPON || pProto->InventoryType == INVTYPE_RELIC))
             {
                 if (slot == SLOT_MAIN_HAND)
@@ -10692,7 +10755,7 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
         RemoveEnchantmentDurations(pItem);
         RemoveItemDurations(pItem);
 
-        pItem->SetOwnerGuid(GetObjectGuid());               // prevent error at next SetState in case trade/mail/buy from vendor
+        pItem->SetOwnerGuid(GetObjectGuid());               // prevent error at next SetState in case trade/mail/buy from vendor (重置物品保存状态)
         pItem->SetState(ITEM_REMOVED, this);
         pItem2->SetState(ITEM_CHANGED, this);
 
@@ -10735,7 +10798,7 @@ void Player::SetVisibleItemSlot(uint8 slot, Item* pItem)
         for (int i = 0; i < MAX_INSPECTED_ENCHANTMENT_SLOT; ++i)
             SetUInt32Value(VisibleBase + 1 + i, pItem->GetEnchantmentId(EnchantmentSlot(i)));
 
-        // Use SetInt16Value to prevent set high part to FFFF for negative value
+        // Use SetInt16Value to prevent set high part to FFFF for negative value (使用 SetInt16Value 防止负数设置污染高位)
         SetInt16Value(PLAYER_VISIBLE_ITEM_1_PROPERTIES + (slot * MAX_VISIBLE_ITEM_OFFSET), 0, pItem->GetItemRandomPropertyId());
         SetUInt32Value(PLAYER_VISIBLE_ITEM_1_PROPERTIES + 1 + (slot * MAX_VISIBLE_ITEM_OFFSET), pItem->GetItemSuffixFactor());
     }
@@ -10759,7 +10822,7 @@ void Player::VisualizeItem(uint8 slot, Item* pItem)
     if (!pItem)
         return;
 
-    // check also  BIND_WHEN_PICKED_UP and BIND_QUEST_ITEM for .additem or .additemset case by GM (not binded at adding to inventory)
+    // check also  BIND_WHEN_PICKED_UP and BIND_QUEST_ITEM for .additem or .additemset case by GM (not binded at adding to inventory) (装备时自动处理拾取绑定/装备绑定/任务物品绑定)
     ItemPrototype const* itemProto = pItem->GetProto();
     if (itemProto->Bonding == BIND_WHEN_EQUIPPED || itemProto->Bonding == BIND_WHEN_PICKED_UP || itemProto->Bonding == BIND_QUEST_ITEM)
         pItem->SetBinding(true);
@@ -10779,12 +10842,13 @@ void Player::VisualizeItem(uint8 slot, Item* pItem)
     pItem->SetState(ITEM_CHANGED, this);
 }
 
+/// 从指定背包或装备槽位摘除物品并撤销装备加成
 void Player::RemoveItem(uint8 bag, uint8 slot, bool update)
 {
-    // note: removeitem does not actually change the item
-    // it only takes the item out of storage temporarily
-    // note2: if removeitem is to be used for delinking
-    // the item must be removed from the player's updatequeue
+    // note: removeitem does not actually change the item (注：RemoveItem 不会销毁或修改物品本身，)
+    // it only takes the item out of storage temporarily (仅临时将其从存储槽位中移出)
+    // note2: if removeitem is to be used for delinking (注2：若用于彻底移除，)
+    // the item must be removed from the player's updatequeue (须随后将其从更新队列中移除)
 
     if (Item* pItem = GetItemByPos(bag, slot))
     {
@@ -10798,19 +10862,19 @@ void Player::RemoveItem(uint8 bag, uint8 slot, bool update)
             if (slot < INVENTORY_SLOT_BAG_END)
             {
                 ItemPrototype const* pProto = pItem->GetProto();
-                // item set bonuses applied only at equip and removed at unequip, and still active for broken items
+                // item set bonuses applied only at equip and removed at unequip, and still active for broken items (卸下时移除套装加成)
 
                 if (pProto && pProto->ItemSet)
                     RemoveItemsSetItem(this, pProto);
 
                 _ApplyItemMods(pItem, slot, false);
 
-                // remove item dependent auras and casts (only weapon and armor slots)
+                // remove item dependent auras and casts (only weapon and armor slots) (移除依赖该装备的光环与施法)
                 if (slot < EQUIPMENT_SLOT_END)
                 {
                     RemoveItemDependentAurasAndCasts(pItem);
 
-                    // remove held enchantments, update expertise
+                    // remove held enchantments, update expertise (移除武器附魔并刷新精准等属性)
                     if (slot == EQUIPMENT_SLOT_MAINHAND)
                     {
                         for (uint32 i = PERM_ENCHANTMENT_SLOT; i <= TEMP_ENCHANTMENT_SLOT; ++i)
@@ -10848,10 +10912,10 @@ void Player::RemoveItem(uint8 bag, uint8 slot, bool update)
                 pBag->RemoveItem(slot);
         }
         pItem->SetGuidValue(ITEM_FIELD_CONTAINED, ObjectGuid());
-        // pItem->SetGuidValue(ITEM_FIELD_OWNER, ObjectGuid()); not clear owner at remove (it will be set at store). This used in mail and auction code
+        // pItem->SetGuidValue(ITEM_FIELD_OWNER, ObjectGuid()); not clear owner at remove (it will be set at store). This used in mail and auction code (移出时不清除物主 GUID，供邮件与拍卖行逻辑复用)
         pItem->SetSlot(NULL_SLOT);
 
-        // ApplyItemOnStoreSpell, for avoid re-apply will remove at _adding_ to not appropriate slot
+        // ApplyItemOnStoreSpell, for avoid re-apply will remove at _adding_ to not appropriate slot (入包法术不在此处移除，避免槽位移动时误重置)
 
         if (IsInWorld() && update)
         {
@@ -10860,7 +10924,7 @@ void Player::RemoveItem(uint8 bag, uint8 slot, bool update)
     }
 }
 
-// Common operation need to remove item from inventory without delete in trade, auction, guild bank, mail....
+// Common operation need to remove item from inventory without delete in trade, auction, guild bank, mail.... (通用操作：从背包移出物品但不销毁，用于交易/拍卖/公会银行/邮件等)
 void Player::MoveItemFromInventory(uint8 bag, uint8 slot, bool update)
 {
     if (Item* it = GetItemByPos(bag, slot))
@@ -10868,7 +10932,7 @@ void Player::MoveItemFromInventory(uint8 bag, uint8 slot, bool update)
         ItemRemovedQuestCheck(it->GetEntry(), it->GetCount());
         RemoveItem(bag, slot, update);
 
-        // item atStore spell not removed in RemoveItem (for avoid reappaly in slots changes), so do it directly
+        // item atStore spell not removed in RemoveItem (for avoid reappaly in slots changes), so do it directly (离包后显式移除入包触发法术)
         if (IsEquipmentPos(bag, slot) || IsInventoryPos(bag, slot))
             ApplyItemOnStoreSpell(it, false);
 
@@ -10881,28 +10945,29 @@ void Player::MoveItemFromInventory(uint8 bag, uint8 slot, bool update)
     }
 }
 
-// Common operation need to add item from inventory without delete in trade, guild bank, mail....
+// Common operation need to add item from inventory without delete in trade, guild bank, mail.... (通用操作：将外部已有物品存入背包，用于交易/公会银行/邮件等)
 void Player::MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool update, bool in_characterInventoryDB)
 {
-    // update quest counters
+    // update quest counters (更新任务物品收集计数)
     ItemAddedQuestCheck(pItem->GetEntry(), pItem->GetCount());
 
-    // store item
+    // store item (存入指定槽位)
     Item* pLastItem = StoreItem(dest, pItem, update);
 
-    // only set if not merged to existing stack (pItem can be deleted already but we can compare pointers any way)
+    // only set if not merged to existing stack (pItem can be deleted already but we can compare pointers any way) (仅当未完全并入旧堆叠时更新物品归属与状态)
     if (pLastItem == pItem)
     {
-        // update owner for last item (this can be original item with wrong owner
+        // update owner for last item (this can be original item with wrong owner (更新物主 GUID)
         if (pLastItem->GetOwnerGuid() != GetObjectGuid())
             pLastItem->SetOwnerGuid(GetObjectGuid());
 
-        // if this original item then it need create record in inventory
-        // in case trade we already have item in other player inventory
+        // if this original item then it need create record in inventory (若首次入包则标记为新建并加入背包更新队列)
+        // in case trade we already have item in other player inventory (交易转移的物品原在他人背包中，标记为 CHANGED)
         pLastItem->SetState(in_characterInventoryDB ? ITEM_CHANGED : ITEM_NEW, this);
     }
 }
 
+/// 彻底销毁指定槽位的物品（含非空背包内物品递归销毁）
 void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
 {
     Item* pItem = GetItemByPos(bag, slot);
@@ -10910,8 +10975,8 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
     {
         DEBUG_LOG("STORAGE: DestroyItem bag = %u, slot = %u, item = %u", bag, slot, pItem->GetEntry());
 
-        // start from destroy contained items (only equipped bag can have its)
-        if (pItem->IsBag() && pItem->IsEquipped())          // this also prevent infinity loop if empty bag stored in bag==slot
+        // start from destroy contained items (only equipped bag can have its) (若销毁背包则先递归销毁其内部所有物品，)
+        if (pItem->IsBag() && pItem->IsEquipped())          // this also prevent infinity loop if empty bag stored in bag==slot (同时防止空包自引导致死循环)
         {
             for (int i = 0; i < MAX_BAG_SIZE; ++i)
                 DestroyItem(slot, i, update);
@@ -10939,12 +11004,12 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
         {
             SetGuidValue(PLAYER_FIELD_INV_SLOT_HEAD + (slot * 2), ObjectGuid());
 
-            // equipment and equipped bags can have applied bonuses
+            // equipment and equipped bags can have applied bonuses (装备栏与背包栏物品销毁前移除属性加成)
             if (slot < INVENTORY_SLOT_BAG_END)
             {
                 ItemPrototype const* pProto = pItem->GetProto();
 
-                // item set bonuses applied only at equip and removed at unequip, and still active for broken items
+                // item set bonuses applied only at equip and removed at unequip, and still active for broken items (移除套装加成)
                 if (pProto && pProto->ItemSet)
                     RemoveItemsSetItem(this, pProto);
 
@@ -10953,10 +11018,10 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
 
             if (slot < EQUIPMENT_SLOT_END)
             {
-                // remove item dependent auras and casts (only weapon and armor slots)
+                // remove item dependent auras and casts (only weapon and armor slots) (移除依赖该物品的光环与施法)
                 RemoveItemDependentAurasAndCasts(pItem);
 
-                // update weapon dependant stats
+                // update weapon dependant stats (刷新武器相关属性)
                 if (slot == EQUIPMENT_SLOT_MAINHAND)
                     UpdateWeaponDependantStats(BASE_ATTACK);
                 else if (slot == EQUIPMENT_SLOT_OFFHAND)
@@ -10964,7 +11029,7 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
                 else if (slot == EQUIPMENT_SLOT_RANGED)
                     UpdateWeaponDependantStats(RANGED_ATTACK);
 
-                // equipment visual show
+                // equipment visual show (更新角色外观显示)
                 SetVisibleItemSlot(slot, nullptr);
             }
 
@@ -10990,7 +11055,7 @@ void Player::DestroyItemCount(uint32 itemEntry, uint32 count, bool update, bool 
 {
     DEBUG_LOG("STORAGE: DestroyItemCount item = %u, count = %u", itemEntry, count);
 
-    // in inventory
+    // in inventory (遍历主行囊)
     for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
     {
         if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
@@ -11017,7 +11082,7 @@ void Player::DestroyItemCount(uint32 itemEntry, uint32 count, bool update, bool 
         }
     }
 
-    // in inventory bags
+    // in inventory bags (遍历已装备背包)
     for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
     {
         if (Bag* bag = dynamic_cast<Bag*>(GetItemByPos(INVENTORY_SLOT_BAG_0, i)))
@@ -11037,7 +11102,7 @@ void Player::DestroyItemCount(uint32 itemEntry, uint32 count, bool update, bool 
         }
     }
 
-    // in equipment and bag list
+    // in equipment and bag list (遍历装备栏与背包栏自身)
     for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_BAG_END; ++i)
     {
         if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
@@ -11054,7 +11119,7 @@ void Player::DestroyItemCount(uint32 itemEntry, uint32 count, bool update, bool 
         }
     }
 
-    if (inBankAlso) // Remove items from bank as well
+    if (inBankAlso) // Remove items from bank as well (按需同时从银行中移除)
     {
         for (int i = BANK_SLOT_ITEM_START; i < BANK_SLOT_ITEM_END; ++i)
         {
@@ -11090,7 +11155,7 @@ void Player::DestroyZoneLimitedItem(bool update, uint32 new_zone)
 {
     DEBUG_LOG("STORAGE: DestroyZoneLimitedItem in map %u and area %u", GetMapId(), new_zone);
 
-    // in inventory
+    // in inventory (主行囊内区域限定物品)
     for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem->IsLimitedToAnotherMapOrZone(GetMapId(), new_zone))
@@ -11101,7 +11166,7 @@ void Player::DestroyZoneLimitedItem(bool update, uint32 new_zone)
             if (pItem->IsLimitedToAnotherMapOrZone(GetMapId(), new_zone))
                 DestroyItem(INVENTORY_SLOT_BAG_0, i, update);
 
-    // in inventory bags
+    // in inventory bags (背包内区域限定物品)
     for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
         if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
@@ -11109,7 +11174,7 @@ void Player::DestroyZoneLimitedItem(bool update, uint32 new_zone)
                     if (pItem->IsLimitedToAnotherMapOrZone(GetMapId(), new_zone))
                         DestroyItem(i, j, update);
 
-    // in equipment and bag list
+    // in equipment and bag list (装备栏与背包栏区域限定物品)
     for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_BAG_END; ++i)
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem->IsLimitedToAnotherMapOrZone(GetMapId(), new_zone))
@@ -11118,17 +11183,17 @@ void Player::DestroyZoneLimitedItem(bool update, uint32 new_zone)
 
 void Player::DestroyConjuredItems(bool update)
 {
-    // used when entering arena
-    // destroys all conjured items
+    // used when entering arena (进入竞技场时调用：)
+    // destroys all conjured items (销毁所有魔法制造的临时物品)
     DEBUG_LOG("STORAGE: DestroyConjuredItems");
 
-    // in inventory
+    // in inventory (主行囊内魔法制造物品)
     for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem->IsConjuredConsumable())
                 DestroyItem(INVENTORY_SLOT_BAG_0, i, update);
 
-    // in inventory bags
+    // in inventory bags (背包内魔法制造物品)
     for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
         if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
@@ -11136,7 +11201,7 @@ void Player::DestroyConjuredItems(bool update)
                     if (pItem->IsConjuredConsumable())
                         DestroyItem(i, j, update);
 
-    // in equipment and bag list
+    // in equipment and bag list (装备栏与背包栏魔法制造物品)
     for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_BAG_END; ++i)
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem->IsConjuredConsumable())
@@ -11179,21 +11244,21 @@ void Player::SplitItem(uint16 src, uint16 dst, uint32 count)
         return;
     }
 
-    if (pSrcItem->HasGeneratedLoot())                       // prevent split looting item (stackable items can has only temporary loot and this meaning that loot window open)
+    if (pSrcItem->HasGeneratedLoot())                       // prevent split looting item (stackable items can has only temporary loot and this meaning that loot window open) (禁止拆分正在开启拾取的容器物品)
     {
-        // best error message found for attempting to split while looting
+        // best error message found for attempting to split while looting (返回最佳匹配的错误提示)
         SendEquipError(EQUIP_ERR_COULDNT_SPLIT_ITEMS, pSrcItem, nullptr);
         return;
     }
 
-    // not let split all items (can be only at cheating)
+    // not let split all items (can be only at cheating) (禁止一次拆出全部数量，防作弊)
     if (pSrcItem->GetCount() == count)
     {
         SendEquipError(EQUIP_ERR_COULDNT_SPLIT_ITEMS, pSrcItem, nullptr);
         return;
     }
 
-    // not let split more existing items (can be only at cheating)
+    // not let split more existing items (can be only at cheating) (禁止拆出超过现有数量，防作弊)
     if (pSrcItem->GetCount() < count)
     {
         SendEquipError(EQUIP_ERR_TRIED_TO_SPLIT_MORE_THAN_COUNT, pSrcItem, nullptr);
@@ -11210,7 +11275,7 @@ void Player::SplitItem(uint16 src, uint16 dst, uint32 count)
 
     if (IsInventoryPos(dst))
     {
-        // change item amount before check (for unique max count check)
+        // change item amount before check (for unique max count check) (检查前先临时扣减源堆叠数量以通过唯一数量校验)
         pSrcItem->SetCount(pSrcItem->GetCount() - count);
 
         ItemPosCountVec dest;
@@ -11231,7 +11296,7 @@ void Player::SplitItem(uint16 src, uint16 dst, uint32 count)
     }
     else if (IsBankPos(dst))
     {
-        // change item amount before check (for unique max count check)
+        // change item amount before check (for unique max count check) (同上：放入目标空位前临时扣减数量)
         pSrcItem->SetCount(pSrcItem->GetCount() - count);
 
         ItemPosCountVec dest;
@@ -11252,7 +11317,7 @@ void Player::SplitItem(uint16 src, uint16 dst, uint32 count)
     }
     else if (IsEquipmentPos(dst))
     {
-        // change item amount before check (for unique max count check), provide space for splitted items
+        // change item amount before check (for unique max count check), provide space for splitted items (临时扣减源堆叠数量并为拆分出的物品腾出校验空间)
         pSrcItem->SetCount(pSrcItem->GetCount() - count);
 
         uint16 dest;
@@ -11273,6 +11338,7 @@ void Player::SplitItem(uint16 src, uint16 dst, uint32 count)
     }
 }
 
+/// 交换或移动两个槽位的物品（支持堆叠合并与背包整体互换）
 void Player::SwapItem(uint16 src, uint16 dst)
 {
     uint8 srcbag = src >> 8;
@@ -11295,12 +11361,12 @@ void Player::SwapItem(uint16 src, uint16 dst)
         return;
     }
 
-    // SRC checks
+    // SRC checks (源槽位校验)
 
-    // check unequip potability for equipped items and bank bags
+    // check unequip potability for equipped items and bank bags (若源物品为已装备物品或银行背包，检查是否允许卸下)
     if (IsEquipmentPos(src) || IsBagPos(src))
     {
-        // bags can be swapped with empty bag slots, or with empty bag (items move possibility checked later)
+        // bags can be swapped with empty bag slots, or with empty bag (items move possibility checked later) (非空背包不可直接放入普通格子，背包间互换在后续校验)
         InventoryResult msg = CanUnequipItem(src, !IsBagPos(src) || IsBagPos(dst) || (pDstItem && pDstItem->IsBag() && ((Bag*)pDstItem)->IsEmpty()));
         if (msg != EQUIP_ERR_OK)
         {
@@ -11309,28 +11375,28 @@ void Player::SwapItem(uint16 src, uint16 dst)
         }
     }
 
-    // prevent put equipped/bank bag in self
+    // prevent put equipped/bank bag in self (禁止将背包放入其自身内部)
     if (IsBagPos(src) && srcslot == dstbag)
     {
         SendEquipError(EQUIP_ERR_NONEMPTY_BAG_OVER_OTHER_BAG, pSrcItem, pDstItem);
         return;
     }
 
-    // prevent put equipped/bank bag in self
+    // prevent put equipped/bank bag in self (禁止将背包放入其自身内部)
     if (IsBagPos(dst) && dstslot == srcbag)
     {
         SendEquipError(EQUIP_ERR_NONEMPTY_BAG_OVER_OTHER_BAG, pDstItem, pSrcItem);
         return;
     }
 
-    // DST checks
+    // DST checks (目标槽位校验)
 
     if (pDstItem)
     {
-        // check unequip potability for equipped items and bank bags
+        // check unequip potability for equipped items and bank bags (若目标为已装备物品或银行背包，检查是否允许卸下)
         if (IsEquipmentPos(dst) || IsBagPos(dst))
         {
-            // bags can be swapped with empty bag slots, or with empty bag (items move possibility checked later)
+            // bags can be swapped with empty bag slots, or with empty bag (items move possibility checked later) (非空背包互换在后续处理)
             InventoryResult msg = CanUnequipItem(dst, !IsBagPos(dst) || IsBagPos(src) || (pSrcItem->IsBag() && ((Bag*)pSrcItem)->IsEmpty()));
             if (msg != EQUIP_ERR_OK)
             {
@@ -11340,10 +11406,10 @@ void Player::SwapItem(uint16 src, uint16 dst)
         }
     }
 
-    // NOW this is or item move (swap with empty), or swap with another item (including bags in bag possitions)
-    // or swap empty bag with another empty or not empty bag (with items exchange)
+    // NOW this is or item move (swap with empty), or swap with another item (including bags in bag possitions) (执行移动到空位、与另一物品互换或背包互换)
+    // or swap empty bag with another empty or not empty bag (with items exchange) (包括空包与非空包互换并迁移内部物品)
 
-    // Move case
+    // Move case (目标格为空的移动分支)
     if (!pDstItem)
     {
         if (IsInventoryPos(dst))
@@ -11392,15 +11458,15 @@ void Player::SwapItem(uint16 src, uint16 dst)
         return;
     }
 
-    // attempt merge to / fill target item
+    // attempt merge to / fill target item (尝试将源物品合并/补满至目标同类堆叠)
     if (!pSrcItem->IsBag() && !pDstItem->IsBag())
     {
         ItemPrototype const* itemProto = pSrcItem->GetProto();
         InventoryResult msg;
         ItemPosCountVec sDest;
         uint8 bagSlot;
-        // only fill the target stack: the rest stays in the source slot, so no free slot is needed elsewhere. An equipped stack
-        // is always filled this way: it stays in its slot and only its count changes
+        // only fill the target stack: the rest stays in the source slot, so no free slot is needed elsewhere. An equipped stack (仅补满目标堆叠，多余数量留在源槽位；)
+        // is always filled this way: it stays in its slot and only its count changes (已装备的堆叠如投掷武器始终原地增减数量)
         if (IsEquipmentPos(dst) || ((IsInventoryPos(dst) || IsBankPos(dst)) && pSrcItem->GetCount() + pDstItem->GetCount() > itemProto->GetMaxStackSize()))
         {
             if (pSrcItem->HasTemporaryLoot())
@@ -11410,7 +11476,7 @@ void Player::SwapItem(uint16 src, uint16 dst)
             else
                 msg = pDstItem->CanBeMergedPartlyWith(itemProto);
 
-            // the whole source joins the equipped stack when it fits
+            // the whole source joins the equipped stack when it fits (当源数量可完全并入已装备堆叠时直接合并)
             if (IsEquipmentPos(dst))
                 sDest.push_back(ItemPosCount(dst, pSrcItem->GetCount()));
         }
@@ -11421,7 +11487,7 @@ void Player::SwapItem(uint16 src, uint16 dst)
         else
             return;
 
-        // can be merge/fill
+        // can be merge/fill (执行合并与数量更新)
         if (msg == EQUIP_ERR_OK)
         {
             if (pSrcItem->GetCount() + pDstItem->GetCount() <= itemProto->GetMaxStackSize())
@@ -11449,10 +11515,10 @@ void Player::SwapItem(uint16 src, uint16 dst)
         }
     }
 
-    // impossible merge/fill, do real swap
+    // impossible merge/fill, do real swap (无法合并，执行两格真正互换)
     InventoryResult msg = EQUIP_ERR_CANT_DO_RIGHT_NOW;
 
-    // check src->dest move possibility
+    // check src->dest move possibility (校验源物品放入目标槽位的合法性)
     ItemPosCountVec sDest;
     uint16 eDest = 0;
     uint8 bagSlot = 0;
@@ -11473,7 +11539,7 @@ void Player::SwapItem(uint16 src, uint16 dst)
         return;
     }
 
-    // check dest->src move possibility
+    // check dest->src move possibility (校验目标物品放入源槽位的合法性)
     ItemPosCountVec sDest2;
     uint16 eDest2 = 0;
     uint8 bagSlot2 = 0;
@@ -11494,7 +11560,7 @@ void Player::SwapItem(uint16 src, uint16 dst)
         return;
     }
 
-    // Check bag swap with item exchange (one from empty in not bag possition (equipped (not possible in fact) or store)
+    // Check bag swap with item exchange (one from empty in not bag possition (equipped (not possible in fact) or store) (非空背包互换与内部物品迁移空间校验)
     if (pSrcItem->IsBag() && pDstItem->IsBag())
     {
         Bag* emptyBag = nullptr;
@@ -11510,7 +11576,7 @@ void Player::SwapItem(uint16 src, uint16 dst)
             fullBag  = (Bag*)pSrcItem;
         }
 
-        // bag swap (with items exchange) case
+        // bag swap (with items exchange) case (执行两个背包槽位互换及内部物品转移)
         if (emptyBag && fullBag)
         {
             ItemPrototype const* emotyProto = emptyBag->GetProto();
@@ -11526,7 +11592,7 @@ void Player::SwapItem(uint16 src, uint16 dst)
                 ItemPrototype const* bagItemProto = bagItem->GetProto();
                 if (!bagItemProto || !ItemCanGoIntoBag(bagItemProto, emotyProto))
                 {
-                    // one from items not go to empty target bag
+                    // one from items not go to empty target bag (存在不适配目标新背包类型的物品，如箭袋专属物品)
                     SendEquipError(EQUIP_ERR_NONEMPTY_BAG_OVER_OTHER_BAG, pSrcItem, pDstItem);
                     return;
                 }
@@ -11536,13 +11602,13 @@ void Player::SwapItem(uint16 src, uint16 dst)
 
             if (count > emptyBag->GetBagSize())
             {
-                // too small targeted bag
+                // too small targeted bag (目标背包容量不足以容纳原包内物品)
                 SendEquipError(EQUIP_ERR_ITEMS_CANT_BE_SWAPPED, pSrcItem, pDstItem);
                 return;
             }
 
-            // Items swap
-            count = 0;                                      // will pos in new bag
+            // Items swap (执行物品位置与包内物品交换)
+            count = 0;                                      // will pos in new bag (迁入新背包的对应槽位)
             for (uint32 i = 0; i < fullBag->GetBagSize(); ++i)
             {
                 Item* bagItem = fullBag->GetItemByPos(i);
@@ -11558,11 +11624,11 @@ void Player::SwapItem(uint16 src, uint16 dst)
         }
     }
 
-    // now do moves, remove...
+    // now do moves, remove... (先从原槽位摘除两个物品)
     RemoveItem(dstbag, dstslot, false);
     RemoveItem(srcbag, srcslot, false);
 
-    // add to dest
+    // add to dest (将源物品放入目标槽位)
     if (IsInventoryPos(dst))
         StoreItem(sDest, pSrcItem, true);
     else if (IsBankPos(dst))
@@ -11570,7 +11636,7 @@ void Player::SwapItem(uint16 src, uint16 dst)
     else if (IsEquipmentPos(dst))
         EquipItem(eDest, pSrcItem, true);
 
-    // add to src
+    // add to src (将目标物品放入源槽位)
     if (IsInventoryPos(src))
         StoreItem(sDest2, pDstItem, true);
     else if (IsBankPos(src))
@@ -11586,7 +11652,7 @@ void Player::AddItemToBuyBackSlot(Item* pItem, uint32 money)
     MANGOS_ASSERT(pItem != nullptr);
 
     uint32 slot = m_currentBuybackSlot;
-    // if current back slot non-empty search oldest or free
+    // if current back slot non-empty search oldest or free (若当前回购指针已占用，查找空闲槽或最早条目覆盖)
     if (m_items[slot])
     {
         uint32 oldest_time = GetUInt32Value(PLAYER_FIELD_BUYBACK_TIMESTAMP_1);
@@ -11594,7 +11660,7 @@ void Player::AddItemToBuyBackSlot(Item* pItem, uint32 money)
 
         for (uint32 i = BUYBACK_SLOT_START + 1; i < BUYBACK_SLOT_END; ++i)
         {
-            // found empty
+            // found empty (找到空闲回购槽位)
             if (!m_items[i])
             {
                 break;
@@ -11609,7 +11675,7 @@ void Player::AddItemToBuyBackSlot(Item* pItem, uint32 money)
             }
         }
 
-        // find oldest
+        // find oldest (未找到空位，淘汰最早出售的物品)
         slot = oldest_slot;
     }
 
@@ -11625,7 +11691,7 @@ void Player::AddItemToBuyBackSlot(Item* pItem, uint32 money)
     SetUInt32Value(PLAYER_FIELD_BUYBACK_PRICE_1 + eslot, money);
     SetUInt32Value(PLAYER_FIELD_BUYBACK_TIMESTAMP_1 + eslot, (uint32)etime);
 
-    // move to next (for non filled list is move most optimized choice)
+    // move to next (for non filled list is move most optimized choice) (移动回购指针至下一格)
     if (m_currentBuybackSlot < BUYBACK_SLOT_END - 1)
         ++m_currentBuybackSlot;
 }
@@ -11661,7 +11727,7 @@ void Player::RemoveItemFromBuyBackSlot(uint32 slot, bool del)
         SetUInt32Value(PLAYER_FIELD_BUYBACK_PRICE_1 + eslot, 0);
         SetUInt32Value(PLAYER_FIELD_BUYBACK_TIMESTAMP_1 + eslot, 0);
 
-        // if current backslot is filled set to now free slot
+        // if current backslot is filled set to now free slot (更新当前回购指针至新腾出的槽位)
         if (m_items[m_currentBuybackSlot])
             m_currentBuybackSlot = slot;
     }
@@ -11675,15 +11741,15 @@ void Player::SendEquipError(InventoryResult msg, Item* pItem, Item* pItem2, uint
 
     if (msg != EQUIP_ERR_OK)
     {
-        data << (pItem ? pItem->GetObjectGuid() : ObjectGuid()); // closes loot, cancels spell, unlocks item
-        data << (pItem2 ? pItem2->GetObjectGuid() : ObjectGuid()); // only unlocks item
+        data << (pItem ? pItem->GetObjectGuid() : ObjectGuid()); // closes loot, cancels spell, unlocks item (发送装备错误后关闭拾取、取消施法并解锁物品)
+        data << (pItem2 ? pItem2->GetObjectGuid() : ObjectGuid()); // only unlocks item (仅解锁物品状态)
 
         switch (msg)
         {
             case EQUIP_ERR_EVENT_AUTOEQUIP_BIND_CONFIRM:
-                data << uint8(0); // unk purpose but specified nonetheless
+                data << uint8(0); // unk purpose but specified nonetheless (未知用途字节，协议要求固定发送)
                 break;
-            case EQUIP_ERR_ITEM_DOESNT_GO_INTO_BAG2: // specifies slot of target bag that has storing condition
+            case EQUIP_ERR_ITEM_DOESNT_GO_INTO_BAG2: // specifies slot of target bag that has storing condition (指定目标背包的容器限制类型)
             default:
                 data << uint8(slot);
                 break;
@@ -11697,7 +11763,7 @@ void Player::SendEquipError(InventoryResult msg, Item* pItem, Item* pItem2, uint
                 data << uint32(proto ? proto->RequiredLevel : 0);
                 break;
             }
-            case EQUIP_ERR_EVENT_AUTOEQUIP_BIND_CONFIRM: // no idea about this one...
+            case EQUIP_ERR_EVENT_AUTOEQUIP_BIND_CONFIRM: // no idea about this one... (未知状态字段，默认发 0)
             {
                 data << uint64(0);
                 data << uint32(0);
@@ -11714,7 +11780,7 @@ void Player::SendBuyError(BuyResult msg, Creature* pCreature, uint32 vendorSlot)
     DEBUG_LOG("WORLD: Sent SMSG_BUY_FAILED");
     WorldPacket data(SMSG_BUY_FAILED, (8 + 4 + 4 + 1));
     data << (pCreature ? pCreature->GetObjectGuid() : ObjectGuid());
-    data << uint32(vendorSlot + 1);                 // numbered from 1 at client
+    data << uint32(vendorSlot + 1);                 // numbered from 1 at client (客户端商人槽位从 1 开始编号)
     data << uint8(msg);
     GetSession()->SendPacket(data);
 }
@@ -11722,7 +11788,7 @@ void Player::SendBuyError(BuyResult msg, Creature* pCreature, uint32 vendorSlot)
 void Player::SendSellError(SellResult msg, Creature* pCreature, ObjectGuid itemGuid) const
 {
     DEBUG_LOG("WORLD: Sent SMSG_SELL_ITEM");
-    WorldPacket data(SMSG_SELL_ITEM, (8 + 8 + 1)); // last check 2.0.10
+    WorldPacket data(SMSG_SELL_ITEM, (8 + 8 + 1)); // last check 2.0.10 (协议版本校验 2.0.10)
     data << (pCreature ? pCreature->GetObjectGuid() : ObjectGuid());
     data << ObjectGuid(itemGuid);
     data << uint8(msg);
@@ -11742,13 +11808,13 @@ void Player::TradeCancel(bool sendback, TradeStatus status /*= TRADE_STATUS_TRAD
     {
         Player* trader = m_trade->GetTrader();
 
-        // send yellow "Trade canceled" message to both traders
+        // send yellow "Trade canceled" message to both traders (向双方客户端发送交易取消提示)
         if (sendback)
             GetSession()->SendCancelTrade(status);
 
         trader->GetSession()->SendCancelTrade(status);
 
-        // cleanup
+        // cleanup (销毁双方交易数据对象)
         delete m_trade;
         m_trade = nullptr;
         delete trader->m_trade;
@@ -11766,7 +11832,7 @@ void Player::UpdateItemDuration(uint32 time, bool realtimeonly)
     for (ItemDurationList::const_iterator itr = m_itemDuration.begin(); itr != m_itemDuration.end();)
     {
         Item* item = *itr;
-        ++itr;                                              // current element can be erased in UpdateDuration
+        ++itr;                                              // current element can be erased in UpdateDuration (循环中先递增迭代器，以防限时物品到期被移除)
 
         if (!(realtimeonly) || (item->GetProto()->ExtraFlags & ITEM_EXTRA_REAL_TIME_DURATION))
             item->UpdateDuration(this, time);
@@ -11816,7 +11882,7 @@ void Player::RemoveEnchantmentDurations(Item* item)
     {
         if (itr->item == item)
         {
-            // save duration in item
+            // save duration in item (将剩余附魔时间写回物品)
             item->SetEnchantmentDuration(EnchantmentSlot(itr->slot), itr->leftduration);
             itr = m_enchantDuration.erase(itr);
         }
@@ -11827,7 +11893,7 @@ void Player::RemoveEnchantmentDurations(Item* item)
 
 void Player::RemoveAllEnchantments(EnchantmentSlot slot, bool arena)
 {
-    // remove enchantments from equipped items first to clean up the m_enchantDuration list
+    // remove enchantments from equipped items first to clean up the m_enchantDuration list (先移除已装备物品的附魔以清理 m_enchantDuration 列表)
     for (EnchantDurationList::iterator itr = m_enchantDuration.begin(), next; itr != m_enchantDuration.end(); itr = next)
     {
         next = itr;
@@ -11844,21 +11910,21 @@ void Player::RemoveAllEnchantments(EnchantmentSlot slot, bool arena)
                     }
                 }
 
-                // remove from stats
+                // remove from stats (移除附魔属性加成)
                 ApplyEnchantment(itr->item, slot, false, false);
-                // remove visual
+                // remove visual (清除附魔外观槽位显示)
                 itr->item->ClearEnchantment(slot);
             }
-            // remove from update list
+            // remove from update list (从附魔计时列表移除)
             next = m_enchantDuration.erase(itr);
         }
         else
             ++next;
     }
 
-    // remove enchants from inventory items
-    // NOTE: no need to remove these from stats, since these aren't equipped
-    // in inventory
+    // remove enchants from inventory items (移除背包物品上的附魔)
+    // NOTE: no need to remove these from stats, since these aren't equipped (注：未装备物品不产生属性加成，仅清理附魔记录)
+    // in inventory (遍历主行囊)
     for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; i++)
     {
         Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
@@ -11866,7 +11932,7 @@ void Player::RemoveAllEnchantments(EnchantmentSlot slot, bool arena)
             item->ClearEnchantment(slot);
     }
 
-    // in inventory bags
+    // in inventory bags (遍历各背包)
     for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; i++)
     {
         Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i);
@@ -11882,7 +11948,7 @@ void Player::RemoveAllEnchantments(EnchantmentSlot slot, bool arena)
     }
 }
 
-// duration == 0 will remove item enchant
+// duration == 0 will remove item enchant (持续时间为 0 表示移除附魔计时)
 void Player::AddEnchantmentDuration(Item* item, EnchantmentSlot slot, uint32 duration)
 {
     if (!item)
@@ -11913,6 +11979,7 @@ void Player::ApplyEnchantment(Item* item, bool apply)
         ApplyEnchantment(item, EnchantmentSlot(slot), apply);
 }
 
+/// 应用或移除物品指定附魔槽位的属性、抗性、法术触发与外观效果
 void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool apply_dur, bool ignore_condition)
 {
     if (!item)
@@ -11948,12 +12015,12 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
                 case ITEM_ENCHANTMENT_TYPE_NONE:
                     break;
                 case ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL:
-                    if (!apply) // clear modifier set by some spells
+                    if (!apply) // clear modifier set by some spells (清除特定武器附魔修正)
                         item->SetEnchantmentModifier(0);
-                    // processed in Player::CastItemCombatSpell
+                    // processed in Player::CastItemCombatSpell (战斗触发类附魔在 CastItemCombatSpell 中处理)
                     break;
                 case ITEM_ENCHANTMENT_TYPE_DAMAGE:
-                    // processed in Player::_ApplyWeaponDependentAuraMods
+                    // processed in Player::_ApplyWeaponDependentAuraMods (武器限定光环附魔在 _ApplyWeaponDependentAuraMods 中处理)
                     if (item->GetSlot() == EQUIPMENT_SLOT_MAINHAND)
                     {
                         SetEnchantmentModifier(enchant_amount, BASE_ATTACK, apply);
@@ -11977,13 +12044,13 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
                         if (apply)
                         {
                             int32 basepoints = 0;
-                            // Random Property Exist - try found basepoints for spell (basepoints depends from item suffix factor)
+                            // Random Property Exist - try found basepoints for spell (basepoints depends from item suffix factor) (存在随机附魔后缀：根据后缀因子计算法术基础点数)
                             if (item->GetItemRandomPropertyId())
                             {
                                 ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
                                 if (item_rand)
                                 {
-                                    // Search enchant_amount
+                                    // Search enchant_amount (解析附魔实际加成数值)
                                     for (int k = 0; k < 3; ++k)
                                     {
                                         if (item_rand->enchant_id[k] == enchant_id)
@@ -11994,7 +12061,7 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
                                     }
                                 }
                             }
-                            // Cast custom spell vs all equal basepoints got from enchant_amount
+                            // Cast custom spell vs all equal basepoints got from enchant_amount (施放带自定义基础点数的附魔法术)
                             if (basepoints)
                                 CastCustomSpell(this, enchant_spell_id, &basepoints, &basepoints, &basepoints, TRIGGERED_OLD_TRIGGERED, item);
                             else
@@ -12118,7 +12185,7 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
                             ApplyRatingMod(CR_CRIT_SPELL, enchant_amount, apply);
                             DEBUG_LOG("+ %u SPELL_CRIT", enchant_amount);
                             break;
-//                        Values from ITEM_STAT_MELEE_HA_RATING to ITEM_MOD_HASTE_RANGED_RATING are never used
+//                        Values from ITEM_STAT_MELEE_HA_RATING to ITEM_MOD_HASTE_RANGED_RATING are never used (以下注释掉的近战/远程等级分支在附魔中从未使用)
 //                        in Enchantments
 //                        case ITEM_MOD_HIT_TAKEN_MELEE_RATING:
 //                            ApplyRatingMod(CR_HIT_TAKEN_MELEE, enchant_amount, apply);
@@ -12157,7 +12224,7 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
                             ApplyRatingMod(CR_CRIT_RANGED, enchant_amount, apply);
                             DEBUG_LOG("+ %u CRITICAL", enchant_amount);
                             break;
-//                        Values ITEM_MOD_HIT_TAKEN_RATING and ITEM_MOD_CRIT_TAKEN_RATING are never used in Enchantment
+//                        Values ITEM_MOD_HIT_TAKEN_RATING and ITEM_MOD_CRIT_TAKEN_RATING are never used in Enchantment (被命中/被暴击等级在附魔中从未使用)
 //                        case ITEM_MOD_HIT_TAKEN_RATING:
 //                            ApplyRatingMod(CR_HIT_TAKEN_MELEE, enchant_amount, apply);
 //                            ApplyRatingMod(CR_HIT_TAKEN_RANGED, enchant_amount, apply);
@@ -12188,7 +12255,7 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
                     }
                     break;
                 }
-                case ITEM_ENCHANTMENT_TYPE_TOTEM:           // Shaman Rockbiter Weapon
+                case ITEM_ENCHANTMENT_TYPE_TOTEM:           // Shaman Rockbiter Weapon (萨满石化武器附魔额外攻击强度)
                 {
                     if (getClass() == CLASS_SHAMAN)
                     {
@@ -12213,7 +12280,7 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
         }                                                   /*for*/
     }
 
-    // visualize enchantment at player and equipped items
+    // visualize enchantment at player and equipped items (更新玩家可视装备的附魔外观光效)
     if (slot < MAX_INSPECTED_ENCHANTMENT_SLOT)
     {
         int VisibleBase = PLAYER_VISIBLE_ITEM_1_0 + (item->GetSlot() * MAX_VISIBLE_ITEM_OFFSET);
@@ -12224,14 +12291,14 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
     {
         if (apply)
         {
-            // set duration
+            // set duration (应用或刷新附魔剩余持续时间)
             uint32 duration = item->GetEnchantmentDuration(slot);
             if (duration > 0)
                 AddEnchantmentDuration(item, slot, duration);
         }
         else
         {
-            // duration == 0 will remove EnchantDuration
+            // duration == 0 will remove EnchantDuration (持续时间为 0 时移除附魔计时)
             AddEnchantmentDuration(item, slot, 0);
         }
     }
@@ -12255,22 +12322,22 @@ void Player::SendItemDurations()
 
 void Player::SendNewItem(Item* item, uint32 count, bool received, bool created, bool broadcast /*=false*/, bool showInChat /*=true*/)
 {
-    if (!item)                                              // prevent crash
+    if (!item)                                              // prevent crash (防止空物品指针导致崩溃)
         return;
 
     WorldPacket data(SMSG_ITEM_PUSH_RESULT, (8 + 4 + 4 + 4 + 1 + 4 + 4 + 4 + 4 + 4));
-    data << GetObjectGuid();                                // player GUID
-    data << uint32(received);                               // 0=looted, 1=from npc
-    data << uint32(created);                                // 0=received, 1=created
-    data << uint32(showInChat);                             // showInChat
-    data << uint8(item->GetBagSlot());                      // bagslot
-    // item slot, but when added to stack: 0xFFFFFFFF
+    data << GetObjectGuid();                                // player GUID (玩家 GUID)
+    data << uint32(received);                               // 0=looted, 1=from npc (0=拾取获得，1=NPC 给予/购买)
+    data << uint32(created);                                // 0=received, 1=created (0=获得，1=制造产出)
+    data << uint32(showInChat);                             // showInChat (是否在聊天框显示获得提示)
+    data << uint8(item->GetBagSlot());                      // bagslot (背包槽位编号)
+    // item slot, but when added to stack: 0xFFFFFFFF (物品槽位；合并至现有堆叠时发 0xFFFFFFFF)
     data << uint32((item->GetCount() == count) ? item->GetSlot() : -1);
-    data << uint32(item->GetEntry());                       // item id
-    data << uint32(item->GetItemSuffixFactor());            // SuffixFactor
-    data << uint32(item->GetItemRandomPropertyId());        // random item property id
-    data << uint32(count);                                  // count of items
-    data << uint32(GetItemCount(item->GetEntry(), true));   // count of items in bags and bank
+    data << uint32(item->GetEntry());                       // item id (物品模板 ID)
+    data << uint32(item->GetItemSuffixFactor());            // SuffixFactor (随机后缀因子)
+    data << uint32(item->GetItemRandomPropertyId());        // random item property id (随机属性 ID)
+    data << uint32(count);                                  // count of items (本次获得数量)
+    data << uint32(GetItemCount(item->GetEntry(), true));   // count of items in bags and bank (当前背包与银行总持有数量)
 
     if (broadcast && GetGroup())
         GetGroup()->BroadcastPacket(data, true);
@@ -12279,9 +12346,10 @@ void Player::SendNewItem(Item* item, uint32 count, bool received, bool created, 
 }
 
 /*********************************************************/
-/***                    GOSSIP SYSTEM                  ***/
+/***             GOSSIP SYSTEM (NPC 对话系统)            ***/
 /*********************************************************/
 
+/// 为交互对象构建 NPC 对话菜单与关联任务选项
 void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId, bool forceQuests)
 {
     m_playerMenu->ClearMenus();
@@ -12292,10 +12360,10 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId, bool forceQu
 
     Gender gender = GENDER_MALE;
 
-    // prepares quest menu when true
+    // prepares quest menu when true (为 true 时同时准备任务菜单)
     bool canSeeQuests = menuId == GetDefaultGossipMenuForSource(pSource) || forceQuests;
 
-    // if canSeeQuests (the default, top level menu) and no menu options exist for this, use options from default options
+    // if canSeeQuests (the default, top level menu) and no menu options exist for this, use options from default options (若顶级菜单无自定义选项则回退读取默认对话选项)
     if (pMenuItemBounds.first == pMenuItemBounds.second && canSeeQuests)
         pMenuItemBounds = sObjectMgr.GetGossipMenuItemsMapBounds(0);
 
@@ -12307,13 +12375,13 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId, bool forceQu
 
         if (gossipMenu.conditionId && !sObjectMgr.IsConditionSatisfied(gossipMenu.conditionId, this, GetMap(), pSource, CONDITION_FROM_GOSSIP_OPTION))
         {
-            if (IsGameMaster())                             // Let GM always see menu items regardless of conditions
+            if (IsGameMaster())                             // Let GM always see menu items regardless of conditions (GM 模式下忽略条件限制显示所有对话选项)
                 isGMSkipConditionCheck = true;
             else
             {
                 if (gossipMenu.option_id == GOSSIP_OPTION_QUESTGIVER)
                     canSeeQuests = false;
-                continue;                                   // Skip this option
+                continue;                                   // Skip this option (不满足条件，跳过此选项)
             }
         }
 
@@ -12336,7 +12404,7 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId, bool forceQu
                     hasMenuItem = false;
                     break;
                 case GOSSIP_OPTION_ARMORER:
-                    hasMenuItem = false;                    // added in special mode
+                    hasMenuItem = false;                    // added in special mode (按特定模式添加对话选项，如训练师/商人/飞行管理员等)
                     break;
                 case GOSSIP_OPTION_SPIRITHEALER:
                     if (!IsDead())
@@ -12383,7 +12451,7 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId, bool forceQu
                 case GOSSIP_OPTION_PETITIONER:
                 case GOSSIP_OPTION_TABARDDESIGNER:
                 case GOSSIP_OPTION_AUCTIONEER:
-                    break;                                  // no checks
+                    break;                                  // no checks (无额外前置检查的菜单动作)
                 case GOSSIP_OPTION_BOT:
                 {
                     hasMenuItem = false;
@@ -12475,7 +12543,7 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId, bool forceQu
     if (canSeeQuests)
         PrepareQuestMenu(pSource->GetObjectGuid());
 
-    // some gossips aren't handled in normal way ... so we need to do it this way .. TODO: handle it in normal way ;-)
+    // some gossips aren't handled in normal way ... so we need to do it this way .. TODO: handle it in normal way ;-) (部分 NPC 对话未走常规流程的遗留说明)
     /*if (pMenu->Empty())
     {
         if (pCreature->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_TRAINER))
@@ -12506,7 +12574,7 @@ void Player::SendPreparedGossip(WorldObject* pSource)
         if (gossipMenu.IsJustDiscoveredNode() && questMenu.Empty())
             return;
 
-        // in case no gossip flag and quest menu not empty, open quest menu (client expect gossip menu with this flag)
+        // in case no gossip flag and quest menu not empty, open quest menu (client expect gossip menu with this flag) (若无对话标志且存在任务菜单，则直接打开任务菜单)
         if (!((Creature*)pSource)->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP) && !questMenu.Empty())
         {
             SendPreparedQuest(pSource->GetObjectGuid());
@@ -12515,7 +12583,7 @@ void Player::SendPreparedGossip(WorldObject* pSource)
     }
     else if (pSource->GetTypeId() == TYPEID_GAMEOBJECT)
     {
-        // probably need to find a better way here
+        // probably need to find a better way here (待改进：统一处理无对话标志时的默认文本回退)
         if (!gossipMenu.GetMenuId() && !questMenu.Empty())
         {
             SendPreparedQuest(pSource->GetObjectGuid());
@@ -12523,8 +12591,8 @@ void Player::SendPreparedGossip(WorldObject* pSource)
         }
     }
 
-    // in case non empty gossip menu (that not included quests list size) show it
-    // (quest entries from quest menu will be included in list)
+    // in case non empty gossip menu (that not included quests list size) show it (若对话菜单非空则发送完整对话菜单，)
+    // (quest entries from quest menu will be included in list) (其中会包含关联任务列表)
 
     uint32 textId = GetGossipTextId(pSource);
 
@@ -12534,6 +12602,7 @@ void Player::SendPreparedGossip(WorldObject* pSource)
     m_playerMenu->SendGossipMenu(textId, pSource->GetObjectGuid());
 }
 
+/// 处理玩家在 NPC 对话菜单中点击某个选项后的分支逻辑
 void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 menuId)
 {
     GossipMenu& gossipmenu = m_playerMenu->GetGossipMenu();
@@ -12541,7 +12610,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
     if (gossipListId >= gossipmenu.MenuItemCount())
         return;
 
-    // if not same, then something funky is going on
+    // if not same, then something funky is going on (菜单 ID 不一致，忽略异常选择)
     if (menuId != gossipmenu.GetMenuId())
         return;
 
@@ -12551,13 +12620,13 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
     ObjectGuid guid = pSource->GetObjectGuid();
     uint32 moneyTake = menu_item.m_gBoxMoney;
 
-    // if this function called and player have money for pay MoneyTake or cheating, proccess both cases
+    // if this function called and player have money for pay MoneyTake or cheating, proccess both cases (校验所需金币并处理扣费或异常)
     if (moneyTake > 0)
     {
         if (GetMoney() >= moneyTake)
             ModifyMoney(-int32(moneyTake));
         else
-            return;                                         // cheating
+            return;                                         // cheating (金币不足，疑似客户端作弊)
     }
 
     if (pSource->GetTypeId() == TYPEID_GAMEOBJECT)
@@ -12572,8 +12641,8 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
     GossipMenuItemData const* pMenuData = gossipmenu.GetItemData(gossipListId);
     GossipMenuItemData menuData = {};
 
-    // if pMenuData exist we need to keep a copy of actual data for the following code to process
-    // call like PrepareGossipMenu or SendPreparedGossip might change the value
+    // if pMenuData exist we need to keep a copy of actual data for the following code to process (先拷贝菜单项数据，)
+    // call like PrepareGossipMenu or SendPreparedGossip might change the value (以防后续调用 PrepareGossipMenu 改写原数据)
     if (pMenuData)
         menuData = *pMenuData;
 
@@ -12587,7 +12656,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
             if (menuData.m_gAction_poi)
                 m_playerMenu->SendPointOfInterest(menuData.m_gAction_poi);
 
-            // send new menu || close gossip || stay at current menu
+            // send new menu || close gossip || stay at current menu (根据结果发送新菜单、关闭窗口或停留在当前菜单)
             if (menuData.m_gAction_menu > 0)
             {
                 PrepareGossipMenu(pSource, uint32(menuData.m_gAction_menu));
@@ -12701,8 +12770,8 @@ uint32 Player::GetGossipTextId(uint32 menuId, WorldObject* pSource)
     for (GossipMenusMap::const_iterator itr = pMenuBounds.first; itr != pMenuBounds.second; ++itr)
     {
         GossipMenus const& gossipMenu = itr->second;
-        // Take the text that has the highest conditionId of all fitting
-        // No condition and no text with condition found OR higher and fitting condition found
+        // Take the text that has the highest conditionId of all fitting (选取所有满足条件的对话文本中条件 ID 最高的一项)
+        // No condition and no text with condition found OR higher and fitting condition found (无条件或找到更高优先级的匹配条件)
         if ((!gossipMenu.conditionId && !lastConditionId) ||
                 (gossipMenu.conditionId > lastConditionId && sObjectMgr.IsConditionSatisfied(gossipMenu.conditionId, this, GetMap(), pSource, CONDITION_FROM_GOSSIP_MENU)))
         {
@@ -12712,7 +12781,7 @@ uint32 Player::GetGossipTextId(uint32 menuId, WorldObject* pSource)
         }
     }
 
-    // Start related script
+    // Start related script (启动对应的数据库对话脚本)
     if (scriptId)
         GetMap()->ScriptsStart(SCRIPT_TYPE_GOSSIP, scriptId, this, pSource, Map::SCRIPT_EXEC_PARAM_UNIQUE_BY_TARGET);
 
@@ -12730,7 +12799,7 @@ uint32 Player::GetDefaultGossipMenuForSource(WorldObject* pSource) const
 }
 
 /*********************************************************/
-/***                    QUEST SYSTEM                   ***/
+/***             QUEST SYSTEM (任务系统)                 ***/
 /*********************************************************/
 
 void Player::PrepareQuestMenu(ObjectGuid guid) const
@@ -12738,7 +12807,7 @@ void Player::PrepareQuestMenu(ObjectGuid guid) const
     QuestRelationsMapBounds rbounds;
     QuestRelationsMapBounds irbounds;
 
-    // pets also can have quests
+    // pets also can have quests (宠物或载具类目标也可提供任务)
     if (Creature* pCreature = GetMap()->GetAnyTypeCreature(guid))
     {
         rbounds = sObjectMgr.GetCreatureQuestRelationsMapBounds(pCreature->GetEntry());
@@ -12746,8 +12815,8 @@ void Player::PrepareQuestMenu(ObjectGuid guid) const
     }
     else
     {
-        // we should obtain map pointer from GetMap() in 99% of cases. Special case
-        // only for quests which cast teleport spells on player
+        // we should obtain map pointer from GetMap() in 99% of cases. Special case (通常应通过 GetMap() 获取地图指针；此处为传送法术任务的特例)
+        // only for quests which cast teleport spells on player (仅用于对玩家施放传送法术的特殊任务)
         Map* _map = IsInWorld() ? GetMap() : sMapMgr.FindMap(GetMapId(), GetInstanceId());
         MANGOS_ASSERT(_map);
 
@@ -12830,10 +12899,10 @@ void Player::SendPreparedQuest(ObjectGuid guid) const
     }
     else
     {
-        // single element case
+        // single element case (仅有单个可用任务的情况)
         if (questMenu.MenuItemCount() == 1)
         {
-            // Auto open -- maybe also should verify there is no greeting
+            // Auto open -- maybe also should verify there is no greeting (只有一个任务时自动打开接取或交任务界面)
             uint32 quest_id = qmi0.m_qId;
             Quest const* pQuest = sObjectMgr.GetQuestTemplate(quest_id);
 
@@ -12843,15 +12912,15 @@ void Player::SendPreparedQuest(ObjectGuid guid) const
                     m_playerMenu->SendQuestGiverRequestItems(pQuest, guid, CanRewardQuest(pQuest, false), true);
                 else if (status == DIALOG_STATUS_INCOMPLETE)
                     m_playerMenu->SendQuestGiverRequestItems(pQuest, guid, false, true);
-                // Send completable on repeatable and autoCompletable quest if player don't have quest
-                // TODO: verify if check for !pQuest->IsDailyOrWeekly() is really correct (possibly not)
+                // Send completable on repeatable and autoCompletable quest if player don't have quest (可重复或自动完成任务在未接取时直接发送可交付状态)
+                // TODO: verify if check for !pQuest->IsDailyOrWeekly() is really correct (possibly not) (待办：核对 !pQuest->IsDailyOrWeekly() 判断是否准确)
                 else if (pQuest->IsAutoComplete() && pQuest->IsRepeatable() && !pQuest->IsDailyOrWeekly())
                     m_playerMenu->SendQuestGiverRequestItems(pQuest, guid, CanCompleteRepeatableQuest(pQuest), true);
                 else
                     m_playerMenu->SendQuestGiverQuestDetails(pQuest, guid, true);
             }
         }
-        // multiply entries
+        // multiply entries (存在多个任务，发送任务列表供选择)
         else
         {
             QEmote qe;
@@ -12859,7 +12928,7 @@ void Player::SendPreparedQuest(ObjectGuid guid) const
             qe._Emote = 0;
             std::string title;
 
-            // need pet case for some quests
+            // need pet case for some quests (部分任务由宠物或特殊生物触发)
             if (Creature* pCreature = GetMap()->GetAnyTypeCreature(guid))
             {
                 uint32 textid = GetGossipTextId(pCreature);
@@ -12867,8 +12936,8 @@ void Player::SendPreparedQuest(ObjectGuid guid) const
                 GossipText const* gossiptext = sObjectMgr.GetGossipText(textid);
                 if (!gossiptext)
                 {
-                    qe._Delay = 0;                              // TEXTEMOTE_MESSAGE;              // zyg: player emote
-                    qe._Emote = 0;                              // TEXTEMOTE_HELLO;                // zyg: NPC emote
+                    qe._Delay = 0;                              // TEXTEMOTE_MESSAGE;              // zyg: player emote (玩家表情)
+                    qe._Emote = 0;                              // TEXTEMOTE_HELLO;                // zyg: NPC emote (NPC 问候表情)
                     title.clear();
                 }
                 else
@@ -12932,8 +13001,8 @@ Quest const* Player::GetNextQuest(ObjectGuid guid, Quest const* pQuest) const
     }
     else
     {
-        // we should obtain map pointer from GetMap() in 99% of cases. Special case
-        // only for quests which cast teleport spells on player
+        // we should obtain map pointer from GetMap() in 99% of cases. Special case (此处为传送法术任务特例)
+        // only for quests which cast teleport spells on player (仅用于对玩家施放传送法术的任务)
         Map* _map = IsInWorld() ? GetMap() : sMapMgr.FindMap(GetMapId(), GetInstanceId());
         MANGOS_ASSERT(_map);
 
@@ -12956,9 +13025,9 @@ Quest const* Player::GetNextQuest(ObjectGuid guid, Quest const* pQuest) const
 }
 
 /**
- * Check if a player could see a start quest
- * Basic Quest-taking requirements: Class, Race, Skill, Quest-Line, ...
- * Check if the quest-level is not too high (related config value CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF)
+ * Check if a player could see a start quest (检查玩家是否可见某个可接任务的感叹号)
+ * Basic Quest-taking requirements: Class, Race, Skill, Quest-Line, ... (校验职业、种族、技能、任务链等基础接取条件)
+ * Check if the quest-level is not too high (related config value CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF) (并检查任务等级是否高于玩家过大)
  */
 bool Player::CanSeeStartQuest(Quest const* pQuest) const
 {
@@ -12993,7 +13062,7 @@ bool Player::CanTakeQuest(Quest const* pQuest, bool msg) const
 
 bool Player::CanAddQuest(Quest const* pQuest, bool msg) const
 {
-    // a failed quest taken again keeps its quest log slot
+    // a failed quest taken again keeps its quest log slot (重接已失败任务时保留其原有的任务日志槽位)
     if (FindQuestSlot(pQuest->GetQuestId()) >= MAX_QUEST_LOG_SIZE && !SatisfyQuestLog(msg))
         return false;
 
@@ -13010,32 +13079,32 @@ bool Player::CanCompleteQuest(uint32 quest_id) const
 
     QuestStatusMap::const_iterator q_itr = mQuestStatus.find(quest_id);
 
-    // some quests can be auto taken and auto completed in one step
+    // some quests can be auto taken and auto completed in one step (部分任务可一步自动接取并立即完成)
     QuestStatus status = q_itr != mQuestStatus.end() ? q_itr->second.m_status : QUEST_STATUS_NONE;
 
     if (status == QUEST_STATUS_COMPLETE)
-        return false;                                       // not allow re-complete quest
+        return false;                                       // not allow re-complete quest (禁止重复完成非可重复任务)
 
     Quest const* qInfo = sObjectMgr.GetQuestTemplate(quest_id);
 
     if (!qInfo)
         return false;
 
-    // only used for "flag" quests and not real in-game quests
+    // only used for "flag" quests and not real in-game quests (仅用于内部标记型任务，非游戏内可见任务)
     if (qInfo->HasQuestFlag(QUEST_FLAGS_AUTO_REWARDED))
     {
-        // a few checks, not all "satisfy" is needed
+        // a few checks, not all "satisfy" is needed (仅执行少量必要条件校验)
         return SatisfyQuestPreviousQuest(qInfo, false) && SatisfyQuestLevel(qInfo, false) && SatisfyQuestSkill(qInfo, false) && SatisfyQuestCondition(qInfo, false) && SatisfyQuestRace(qInfo, false) && SatisfyQuestClass(qInfo, false);
     }
 
-    // auto complete quest
+    // auto complete quest (自动完成型任务直接判定可完成)
     if (qInfo->IsAutoComplete() && CanTakeQuest(qInfo, false))
         return true;
 
     if (status != QUEST_STATUS_INCOMPLETE)
         return false;
 
-    // incomplete quest have status data
+    // incomplete quest have status data (校验所有击杀、物品、声望、金币等任务目标是否达成)
     QuestStatusData const& q_status = q_itr->second;
 
     if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAG_DELIVER))
@@ -13077,9 +13146,9 @@ bool Player::CanCompleteQuest(uint32 quest_id) const
 
 bool Player::CanCompleteRepeatableQuest(Quest const* pQuest) const
 {
-    // Solve problem that player don't have the quest and try complete it.
-    // if repeatable she must be able to complete event if player don't have it.
-    // Seem that all repeatable quest are DELIVER Flag so, no need to add more.
+    // Solve problem that player don't have the quest and try complete it. (处理玩家未接取直接交付的可重复任务)
+    // if repeatable she must be able to complete event if player don't have it. (可重复交付任务无需先保存在任务日志中)
+    // Seem that all repeatable quest are DELIVER Flag so, no need to add more. (所有可重复任务均带交付标记，校验交付物与条件即可)
     if (!CanTakeQuest(pQuest, false))
         return false;
 
@@ -13096,19 +13165,19 @@ bool Player::CanCompleteRepeatableQuest(Quest const* pQuest) const
 
 bool Player::CanRewardQuest(Quest const* pQuest, bool msg) const
 {
-    // not auto complete quest and not completed quest (only cheating case, then ignore without message)
+    // not auto complete quest and not completed quest (only cheating case, then ignore without message) (既非自动完成又未完成的任务禁止领奖，防作弊)
     if (!pQuest->IsAutoComplete() && GetQuestStatus(pQuest->GetQuestId()) != QUEST_STATUS_COMPLETE)
         return false;
 
-    // daily quest can't be rewarded (25 daily quest already completed)
+    // daily quest can't be rewarded (25 daily quest already completed) (今日已完成 25 个日常任务上限，不可继续领奖)
     if (!SatisfyQuestDay(pQuest, true) || !SatisfyQuestWeek(pQuest) || !SatisfyQuestMonth(pQuest))
         return false;
 
-    // rewarded and not repeatable quest (only cheating case, then ignore without message)
+    // rewarded and not repeatable quest (only cheating case, then ignore without message) (非可重复任务已领奖过不可再领，防作弊)
     if (GetQuestRewardStatus(pQuest->GetQuestId()))
         return false;
 
-    // prevent receive reward with quest items in bank
+    // prevent receive reward with quest items in bank (防止任务需求物品存放在银行时直接交任务领奖)
     if (pQuest->HasSpecialFlag(QUEST_SPECIAL_FLAG_DELIVER))
     {
         for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
@@ -13124,7 +13193,7 @@ bool Player::CanRewardQuest(Quest const* pQuest, bool msg) const
         }
     }
 
-    // prevent receive reward with low money and GetRewOrReqMoney() < 0
+    // prevent receive reward with low money and GetRewOrReqMoney() < 0 (任务需要扣除金币时校验玩家金币是否足够)
     if (pQuest->GetRewOrReqMoney() < 0 && GetMoney() < uint32(-pQuest->GetRewOrReqMoney()))
         return false;
 
@@ -13133,7 +13202,7 @@ bool Player::CanRewardQuest(Quest const* pQuest, bool msg) const
 
 bool Player::CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const
 {
-    // prevent receive reward with quest items in bank or for not completed quest
+    // prevent receive reward with quest items in bank or for not completed quest (防作弊校验：物品在银行或任务未完成时禁止领奖)
     if (!CanRewardQuest(pQuest, msg))
         return false;
 
@@ -13177,20 +13246,21 @@ void Player::SendPetTameFailure(PetTameFailureReason reason) const
     GetSession()->SendPacket(data);
 }
 
+/// 接取任务：分配任务日志槽位、发放起始物品并触发接取脚本
 void Player::AddQuest(Quest const* pQuest, Object* questGiver)
 {
     uint32 quest_id = pQuest->GetQuestId();
 
-    // a failed quest taken again keeps its quest log slot, which SetQuestSlot below resets
+    // a failed quest taken again keeps its quest log slot, which SetQuestSlot below resets (重接失败任务时复用并重置原任务日志槽位)
     uint16 log_slot = FindQuestSlot(quest_id);
     if (log_slot >= MAX_QUEST_LOG_SIZE)
         log_slot = FindQuestSlot(0);
     MANGOS_ASSERT(log_slot < MAX_QUEST_LOG_SIZE);
 
-    // if not exist then created with set uState==NEW and rewarded=false
+    // if not exist then created with set uState==NEW and rewarded=false (若状态条目不存在则新建并初始化)
     QuestStatusData& questStatusData = mQuestStatus[quest_id];
 
-    // check for repeatable quests status reset
+    // check for repeatable quests status reset (若为可重复任务再次接取，重置探索与进度计数)
     questStatusData.m_status = QUEST_STATUS_INCOMPLETE;
     questStatusData.m_explored = false;
 
@@ -13215,7 +13285,7 @@ void Player::AddQuest(Quest const* pQuest, Object* questGiver)
     {
         uint32 limittime = pQuest->GetLimitTime();
 
-        // shared timed quest
+        // shared timed quest (队友共享的限时任务同步剩余时间)
         if (questGiver && questGiver->GetTypeId() == TYPEID_PLAYER)
             limittime = ((Player*)questGiver)->getQuestStatusMap()[quest_id].m_timer / IN_MILLISECONDS;
 
@@ -13231,7 +13301,7 @@ void Player::AddQuest(Quest const* pQuest, Object* questGiver)
     if (questStatusData.uState != QUEST_NEW)
         questStatusData.uState = QUEST_CHANGED;
 
-    // quest accept scripts
+    // quest accept scripts (通知区域脚本玩家已接取任务)
 #ifdef ENABLE_PLAYERBOTS
     if (questGiver && this != questGiver)
 #else
@@ -13252,15 +13322,15 @@ void Player::AddQuest(Quest const* pQuest, Object* questGiver)
                 break;
         }
 
-        // starting initial DB quest script
+        // starting initial DB quest script (执行数据库配置的任务接取起始脚本)
         if (pQuest->GetQuestStartScript() != 0)
             GetMap()->ScriptsStart(SCRIPT_TYPE_QUEST_START, pQuest->GetQuestStartScript(), questGiver, this, Map::SCRIPT_EXEC_PARAM_UNIQUE_BY_SOURCE);
     }
 
-    // remove start item if not need
+    // remove start item if not need (按需消耗或销毁任务起始触发物品)
     if (questGiver && questGiver->isType(TYPEMASK_ITEM))
     {
-        // destroy not required for quest finish quest starting item
+        // destroy not required for quest finish quest starting item (销毁非任务完成必需的任务起始物品)
         bool notRequiredItem = true;
         for (unsigned int i : pQuest->ReqItemId)
         {
@@ -13282,7 +13352,7 @@ void Player::AddQuest(Quest const* pQuest, Object* questGiver)
 
     AdjustQuestReqItemCount(pQuest, questStatusData);
 
-    // Some spells applied at quest activation
+    // Some spells applied at quest activation (刷新随任务接取状态生效的光环)
     uint32 zone, area;
     GetZoneAndAreaId(zone, area);
     SpellAreaForAreaMapBounds saBounds = sSpellMgr.GetSpellAreaForAreaMapBounds(zone);
@@ -13309,8 +13379,8 @@ void Player::CompleteQuest(uint32 quest_id)
 
         if (Quest const* qInfo = sObjectMgr.GetQuestTemplate(quest_id))
         {
-            // The client reads the complete state of a quest log slot as the event or area objective
-            // of the quests flagged with one; the other objectives it counts itself.
+            // The client reads the complete state of a quest log slot as the event or area objective (客户端将任务日志槽位的完成标志位视为事件/探索目标已完成，)
+            // of the quests flagged with one; the other objectives it counts itself. (其他击杀或收集目标由客户端自行计数)
             uint16 log_slot = FindQuestSlot(quest_id);
             if (log_slot < MAX_QUEST_LOG_SIZE && qInfo->HasQuestFlag(QuestFlags(QUEST_FLAGS_PARTY_ACCEPT | QUEST_FLAGS_EXPLORATION)))
                 SetQuestSlotState(log_slot, QUEST_STATE_COMPLETE);
@@ -13327,7 +13397,7 @@ void Player::IncompleteQuest(uint32 quest_id)
     {
         SetQuestStatus(quest_id, QUEST_STATUS_INCOMPLETE);
 
-        // The complete state of the quest log slot is the event objective, which stays done once the event happened.
+        // The complete state of the quest log slot is the event objective, which stays done once the event happened. (任务日志槽位完成标记对应事件目标，触发后保持完成)
         QuestStatusMap::const_iterator itr = mQuestStatus.find(quest_id);
         bool eventDone = itr != mQuestStatus.end() && itr->second.m_explored;
 
@@ -13337,6 +13407,7 @@ void Player::IncompleteQuest(uint32 quest_id)
     }
 }
 
+/// 交付任务并领取经验、金币、物品、声望、荣誉与称号奖励
 void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver, bool announce)
 {
     uint32 quest_id = pQuest->GetQuestId();
@@ -13396,7 +13467,7 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
 
     QuestStatusData& q_status = mQuestStatus[quest_id];
 
-    // Used for client inform but rewarded only in case not max level
+    // Used for client inform but rewarded only in case not max level (发送奖励经验值通知，满级后实际经验折算为金币)
     uint32 xp = uint32(pQuest->XPValue(this) * GetMap()->GetXPModRate(RateModType::QUEST));
 
     if (GetLevel() < GetMaxAttainableLevel())
@@ -13404,10 +13475,10 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
     else
         ModifyMoney(int32(pQuest->GetRewMoneyMaxLevel() * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY)));
 
-    // Give player extra money if GetRewOrReqMoney > 0 and get ReqMoney if negative
+    // Give player extra money if GetRewOrReqMoney > 0 and get ReqMoney if negative (根据任务配置发放奖励金币或扣除所需金币)
     ModifyMoney(pQuest->GetRewOrReqMoney());
 
-    // honor reward
+    // honor reward (发放任务奖励荣誉点数)
     uint32 honor = 0;
     if (pQuest->GetRewHonorableKills())
     {
@@ -13415,14 +13486,14 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
         RewardHonor(nullptr, 0, honor);
     }
 
-    // title reward
+    // title reward (授予任务奖励称号)
     if (pQuest->GetCharTitleId())
     {
         if (CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(pQuest->GetCharTitleId()))
             SetTitle(titleEntry);
     }
 
-    // Send reward mail
+    // Send reward mail (按延迟配置发送任务后续奖励邮件)
     if (uint32 mail_template_id = pQuest->GetRewMailTemplateId())
         MailDraft(mail_template_id).SendMailTo(this, questGiver, MAIL_CHECK_MASK_HAS_BODY, pQuest->GetRewMailDelaySecs());
 
@@ -13474,7 +13545,7 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
     }
 #endif
 
-    // Find spell cast on spell reward if any, then find the appropriate caster and cast it
+    // Find spell cast on spell reward if any, then find the appropriate caster and cast it (若任务有奖励施法，查找合适施法者对玩家施放)
     uint32 spellId = pQuest->GetRewSpellCast();
     if (!spellId)
         spellId = pQuest->GetRewSpell();
@@ -13504,8 +13575,8 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
         }
     }
 
-    // remove auras from spells with quest reward state limitations
-    // Some spells applied at quest reward
+    // remove auras from spells with quest reward state limitations (移除受任务未完成状态限制的光环)
+    // Some spells applied at quest reward (更新依赖任务奖励状态的光环)
     uint32 zone, area;
     GetZoneAndAreaId(zone, area);
     SpellAreaForAreaMapBounds saBounds = sSpellMgr.GetSpellAreaForAreaMapBounds(zone);
@@ -13521,7 +13592,7 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
     for (SpellAreaForAreaMap::const_iterator itr = saBounds.first; itr != saBounds.second; ++itr)
         itr->second->ApplyOrRemoveSpellIfCan(this, zone, area, false);
 
-    // resend quests status directly
+    // resend quests status directly (立即刷新周围任务发布者头顶感叹号/问号状态)
     UpdateForQuestWorldObjects();
     SendQuestGiverStatusMultiple();
 }
@@ -13560,6 +13631,7 @@ void Player::FailQuest(uint32 questId)
         FailQuest(quest);
 }
 
+/// 标记指定任务为失败状态并同步任务日志及终止相关定时器
 void Player::FailQuest(Quest const* quest)
 {
     uint32 questId = quest->GetQuestId();
@@ -13568,7 +13640,7 @@ void Player::FailQuest(Quest const* quest)
 
     uint16 log_slot = FindQuestSlot(questId);
 
-    // only the state changes in the quest log: the client does not read the time of a failed quest
+    // only the state changes in the quest log: the client does not read the time of a failed quest (仅更新日志失败标志位，失败任务无需刷新计时字段)
     if (log_slot < MAX_QUEST_LOG_SIZE)
         SetQuestSlotState(log_slot, QUEST_STATE_FAIL);
 
@@ -13602,11 +13674,11 @@ bool Player::SatisfyQuestSkill(Quest const* qInfo, bool msg) const
 {
     uint32 skill = qInfo->GetRequiredSkill();
 
-    // skip 0 case RequiredSkill
+    // skip 0 case RequiredSkill (无需特定技能要求时跳过)
     if (skill == 0)
         return true;
 
-    // check skill value
+    // check skill value (校验玩家是否具备该技能及足够点数)
     if (GetSkillValue(skill) < qInfo->GetRequiredSkillValue())
     {
         if (msg)
@@ -13648,7 +13720,7 @@ bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestLog(bool msg) const
 {
-    // exist free slot
+    // exist free slot (检查任务日志是否有空余槽位)
     if (FindQuestSlot(0) < MAX_QUEST_LOG_SIZE)
         return true;
 
@@ -13663,7 +13735,7 @@ bool Player::SatisfyQuestLog(bool msg) const
 
 bool Player::SatisfyQuestPreviousQuest(Quest const* qInfo, bool msg) const
 {
-    // No previous quest (might be first quest in a series)
+    // No previous quest (might be first quest in a series) (无前置任务要求，可能为任务线首环)
     if (qInfo->prevQuests.empty())
         return true;
 
@@ -13676,34 +13748,34 @@ bool Player::SatisfyQuestPreviousQuest(Quest const* qInfo, bool msg) const
 
         if (qPrevInfo && i_prevstatus != mQuestStatus.end())
         {
-            // If any of the positive previous quests completed, return true
+            // If any of the positive previous quests completed, return true (正值前置任务任一已完成即可接取)
             if (*iter > 0 && i_prevstatus->second.m_rewarded)
             {
-                // skip one-from-all exclusive group
+                // skip one-from-all exclusive group (正值互斥组表示“完成其一即可”，跳过全检)
                 if (qPrevInfo->GetExclusiveGroup() >= 0)
                     return true;
 
-                // each-from-all exclusive group ( < 0)
-                // given a group with 2+ quests, and one of those has a branch that is not restricted by the group, return true
+                // each-from-all exclusive group ( < 0) (负值互斥组表示“组内全部前置均须完成”)
+                // given a group with 2+ quests, and one of those has a branch that is not restricted by the group, return true (若当前查询任务有独立分支限制则校验同组完成情况)
                 if (qInfo->GetPrevQuestId() != 0 && qPrevInfo->GetNextQuestId() != qInfo->GetPrevQuestId())
                     return true;
 
-                // can be start if only all quests in prev quest exclusive group completed and rewarded
+                // can be start if only all quests in prev quest exclusive group completed and rewarded (仅当互斥组内全部前置任务均已完成并领奖时才可接取)
                 ExclusiveQuestGroupsMapBounds bounds = sObjectMgr.GetExclusiveQuestGroupsMapBounds(qPrevInfo->GetExclusiveGroup());
 
-                MANGOS_ASSERT(bounds.first != bounds.second); // always must be found if qPrevInfo->ExclusiveGroup != 0
+                MANGOS_ASSERT(bounds.first != bounds.second); // always must be found if qPrevInfo->ExclusiveGroup != 0 (互斥组映射条目必存在)
 
                 for (ExclusiveQuestGroupsMap::const_iterator iter2 = bounds.first; iter2 != bounds.second; ++iter2)
                 {
                     uint32 exclude_Id = iter2->second;
 
-                    // skip checked quest id, only state of other quests in group is interesting
+                    // skip checked quest id, only state of other quests in group is interesting (跳过已校验的前置任务自身，只检查同组其他任务)
                     if (exclude_Id == prevId)
                         continue;
 
                     QuestStatusMap::const_iterator i_exstatus = mQuestStatus.find(exclude_Id);
 
-                    // alternative quest from group also must be completed and rewarded(reported)
+                    // alternative quest from group also must be completed and rewarded(reported) (同组其他前置任务也必须已完成并领奖)
                     if (i_exstatus == mQuestStatus.end() || !i_exstatus->second.m_rewarded)
                     {
                         if (msg)
@@ -13714,32 +13786,32 @@ bool Player::SatisfyQuestPreviousQuest(Quest const* qInfo, bool msg) const
                 }
                 return true;
             }
-            // If any of the negative previous quests active, return true
+            // If any of the negative previous quests active, return true (负值前置任务表示目标任务激活期间可接取)
             if (*iter < 0 && IsCurrentQuest(prevId))
             {
-                // skip one-from-all exclusive group
+                // skip one-from-all exclusive group (跳过正值互斥组)
                 if (qPrevInfo->GetExclusiveGroup() >= 0)
                     return true;
 
-                // each-from-all exclusive group ( < 0)
-                // given a group with 2+ quests, and one of those has a branch that is not restricted by the group, return true
+                // each-from-all exclusive group ( < 0) (负值互斥组要求同组前置均处于激活状态)
+                // given a group with 2+ quests, and one of those has a branch that is not restricted by the group, return true (校验负值互斥组分支限制)
                 if (qInfo->GetPrevQuestId() != 0 && qPrevInfo->GetNextQuestId() != abs(qInfo->GetPrevQuestId()))
                     return true;
 
-                // can be start if only all quests in prev quest exclusive group active
+                // can be start if only all quests in prev quest exclusive group active (仅当互斥组内全部前置任务均已接取激活时才可接取)
                 ExclusiveQuestGroupsMapBounds bounds = sObjectMgr.GetExclusiveQuestGroupsMapBounds(qPrevInfo->GetExclusiveGroup());
 
-                MANGOS_ASSERT(bounds.first != bounds.second); // always must be found if qPrevInfo->ExclusiveGroup != 0
+                MANGOS_ASSERT(bounds.first != bounds.second); // always must be found if qPrevInfo->ExclusiveGroup != 0 (互斥组映射条目必存在)
 
                 for (ExclusiveQuestGroupsMap::const_iterator iter2 = bounds.first; iter2 != bounds.second; ++iter2)
                 {
                     uint32 exclude_Id = iter2->second;
 
-                    // skip checked quest id, only state of other quests in group is interesting
+                    // skip checked quest id, only state of other quests in group is interesting (跳过已检查任务自身)
                     if (exclude_Id == prevId)
                         continue;
 
-                    // alternative quest from group also must be active
+                    // alternative quest from group also must be active (同组其他任务也必须处于接取未交状态)
                     if (!IsCurrentQuest(exclude_Id))
                     {
                         if (msg)
@@ -13753,8 +13825,8 @@ bool Player::SatisfyQuestPreviousQuest(Quest const* qInfo, bool msg) const
         }
     }
 
-    // Has only positive prev. quests in non-rewarded state
-    // and negative prev. quests in non-active state
+    // Has only positive prev. quests in non-rewarded state (正值前置任务均未完成领奖，)
+    // and negative prev. quests in non-active state (且负值前置任务均未激活，不满足前置条件)
     if (msg)
         SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
 
@@ -13763,7 +13835,7 @@ bool Player::SatisfyQuestPreviousQuest(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestBreadcrumbQuest(Quest const* qInfo, bool msg) const
 {
-    // If the target quest is not available, then we cannot accept the breadcrumb
+    // If the target quest is not available, then we cannot accept the breadcrumb (若目标引导任务已不可接/已完成，则无法再接指引任务)
     uint32 breadcrumbTargetQuestId = qInfo->GetBreadcrumbForQuestId();
     if (!breadcrumbTargetQuestId)
         return true;
@@ -13781,7 +13853,7 @@ bool Player::SatisfyQuestBreadcrumbQuest(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestDependentBreadcrumbQuests(Quest const* qInfo, bool msg) const
 {
-    // If we have one of the breadcrumb quests, then we can't accept the target quest
+    // If we have one of the breadcrumb quests, then we can't accept the target quest (若已接取或完成对应指引任务，则不再重复显示关联校验)
     for (uint32 breadcrumbQuestId : qInfo->DependentBreadcrumbQuests)
     {
         QuestStatus status = GetQuestStatus(breadcrumbQuestId);
@@ -13835,7 +13907,7 @@ bool Player::SatisfyQuestRace(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestReputation(Quest const* qInfo, bool msg) const
 {
-    uint32 fIdMin = qInfo->GetRequiredMinRepFaction();      // Min required rep
+    uint32 fIdMin = qInfo->GetRequiredMinRepFaction();      // Min required rep (校验最低声望要求)
     if (fIdMin && GetReputationMgr().GetReputation(fIdMin) < qInfo->GetRequiredMinRepValue())
     {
         if (msg)
@@ -13844,7 +13916,7 @@ bool Player::SatisfyQuestReputation(Quest const* qInfo, bool msg) const
         return false;
     }
 
-    uint32 fIdMax = qInfo->GetRequiredMaxRepFaction();      // Max required rep
+    uint32 fIdMax = qInfo->GetRequiredMaxRepFaction();      // Max required rep (校验最高声望上限要求)
     if (fIdMax && GetReputationMgr().GetReputation(fIdMax) >= qInfo->GetRequiredMaxRepValue())
     {
         if (msg)
@@ -13860,7 +13932,7 @@ bool Player::SatisfyQuestStatus(Quest const* qInfo, bool msg) const
 {
     QuestStatusMap::const_iterator itr = mQuestStatus.find(qInfo->GetQuestId());
 
-    // a failed quest can be taken again from its quest giver
+    // a failed quest can be taken again from its quest giver (已失败任务可从发布者处重新接取)
     if (itr != mQuestStatus.end() && itr->second.m_status != QUEST_STATUS_NONE && itr->second.m_status != QUEST_STATUS_FAILED)
     {
         if (msg)
@@ -13887,23 +13959,23 @@ bool Player::SatisfyQuestTimed(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestExclusiveGroup(Quest const* qInfo, bool msg) const
 {
-    // non positive exclusive group, if > 0 then can be start if any other quest in exclusive group already started/completed
+    // non positive exclusive group, if > 0 then can be start if any other quest in exclusive group already started/completed (校验任务互斥组：正组互斥，同组中已有任务接取或完成则不可再接)
     if (qInfo->GetExclusiveGroup() <= 0)
         return true;
 
     ExclusiveQuestGroupsMapBounds bounds = sObjectMgr.GetExclusiveQuestGroupsMapBounds(qInfo->GetExclusiveGroup());
 
-    MANGOS_ASSERT(bounds.first != bounds.second);           // must always be found if qInfo->ExclusiveGroup != 0
+    MANGOS_ASSERT(bounds.first != bounds.second);           // must always be found if qInfo->ExclusiveGroup != 0 (互斥组条目必存在)
 
     for (ExclusiveQuestGroupsMap::const_iterator iter = bounds.first; iter != bounds.second; ++iter)
     {
         uint32 exclude_Id = iter->second;
 
-        // skip checked quest id, only state of other quests in group is interesting
+        // skip checked quest id, only state of other quests in group is interesting (跳过当前待查任务自身)
         if (exclude_Id == qInfo->GetQuestId())
             continue;
 
-        // not allow have daily quest if daily quest from exclusive group already recently completed
+        // not allow have daily quest if daily quest from exclusive group already recently completed (同一互斥组内今天已完成其他日常，则不可接)
         Quest const* Nquest = sObjectMgr.GetQuestTemplate(exclude_Id);
         if (!SatisfyQuestDay(Nquest, false) || !SatisfyQuestWeek(Nquest))
         {
@@ -13915,7 +13987,7 @@ bool Player::SatisfyQuestExclusiveGroup(Quest const* qInfo, bool msg) const
 
         QuestStatusMap::const_iterator i_exstatus = mQuestStatus.find(exclude_Id);
 
-        // alternative quest already started or completed
+        // alternative quest already started or completed (同互斥组内已有其他任务正在进行或已完成)
         if (i_exstatus != mQuestStatus.end() &&
                 (i_exstatus->second.m_status == QUEST_STATUS_COMPLETE || i_exstatus->second.m_status == QUEST_STATUS_INCOMPLETE))
         {
@@ -13934,7 +14006,7 @@ bool Player::SatisfyQuestNextChain(Quest const* qInfo, bool msg) const
     if (!qInfo->GetNextQuestInChain())
         return true;
 
-    // next quest in chain already started or completed
+    // next quest in chain already started or completed (后续链任务已接取或已完成，不可回头接前置)
     QuestStatusMap::const_iterator itr = mQuestStatus.find(qInfo->GetNextQuestInChain());
     if (itr != mQuestStatus.end() &&
             (itr->second.m_status == QUEST_STATUS_COMPLETE || itr->second.m_status == QUEST_STATUS_INCOMPLETE))
@@ -13945,21 +14017,21 @@ bool Player::SatisfyQuestNextChain(Quest const* qInfo, bool msg) const
         return false;
     }
 
-    // check for all quests further up the chain
-    // only necessary if there are quest chains with more than one quest that can be skipped
-    // return SatisfyQuestNextChain( qInfo->GetNextQuestInChain(), msg );
+    // check for all quests further up the chain (递归检查任务链更后续任务)
+    // only necessary if there are quest chains with more than one quest that can be skipped (仅当任务链允许跳环时才需递归)
+    // return SatisfyQuestNextChain( qInfo->GetNextQuestInChain(), msg ); (预留递归检查)
     return true;
 }
 
 bool Player::SatisfyQuestPrevChain(Quest const* qInfo, bool msg) const
 {
-    // No previous quest in chain
+    // No previous quest in chain (无链式前置任务)
     if (qInfo->prevChainQuests.empty())
         return true;
 
     for (uint32 prevId : qInfo->prevChainQuests)
     {
-        // If any of the previous quests in chain active, return false
+        // If any of the previous quests in chain active, return false (若任务链前置任务仍在进行中，则不可跳过接后续)
         if (IsCurrentQuest(prevId))
         {
             if (msg)
@@ -13968,13 +14040,13 @@ bool Player::SatisfyQuestPrevChain(Quest const* qInfo, bool msg) const
             return false;
         }
 
-        // check for all quests further down the chain
-        // only necessary if there are quest chains with more than one quest that can be skipped
+        // check for all quests further down the chain (递归检查任务链更前置任务)
+        // only necessary if there are quest chains with more than one quest that can be skipped (仅当允许跳环时需递归)
         // if( !SatisfyQuestPrevChain( prevId, msg ) )
         //    return false;
     }
 
-    // No previous quest in chain active
+    // No previous quest in chain active (无正在进行中的链式前置任务)
     return true;
 }
 
@@ -14010,7 +14082,7 @@ bool Player::SatisfyQuestWeek(Quest const* qInfo) const
     if (!qInfo->IsWeekly() || m_weeklyquests.empty())
         return true;
 
-    // if not found in cooldown list
+    // if not found in cooldown list (当前本周未完成过此周常任务)
     return m_weeklyquests.find(qInfo->GetQuestId()) == m_weeklyquests.end();
 }
 
@@ -14019,7 +14091,7 @@ bool Player::SatisfyQuestMonth(Quest const* qInfo) const
     if (!qInfo->IsMonthly() || m_monthlyquests.empty())
         return true;
 
-    // if not found in cooldown list
+    // if not found in cooldown list (当前本月未完成过此月常任务)
     return m_monthlyquests.find(qInfo->GetQuestId()) == m_monthlyquests.end();
 }
 
@@ -14029,12 +14101,12 @@ bool Player::CanGiveQuestSourceItemIfNeed(Quest const* pQuest, ItemPosCountVec* 
     {
         uint32 count = pQuest->GetSrcItemCount();
 
-        // player already have max amount required item (including bank), just report success
+        // player already have max amount required item (including bank), just report success (玩家背包与银行中已有足量任务触发物品，跳过发放)
         uint32 has_count = GetItemCount(srcitem, true);
         if (has_count >= count)
             return true;
 
-        count -= has_count;                                 // real need amount
+        count -= has_count;                                 // real need amount (计算实际需补充发放的数量)
 
         InventoryResult msg;
         if (!dest)
@@ -14081,8 +14153,8 @@ bool Player::TakeQuestSourceItem(uint32 quest_id, bool msg)
             if (count <= 0)
                 count = 1;
 
-            // exist one case when destroy source quest item not possible:
-            // non un-equippable item (equipped non-empty bag, for example)
+            // exist one case when destroy source quest item not possible: (放弃任务销毁起始物品时存在特例：)
+            // non un-equippable item (equipped non-empty bag, for example) (例如已装备的非空背包无法直接销毁)
             InventoryResult res = CanUnequipItems(srcitem, count);
             if (res != EQUIP_ERR_OK)
             {
@@ -14102,7 +14174,7 @@ bool Player::GetQuestRewardStatus(uint32 quest_id) const
     Quest const* qInfo = sObjectMgr.GetQuestTemplate(quest_id);
     if (qInfo)
     {
-        // for repeatable quests: rewarded field is set after first reward only to prevent getting XP more than once
+        // for repeatable quests: rewarded field is set after first reward only to prevent getting XP more than once (可重复任务首次领奖后标记 rewarded=true 以防重复获取经验)
         QuestStatusMap::const_iterator itr = mQuestStatus.find(quest_id);
         if (itr != mQuestStatus.end() && itr->second.m_status != QUEST_STATUS_NONE
                 && !qInfo->IsRepeatable())
@@ -14148,7 +14220,7 @@ void Player::SetQuestStatus(uint32 quest_id, QuestStatus status)
     UpdateForQuestWorldObjects();
 }
 
-// not used in MaNGOS, but used in scripting code
+// not used in MaNGOS, but used in scripting code (核心未直接调用，预留给外部脚本修改任务状态)
 uint32 Player::GetReqKillOrCastCurrentCount(uint32 quest_id, int32 entry) const
 {
     Quest const* qInfo = sObjectMgr.GetQuestTemplate(quest_id);
@@ -14204,7 +14276,7 @@ void Player::AreaExploredOrEventHappens(uint32 questId)
         {
             QuestStatusData& q_status = mQuestStatus[questId];
 
-            // a failed quest does not progress any more
+            // a failed quest does not progress any more (已失败的任务不再推进探索/事件进度)
             if (!q_status.m_explored && q_status.m_status != QUEST_STATUS_FAILED)
             {
                 SetQuestSlotState(log_slot, QUEST_STATE_COMPLETE);
@@ -14220,7 +14292,7 @@ void Player::AreaExploredOrEventHappens(uint32 questId)
     }
 }
 
-// not used in mangosd, function for external script library
+// not used in mangosd, function for external script library (供外部脚本库调用，为玩家及周围队友同步事件完成状态)
 void Player::RewardPlayerAndGroupAtEventExplored(uint32 questId, WorldObject const* pEventObject)
 {
     if (Group* pGroup = GetGroup())
@@ -14229,7 +14301,7 @@ void Player::RewardPlayerAndGroupAtEventExplored(uint32 questId, WorldObject con
         {
             Player* pGroupGuy = itr->getSource();
 
-            // for any leave or dead (with not released body) group member at appropriate distance
+            // for any leave or dead (with not released body) group member at appropriate distance (遍历符合距离的存活或未释放灵魂的队友)
             if (pGroupGuy && pGroupGuy->IsAtGroupRewardDistance(pEventObject) && !pGroupGuy->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
                 pGroupGuy->AreaExploredOrEventHappens(questId);
         }
@@ -14274,9 +14346,9 @@ void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
                 }
 
                 if (CanCompleteQuest(questid))
-                    CompleteQuest(questid); // will call UpdateForQuestWorldObjects to clean sparkles for this quest on client
+                    CompleteQuest(questid); // will call UpdateForQuestWorldObjects to clean sparkles for this quest on client (更新任务物体闪光状态，清除已完成任务的提示光效)
                 else if (q_status.m_itemcount[j] == reqitemcount)
-                    UpdateForQuestWorldObjects(); // call UpdateForQuestWorldObjects to remove sparkles from finished objective on client
+                    UpdateForQuestWorldObjects(); // call UpdateForQuestWorldObjects to remove sparkles from finished objective on client (刷新任务物体闪光以移除已完成收集目标的光效)
             }
         }
     }
@@ -14305,19 +14377,19 @@ void Player::ItemRemovedQuestCheck(uint32 entry, uint32 count)
                 uint32 reqItemCount = qInfo->ReqItemCount[j];
                 uint32 curItemCount = q_status.m_itemcount[j];
 
-                // With items you can have more than the required by the quest. The bank counts as in
-                // AdjustQuestReqItemCount; only the reward needs the items in the bags.
+                // With items you can have more than the required by the quest. The bank counts as in (背包/银行可持有超过任务所需的物品，)
+                // AdjustQuestReqItemCount; only the reward needs the items in the bags. (任务计数上限按需求量封顶，仅领奖时要求全部在背包中)
                 if (curItemCount >= reqItemCount)
                     curItemCount = GetItemCount(entry, true);
 
-                // The counter is capped at the required count, so it only drops once fewer items than that are left.
+                // The counter is capped at the required count, so it only drops once fewer items than that are left. (只有当剩余总量低于任务需求数量时，任务进度计数才减少)
                 if (curItemCount >= count && q_status.m_itemcount[j] > curItemCount - count)
                 {
                     q_status.m_itemcount[j] = curItemCount - count;
                     if (q_status.uState != QUEST_NEW)
                         q_status.uState = QUEST_CHANGED;
 
-                    // Only a complete quest goes back to incomplete: a failed quest stays failed.
+                    // Only a complete quest goes back to incomplete: a failed quest stays failed. (仅已完成的任务会退回未完成；已失败任务保持失败)
                     if (q_status.m_status == QUEST_STATUS_COMPLETE)
                         IncompleteQuest(questid);
                     UpdateForQuestWorldObjects();
@@ -14341,6 +14413,7 @@ void Player::KilledMonster(CreatureInfo const* cInfo, Creature const* creature)
             KilledMonsterCredit(i, guid);
 }
 
+/// 击杀生物或触发击杀信用点时更新任务进度并通知客户端
 void Player::KilledMonsterCredit(uint32 entry, ObjectGuid guid)
 {
     uint32 addkillcount = 1;
@@ -14354,7 +14427,7 @@ void Player::KilledMonsterCredit(uint32 entry, ObjectGuid guid)
         Quest const* qInfo = sObjectMgr.GetQuestTemplate(questid);
         if (!qInfo)
             continue;
-        // just if !ingroup || !noraidgroup || raidgroup
+        // just if !ingroup || !noraidgroup || raidgroup (仅在单人、小队或允许团队完成的任务中共享击杀进度)
         QuestStatusData& q_status = mQuestStatus[questid];
         if (q_status.m_status == QUEST_STATUS_INCOMPLETE && (!GetGroup() || !GetGroup()->IsRaidGroup() || qInfo->IsAllowedInRaid()))
         {
@@ -14362,11 +14435,11 @@ void Player::KilledMonsterCredit(uint32 entry, ObjectGuid guid)
             {
                 for (int j = 0; j < QUEST_OBJECTIVES_COUNT; ++j)
                 {
-                    // skip GO activate objective or none
+                    // skip GO activate objective or none (跳过游戏对象交互目标或空目标)
                     if (qInfo->ReqCreatureOrGOId[j] <= 0)
                         continue;
 
-                    // skip Cast at creature objective
+                    // skip Cast at creature objective (跳过需特定法术施放的击杀目标)
                     if (qInfo->ReqSpell[j] != 0)
                         continue;
 
@@ -14422,7 +14495,7 @@ void Player::CastedCreatureOrGO(uint32 entry, ObjectGuid guid, uint32 spell_id, 
 
         for (int j = 0; j < QUEST_OBJECTIVES_COUNT; ++j)
         {
-            // skip kill creature objective (0) or wrong spell casts
+            // skip kill creature objective (0) or wrong spell casts (跳过纯击杀目标或法术 ID 不匹配的施法目标)
             if (qInfo->ReqSpell[j] != spell_id)
                 continue;
 
@@ -14430,20 +14503,20 @@ void Player::CastedCreatureOrGO(uint32 entry, ObjectGuid guid, uint32 spell_id, 
 
             if (isCreature)
             {
-                // creature activate objectives
+                // creature activate objectives (对生物施法交互目标)
                 if (qInfo->ReqCreatureOrGOId[j] > 0)
-                    // checked at quest_template loading
+                    // checked at quest_template loading (已在 quest_template 加载时校验合法性)
                     reqTarget = qInfo->ReqCreatureOrGOId[j];
             }
             else
             {
-                // GO activate objective
+                // GO activate objective (对游戏对象施法交互目标)
                 if (qInfo->ReqCreatureOrGOId[j] < 0)
-                    // checked at quest_template loading
+                    // checked at quest_template loading (已在 quest_template 加载时校验合法性)
                     reqTarget = - qInfo->ReqCreatureOrGOId[j];
             }
 
-            // other not this creature/GO related objectives
+            // other not this creature/GO related objectives (非当前目标生物/物体的条目跳过)
             if (reqTarget != entry)
                 continue;
 
@@ -14461,7 +14534,7 @@ void Player::CastedCreatureOrGO(uint32 entry, ObjectGuid guid, uint32 spell_id, 
             if (CanCompleteQuest(questid))
                 CompleteQuest(questid);
 
-            // same objective target can be in many active quests, but not in 2 objectives for single quest (code optimization).
+            // same objective target can be in many active quests, but not in 2 objectives for single quest (code optimization). (同一目标可属于多个任务，但在单个任务中不会重复出现，故可直接 break)
             break;
         }
     }
@@ -14488,12 +14561,12 @@ void Player::TalkedToCreature(uint32 entry, ObjectGuid guid)
             {
                 for (int j = 0; j < QUEST_OBJECTIVES_COUNT; ++j)
                 {
-                    // skip spell casts and Gameobject objectives
+                    // skip spell casts and Gameobject objectives (跳过法术施放类与游戏对象目标)
                     if (qInfo->ReqSpell[j] > 0 || qInfo->ReqCreatureOrGOId[j] < 0)
                         continue;
 
                     uint32 reqTarget = qInfo->ReqCreatureOrGOId[j];
-                    if (reqTarget <= 0)    // creature activate objectives
+                    if (reqTarget <= 0)    // creature activate objectives (与 NPC 对话目标计数)
                         continue;
 
                     if (reqTarget == entry)
@@ -14639,30 +14712,30 @@ bool Player::HasQuestForItem(uint32 itemid) const
             if (!qinfo)
                 continue;
 
-            // hide quest if player is in raid-group and quest is no raid quest
+            // hide quest if player is in raid-group and quest is no raid quest (在团队中时忽略非团队任务物品需求)
             if (GetGroup() && GetGroup()->IsRaidGroup() && !qinfo->IsAllowedInRaid() && !InBattleGround())
                 continue;
 
-            // There should be no mixed ReqItem/ReqSource drop
-            // This part for ReqItem drop
+            // There should be no mixed ReqItem/ReqSource drop (不混用需求物品与需求来源物品掉落判断)
+            // This part for ReqItem drop (处理常规任务需求物品掉落判定)
             for (int j = 0; j < QUEST_ITEM_OBJECTIVES_COUNT; ++j)
             {
                 if (itemid == qinfo->ReqItemId[j] && q_status.m_itemcount[j] < qinfo->ReqItemCount[j])
                     return true;
             }
-            // This part - for ReqSource
+            // This part - for ReqSource (处理任务衍生来源物品掉落判定)
             for (int j = 0; j < QUEST_SOURCE_ITEM_IDS_COUNT; ++j)
             {
-                // examined item is a source item
+                // examined item is a source item (确认当前检查物品为该任务的来源物品)
                 if (qinfo->ReqSourceId[j] == itemid)
                 {
                     ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemid);
 
-                    // 'unique' item
+                    // 'unique' item (唯一物品上限检查)
                     if (pProto->MaxCount && GetItemCount(itemid, true) < pProto->MaxCount)
                         return true;
 
-                    // allows custom amount drop when not 0
+                    // allows custom amount drop when not 0 (支持自定义所需来源物品数量)
                     if (qinfo->ReqSourceCount[j])
                     {
                         if (GetItemCount(itemid, true) < qinfo->ReqSourceCount[j])
@@ -14677,7 +14750,7 @@ bool Player::HasQuestForItem(uint32 itemid) const
     return false;
 }
 
-// Used for quests having some event (explore, escort, "external event") as quest objective.
+// Used for quests having some event (explore, escort, "external event") as quest objective. (用于探索、护送或外部事件类任务完成通知)
 void Player::SendQuestCompleteEvent(uint32 quest_id) const
 {
     if (quest_id)
@@ -14707,8 +14780,8 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 XP, uint32 honor) const
         data << uint32(0);
         data << uint32(pQuest->GetRewOrReqMoney() + int32(pQuest->GetRewMoneyMaxLevel() * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY)));
     }
-    data << uint32(honor);                                  // new 2.3.0, HonorPoints
-    data << uint32(pQuest->GetRewItemsCount());             // max is 5
+    data << uint32(honor);                                  // new 2.3.0, HonorPoints (2.3.0 新增荣誉奖励字段)
+    data << uint32(pQuest->GetRewItemsCount());             // max is 5 (最多包含 5 个可选物品)
 
     for (uint32 i = 0; i < pQuest->GetRewItemsCount(); ++i)
     {
@@ -14775,7 +14848,7 @@ void Player::SendPushToPartyResponse(Player* pPlayer, QuestShareMessages msg) co
     {
         WorldPacket data(MSG_QUEST_PUSH_RESULT, (8 + 1));
         data << pPlayer->GetObjectGuid();
-        data << uint8(msg);                                 // valid values: 0-8
+        data << uint8(msg);                                 // valid values: 0-8 (任务共享反馈有效状态值 0-8)
         GetSession()->SendPacket(data);
         DEBUG_LOG("WORLD: Sent MSG_QUEST_PUSH_RESULT");
     }
@@ -14785,7 +14858,7 @@ void Player::SendQuestUpdateAddItem(Quest const* pQuest, uint32 item_idx, uint32
 {
     MANGOS_ASSERT(count < 256 && "Quest slot count store is limited to 8 bits 2^8 = 256 (0..255)");
 
-    // Update quest watcher and fire QUEST_WATCH_UPDATE
+    // Update quest watcher and fire QUEST_WATCH_UPDATE (更新任务追踪器并触发 QUEST_WATCH_UPDATE)
     DEBUG_LOG("WORLD: Sent SMSG_QUESTUPDATE_ADD_ITEM");
     WorldPacket data(SMSG_QUESTUPDATE_ADD_ITEM, (4 + 4));
     data << pQuest->ReqItemId[item_idx];
@@ -14799,10 +14872,10 @@ void Player::SendQuestUpdateAddCreatureOrGo(Quest const* pQuest, ObjectGuid guid
 
     int32 entry = pQuest->ReqCreatureOrGOId[ creatureOrGO_idx ];
     if (entry < 0)
-        // client expected gameobject template id in form (id|0x80000000)
+        // client expected gameobject template id in form (id|0x80000000) (客户端约定：游戏对象模板 ID 需带最高位 0x80000000 标记)
         entry = (-entry) | 0x80000000;
 
-    // Update quest watcher and fire QUEST_WATCH_UPDATE
+    // Update quest watcher and fire QUEST_WATCH_UPDATE (更新任务追踪器并触发 QUEST_WATCH_UPDATE)
     WorldPacket data(SMSG_QUESTUPDATE_ADD_KILL, (4 * 4 + 8));
     DEBUG_LOG("WORLD: Sent SMSG_QUESTUPDATE_ADD_KILL");
     data << uint32(pQuest->GetQuestId());
@@ -14812,7 +14885,7 @@ void Player::SendQuestUpdateAddCreatureOrGo(Quest const* pQuest, ObjectGuid guid
     data << guid;
     GetSession()->SendPacket(data);
 
-    // Update player field and fire UNIT_QUEST_LOG_CHANGED for self
+    // Update player field and fire UNIT_QUEST_LOG_CHANGED for self (通知客户端刷新任务日志变更)
     uint16 slot = FindQuestSlot(pQuest->GetQuestId());
     if (slot < MAX_QUEST_LOG_SIZE)
         SetQuestSlotCounter(slot, uint8(creatureOrGO_idx), uint8(count));
@@ -14823,13 +14896,13 @@ void Player::SendQuestGiverStatusMultiple() const
     uint32 count = 0;
 
     WorldPacket data(SMSG_QUESTGIVER_STATUS_MULTIPLE, 4);
-    data << uint32(count);                                  // placeholder
+    data << uint32(count);                                  // placeholder (任务发布者数量占位符)
 
     for (auto m_clientGUID : m_clientGUIDs)
     {
         if (m_clientGUID.IsAnyTypeCreature())
         {
-            // need also pet quests case support
+            // need also pet quests case support (后续可扩展支持宠物提供任务状态)
             Creature* questgiver = GetMap()->GetAnyTypeCreature(m_clientGUID);
 
             if (!questgiver || !CanInteract(questgiver))
@@ -14868,12 +14941,12 @@ void Player::SendQuestGiverStatusMultiple() const
         }
     }
 
-    data.put<uint32>(0, count);                             // write real count
+    data.put<uint32>(0, count);                             // write real count (回填实际查询的 NPC/物体数量)
     GetSession()->SendPacket(data);
 }
 
 /*********************************************************/
-/***                   LOAD SYSTEM                     ***/
+/***             LOAD SYSTEM (角色加载系统)              ***/
 /*********************************************************/
 
 void Player::_LoadDeclinedNames(std::unique_ptr<QueryResult> queryResult)
@@ -14891,7 +14964,7 @@ void Player::_LoadDeclinedNames(std::unique_ptr<QueryResult> queryResult)
 
 void Player::_LoadArenaTeamInfo(std::unique_ptr<QueryResult> queryResult)
 {
-    // arenateamid, played_week, played_season, personal_rating
+    // arenateamid, played_week, played_season, personal_rating (字段：战队ID、本周场次、本季场次、个人等级)
     memset((void*)&m_uint32Values[PLAYER_FIELD_ARENA_TEAM_INFO_1_1], 0, sizeof(uint32) * MAX_ARENA_SLOT * ARENA_TEAM_END);
     if (!queryResult)
         return;
@@ -14928,16 +15001,16 @@ void Player::_LoadBGData(std::unique_ptr<QueryResult> queryResult)
     if (!queryResult)
         return;
 
-    // Expecting only one row
+    // Expecting only one row (预期最多返回一行战场数据)
     Field* fields = queryResult->Fetch();
-    /* bgInstanceID, bgTeam, x, y, z, o, map */
+    /* bgInstanceID, bgTeam, x, y, z, o, map (字段：战场实例ID、战场阵营、入场前坐标与地图) */
     m_bgData.bgInstanceID = fields[0].GetUInt32();
     m_bgData.bgTeam       = Team(fields[1].GetUInt32());
-    m_bgData.joinPos      = WorldLocation(fields[6].GetUInt32(),    // Map
-                                          fields[2].GetFloat(),     // X
-                                          fields[3].GetFloat(),     // Y
-                                          fields[4].GetFloat(),     // Z
-                                          fields[5].GetFloat());    // Orientation
+    m_bgData.joinPos      = WorldLocation(fields[6].GetUInt32(),    // Map (入场前地图 ID)
+                                          fields[2].GetFloat(),     // X (入场前 X 坐标)
+                                          fields[3].GetFloat(),     // Y (入场前 Y 坐标)
+                                          fields[4].GetFloat(),     // Z (入场前 Z 坐标)
+                                          fields[5].GetFloat());    // Orientation (入场前朝向)
 }
 
 bool Player::LoadPositionFromDB(ObjectGuid guid, uint32& mapid, float& x, float& y, float& z, float& o, bool& in_flight)
@@ -14975,7 +15048,7 @@ void Player::_LoadIntoDataField(const char* data, uint32 startOffset, uint32 cou
         m_uint32Values[startOffset + index] = std::stoul(*iter);
     }
 
-    // repair titles
+    // repair titles (根据任务完成情况补全应得称号)
     uint32 foundTitle = 0;
     for (uint32 i = 1; i <= 28; ++i)
     {
@@ -15005,6 +15078,7 @@ void Player::_LoadIntoDataField(const char* data, uint32 startOffset, uint32 cou
         SetTitle(tEntry, false, false);
 }
 
+/// 从数据库异步查询结果完整加载玩家角色数据、背包、法术、任务、光环与状态
 bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 {
     //       0     1        2     3     4      5       6      7   8      9            10            11
@@ -15031,8 +15105,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     uint32 dbAccountId = fields[1].GetUInt32();
 
-    // check if the character's account in the db and the logged in account match.
-    // player should be able to load/delete character only with correct account!
+    // check if the character's account in the db and the logged in account match. (校验数据库角色所属账号与当前登录会话账号是否一致)
+    // player should be able to load/delete character only with correct account! (防止跨账号越权加载或操作角色)
     if (dbAccountId != GetSession()->GetAccountId())
     {
         sLog.outError("%s loading from wrong account (is: %u, should be: %u)",
@@ -15042,7 +15116,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     m_name = fields[2].GetCppString();
 
-    // check name limitations
+    // check name limitations (校验角色名合规性)
     if (ObjectMgr::CheckPlayerName(m_name) != CHAR_NAME_SUCCESS ||
             (GetSession()->GetSecurity() == SEC_PLAYER && sObjectMgr.IsReservedName(m_name)))
     {
@@ -15051,17 +15125,17 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         return false;
     }
 
-    // overwrite possible wrong/corrupted guid
+    // overwrite possible wrong/corrupted guid (覆写可能损坏的 GUID 字段)
     SetGuidValue(OBJECT_FIELD_GUID, guid);
 
-    // overwrite some data fields
-    SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_RACE, fields[3].GetUInt8()); // race
+    // overwrite some data fields (恢复种族/职业/性别等核心字节字段)
+    SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_RACE, fields[3].GetUInt8()); // race (种族)
     uint8 playerClass = fields[4].GetUInt8();
-    SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_CLASS, fields[4].GetUInt8()); // class
+    SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_CLASS, fields[4].GetUInt8()); // class (职业)
     SetSpellClass(playerClass);
 
-    uint8 gender = fields[5].GetUInt8() & 0x01;             // allowed only 1 bit values male/female cases (for fit drunk gender part)
-    SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_GENDER, gender); // gender
+    uint8 gender = fields[5].GetUInt8() & 0x01;             // allowed only 1 bit values male/female cases (for fit drunk gender part) (性别仅占 1 位，以兼容醉酒度字节)
+    SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_GENDER, gender); // gender (性别)
 
     SetByteValue(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_DEBUFF_LIMIT, UNIT_BYTE2_PLAYER_CONTROLLED_DEBUFF_LIMIT);
 
@@ -15070,10 +15144,10 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     _LoadIntoDataField(fields[55].GetString(), PLAYER_EXPLORED_ZONES_1, PLAYER_EXPLORED_ZONES_SIZE);
     _LoadIntoDataField(fields[58].GetString(), PLAYER__FIELD_KNOWN_TITLES, 2);
-    // lifetime highest PvP rank, from the old PvP rank titles
+    // lifetime highest PvP rank, from the old PvP rank titles (旧版 PvP 生涯最高军衔)
     SetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK, GetHighestPvPRankIndex());
 
-    InitDisplayIds();                                       // model, scale and model data
+    InitDisplayIds();                                       // model, scale and model data (模型、缩放比例与声音数据)
 
     uint32 money = fields[8].GetUInt32();
     if (money > MAX_MONEY_AMOUNT)
@@ -15092,10 +15166,10 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     SetUInt32Value(PLAYER_AMMO_ID, fields[57].GetUInt32());
 
-    // Action bars state
+    // Action bars state (动作条启用掩码)
     SetByteValue(PLAYER_FIELD_BYTES, 2, fields[59].GetUInt8());
 
-    // cleanup inventory related item value fields (its will be filled correctly in _LoadInventory)
+    // cleanup inventory related item value fields (its will be filled correctly in _LoadInventory) (清空装备栏位字段，将在 _LoadInventory 中重新填充)
     for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
     {
         SetGuidValue(PLAYER_FIELD_INV_SLOT_HEAD + (slot * 2), ObjectGuid());
@@ -15108,20 +15182,20 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_STATS, "Load Basic value of player %s is: ", m_name.c_str());
     outDebugStatsValues();
 
-    // Need to call it to initialize m_team (m_team can be calculated from race)
-    // Other way is to saves m_team into characters table.
+    // Need to call it to initialize m_team (m_team can be calculated from race) (初始化阵营 m_team，可根据种族推算)
+    // Other way is to saves m_team into characters table. (否则需在 characters 表单独存储)
     setFactionForRace(getRace());
     SetCharm(nullptr);
 
-    // load home bind and check in same time class/race pair, it used later for restore broken positions
+    // load home bind and check in same time class/race pair, it used later for restore broken positions (加载炉石绑定点并校验职业/种族组合合法性)
     if (!_LoadHomeBind(holder->GetResult(PLAYER_LOGIN_QUERY_LOADHOMEBIND)))
     {
         return false;
     }
 
-    InitPrimaryProfessions();                               // to max set before any spell loaded
+    InitPrimaryProfessions();                               // to max set before any spell loaded (加载法术前先重置最大可学等级等基础限制)
 
-    // init saved position, and fix it later if problematic
+    // init saved position, and fix it later if problematic (读取保存坐标，若存在异常则在后续修复)
     uint32 transGUID = fields[30].GetUInt32();
     Relocate(fields[12].GetFloat(), fields[13].GetFloat(), fields[14].GetFloat(), fields[16].GetFloat());
     SetLocationMapId(fields[15].GetUInt32());
@@ -15129,7 +15203,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     uint32 difficulty = fields[38].GetUInt32();
     if (difficulty >= MAX_DIFFICULTY || GetLevel() < LEVELREQUIREMENT_HEROIC)
         difficulty = DUNGEON_DIFFICULTY_NORMAL;
-    SetDifficulty(Difficulty(difficulty));                  // may be changed in _LoadGroup
+    SetDifficulty(Difficulty(difficulty));                  // may be changed in _LoadGroup (副本难度可能会在 _LoadGroup 中被队长设置覆盖)
 
     _LoadGroup(holder->GetResult(PLAYER_LOGIN_QUERY_LOADGROUP));
 
@@ -15137,7 +15211,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     SetArenaPoints(fields[39].GetUInt32());
 
-    // check arena teams integrity
+    // check arena teams integrity (校验竞技场战队成员完整性)
     for (uint32 arena_slot = 0; arena_slot < MAX_ARENA_SLOT; ++arena_slot)
     {
         uint32 arena_team_id = GetArenaTeamId(arena_slot);
@@ -15148,7 +15222,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
             if (at->HaveMember(GetObjectGuid()))
                 continue;
 
-        // arena team not exist or not member, cleanup fields
+        // arena team not exist or not member, cleanup fields (战队不存在或已非成员，清理对应竞技场字段)
         for (int j = 0; j < ARENA_TEAM_END; ++j)
             SetArenaTeamInfoField(arena_slot, ArenaTeamInfoType(j), 0);
     }
@@ -15176,7 +15250,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     _LoadBGData(holder->GetResult(PLAYER_LOGIN_QUERY_LOADBGDATA));
 
-    if (m_bgData.bgInstanceID)                              // saved in BattleGround
+    if (m_bgData.bgInstanceID)                              // saved in BattleGround (玩家上次离线时正处于战场/竞技场中)
     {
         BattleGround* currentBg = sBattleGroundMgr.GetBattleGround(m_bgData.bgInstanceID, BATTLEGROUND_TYPE_NONE);
 
@@ -15187,9 +15261,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
             BattleGroundQueueTypeId bgQueueTypeId = sBattleGroundMgr.BgQueueTypeId(currentBg->GetTypeId(), currentBg->GetArenaType());
             AddBattleGroundQueueId(bgQueueTypeId);
 
-            m_bgData.bgTypeID = currentBg->GetTypeId();     // bg data not marked as modified
+            m_bgData.bgTypeID = currentBg->GetTypeId();     // bg data not marked as modified (刚加载的战场数据未修改，无需重复标记存盘)
 
-            // join player to battleground group
+            // join player to battleground group (将玩家加入或恢复到战场团队)
             currentBg->EventPlayerLoggedIn(this);
             currentBg->AddOrSetPlayerToCorrectBgGroup(this, GetObjectGuid(), m_bgData.bgTeam);
 
@@ -15197,35 +15271,35 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         }
         else
         {
-            // leave bg
+            // leave bg (战场已结束或无法重连，退出战场)
             if (player_at_bg)
                 currentBg->RemovePlayerAtLeave(GetObjectGuid(), false, true);
 
-            // move to bg enter point
+            // move to bg enter point (将玩家坐标重置回战场入口前位置)
             const WorldLocation& _loc = GetBattleGroundEntryPoint();
             SetLocationMapId(_loc.mapid);
             Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
 
-            // We are not in BG anymore
+            // We are not in BG anymore (已不在战场中，重置战场状态)
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
-            // remove outdated DB data in DB
+            // remove outdated DB data in DB (清理数据库中过期的战场状态记录)
             _SaveBGData();
         }
     }
     else
     {
         MapEntry const* mapEntry = sMapStore.LookupEntry(GetMapId());
-        // if server restart after player save in BG or area
-        // player can have current coordinates in to BG/Arena map, fix this
+        // if server restart after player save in BG or area (若服务器重启后玩家坐标仍留在战场/竞技场地图，)
+        // player can have current coordinates in to BG/Arena map, fix this (则修复其坐标至入口点或炉石点)
         if (!mapEntry || mapEntry->IsBattleGroundOrArena())
         {
             const WorldLocation& _loc = GetBattleGroundEntryPoint();
             SetLocationMapId(_loc.mapid);
             Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
 
-            // We are not in BG anymore
+            // We are not in BG anymore (清理战场数据)
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
-            // remove outdated DB data in DB
+            // remove outdated DB data in DB (立即删除数据库过期战场记录)
             _SaveBGData();
         }
     }
@@ -15239,7 +15313,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         if (!MaNGOS::IsValidMapCoord(
                     GetPositionX() + transportPosition.x, GetPositionY() + transportPosition.y,
                     GetPositionZ() + transportPosition.z, GetOrientation() + transportPosition.o) ||
-                // transport size limited
+                // transport size limited (船只/飞艇静态路径载具检查)
                 transportPosition.x > 50 || transportPosition.y > 50 || transportPosition.z > 50)
         {
             sLog.outError("%s have invalid transport coordinates (X: %f Y: %f Z: %f O: %f). Teleport to default race/class locations.",
@@ -15254,7 +15328,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         }
     }
 
-    // load the player's map here if it's not already loaded
+    // load the player's map here if it's not already loaded (提前加载玩家所在地图实例)
     SetMap(sMapMgr.CreateMap(GetMapId(), this));
 
     if (transGUID != 0)
@@ -15267,7 +15341,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
             {
                 guid = ObjectGuid(transportInfo->GetHighGuid(), data->id, transGUID);
                 m_movementInfo.t_guid = guid;
-                // an elevator only exists while its grid is loaded
+                // an elevator only exists while its grid is loaded (电梯/可移动载具仅在所属网格加载后才存在于世界中)
                 if (data->mapid == GetMapId())
                     GetMap()->LoadGrid(data->posX, data->posY);
             }
@@ -15279,7 +15353,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
             if (TransportTemplate const* transportTemplate = sTransportMgr.GetTransportTemplate(guid.GetCounter()))
             {
                 uint32 mapId = *transportTemplate->mapsUsed.begin();
-                if (mapId == map->GetId()) // only two maps max
+                if (mapId == map->GetId()) // only two maps max (最多允许 2 层关联地图，如主世界与副本)
                     mapId = *transportTemplate->mapsUsed.rbegin();
                 map = sMapMgr.CreateMap(mapId, this);
                 transport = map->GetTransport(guid);
@@ -15288,7 +15362,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         if (transport)
         {
             MapEntry const* transMapEntry = sMapStore.LookupEntry(transport->GetMapId());
-            // client without expansion support
+            // client without expansion support (客户端不具备目标地图所需资料片权限)
             if (GetSession()->GetExpansion() < transMapEntry->Expansion())
                 DEBUG_LOG("Player %s using client without required expansion tried login at transport at non accessible map %u", GetName(), transport->GetMapId());
             else
@@ -15310,35 +15384,35 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
             m_movementInfo.ClearTransportData();
 
             SetMap(sMapMgr.CreateMap(GetMapId(), this));
-            SaveRecallPosition();                           // save as recall also to prevent recall and fall from sky
+            SaveRecallPosition();                           // save as recall also to prevent recall and fall from sky (同步更新回溯点以防回溯时从高空坠落)
         }
     }
-    else                                                    // not transport case
+    else                                                    // not transport case (普通非载具坐标校验)
     {
         MapEntry const* mapEntry = sMapStore.LookupEntry(GetMapId());
-        // client without expansion support
+        // client without expansion support (客户端不具备资料片权限)
         if (GetSession()->GetExpansion() < mapEntry->Expansion())
         {
             DEBUG_LOG("Player %s using client without required expansion tried login at non accessible map %u", GetName(), GetMapId());
             RelocateToHomebind();
 
             SetMap(sMapMgr.CreateMap(GetMapId(), this));
-            SaveRecallPosition();                           // save as recall also to prevent recall and fall from sky
+            SaveRecallPosition();                           // save as recall also to prevent recall and fall from sky (同步更新回溯点)
         }
     }
 
-    // player bounded instance saves loaded in _LoadBoundInstances, group versions at group loading
+    // player bounded instance saves loaded in _LoadBoundInstances, group versions at group loading (加载玩家自身及队伍的副本进度绑定)
     DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(GetMapId());
 
     time_t now = time(nullptr);
     time_t logoutTime = time_t(fields[22].GetUInt64());
 
-    // since last logout (in seconds)
+    // since last logout (in seconds) (计算自上次登出经过的离线秒数)
     uint32 time_diff = uint32(now - logoutTime);
 
     if (!sWorld.getConfig(CONFIG_BOOL_DISABLE_INSTANCE_RELOCATE))
     {
-        // if the player is in an instance and it has been reset in the meantime teleport him to the entrance
+        // if the player is in an instance and it has been reset in the meantime teleport him to the entrance (若离线期间副本已重置，则将玩家传回副本入口)
         if (GetInstanceId() && (!state || time_diff > 15 * MINUTE))
         {
             AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(GetMapId());
@@ -15351,8 +15425,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     SaveRecallPosition();
 
-    // set value, including drunk invisibility detection
-    // calculate sobering. after 15 minutes logged out, the player will be sober again
+    // set value, including drunk invisibility detection (设置醉酒度并更新醉酒侦测光环)
+    // calculate sobering. after 15 minutes logged out, the player will be sober again (计算离线醒酒：离线超过 15 分钟即完全清醒)
     float soberFactor;
     if (time_diff > 15 * MINUTE)
         soberFactor = 0;
@@ -15368,13 +15442,13 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     m_resetTalentsCost = fields[24].GetUInt32();
     m_resetTalentsTime = time_t(fields[25].GetUInt64());
 
-    // reserve some flags
+    // reserve some flags (保留部分离线期间不应丢失的玩家状态标志)
     uint32 old_safe_flags = GetUInt32Value(PLAYER_FLAGS) & (PLAYER_FLAGS_HIDE_CLOAK | PLAYER_FLAGS_HIDE_HELM);
 
     if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GM))
         SetUInt32Value(PLAYER_FLAGS, 0 | old_safe_flags);
 
-    m_taxi.LoadTaxiMask(fields[17].GetString());            // must be before InitTaxiNodesForLevel
+    m_taxi.LoadTaxiMask(fields[17].GetString());            // must be before InitTaxiNodesForLevel (必须在 InitTaxiNodesForLevel 之前加载飞行路线掩码)
 
     uint32 extraflags = fields[31].GetUInt32();
 
@@ -15387,8 +15461,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     m_atLoginFlags = fields[33].GetUInt32();
 
-    // Honor system
-    // Update Honor kills data
+    // Honor system (荣誉系统：加载跨日时间戳并刷新昨日/今日统计)
+    // Update Honor kills data (更新荣誉击杀字段)
     m_lastHonorUpdateTime = logoutTime;
     UpdateHonorFields();
 
@@ -15398,11 +15472,11 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     std::string taxi_nodes = fields[37].GetCppString();
 
-    // clear channel spell data (if saved at channel spell casting)
+    // clear channel spell data (if saved at channel spell casting) (清除引导法术残留字段)
     SetChannelObjectGuid(ObjectGuid());
     SetUInt32Value(UNIT_CHANNEL_SPELL, 0);
 
-    // clear charm/summon related fields
+    // clear charm/summon related fields (清除魅惑/召唤控制残留字段)
     SetCharm(nullptr);
     SetPet(nullptr);
     SetTargetGuid(ObjectGuid());
@@ -15410,38 +15484,38 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     SetCreatorGuid(ObjectGuid());
     SetSummonerGuid(ObjectGuid());
 
-    // reset some aura modifiers before aura apply
+    // reset some aura modifiers before aura apply (应用光环前重置光环基础修正数组)
 
     SetGuidValue(PLAYER_FARSIGHT, ObjectGuid());
     SetUInt32Value(PLAYER_TRACK_CREATURES, 0);
     SetUInt32Value(PLAYER_TRACK_RESOURCES, 0);
 
-    // cleanup aura list explicitly before skill load where some spells can be applied
+    // cleanup aura list explicitly before skill load where some spells can be applied (在加载技能前显式清空光环列表，因为技能加载可能触发法术)
     RemoveAllAuras();
 
-    // make sure the unit is considered out of combat for proper loading
+    // make sure the unit is considered out of combat for proper loading (确保加载期间处于脱战状态)
     ClearInCombat();
 
-    // make sure the unit is considered not in duel for proper loading
+    // make sure the unit is considered not in duel for proper loading (确保加载期间不处于决斗状态)
     SetGuidValue(PLAYER_DUEL_ARBITER, ObjectGuid());
     SetUInt32Value(PLAYER_DUEL_TEAM, 0);
 
-    // reset stats before loading any modifiers
+    // reset stats before loading any modifiers (加载任何属性修正前先按等级初始化基础属性)
     InitStatsForLevel();
     InitTaxiNodesForLevel();
 
-    // rest bonus can only be calculated after InitStatsForLevel()
+    // rest bonus can only be calculated after InitStatsForLevel() (休息双倍经验上限依赖等级，须在 InitStatsForLevel 后计算)
     m_rest_bonus = fields[21].GetFloat();
 
     if (time_diff > 0)
         SetRestBonus(GetRestBonus() + ComputeRest(time_diff, true, (fields[23].GetInt32() > 0)));
 
-    // load skills after InitStatsForLevel because it triggering aura apply also
+    // load skills after InitStatsForLevel because it triggering aura apply also (加载技能并应用被动技能效果)
     _LoadSkills(holder->GetResult(PLAYER_LOGIN_QUERY_LOADSKILLS));
 
-    // apply original stats mods before spell loading or item equipment that call before equip _RemoveStatsMods()
+    // apply original stats mods before spell loading or item equipment that call before equip _RemoveStatsMods() (在加载法术与装备前先应用基础属性加成)
 
-    // Mail
+    // Mail (加载邮件与未收附件物品)
     _LoadMails(holder->GetResult(PLAYER_LOGIN_QUERY_LOADMAILS));
     _LoadMailedItems(holder->GetResult(PLAYER_LOGIN_QUERY_LOADMAILEDITEMS));
     UpdateNextMailTimeAndUnreads();
@@ -15450,32 +15524,32 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     _LoadAuras(holder->GetResult(PLAYER_LOGIN_QUERY_LOADAURAS), time_diff);
 
-    // add ghost flag (must be after aura load: PLAYER_FLAGS_GHOST set in aura)
+    // add ghost flag (must be after aura load: PLAYER_FLAGS_GHOST set in aura) (光环加载后同步幽灵与存活/死亡状态)
     if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
         m_deathState = DEAD;
 
-    // after spell load
+    // after spell load (在法术加载后执行)
     InitTalentForLevel();
     LearnDefaultSkills();
     learnDefaultSpells();
 
-    // after spell load, learn rewarded spell if need also
+    // after spell load, learn rewarded spell if need also (在加载任务后补学缺失的任务奖励法术)
     _LoadQuestStatus(holder->GetResult(PLAYER_LOGIN_QUERY_LOADQUESTSTATUS));
     _LoadDailyQuestStatus(holder->GetResult(PLAYER_LOGIN_QUERY_LOADDAILYQUESTSTATUS));
     _LoadWeeklyQuestStatus(holder->GetResult(PLAYER_LOGIN_QUERY_LOADWEEKLYQUESTSTATUS));
     _LoadMonthlyQuestStatus(holder->GetResult(PLAYER_LOGIN_QUERY_LOADMONTHLYQUESTSTATUS));
 
-    // must be before inventory (some items required reputation check)
+    // must be before inventory (some items required reputation check) (必须在加载背包前加载声望，部分装备有声望穿戴要求)
     m_reputationMgr.LoadFromDB(holder->GetResult(PLAYER_LOGIN_QUERY_LOADREPUTATION));
 
     _LoadInventory(holder->GetResult(PLAYER_LOGIN_QUERY_LOADINVENTORY), time_diff);
     _LoadItemLoot(holder->GetResult(PLAYER_LOGIN_QUERY_LOADITEMLOOT));
 
-    // update items with duration and realtime
+    // update items with duration and realtime (扣减离线期间经过的限时物品存在时间)
     UpdateItemDuration(time_diff, true);
 
-    // After quests and inventory loaded: force update on quest item counters
-    // Fixes cases when quest status data was not correctly saved during last session (crash, db connection lost, etc)
+    // After quests and inventory loaded: force update on quest item counters (任务与背包加载完毕后强制重算任务物品计数，)
+    // Fixes cases when quest status data was not correctly saved during last session (crash, db connection lost, etc) (修复异常掉线或宕机导致的任务物品计数不同步)
     for (auto& data : mQuestStatus)
     {
         if (Quest const* quest = sObjectMgr.GetQuestTemplate(data.first))
@@ -15486,8 +15560,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     m_social = sSocialMgr.LoadFromDB(holder->GetResult(PLAYER_LOGIN_QUERY_LOADSOCIALLIST), GetObjectGuid());
 
-    // check PLAYER_CHOSEN_TITLE compatibility with PLAYER__FIELD_KNOWN_TITLES
-    // note: PLAYER__FIELD_KNOWN_TITLES updated at quest status loaded
+    // check PLAYER_CHOSEN_TITLE compatibility with PLAYER__FIELD_KNOWN_TITLES (校验当前佩戴称号是否在已知称号掩码中)
+    // note: PLAYER__FIELD_KNOWN_TITLES updated at quest status loaded (注：任务奖励称号在任务加载阶段更新)
     uint32 curTitle = fields[46].GetUInt32();
     if (curTitle && !HasTitle(curTitle))
         curTitle = 0;
@@ -15497,25 +15571,25 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     Taxi::DestID destOrphan = 0;
     if (!m_taxiTracker.Load(taxi_nodes, destOrphan))
     {
-        // problems with taxi path loading
+        // problems with taxi path loading (飞行路线数据解析失败保护)
         TaxiNodesEntry const* nodeEntry = (destOrphan ? sTaxiNodesStore.LookupEntry(destOrphan) : nullptr);
 
-        if (!nodeEntry)                                     // don't know taxi start node, to homebind
+        if (!nodeEntry)                                     // don't know taxi start node, to homebind (缺少飞行起点信息，传回炉石绑定点)
         {
             sLog.outError("Character %u have wrong data in taxi destination list, teleport to homebind.", GetGUIDLow());
             RelocateToHomebind();
         }
-        else                                                // have start node, to it
+        else                                                // have start node, to it (回退至飞行起点节点位置)
         {
             sLog.outError("Character %u have too short taxi destination list, teleport to original node.", GetGUIDLow());
             SetLocationMapId(nodeEntry->map_id);
             Relocate(nodeEntry->x, nodeEntry->y, nodeEntry->z, 0.0f);
         }
 
-        // we can be relocated from taxi and still have an outdated Map pointer!
-        // so we need to get a new Map pointer!
+        // we can be relocated from taxi and still have an outdated Map pointer! (若从飞行点重定位至其他地图，须同步刷新地图指针)
+        // so we need to get a new Map pointer! (获取重定位后新坐标所属地图)
         SetMap(sMapMgr.CreateMap(GetMapId(), this));
-        SaveRecallPosition();                           // save as recall also to prevent recall and fall from sky
+        SaveRecallPosition();                           // save as recall also to prevent recall and fall from sky (同步更新回溯坐标)
     }
     else if (!m_taxiTracker.GetRoadmap().empty() && !m_taxiTracker.GetAtlas().empty())
     {
@@ -15526,7 +15600,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
             Relocate(entry->x, entry->y, entry->z, GetOrientation());
         }
 
-        // save source node as recall coord to prevent recall and fall from sky
+        // save source node as recall coord to prevent recall and fall from sky (将飞行起点存为回溯坐标)
         if (uint32 destSource = m_taxiTracker.GetRoute().destStart)
         {
             TaxiNodesEntry const* destination = sTaxiNodesStore.LookupEntry(destSource);
@@ -15536,24 +15610,24 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
             m_recallY = destination->y;
             m_recallZ = destination->z;
         }
-        // flight will start later
+        // flight will start later (飞行将在加入地图后正式继续)
     }
 
-    // has to be called after last Relocate() in Player::LoadFromDB
+    // has to be called after last Relocate() in Player::LoadFromDB (必须在 LoadFromDB 中最后一次 Relocate 后更新区域与地形状态)
     SetFallInformation(0, GetPositionZ());
 
     _LoadSpellCooldowns(holder->GetResult(PLAYER_LOGIN_QUERY_LOADSPELLCOOLDOWNS));
 
-    // Spell code allow apply any auras to dead character in load time in aura/spell/item loading
-    // Do now before stats re-calculation cleanup for ghost state unexpected auras
+    // Spell code allow apply any auras to dead character in load time in aura/spell/item loading (加载阶段可能为死亡角色挂上非死亡持久光环，)
+    // Do now before stats re-calculation cleanup for ghost state unexpected auras (在重算属性前先按死亡/幽灵状态清理不该保留的光环)
     if (!IsAlive())
         RemoveAllAurasOnDeath();
 
-    // apply all stat bonuses from items and auras
+    // apply all stat bonuses from items and auras (重新应用所有装备与光环属性加成)
     SetCanModifyStats(true);
     UpdateAllStats();
 
-    // restore remembered power/health values (but not more max values)
+    // restore remembered power/health values (but not more max values) (恢复离线前记录的生命值与能量值，不超过当前上限)
     uint32 savedhealth = fields[49].GetUInt32();
     SetHealth(savedhealth > GetMaxHealth() ? GetMaxHealth() : savedhealth);
     for (uint32 i = 0; i < MAX_POWERS; ++i)
@@ -15562,7 +15636,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         SetPower(Powers(i), savedpower > GetMaxPower(Powers(i)) ? GetMaxPower(Powers(i)) : savedpower);
     }
 
-    // RaF stuff.
+    // RaF stuff. (初始化战友招募可赠送等级)
     m_grantableLevels = fields[60].GetUInt8();
     if ((GetSession()->GetRecruitingFriendId() != 0))
         SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_REFER_A_FRIEND);
@@ -15575,17 +15649,17 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_STATS, "The value of player %s after load item and aura is: ", m_name.c_str());
     outDebugStatsValues();
 
-    // all fields read
+    // all fields read (所有数据库字段读取完成)
 
-    // GM state
+    // GM state (根据 extra_flags 恢复 GM 模式开关)
     if (GetSession()->GetSecurity() > SEC_PLAYER)
     {
         switch (sWorld.getConfig(CONFIG_UINT32_GM_LOGIN_STATE))
         {
             default:
-            case 0:                      break;             // disable
-            case 1: SetGameMaster(true); break;             // enable
-            case 2:                                         // save state
+            case 0:                      break;             // disable (禁用)
+            case 1: SetGameMaster(true); break;             // enable (启用)
+            case 2:                                         // save state (保留现有状态)
                 if (extraflags & PLAYER_EXTRA_GM_ON)
                     SetGameMaster(true);
                 break;
@@ -15594,9 +15668,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         switch (sWorld.getConfig(CONFIG_UINT32_GM_VISIBLE_STATE))
         {
             default:
-            case 0: SetGMVisible(false); break;             // invisible
-            case 1:                      break;             // visible
-            case 2:                                         // save state
+            case 0: SetGMVisible(false); break;             // invisible (GM 隐身)
+            case 1:                      break;             // visible (GM 可见)
+            case 2:                                         // save state (保留现有状态)
                 if (extraflags & PLAYER_EXTRA_GM_INVISIBLE)
                     SetGMVisible(false);
                 break;
@@ -15605,9 +15679,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         switch (sWorld.getConfig(CONFIG_UINT32_GM_ACCEPT_TICKETS))
         {
             default:
-            case 0:                        break;           // disable
-            case 1: SetAcceptTicket(true); break;           // enable
-            case 2:                                         // save state
+            case 0:                        break;           // disable (禁用)
+            case 1: SetAcceptTicket(true); break;           // enable (启用)
+            case 2:                                         // save state (保留现有状态)
                 if (extraflags & PLAYER_EXTRA_GM_ACCEPT_TICKETS)
                     SetAcceptTicket(true);
                 break;
@@ -15616,9 +15690,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         switch (sWorld.getConfig(CONFIG_UINT32_GM_CHAT))
         {
             default:
-            case 0:                  break;                 // disable
-            case 1: SetGMChat(true); break;                 // enable
-            case 2:                                         // save state
+            case 0:                  break;                 // disable (禁用)
+            case 1: SetGMChat(true); break;                 // enable (启用)
+            case 2:                                         // save state (保留现有状态)
                 if (extraflags & PLAYER_EXTRA_GM_CHAT)
                     SetGMChat(true);
                 break;
@@ -15627,9 +15701,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
         switch (sWorld.getConfig(CONFIG_UINT32_GM_WISPERING_TO))
         {
             default:
-            case 0:                          break;         // disable
-            case 1: SetAcceptWhispers(true); break;         // enable
-            case 2:                                         // save state
+            case 0:                          break;         // disable (禁用)
+            case 1: SetAcceptWhispers(true); break;         // enable (启用)
+            case 2:                                         // save state (保留现有状态)
                 if (extraflags & PLAYER_EXTRA_ACCEPT_WHISPERS)
                     SetAcceptWhispers(true);
                 break;
@@ -15665,7 +15739,7 @@ void Player::_LoadActions(std::unique_ptr<QueryResult> queryResult)
             {
                 sLog.outError("  ...at loading, and will deleted in DB also");
 
-                // Will deleted in DB at next save (it can create data until save but marked as deleted)
+                // Will deleted in DB at next save (it can create data until save but marked as deleted) (非法动作条按钮标记为 DELETED，待下次存盘清理)
                 m_actionButtons[button].uState = ACTIONBUTTON_DELETED;
             }
         }
@@ -15675,7 +15749,7 @@ void Player::_LoadActions(std::unique_ptr<QueryResult> queryResult)
 
 void Player::_LoadAuras(std::unique_ptr<QueryResult> queryResult, uint32 timediff)
 {
-    // RemoveAllAuras(); -- some spells casted before aura load, for example in LoadSkills, aura list explicitly cleaned early
+    // RemoveAllAuras(); -- some spells casted before aura load, for example in LoadSkills, aura list explicitly cleaned early (光环列表已在加载技能前清空，此处不重复清理)
 
     // QueryResult *result = CharacterDatabase.PQuery("SELECT caster_guid,item_guid,spell,stackcount,remaincharges,basepoints0,basepoints1,basepoints2,periodictime0,periodictime1,periodictime2,maxduration,remaintime,effIndexMask FROM character_aura WHERE guid = '%u'",GetGUIDLow());
 
@@ -15717,7 +15791,7 @@ void Player::_LoadAuras(std::unique_ptr<QueryResult> queryResult, uint32 timedif
                 remaintime -= timediff * IN_MILLISECONDS;
             }
 
-            // prevent wrong values of remaincharges
+            // prevent wrong values of remaincharges (修正异常的剩余充能次数)
             if (spellproto->procCharges == 0)
                 remaincharges = 0;
 
@@ -15747,11 +15821,11 @@ void Player::_LoadAuras(std::unique_ptr<QueryResult> queryResult, uint32 timedif
             const bool empty = holder->IsEmptyHolder();
             if (!empty)
             {
-                // reset stolen single target auras
+                // reset stolen single target auras (清除偷取类的单目标光环，重连后不恢复)
                 if (caster_guid != GetObjectGuid() && holder->GetTrackedAuraType() == TRACK_AURA_TYPE_SINGLE_TARGET)
                     holder->SetTrackedAuraType(TRACK_AURA_TYPE_NOT_TRACKED);
 
-                holder->SetState(SPELLAURAHOLDER_STATE_DB_LOAD); // Safeguard mechanism against some actions
+                holder->SetState(SPELLAURAHOLDER_STATE_DB_LOAD); // Safeguard mechanism against some actions (防止特定异常状态的保护机制)
             }
 
             if (!empty && AddSpellAuraHolder(holder))
@@ -15784,13 +15858,13 @@ void Player::LoadCorpse()
         {
             ApplyModByteFlag(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_FLAGS, PLAYER_FIELD_BYTE_RELEASE_TIMER, corpse && !sMapStore.LookupEntry(corpse->GetMapId())->Instanceable());
 
-            // [XFACTION]: Alter values update if detected crossfaction group interaction:
+            // [XFACTION]: Alter values update if detected crossfaction group interaction: (跨阵营组队交互时更新模型与阵营字段)
             if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP) && GetGroup())
                 corpse->ForceValuesUpdateAtIndex(CORPSE_FIELD_BYTES_1);
         }
         else
         {
-            // Prevent Dead Player login without corpse
+            // Prevent Dead Player login without corpse (防止死亡玩家在无尸体时异常登录，自动转为复活或灵魂状态)
             ResurrectPlayer(0.5f);
         }
     }
@@ -15800,11 +15874,11 @@ void Player::_LoadInventory(std::unique_ptr<QueryResult> queryResult, uint32 tim
 {
     //        0          1            2                3      4         5        6      7             8                 9           10          11   12    13    14
     // SELECT itemEntry, creatorGuid, giftCreatorGuid, count, duration, charges, flags, enchantments, randomPropertyId, durability, itemTextId, bag, slot, item, item_template FROM character_inventory JOIN item_instance ON character_inventory.item = item_instance.guid WHERE character_inventory.guid = '%u' ORDER BY bag, slot
-    std::map<uint32, Bag*> bagMap;                          // fast guid lookup for bags
-    // NOTE: the "order by `bag`" is important because it makes sure
-    // the bagMap is filled before items in the bags are loaded
-    // NOTE2: the "order by `slot`" is needed because mainhand weapons are (wrongly?)
-    // expected to be equipped before offhand items (TODO: fixme)
+    std::map<uint32, Bag*> bagMap;                          // fast guid lookup for bags (背包 GUID 快速查找映射表)
+    // NOTE: the "order by `bag`" is important because it makes sure (注：SQL 按 bag 排序确保主背包中的容器先于包内物品加载)
+    // the bagMap is filled before items in the bags are loaded (保证填充 bagMap 后再读取包内物品)
+    // NOTE2: the "order by `slot`" is needed because mainhand weapons are (wrongly?) (注2：按 slot 排序确保主手武器先于副手装备，)
+    // expected to be equipped before offhand items (TODO: fixme) (以满足副手穿戴依赖判断)
 
     uint32 zone = GetZoneId();
 
@@ -15812,7 +15886,7 @@ void Player::_LoadInventory(std::unique_ptr<QueryResult> queryResult, uint32 tim
     {
         std::list<Item*> problematicItems;
 
-        // prevent items from being added to the queue when stored
+        // prevent items from being added to the queue when stored (加载存入时暂不加入物品更新队列)
         m_itemUpdateQueueBlocked = true;
         do
         {
@@ -15839,31 +15913,31 @@ void Player::_LoadInventory(std::unique_ptr<QueryResult> queryResult, uint32 tim
                 sLog.outError("Player::_LoadInventory: Player %s has broken item (id: #%u) in inventory, deleted.", GetName(), item_id);
                 CharacterDatabase.PExecute("DELETE FROM character_inventory WHERE item = '%u'", item_lowguid);
                 item->FSetState(ITEM_REMOVED);
-                item->SaveToDB();                           // it also deletes item object !
+                item->SaveToDB();                           // it also deletes item object ! (创建异常则直接从数据库与内存销毁)
                 continue;
             }
 
-            // not allow have in alive state item limited to another map/zone
+            // not allow have in alive state item limited to another map/zone (存活玩家不允许持有受限于其他地图/区域的物品)
             if (IsAlive() && item->IsLimitedToAnotherMapOrZone(GetMapId(), zone))
             {
                 CharacterDatabase.PExecute("DELETE FROM character_inventory WHERE item = '%u'", item_lowguid);
                 item->FSetState(ITEM_REMOVED);
-                item->SaveToDB();                           // it also deletes item object !
+                item->SaveToDB();                           // it also deletes item object ! (销毁不合地图限制的物品)
                 continue;
             }
 
-            // "Conjured items disappear if you are logged out for more than 15 minutes"
+            // "Conjured items disappear if you are logged out for more than 15 minutes" (魔法制造物品在离线超过 15 分钟后自动消失)
             if (timediff > 15 * MINUTE && (item->GetProto()->Flags & ITEM_FLAG_CONJURED))
             {
                 CharacterDatabase.PExecute("DELETE FROM character_inventory WHERE item = '%u'", item_lowguid);
                 item->FSetState(ITEM_REMOVED);
-                item->SaveToDB();                           // it also deletes item object !
+                item->SaveToDB();                           // it also deletes item object ! (销毁过期的魔法制造物品)
                 continue;
             }
 
             bool success = true;
 
-            // the item/bag is not in a bag
+            // the item/bag is not in a bag (位于主行囊/装备栏/银行主格/回购栏)
             if (!bag_guid)
             {
                 item->SetContainer(nullptr);
@@ -15898,16 +15972,16 @@ void Player::_LoadInventory(std::unique_ptr<QueryResult> queryResult, uint32 tim
 
                 if (success)
                 {
-                    // store bags that may contain items in them
+                    // store bags that may contain items in them (记录已加载的背包容器供包内物品索引)
                     if (item->IsBag() && IsBagPos(item->GetPos()))
                         bagMap[item_lowguid] = (Bag*)item;
                 }
             }
-            // the item/bag in a bag
+            // the item/bag in a bag (位于某个背包容器内部的物品)
             else
             {
                 item->SetSlot(NULL_SLOT);
-                // the item is in a bag, find the bag
+                // the item is in a bag, find the bag (查找所属背包容器对象)
                 std::map<uint32, Bag*>::const_iterator itr = bagMap.find(bag_guid);
                 if (itr != bagMap.end() && slot < itr->second->GetBagSize())
                 {
@@ -15922,12 +15996,12 @@ void Player::_LoadInventory(std::unique_ptr<QueryResult> queryResult, uint32 tim
                     success = false;
             }
 
-            // item's state may have changed after stored
+            // item's state may have changed after stored (存入时可能改变状态，重设为未变更)
             if (success)
             {
                 item->SetState(ITEM_UNCHANGED, this);
 
-                // restore container unchanged state also
+                // restore container unchanged state also (同步恢复容器的未变更状态)
                 if (item->GetContainer())
                     item->GetContainer()->SetState(ITEM_UNCHANGED, this);
             }
@@ -15942,12 +16016,12 @@ void Player::_LoadInventory(std::unique_ptr<QueryResult> queryResult, uint32 tim
 
         m_itemUpdateQueueBlocked = false;
 
-        // send by mail problematic items
+        // send by mail problematic items (将无法正常放回原位的异常物品通过系统邮件退还玩家)
         while (!problematicItems.empty())
         {
             std::string subject = GetSession()->GetMangosString(LANG_NOT_EQUIPPED_ITEM);
 
-            // fill mail
+            // fill mail (构建系统补偿邮件并附带问题物品)
             MailDraft draft(subject);
 
             for (int i = 0; !problematicItems.empty() && i < MAX_MAIL_ITEMS; ++i)
@@ -15995,7 +16069,7 @@ void Player::_LoadItemLoot(std::unique_ptr<QueryResult> queryResult)
     }
 }
 
-// load mailed item which should receive current player
+// load mailed item which should receive current player (加载当前玩家待收邮件中的附件物品)
 void Player::_LoadMailedItems(std::unique_ptr<QueryResult> queryResult)
 {
     //        0          1            2                3      4         5        6      7             8                 9           10          11       12         13
@@ -16032,7 +16106,7 @@ void Player::_LoadMailedItems(std::unique_ptr<QueryResult> queryResult)
             sLog.outError("Player::_LoadMailedItems - Item in mail (%u) doesn't exist !!!! - item guid: %u, deleted from mail", mail->messageID, item_guid_low);
             CharacterDatabase.PExecute("DELETE FROM mail_items WHERE item_guid = '%u'", item_guid_low);
             item->FSetState(ITEM_REMOVED);
-            item->SaveToDB();                               // it also deletes item object !
+            item->SaveToDB();                               // it also deletes item object ! (非法邮件附件直接删除)
             continue;
         }
 
@@ -16066,7 +16140,7 @@ void Player::_LoadMails(std::unique_ptr<QueryResult> queryResult)
         m->checked = fields[10].GetUInt32();
         m->stationery = fields[11].GetUInt8();
         m->mailTemplateId = fields[12].GetInt16();
-        m->has_items = fields[13].GetBool();                // true, if mail have items or mail have template and items generated (maybe none)
+        m->has_items = fields[13].GetBool();                // true, if mail have items or mail have template and items generated (maybe none) (包含实体附件或已生成模板物品)
 
         if (m->mailTemplateId && !sMailTemplateStore.LookupEntry(m->mailTemplateId))
         {
@@ -16086,8 +16160,8 @@ void Player::_LoadMails(std::unique_ptr<QueryResult> queryResult)
 
 void Player::LoadPet()
 {
-    // fixme: the pet should still be loaded if the player is not in world
-    // just not added to the map
+    // fixme: the pet should still be loaded if the player is not in world (待优化：即使玩家尚未进入世界也可加载宠物)
+    // just not added to the map (仅延迟添加到地图)
     if (IsInWorld())
     {
         Pet* pet = new Pet;
@@ -16117,11 +16191,11 @@ void Player::_LoadQuestStatus(std::unique_ptr<QueryResult> queryResult)
             Field* fields = queryResult->Fetch();
 
             uint32 quest_id = fields[0].GetUInt32();
-            // used to be new, no delete?
+            // used to be new, no delete? (新状态标记)
             Quest const* pQuest = sObjectMgr.GetQuestTemplate(quest_id);
             if (pQuest)
             {
-                // find or create
+                // find or create (查找或创建任务状态条目)
                 QuestStatusData& questStatusData = mQuestStatus[quest_id];
 
                 uint32 qstatus = fields[1].GetUInt32();
@@ -16140,7 +16214,7 @@ void Player::_LoadQuestStatus(std::unique_ptr<QueryResult> queryResult)
 
                 if (pQuest->HasSpecialFlag(QUEST_SPECIAL_FLAG_TIMED) && !GetQuestRewardStatus(quest_id) && questStatusData.m_status != QUEST_STATUS_NONE)
                 {
-                    // A failed quest keeps its time in the quest log, but its timer does not run any more
+                    // A failed quest keeps its time in the quest log, but its timer does not run any more (失败任务保留在任务日志中但不继续倒计时)
                     if (questStatusData.m_status != QUEST_STATUS_FAILED)
                     {
                         AddTimedQuest(quest_id);
@@ -16165,7 +16239,7 @@ void Player::_LoadQuestStatus(std::unique_ptr<QueryResult> queryResult)
 
                 questStatusData.uState = QUEST_UNCHANGED;
 
-                // add to quest log
+                // add to quest log (将进行中任务写入玩家任务日志槽位)
                 if (slot < MAX_QUEST_LOG_SIZE &&
                         ((questStatusData.m_status == QUEST_STATUS_INCOMPLETE ||
                           questStatusData.m_status == QUEST_STATUS_COMPLETE ||
@@ -16192,10 +16266,10 @@ void Player::_LoadQuestStatus(std::unique_ptr<QueryResult> queryResult)
 
                 if (questStatusData.m_rewarded)
                 {
-                    // learn rewarded spell if unknown
+                    // learn rewarded spell if unknown (补学已完成任务的奖励法术)
                     learnQuestRewardedSpells(pQuest);
 
-                    // set rewarded title if any
+                    // set rewarded title if any (恢复已完成任务的奖励称号)
                     if (pQuest->GetCharTitleId())
                     {
                         if (CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(pQuest->GetCharTitleId()))
@@ -16209,7 +16283,7 @@ void Player::_LoadQuestStatus(std::unique_ptr<QueryResult> queryResult)
         while (queryResult->NextRow());
     }
 
-    // clear quest log tail
+    // clear quest log tail (清空任务日志末尾多余槽位)
     for (uint16 i = slot; i < MAX_QUEST_LOG_SIZE; ++i)
         SetQuestSlot(i, 0);
 }
@@ -16227,7 +16301,7 @@ void Player::_LoadDailyQuestStatus(std::unique_ptr<QueryResult> queryResult)
 
         do
         {
-            if (quest_daily_idx >= PLAYER_MAX_DAILY_QUESTS) // max amount with exist data in query
+            if (quest_daily_idx >= PLAYER_MAX_DAILY_QUESTS) // max amount with exist data in query (防止超出日常任务计数上限)
             {
                 sLog.outError("Player (GUID: %u) have more 25 daily quest records in `charcter_queststatus_daily`", GetGUIDLow());
                 break;
@@ -16330,7 +16404,7 @@ void Player::_LoadSpells(std::unique_ptr<QueryResult> queryResult)
         while (queryResult->NextRow());
     }
 
-    // train spells by loaded skills
+    // train spells by loaded skills (根据已加载技能补全对应自动学习法术)
     for (auto itr = mSkillStatus.begin(); itr != mSkillStatus.end(); ++itr)
     {
         if (itr->second.uState != SKILL_DELETED)
@@ -16354,7 +16428,7 @@ void Player::_LoadGroup(std::unique_ptr<QueryResult> queryResult)
             SetGroup(group, subgroup);
             if (GetLevel() >= LEVELREQUIREMENT_HEROIC)
             {
-                // the group leader may change the instance difficulty while the player is offline
+                // the group leader may change the instance difficulty while the player is offline (玩家离线期间队长可能更改了队伍副本难度，需同步刷新)
                 SetDifficulty(group->GetDifficulty());
             }
         }
@@ -16381,9 +16455,9 @@ void Player::_LoadBoundInstances(std::unique_ptr<QueryResult> queryResult)
             uint8 difficulty = fields[3].GetUInt8();
 
             time_t resetTime = (time_t)fields[4].GetUInt64();
-            // the resettime for normal instances is only saved when the InstanceSave is unloaded
-            // so the value read from the DB may be wrong here but only if the InstanceSave is loaded
-            // and in that case it is not used
+            // the resettime for normal instances is only saved when the InstanceSave is unloaded (普通副本重置时间仅在 InstanceSave 卸载时写入数据库，)
+            // so the value read from the DB may be wrong here but only if the InstanceSave is loaded (若当前副本实例仍在内存中则内存值更准确，)
+            // and in that case it is not used (该 DB 时间仅在实例未加载时使用)
 
             MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
             if (!mapEntry || !mapEntry->IsDungeon())
@@ -16409,7 +16483,7 @@ void Player::_LoadBoundInstances(std::unique_ptr<QueryResult> queryResult)
                 continue;
             }
 
-            // since non permanent binds are always solo bind, they can always be reset
+            // since non permanent binds are always solo bind, they can always be reset (非永久绑定均为单人普通副本绑定，总是允许重置)
             DungeonPersistentState* state = (DungeonPersistentState*)sMapPersistentStateMgr.AddPersistentState(mapEntry, instanceId, Difficulty(difficulty), resetTime, !perm, true);
             if (state) BindToInstance(state, perm, true);
         }
@@ -16419,7 +16493,7 @@ void Player::_LoadBoundInstances(std::unique_ptr<QueryResult> queryResult)
 
 InstancePlayerBind* Player::GetBoundInstance(uint32 mapid, Difficulty difficulty)
 {
-    // some instances only have one difficulty
+    // some instances only have one difficulty (部分副本仅存在单一难度)
     const MapEntry* entry = sMapStore.LookupEntry(mapid);
     if (!entry || !entry->SupportsHeroicMode())
         difficulty = DUNGEON_DIFFICULTY_NORMAL;
@@ -16443,11 +16517,12 @@ void Player::UnbindInstance(BoundInstancesMap::iterator& itr, Difficulty difficu
         if (!unload)
             CharacterDatabase.PExecute("DELETE FROM character_instance WHERE guid = '%u' AND instance = '%u'",
                                        GetGUIDLow(), itr->second.state->GetInstanceId());
-        itr->second.state->RemovePlayer(this);              // state can become invalid
+        itr->second.state->RemovePlayer(this);              // state can become invalid (绑定状态可能失效)
         m_boundInstances[difficulty].erase(itr++);
     }
 }
 
+/// 将玩家绑定到指定的副本持久化状态（普通临时绑定或英雄/团队永久绑定）
 InstancePlayerBind* Player::BindToInstance(DungeonPersistentState* state, bool permanent, bool load)
 {
     if (state)
@@ -16455,7 +16530,7 @@ InstancePlayerBind* Player::BindToInstance(DungeonPersistentState* state, bool p
         InstancePlayerBind& bind = m_boundInstances[state->GetDifficulty()][state->GetMapId()];
         if (bind.state)
         {
-            // update the state when the group kills a boss
+            // update the state when the group kills a boss (团队击杀首领时更新绑定状态)
             if (permanent != bind.perm || state != bind.state)
                 if (!load)
                     CharacterDatabase.PExecute("UPDATE character_instance SET instance = '%u', permanent = '%u' WHERE guid = '%u' AND instance = '%u'",
@@ -16497,11 +16572,11 @@ DungeonPersistentState* Player::GetBoundInstanceSaveForSelfOrGroup(uint32 mapid)
     InstancePlayerBind* pBind = GetBoundInstance(mapid, GetDifficulty());
     DungeonPersistentState* state = pBind ? pBind->state : nullptr;
 
-    // the player's permanent player bind is taken into consideration first
-    // then the player's group bind and finally the solo bind.
+    // the player's permanent player bind is taken into consideration first (优先检查玩家自身的永久副本绑定，)
+    // then the player's group bind and finally the solo bind. (其次是队伍绑定，最后是单人临时绑定)
     if (!pBind || !pBind->perm)
     {
-        // use the player's difficulty setting (it may not be the same as the group's)
+        // use the player's difficulty setting (it may not be the same as the group's) (使用玩家自身设定的副本难度)
         if (Group* group = GetGroup())
             if (InstanceGroupBind const* groupBind = group->GetBoundInstance(mapid))
                 state = groupBind->state;
@@ -16517,7 +16592,7 @@ void Player::SendRaidInfo()
     WorldPacket data(SMSG_RAID_INSTANCE_INFO, 4);
 
     size_t p_counter = data.wpos();
-    data << uint32(counter);                                // placeholder
+    data << uint32(counter);                                // placeholder (副本数量占位符)
 
     time_t now = time(nullptr);
 
@@ -16528,9 +16603,9 @@ void Player::SendRaidInfo()
             if (itr->second.perm)
             {
                 DungeonPersistentState* state = itr->second.state;
-                data << uint32(state->GetMapId());          // map id
+                data << uint32(state->GetMapId());          // map id (地图 ID)
                 data << uint32(state->GetResetTime() - time(nullptr));
-                data << uint32(state->GetInstanceId());     // instance id
+                data << uint32(state->GetInstanceId());     // instance id (副本实例 ID)
                 data << uint32(counter);
                 counter++;
             }
@@ -16541,7 +16616,7 @@ void Player::SendRaidInfo()
 }
 
 /*
-- called on every successful teleportation to a map
+- called on every successful teleportation to a map (每次成功传送至新地图时调用，发送已绑定副本列表)
 */
 void Player::SendSavedInstances()
 {
@@ -16552,7 +16627,7 @@ void Player::SendSavedInstances()
     {
         for (BoundInstancesMap::const_iterator itr = m_boundInstance.begin(); itr != m_boundInstance.end(); ++itr)
         {
-            if (itr->second.perm)                           // only permanent binds are sent
+            if (itr->second.perm)                           // only permanent binds are sent (仅下发永久进度绑定记录)
             {
                 hasBeenSaved = true;
                 break;
@@ -16560,7 +16635,7 @@ void Player::SendSavedInstances()
         }
     }
 
-    // Send opcode 811. true or false means, whether you have current raid/heroic instances
+    // Send opcode 811. true or false means, whether you have current raid/heroic instances (发送是否有团队/英雄副本进度标志)
     data.Initialize(SMSG_UPDATE_INSTANCE_OWNERSHIP);
     data << uint32(hasBeenSaved);
     GetSession()->SendPacket(data);
@@ -16582,7 +16657,7 @@ void Player::SendSavedInstances()
     }
 }
 
-/// convert the player's binds to the group
+/// convert the player's binds to the group (将玩家的副本进度绑定转换并合并到队伍)
 void Player::ConvertInstancesToGroup(Player* player, Group* group, ObjectGuid player_guid)
 {
     bool has_binds = false;
@@ -16597,8 +16672,8 @@ void Player::ConvertInstancesToGroup(Player* player, Group* group, ObjectGuid pl
 
     MANGOS_ASSERT(player_guid);
 
-    // copy all binds to the group, when changing leader it's assumed the character
-    // will not have any solo binds
+    // copy all binds to the group, when changing leader it's assumed the character (移交队长或组队时拷贝绑定到队伍，)
+    // will not have any solo binds (并清理个人单人绑定)
 
     if (player)
     {
@@ -16611,10 +16686,10 @@ void Player::ConvertInstancesToGroup(Player* player, Group* group, ObjectGuid pl
                 if (group)
                     group->BindToInstance(itr->second.state, itr->second.perm, true);
 
-                // permanent binds are not removed
+                // permanent binds are not removed (永久副本绑定不会被移除)
                 if (!itr->second.perm)
                 {
-                    // increments itr in call
+                    // increments itr in call (UnbindInstance 内部会递增迭代器)
                     player->UnbindInstance(itr, Difficulty(i), true);
                     has_solo = true;
                 }
@@ -16626,11 +16701,11 @@ void Player::ConvertInstancesToGroup(Player* player, Group* group, ObjectGuid pl
 
     uint32 player_lowguid = player_guid.GetCounter();
 
-    // if the player's not online we don't know what binds it has
+    // if the player's not online we don't know what binds it has (玩家不在线时无法读取其个人绑定)
     if (!player || !group || has_binds)
         CharacterDatabase.PExecute("INSERT INTO group_instance SELECT guid, instance, permanent FROM character_instance WHERE guid = '%u'", player_lowguid);
 
-    // the following should not get executed when changing leaders
+    // the following should not get executed when changing leaders (更换队长时不执行常规入队绑定清理)
     if (!player || has_solo)
         CharacterDatabase.PExecute("DELETE FROM character_instance WHERE guid = '%u' AND permanent = 0", player_lowguid);
 }
@@ -16657,7 +16732,7 @@ bool Player::_LoadHomeBind(std::unique_ptr<QueryResult> queryResult)
 
         MapEntry const* bindMapEntry = sMapStore.LookupEntry(m_homebindMapId);
 
-        // accept saved data only for valid position (and non instanceable), and accessable
+        // accept saved data only for valid position (and non instanceable), and accessable (仅接受合法非副本且可抵达的炉石绑定点)
         if (MapManager::IsValidMapCoord(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ) &&
                 !bindMapEntry->Instanceable() && GetSession()->GetExpansion() >= bindMapEntry->Expansion())
         {
@@ -16685,23 +16760,24 @@ bool Player::_LoadHomeBind(std::unique_ptr<QueryResult> queryResult)
 }
 
 /*********************************************************/
-/***                   SAVE SYSTEM                     ***/
+/***                   SAVE SYSTEM (角色保存系统)              ***/
 /*********************************************************/
 
+/// 将玩家完整角色状态、背包、技能、法术、任务与冷却保存至数据库
 void Player::SaveToDB()
 {
-    // we should assure this: ASSERT((m_nextSave != sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE)));
-    // delay auto save at any saves (manual, in code, or autosave)
+    // we should assure this: ASSERT((m_nextSave != sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE))); (重置自动保存倒计时)
+    // delay auto save at any saves (manual, in code, or autosave) (无论何种方式触发保存均顺延下次自动保存计时)
     m_nextSave = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
 
-    // lets allow only players in world to be saved
+    // lets allow only players in world to be saved (仅允许处于世界中的玩家执行存盘)
     if (IsBeingTeleportedFar())
     {
         ScheduleDelayedOperation(DELAYED_SAVE_PLAYER);
         return;
     }
 
-    // first save/honor gain after midnight will also update the player's honor fields
+    // first save/honor gain after midnight will also update the player's honor fields (跨午夜后的首次保存或获得荣誉时同步刷新荣誉字段)
     UpdateHonorFields();
 
     DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_STATS, "The value of player %s at save: ", m_name.c_str());
@@ -16765,7 +16841,7 @@ void Player::SaveToDB()
     }
 
     std::ostringstream ss;
-    ss << m_taxi;                                   // string with TaxiMaskSize numbers
+    ss << m_taxi;                                   // string with TaxiMaskSize numbers (拼接飞行点掩码字符串)
     uberInsert.addString(ss);
 
     uberInsert.addUInt32(IsInWorld() ? 1 : 0);
@@ -16778,8 +16854,8 @@ void Player::SaveToDB()
     uberInsert.addFloat(finiteAlways(m_rest_bonus));
     uberInsert.addUInt64(uint64(time(nullptr)));
     uberInsert.addUInt32(HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) ? 1 : 0);
-    // save, far from tavern/city
-    // save, but in tavern/city
+    // save, far from tavern/city (保存双倍精力：非旅店/主城区域)
+    // save, but in tavern/city (保存双倍精力：位于旅店/主城休息区)
     uberInsert.addUInt32(m_resetTalentsCost);
     uberInsert.addUInt64(uint64(m_resetTalentsTime));
 
@@ -16796,7 +16872,7 @@ void Player::SaveToDB()
 
     uberInsert.addUInt32(m_ExtraFlags);
 
-    uberInsert.addUInt32(uint32(m_stableSlots));            // to prevent save uint8 as char
+    uberInsert.addUInt32(uint32(m_stableSlots));            // to prevent save uint8 as char (强转为 uint32 防止按字符格式化)
 
     uberInsert.addUInt32(uint32(m_atLoginFlags));
 
@@ -16823,7 +16899,7 @@ void Player::SaveToDB()
 
     uberInsert.addUInt32(GetUInt32Value(PLAYER_CHOSEN_TITLE));
 
-    // FIXME: at this moment send to DB as unsigned, including unit32(-1)
+    // FIXME: at this moment send to DB as unsigned, including unit32(-1) (待修复：当前以无符号整数存入数据库，包括 -1)
     uberInsert.addUInt32(GetUInt32Value(PLAYER_FIELD_WATCHED_FACTION_INDEX));
 
     uberInsert.addUInt16(uint16(GetUInt32Value(PLAYER_BYTES_3) & 0xFFFE));
@@ -16833,13 +16909,13 @@ void Player::SaveToDB()
     for (uint32 i = 0; i < MAX_POWERS; ++i)
         uberInsert.addUInt32(GetPower(Powers(i)));
 
-    for (uint32 i = 0; i < PLAYER_EXPLORED_ZONES_SIZE; ++i) // string
+    for (uint32 i = 0; i < PLAYER_EXPLORED_ZONES_SIZE; ++i) // string (序列化已探索区域掩码字符串)
     {
         ss << GetUInt32Value(PLAYER_EXPLORED_ZONES_1 + i) << " ";
     }
     uberInsert.addString(ss);
 
-    for (uint32 i = 0; i < EQUIPMENT_SLOT_END; ++i)         // string: item id, ench (perm/temp)
+    for (uint32 i = 0; i < EQUIPMENT_SLOT_END; ++i)         // string: item id, ench (perm/temp) (序列化装备栏外观缓存字符串)
     {
         ss << GetUInt32Value(PLAYER_VISIBLE_ITEM_1_0 + i * MAX_VISIBLE_ITEM_OFFSET) << " ";
 
@@ -16847,8 +16923,8 @@ void Player::SaveToDB()
         uint32 ench2 = GetUInt32Value(PLAYER_VISIBLE_ITEM_1_0 + i * MAX_VISIBLE_ITEM_OFFSET + 1 + TEMP_ENCHANTMENT_SLOT);
         ss << uint32(MAKE_PAIR32(ench1, ench2)) << " ";
     }
-    // 1 in tbc - 4 in wotlk
-    for (uint32 i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_START + 1; ++i) // string: item id, ench (perm/temp)
+    // 1 in tbc - 4 in wotlk (TBC 仅记录 1 个附魔槽，WLK 为 4 个)
+    for (uint32 i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_START + 1; ++i) // string: item id, ench (perm/temp) (写入装备 ID 与附魔)
     {
         ss << (m_items[i] ? m_items[i]->GetEntry() : 0) << " ";
         ss << uint32(MAKE_PAIR32(0, 0)) << " ";
@@ -16871,7 +16947,7 @@ void Player::SaveToDB()
 
     uberInsert.Execute();
 
-    if (m_mailsUpdated)                                     // save mails only when needed
+    if (m_mailsUpdated)                                     // save mails only when needed (仅在邮件状态发生变更时写入数据库)
         _SaveMail();
 
     _SaveBGData();
@@ -16887,21 +16963,21 @@ void Player::SaveToDB()
     _SaveSkills();
     _SaveNewInstanceIdTimer();
     m_reputationMgr.SaveToDB();
-    GetSession()->SaveTutorialsData();                      // changed only while character in game
+    GetSession()->SaveTutorialsData();                      // changed only while character in game (以下模块仅在玩家正常进入游戏世界后才保存)
 
     CharacterDatabase.CommitTransaction();
 
-    // check if stats should only be saved on logout
-    // save stats can be out of transaction
+    // check if stats should only be saved on logout (检查属性快照是否配置为仅在登出时保存)
+    // save stats can be out of transaction (属性快照保存可在事务外异步执行)
     if (m_session->isLogingOut() || !sWorld.getConfig(CONFIG_BOOL_STATS_SAVE_ONLY_ON_LOGOUT))
         _SaveStats();
 
-    // save pet (hunter pet level and experience and all type pets health/mana except priest pet).
+    // save pet (hunter pet level and experience and all type pets health/mana except priest pet). (保存当前出战宠物状态)
     if (Pet* pet = GetPet())
         pet->SavePetToDB(PET_SAVE_AS_CURRENT, this);
 }
 
-// fast save function for item/money cheating preventing - save only inventory and money state
+// fast save function for item/money cheating preventing - save only inventory and money state (防刷物品/刷金快速保存：仅保存背包物品与金币)
 void Player::SaveInventoryAndGoldToDB()
 {
     _SaveInventory();
@@ -16986,8 +17062,8 @@ void Player::_SaveAuras()
     for (const auto& auraHolder : auraHolders)
     {
         SpellAuraHolder* holder = auraHolder.second;
-        // skip all holders from spells that are passive or channeled
-        // save singleTarget auras if self cast.
+        // skip all holders from spells that are passive or channeled (跳过被动光环与引导法术光环)
+        // save singleTarget auras if self cast. (仅保存对自己施放的单目标光环)
         if (holder->IsSaveToDbHolder())
         {
             int32  damage[MAX_EFFECT_INDEX];
@@ -17001,7 +17077,7 @@ void Player::_SaveAuras()
 
                 if (Aura* aur = holder->GetAuraByEffectIndex(SpellEffectIndex(i)))
                 {
-                    // don't save not own area auras
+                    // don't save not own area auras (不保存非自身施放的区域光环)
                     if (!aur->IsSaveToDbAura())
                         continue;
 
@@ -17037,8 +17113,8 @@ void Player::_SaveAuras()
 
 void Player::_SaveInventory()
 {
-    // force items in buyback slots to new state
-    // and remove those that aren't already
+    // force items in buyback slots to new state (清理回购栏物品并重置未保存记录)
+    // and remove those that aren't already (清理其余无效回购物品)
     for (uint8 i = BUYBACK_SLOT_START; i < BUYBACK_SLOT_END; ++i)
     {
         Item* item = m_items[i];
@@ -17056,7 +17132,7 @@ void Player::_SaveInventory()
         m_items[i]->FSetState(ITEM_NEW);
     }
 
-    // update enchantment durations
+    // update enchantment durations (写入限时附魔剩余时间)
 #ifdef ENABLE_PLAYERBOTS
     if (!GetPlayerbotAI())
     {
@@ -17069,10 +17145,10 @@ void Player::_SaveInventory()
     }
 #endif
 
-    // if no changes
+    // if no changes (无背包物品变更则直接返回)
     if (m_itemUpdateQueue.empty()) return;
 
-    // do not save if the update queue is corrupt
+    // do not save if the update queue is corrupt (若物品更新队列异常则中止保存以防丢装备)
     bool error = false;
     for (auto item : m_itemUpdateQueue)
     {
@@ -17167,7 +17243,7 @@ void Player::_SaveMail()
         }
     }
 
-    // deallocate deleted mails...
+    // deallocate deleted mails... (释放已删除邮件对象的内存)
     for (PlayerMails::iterator itr = m_mail.begin(); itr != m_mail.end();)
     {
         if ((*itr)->state == MAIL_STATE_DELETED)
@@ -17190,7 +17266,7 @@ void Player::_SaveQuestStatus()
 
     static SqlStatementID updateQuestStatus ;
 
-    // we don't need transactions here.
+    // we don't need transactions here. (任务状态保存无需额外事务)
     for (auto& mQuestStatu : mQuestStatus)
     {
         QuestStatusData& questStatus = mQuestStatu.second;
@@ -17252,7 +17328,7 @@ void Player::_SaveDailyQuestStatus()
     if (!m_DailyQuestChanged)
         return;
 
-    // we don't need transactions here.
+    // we don't need transactions here. (日常任务保存无需额外事务)
     static SqlStatementID delQuestStatus ;
     static SqlStatementID insQuestStatus ;
 
@@ -17273,7 +17349,7 @@ void Player::_SaveWeeklyQuestStatus()
     if (!m_WeeklyQuestChanged || m_weeklyquests.empty())
         return;
 
-    // we don't need transactions here.
+    // we don't need transactions here. (周常任务保存无需额外事务)
     static SqlStatementID delQuestStatus;
     static SqlStatementID insQuestStatus;
 
@@ -17293,7 +17369,7 @@ void Player::_SaveMonthlyQuestStatus()
     if (!m_MonthlyQuestChanged || m_monthlyquests.empty())
         return;
 
-    // we don't need transactions here.
+    // we don't need transactions here. (月常任务保存无需额外事务)
     static SqlStatementID deleteQuest;
     static SqlStatementID insertQuest;
 
@@ -17316,7 +17392,7 @@ void Player::_SaveSkills()
     static SqlStatementID insSkills ;
     static SqlStatementID updSkills ;
 
-    // we don't need transactions here.
+    // we don't need transactions here. (技能保存无需额外事务)
     for (SkillStatusMap::iterator itr = mSkillStatus.begin(); itr != mSkillStatus.end();)
     {
         if (itr->second.uState == SKILL_UNCHANGED)
@@ -17377,7 +17453,7 @@ void Player::_SaveSpells()
         if (playerSpell.state == PLAYERSPELL_REMOVED || playerSpell.state == PLAYERSPELL_CHANGED)
             stmtDel.PExecute(GetGUIDLow(), itr->first);
 
-        // add only changed/new not dependent spells
+        // add only changed/new not dependent spells (仅保存新增或变更的非依赖派生法术)
         if (!playerSpell.dependent && (playerSpell.state == PLAYERSPELL_NEW || playerSpell.state == PLAYERSPELL_CHANGED))
             stmtIns.PExecute(GetGUIDLow(), itr->first, uint8(playerSpell.active ? 1 : 0), uint8(playerSpell.disabled ? 1 : 0));
 
@@ -17391,11 +17467,11 @@ void Player::_SaveSpells()
     }
 }
 
-// save player stats -- only for external usage
-// real stats will be recalculated on player login
+// save player stats -- only for external usage (保存角色属性快照供网页/外部查询使用，)
+// real stats will be recalculated on player login (实际游戏属性在登录时重新计算)
 void Player::_SaveStats()
 {
-    // check if stat saving is enabled and if char level is high enough
+    // check if stat saving is enabled and if char level is high enough (检查属性保存开关及最低等级门槛)
     if (!sWorld.getConfig(CONFIG_UINT32_MIN_LEVEL_STAT_SAVE) || GetLevel() < sWorld.getConfig(CONFIG_UINT32_MIN_LEVEL_STAT_SAVE))
         return;
 
@@ -17416,7 +17492,7 @@ void Player::_SaveStats()
         stmt.addUInt32(GetMaxPower(Powers(i)));
     for (int i = 0; i < MAX_STATS; ++i)
         stmt.addFloat(GetStat(Stats(i)));
-    // armor + school resistances
+    // armor + school resistances (写入护甲与六系魔法抗性)
     for (int i = 0; i < MAX_SPELL_SCHOOL; ++i)
         stmt.addInt32(GetResistance(SpellSchools(i)));
     stmt.addFloat(GetFloatValue(PLAYER_BLOCK_PERCENTAGE));
@@ -17434,7 +17510,7 @@ void Player::_SaveStats()
 
 void Player::outDebugStatsValues() const
 {
-    // optimize disabled debug output
+    // optimize disabled debug output (若未开启调试日志级别则直接跳过)
     if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG) || sLog.HasLogFilter(LOG_FILTER_PLAYER_STATS))
         return;
 
@@ -17453,12 +17529,13 @@ void Player::outDebugStatsValues() const
 }
 
 /*********************************************************/
-/***               FLOOD FILTER SYSTEM                 ***/
+/***             FLOOD FILTER SYSTEM (聊天防刷屏系统)    ***/
 /*********************************************************/
 
+/// 更新聊天防刷屏时间戳并在超限触发时实施短暂禁言
 void Player::UpdateSpeakTime()
 {
-    // ignore chat spam protection for GMs in any mode
+    // ignore chat spam protection for GMs in any mode (GM 账号不受聊天刷屏限制)
     if (GetSession()->GetSecurity() > SEC_PLAYER)
         return;
 
@@ -17472,7 +17549,7 @@ void Player::UpdateSpeakTime()
         ++m_speakCount;
         if (m_speakCount >= max_count)
         {
-            // prevent overwrite mute time, if message send just before mutes set, for example.
+            // prevent overwrite mute time, if message send just before mutes set, for example. (避免短时间消息覆盖已有更长的禁言时间)
             time_t new_mute = current + sWorld.getConfig(CONFIG_UINT32_CHATFLOOD_MUTE_TIME);
             if (GetSession()->m_muteTime < new_mute)
                 GetSession()->m_muteTime = new_mute;
@@ -17492,7 +17569,7 @@ bool Player::CanSpeak() const
 }
 
 /*********************************************************/
-/***              LOW LEVEL FUNCTIONS:Notifiers        ***/
+/***              LOW LEVEL FUNCTIONS:Notifiers (底层通知消息发送) ***/
 /*********************************************************/
 
 void Player::SendAttackSwingNotInRange() const
@@ -17590,12 +17667,13 @@ void Player::SendResetFailedNotify(uint32 mapid) const
     GetSession()->SendPacket(data);
 }
 
-/// Reset all solo instances and optionally send a message on success for each
+/// Reset all solo instances and optionally send a message on success for each (重置所有单人副本并在需要时逐个发送成功通知)
+/// 重置玩家所有可重置的单人普通副本实例
 void Player::ResetInstances(InstanceResetMethod method)
 {
-    // method can be INSTANCE_RESET_ALL, INSTANCE_RESET_CHANGE_DIFFICULTY, INSTANCE_RESET_GROUP_JOIN
+    // method can be INSTANCE_RESET_ALL, INSTANCE_RESET_CHANGE_DIFFICULTY, INSTANCE_RESET_GROUP_JOIN (重置方式：手动全重置、切换难度或入队合并)
 
-    // we assume that when the difficulty changes, all instances that can be reset will be
+    // we assume that when the difficulty changes, all instances that can be reset will be (切换难度时假定所有可重置副本均需重置)
     Difficulty diff = GetDifficulty();
 
     for (BoundInstancesMap::iterator itr = m_boundInstances[diff].begin(); itr != m_boundInstances[diff].end();)
@@ -17610,7 +17688,7 @@ void Player::ResetInstances(InstanceResetMethod method)
 
         if (method == INSTANCE_RESET_ALL)
         {
-            // the "reset all instances" method can only reset normal maps
+            // the "reset all instances" method can only reset normal maps (“重置所有副本”仅能重置普通难度地下城)
             if (entry->map_type == MAP_RAID || diff == DUNGEON_DIFFICULTY_HEROIC)
             {
                 ++itr;
@@ -17618,19 +17696,19 @@ void Player::ResetInstances(InstanceResetMethod method)
             }
         }
 
-        // if the map is loaded, reset it
+        // if the map is loaded, reset it (若副本当前已加载在内存中，执行在线重置)
         if (Map* map = sMapMgr.FindMap(state->GetMapId(), state->GetInstanceId()))
             if (map->IsDungeon())
                 ((DungeonMap*)map)->Reset(method);
 
-        // since this is a solo instance there should not be any players inside
+        // since this is a solo instance there should not be any players inside (单人副本中不应仍有其他玩家停留)
         if (method == INSTANCE_RESET_ALL || method == INSTANCE_RESET_CHANGE_DIFFICULTY)
             SendResetInstanceSuccess(state->GetMapId());
 
         state->DeleteFromDB();
         m_boundInstances[diff].erase(itr++);
 
-        // the following should remove the instance save from the manager and delete it as well
+        // the following should remove the instance save from the manager and delete it as well (解除绑定后从管理器移除并销毁副本持久化状态)
         state->RemovePlayer(this);
     }
 }
@@ -17644,10 +17722,10 @@ void Player::SendResetInstanceSuccess(uint32 MapId) const
 
 void Player::SendResetInstanceFailed(uint32 reason, uint32 MapId) const
 {
-    // TODO: find what other fail reasons there are besides players in the instance
-    // 0 - at least one player is in the instance
-    // 1 - at least one player is offline
-    // 2 - at least one player try to enter the instance (being teleported in)
+    // TODO: find what other fail reasons there are besides players in the instance (待办：补充除副本内有玩家外的其他重置失败原因)
+    // 0 - at least one player is in the instance (0 - 副本内仍有玩家)
+    // 1 - at least one player is offline (1 - 至少有一名成员离线)
+    // 2 - at least one player try to enter the instance (being teleported in) (2 - 有玩家正在传送进入副本)
     WorldPacket data(SMSG_INSTANCE_RESET_FAILED, 4);
     data << uint32(reason);
     data << uint32(MapId);
@@ -17655,10 +17733,10 @@ void Player::SendResetInstanceFailed(uint32 reason, uint32 MapId) const
 }
 
 /*********************************************************/
-/***              Update timers                        ***/
+/***              Update timers (状态计时器更新)               ***/
 /*********************************************************/
 
-/// checks the 15 afk reports per 5 minutes limit
+/// checks the 15 afk reports per 5 minutes limit (检查每 5 分钟最多举报 15 名暂离玩家的频率限制)
 void Player::UpdateAfkReport(time_t currTime)
 {
     if (m_bgData.bgAfkReportedTimer <= currTime)
@@ -17670,21 +17748,21 @@ void Player::UpdateAfkReport(time_t currTime)
 
 void Player::UpdatePvPFlagTimer(uint32 diff)
 {
-    // Freeze flag timer while participating in PvP combat, in pvp enforced zone, in capture points, when carrying flag or on player preference
+    // Freeze flag timer while participating in PvP combat, in pvp enforced zone, in capture points, when carrying flag or on player preference (参与 PvP 战斗、PvP 强制区、占点、持旗或手动开启 PvP 时冻结倒计时)
     if (!pvpInfo.inPvPCombat && !pvpInfo.inPvPEnforcedArea && !pvpInfo.inPvPCapturePoint && !pvpInfo.isPvPFlagCarrier && !HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_PVP_DESIRED))
         pvpInfo.timerPvPRemaining -= std::min(pvpInfo.timerPvPRemaining, diff);
 
-    // Timer tries to drop flag if all conditions are met and time has passed
+    // Timer tries to drop flag if all conditions are met and time has passed (满足条件且计时归零时自动关闭 PvP 标志)
     UpdatePvP(false);
 }
 
 void Player::UpdatePvPContestedFlagTimer(uint32 diff)
 {
-    // Freeze flag timer while participating in PvP combat
+    // Freeze flag timer while participating in PvP combat (在 PvP 战斗中冻结争夺区域 PvP 计时)
     if (!pvpInfo.inPvPCombat)
         pvpInfo.timerPvPContestedRemaining -= std::min(pvpInfo.timerPvPContestedRemaining, diff);
 
-    // Timer tries to drop flag if all conditions are met and time has passed
+    // Timer tries to drop flag if all conditions are met and time has passed (计时结束后关闭争夺区域 PvP 标志)
     UpdatePvPContested(false);
 }
 
@@ -17708,7 +17786,7 @@ void Player::RemovePet(PetSaveMode mode)
         pet->Unsummon(mode, this);
     else if (m_temporaryUnsummonedPetNumber && mode == PET_SAVE_REAGENTS)
     {
-        // TODO: Only edit pet in DB and reward reagent if necessary
+        // TODO: Only edit pet in DB and reward reagent if necessary (待办：按需优化宠物存库与施法材料返还)
         Pet* NewPet = new Pet;
         if (!NewPet->LoadPetFromDB(this, NewPet->GetPetSpawnPosition(this), 0, m_temporaryUnsummonedPetNumber, true, 0, false, true))
         {
@@ -17754,8 +17832,8 @@ void Player::TextEmote(const std::string& text) const
 
 void Player::Whisper(const std::string& text, uint32 language, ObjectGuid receiver)
 {
-    if (language != LANG_ADDON)                             // if not addon data
-        language = LANG_UNIVERSAL;                          // whispers should always be readable
+    if (language != LANG_ADDON)                             // if not addon data (非插件通信消息时，)
+        language = LANG_UNIVERSAL;                          // whispers should always be readable (确保跨语言密语始终可正常阅读)
 
     Player* rPlayer = sObjectMgr.GetPlayer(receiver);
 
@@ -17767,7 +17845,7 @@ void Player::Whisper(const std::string& text, uint32 language, ObjectGuid receiv
         rPlayer->GetSession()->SendPacket(data);
     }
 
-    // do not send confirmations, afk, dnd or system notifications for addon messages
+    // do not send confirmations, afk, dnd or system notifications for addon messages (插件密语不回发确认包、AFK/DND 自动回复或系统提示)
     if (language == LANG_ADDON)
         return;
 
@@ -17781,7 +17859,7 @@ void Player::Whisper(const std::string& text, uint32 language, ObjectGuid receiv
         ChatHandler(this).SendSysMessage(LANG_COMMAND_WHISPERON);
     }
 
-    // announce afk or dnd message
+    // announce afk or dnd message (若对方处于暂离 AFK 或勿扰 DND 状态，自动回传状态提示)
     if (rPlayer->isAFK() || rPlayer->isDND())
     {
         const ChatMsg msgtype = rPlayer->isAFK() ? CHAT_MSG_AFK : CHAT_MSG_DND;
@@ -17814,18 +17892,18 @@ void Player::PetSpellInitialize() const
     data << uint32(0);
     data << uint8(pet->AI()->GetReactState()) << uint8(charmInfo->GetCommandState()) << uint16(0);
 
-    // action bar loop
+    // action bar loop (写入宠物动作条 10 个槽位)
     charmInfo->BuildActionBar(data);
 
     size_t spellsCountPos = data.wpos();
 
-    // spells count
+    // spells count (写入宠物法术数量占位)
     uint8 addlist = 0;
-    data << uint8(addlist);                                 // placeholder
+    data << uint8(addlist);                                 // placeholder (数量占位符)
 
     if (pet->isControlled())
     {
-        // spells loop
+        // spells loop (写入宠物可施放法术列表)
         for (PetSpellMap::const_iterator itr = pet->m_spells.begin(); itr != pet->m_spells.end(); ++itr)
         {
             if (itr->second.state == PETSPELL_REMOVED)
@@ -17865,7 +17943,7 @@ void Player::PossessSpellInitialize()
 
     charmInfo->BuildActionBar(data);
 
-    data << uint8(0);                                       // spells count
+    data << uint8(0);                                       // spells count (写入附身/控制生物法术数量)
     
     charm->CharmCooldownInitialize(data);
 
@@ -17947,8 +18025,8 @@ std::pair<float, float> Player::RequestFollowData(ObjectGuid guid)
     m_followAngles.emplace(slotId, guid);
     switch (slotId)
     {
-        case 0: return { 3 * M_PI_F / 6, 1.5f }; // left
-        case 1: return { 9 * M_PI_F / 6, 1.5f }; // right
+        case 0: return { 3 * M_PI_F / 6, 1.5f }; // left (左方向)
+        case 1: return { 9 * M_PI_F / 6, 1.5f }; // right (右方向)
         case 2: return { 7 * M_PI_F / 6, 1.5f };
         case 3: return { 5 * M_PI_F / 6, 1.5f };
         case 4: return { 6 * M_PI_F / 6, 1.5f };
@@ -17979,9 +18057,9 @@ bool Player::IsAffectedBySpellmod(SpellEntry const* spellInfo, SpellModifier* mo
     if (!mod || !spellInfo)
         return false;
 
-    if (mod->charges == -1)            // marked as expired but locked until spell casting finish
+    if (mod->charges == -1)            // marked as expired but locked until spell casting finish (已耗尽但锁定至当前施法结束的修正)
     {
-        // prevent apply to any spell except spell that trigger expire
+        // prevent apply to any spell except spell that trigger expire (禁止应用于非触发消耗的后续法术)
         if (consumedMods)
         {
             if (consumedMods->find(SpellModifierPair(mod->spellId, mod->modId)) == consumedMods->end())
@@ -18043,7 +18121,7 @@ void Player::SendAllSpellMods(SpellModType modType)
                     val += modifier->value;
             }
 
-            if (val == 0) // do not send zero payload
+            if (val == 0) // do not send zero payload (无该类型法术修正则不发空包)
                 continue;
 
             WorldPacket data(opcode, (1 + 1 + 4));
@@ -18100,13 +18178,13 @@ void Player::SetSpellClass(uint8 playerClass)
     SpellFamily name;
     switch (playerClass)
     {
-        default: // compiler
+        default: // compiler (编译器兜底返回值)
         case CLASS_WARRIOR: name = SPELLFAMILY_WARRIOR; break;
         case CLASS_PALADIN: name = SPELLFAMILY_PALADIN; break;
         case CLASS_HUNTER: name = SPELLFAMILY_HUNTER; break;
         case CLASS_ROGUE: name = SPELLFAMILY_ROGUE; break;
         case CLASS_PRIEST: name = SPELLFAMILY_PRIEST; break;
-            // case CLASS_DEATH_KNIGHT: name = SPELLFAMILY_DEATH_KNIGHT; break;
+            // case CLASS_DEATH_KNIGHT: name = SPELLFAMILY_DEATH_KNIGHT; break; (死亡骑士分支保留，TBC 未启用)
         case CLASS_SHAMAN: name = SPELLFAMILY_SHAMAN; break;
         case CLASS_MAGE: name = SPELLFAMILY_MAGE; break;
         case CLASS_WARLOCK: name = SPELLFAMILY_WARLOCK; break;
@@ -18123,7 +18201,7 @@ void Player::SendMessageToPlayer(std::string const& message) const
         session->SendPacket(data);
 }
 
-// send Proficiency
+// send Proficiency (向客户端下发新获得的武器/护甲熟练度)
 void Player::SendProficiency(ItemClass itemClass, uint32 itemSubclassMask) const
 {
     WorldPacket data(SMSG_SET_PROFICIENCY, 1 + 4);
@@ -18143,14 +18221,14 @@ void Player::RemovePetitionsAndSigns(ObjectGuid guid, uint32 type)
 
     if (queryResult)
     {
-        do                                                  // this part effectively does nothing, since the deletion / modification only takes place _after_ the PetitionQuery. Though I don't know if the result remains intact if I execute the delete query beforehand.
+        do                                                  // this part effectively does nothing, since the deletion / modification only takes place _after_ the PetitionQuery. Though I don't know if the result remains intact if I execute the delete query beforehand. (清理角色待建公会/竞技场请愿书及其签名记录)
         {
-            // and SendPetitionQueryOpcode reads data from the DB
+            // and SendPetitionQueryOpcode reads data from the DB (需配合 SendPetitionQueryOpcode 读取最新状态)
             Field* fields = queryResult->Fetch();
             ObjectGuid ownerguid   = ObjectGuid(HIGHGUID_PLAYER, fields[0].GetUInt32());
             ObjectGuid petitionguid = ObjectGuid(HIGHGUID_ITEM, fields[1].GetUInt32());
 
-            // send update if charter owner in game
+            // send update if charter owner in game (若请愿书拥有者在线，向其发送更新通知)
             Player* owner = sObjectMgr.GetPlayer(ownerguid);
             if (owner)
                 owner->GetSession()->SendPetitionQueryOpcode(petitionguid);
@@ -18196,7 +18274,7 @@ void Player::LeaveAllArenaTeams(ObjectGuid guid)
 
 void Player::SetRestBonus(float rest_bonus_new)
 {
-    // Prevent resting on max level
+    // Prevent resting on max level (满级角色不再累积双倍经验额度)
     if (GetLevel() >= GetMaxAttainableLevel())
         rest_bonus_new = 0;
 
@@ -18212,13 +18290,13 @@ void Player::SetRestBonus(float rest_bonus_new)
 
     bool isRafResting = IsRafResting();
 
-    // update data for client
+    // update data for client (更新客户端休息经验槽数值)
     if (m_rest_bonus > 10)
         SetByteValue(PLAYER_BYTES_2, 3, REST_STATE_RESTED | (isRafResting ? REST_STATE_RAF_LINKED : 0));
     else if (m_rest_bonus <= 1)
         SetByteValue(PLAYER_BYTES_2, 3, REST_STATE_NORMAL | (isRafResting ? REST_STATE_RAF_LINKED : 0));
 
-    // RestTickUpdate
+    // RestTickUpdate (更新休息状态字节)
     SetUInt32Value(PLAYER_REST_STATE_EXPERIENCE, uint32(m_rest_bonus));
 }
 
@@ -18282,12 +18360,13 @@ void Player::HandleStealthedUnitsDetection()
     }
 }
 
+/// 激活飞行管理员提供的多节点飞行路线并起飞
 bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc /*= nullptr*/, uint32 spellid /*= 0*/)
 {
     if (nodes.size() < 2)
         return false;
 
-    // not let cheating with start flight in time of logout process || if casting not finished || while in combat || if not use Spell's with EffectSendTaxi
+    // not let cheating with start flight in time of logout process || if casting not finished || while in combat || if not use Spell's with EffectSendTaxi (防作弊校验：登出中、施法中、战斗中且非系统飞行法术时禁止起飞)
     if (GetSession()->isLogingOut() || IsInCombat())
     {
         GetSession()->SendActivateTaxiReply(ERR_TAXIPLAYERBUSY);
@@ -18297,10 +18376,10 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
     if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CLIENT_CONTROL_LOST))
         return false;
 
-    // taximaster case
+    // taximaster case (飞行管理员 NPC 发起的飞行校验)
     if (npc)
     {
-        // not let cheating with start flight mounted
+        // not let cheating with start flight mounted (禁止在骑乘状态下直接起飞)
         if (GetMountID())
         {
             GetSession()->SendActivateTaxiReply(ERR_TAXIPLAYERALREADYMOUNTED);
@@ -18313,14 +18392,14 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
             return false;
         }
 
-        // not let cheating with start flight in time of logout process || if casting not finished || while in combat || if not use Spell's with EffectSendTaxi
+        // not let cheating with start flight in time of logout process || if casting not finished || while in combat || if not use Spell's with EffectSendTaxi (防作弊校验：登出中、施法中或战斗中禁止起飞)
         if (IsNonMeleeSpellCasted(false))
         {
             GetSession()->SendActivateTaxiReply(ERR_TAXIPLAYERBUSY);
             return false;
         }
     }
-    // cast case or scripted call case
+    // cast case or scripted call case (法术或脚本触发的单段飞行路径)
     else
     {
         RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
@@ -18341,7 +18420,7 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
 
     uint32 sourcenode = nodes[0];
 
-    // starting node too far away (cheat?)
+    // starting node too far away (cheat?) (起点距离飞行管理员过远，疑似作弊)
     TaxiNodesEntry const* node = sTaxiNodesStore.LookupEntry(sourcenode);
     if (!node)
     {
@@ -18349,7 +18428,7 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
         return false;
     }
 
-    // check node starting pos data set case if provided
+    // check node starting pos data set case if provided (若节点提供坐标则校验玩家与起点距离)
     if (node->x != 0.0f || node->y != 0.0f || node->z != 0.0f)
     {
         if (node->map_id != GetMapId() ||
@@ -18362,22 +18441,22 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
             return false;
         }
     }
-    // node must have pos if taxi master case (npc != nullptr)
+    // node must have pos if taxi master case (npc != nullptr) (通过 NPC 起飞时起点必须具备有效坐标)
     else if (npc)
     {
         GetSession()->SendActivateTaxiReply(ERR_TAXIUNSPECIFIEDSERVERERROR);
         return false;
     }
 
-    // Prepare to flight start now
+    // Prepare to flight start now (准备正式进入飞行状态)
 
-    // temporary remove pet
+    // temporary remove pet (起飞前临时解散当前宠物)
     UnsummonPetTemporaryIfAny();
 
-    // stop combat at start taxi flight if any
+    // stop combat at start taxi flight if any (起飞时强制脱离当前战斗)
     CombatStop();
 
-    // stop trade (client cancel trade at taxi map open but cheating tools can be used for reopen it)
+    // stop trade (client cancel trade at taxi map open but cheating tools can be used for reopen it) (强制取消可能残留的交易状态)
     TradeCancel(true);
 
     if (!m_taxiTracker.AddRoutes(nodes, (npc ? GetRepairPriceMultiplier(npc) : 0.0f), !spellid))
@@ -18396,8 +18475,8 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
     if (!m_taxiTracker.Prepare())
         return false;
 
-    // prevent stealth flight
-    // RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TALK);
+    // prevent stealth flight (移除潜行/隐形等移动限制状态以防飞行异常)
+    // RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TALK); (注释：无需按对话打断标志移除光环)
 
     GetSession()->SendActivateTaxiReply(ERR_TAXIOK);
 
@@ -18422,7 +18501,7 @@ void Player::TaxiFlightResume(bool forceRenewMoveGen /*= false*/)
 
     DEBUG_LOG("WORLD: Resuming taxi flight for character %u", GetGUIDLow());
 
-    // Already in flight: just make sure client control is updated
+    // Already in flight: just make sure client control is updated (已在飞行中：确保客户端控制权锁定状态正确)
     if (hasUnitState(UNIT_STAT_TAXI_FLIGHT))
     {
         UpdateClientControl(this, IsClientControlled(this));
@@ -18435,7 +18514,7 @@ void Player::TaxiFlightResume(bool forceRenewMoveGen /*= false*/)
 
 bool Player::TaxiFlightInterrupt(bool cancel /*= true*/)
 {
-    // Simply pauses if bool is not set (for example, storing the flight for one reason or another)
+    // Simply pauses if bool is not set (for example, storing the flight for one reason or another) (若未传取消标志则仅暂停飞行以便后续恢复)
     if (GetMotionMaster()->GetCurrentMovementGeneratorType() == TAXI_MOTION_TYPE)
     {
         OnTaxiFlightEject(cancel);
@@ -18447,7 +18526,7 @@ bool Player::TaxiFlightInterrupt(bool cancel /*= true*/)
 
 const Taxi::Map& Player::GetTaxiPathSpline() const
 {
-    // Bugcheck: container continuity error
+    // Bugcheck: container continuity error (一致性检查：飞行容器为空或节点不匹配)
     MANGOS_ASSERT(!m_taxiTracker.GetAtlas().empty());
     return m_taxiTracker.GetMap();
 }
@@ -18464,7 +18543,7 @@ void Player::OnTaxiFlightStart(const TaxiPathEntry* /*path*/)
 
 void Player::OnTaxiFlightEnd(const TaxiPathEntry* path)
 {
-    // Final destination
+    // Final destination (已抵达最终飞行终点)
     if (const TaxiNodesEntry* destination = sTaxiNodesStore.LookupEntry(path->to))
         TeleportTo(GetMap()->GetId(), destination->x, destination->y, destination->z, GetOrientation());
 
@@ -18474,15 +18553,16 @@ void Player::OnTaxiFlightEnd(const TaxiPathEntry* path)
     /*
     NOTE: B clearly has some form of extra scripts on certain fly path ends. Nodes contain extra events, that can be done using dbscript_on_event,
     but these extra scripts have no EventID in the DBC. In future if this place fills up, need to consider moving it to a more generic way of scripting.
+    注：部分特殊飞行路线终点无 DBC EventID，暂在此处硬编码触发后续脚本/法术。
     */
     if (path)
     {
         switch (path->to)
         {
-            case 91:        // Susurrus
+            case 91:        // Susurrus (沙塔斯苏苏鲁斯对话飞行触发)
                 RemoveAurasDueToSpell(32474);
                 break;
-            case 158:        // Vision Guide
+            case 158:        // Vision Guide (沙塔斯幻象向导漫游触发)
                 AreaExploredOrEventHappens(10525);
                 RemoveAurasDueToSpell(36573);
                 break;
@@ -18505,10 +18585,10 @@ bool Player::OnTaxiFlightUpdate(const size_t waypointIndex, const bool movement)
     {
         case Taxi::TRACKER_FLIGHT:
         {
-            // Bugcheck: container continuity error
+            // Bugcheck: container continuity error (一致性检查：飞行容器不匹配)
             MANGOS_ASSERT(!m_taxiTracker.GetAtlas().empty());
 
-            // Check for spline interference before updating the container
+            // Check for spline interference before updating the container (更新容器前检查是否有非飞行样条插值移动干扰)
             if (!movement)
             {
                 float x, y, z;
@@ -18518,7 +18598,7 @@ bool Player::OnTaxiFlightUpdate(const size_t waypointIndex, const bool movement)
                     return false;
             }
 
-            // Due to nature of update ticks, we have to check if we have queued up several nodes inbetween updates
+            // Due to nature of update ticks, we have to check if we have queued up several nodes inbetween updates (因帧间隔可能一次跨越多个途经航点，需逐个推进)
             const size_t current = m_taxiTracker.GetCurrentWaypointIndex();
             const bool start = (!waypointIndex && !m_taxiTracker.GetCurrentWaypoint());
             if (waypointIndex > current || start)
@@ -18530,7 +18610,7 @@ bool Player::OnTaxiFlightUpdate(const size_t waypointIndex, const bool movement)
                     const bool last = (entry == map.back());
                     Taxi::PathID startID = 0;
                     Taxi::PathID endID = 0;
-                    // Notify taxi container, check if we advanced to next route
+                    // Notify taxi container, check if we advanced to next route (推进航点容器并检查是否进入下一航段)
                     if (m_taxiTracker.UpdateRoute(entry, startID, endID))
                     {
                         if (endID)
@@ -18562,7 +18642,7 @@ void Player::OnTaxiFlightSplineStart(const TaxiPathNodeEntry* node)
 
     getHostileRefManager().updateOnlineOfflineState(false);
 
-    // Bugcheck: container continuity error
+    // Bugcheck: container continuity error (一致性检查：当前路线段无效)
     MANGOS_ASSERT(m_taxiTracker.SetState(Taxi::TRACKER_FLIGHT));
 }
 
@@ -18572,7 +18652,7 @@ void Player::OnTaxiFlightSplineEnd()
 
     getHostileRefManager().updateOnlineOfflineState(true);
 
-    // Note: only gets set by itself when container does not end up empty
+    // Note: only gets set by itself when container does not end up empty (仅当容器尚未清空时允许开启新样条段)
     m_taxiTracker.SetState(Taxi::TRACKER_TRANSFER);
 }
 
@@ -18584,12 +18664,12 @@ bool Player::OnTaxiFlightSplineUpdate()
         case Taxi::TRACKER_STANDBY:
         case Taxi::TRACKER_TRANSFER:
         {
-            // Bugcheck: container continuity error
+            // Bugcheck: container continuity error (一致性检查：当前无活动航段)
             MANGOS_ASSERT(!m_taxiTracker.GetAtlas().empty());
 
             const Taxi::Map& map = m_taxiTracker.GetMap();
 
-            // Bugcheck: spline is too short for a taxi
+            // Bugcheck: spline is too short for a taxi (异常检查：飞行路径样条点数过少)
             MANGOS_ASSERT(map.size() > 1);
 
             uint32 mapid = GetMapId();
@@ -18597,7 +18677,7 @@ bool Player::OnTaxiFlightSplineUpdate()
             size_t nodeResume = m_taxiTracker.GetResumeWaypointIndex();
             const TaxiPathNodeEntry* first = (nodeResume ? map.at(nodeResume) : map.front());
 
-            // Check if we are starting on the same game level with the spline
+            // Check if we are starting on the same game level with the spline (校验玩家是否与飞行样条同处于正常起点阶段)
             if (first->mapid == mapid)
             {
                 OnTaxiFlightSplineStart(first);
@@ -18611,7 +18691,7 @@ bool Player::OnTaxiFlightSplineUpdate()
             break;
         }
         default:
-            // All done, simply finalize
+            // All done, simply finalize (整条飞行路径已结束，执行落地收尾)
             OnTaxiFlightSplineEnd();
             break;
     }
@@ -18656,7 +18736,7 @@ void Player::OnTaxiFlightRouteProgress(const TaxiPathNodeEntry* node, const Taxi
             ChatHandler(this).PSendSysMessage(LANG_TAXI_DEBUG_NODE_FINAL, node->path, node->index);
     }
 
-    // Needs to be confirmed: first one shouldn't fire arrival event, final one shouldnt fire departure event?
+    // Needs to be confirmed: first one shouldn't fire arrival event, final one shouldnt fire departure event? (首节点不触发到达事件，末节点不触发出发事件)
     for (int arrival = 1; arrival > -int(next != nullptr); --arrival)
     {
         if (uint32 eventid = (arrival ? node->arrivalEventID : node->departureEventID))
@@ -18697,7 +18777,7 @@ void Player::InitDataForForm(bool reapplyMods)
                 SetPowerType(POWER_RAGE);
             break;
         }
-        default:                                            // 0, for example
+        default:                                            // 0, for example (如无特殊形态或基础形态)
         {
             ChrClassesEntry const* cEntry = sChrClassesStore.LookupEntry(getClass());
             if (cEntry && cEntry->powerType < MAX_POWERS && uint32(GetPowerType()) != cEntry->powerType)
@@ -18706,7 +18786,7 @@ void Player::InitDataForForm(bool reapplyMods)
         }
     }
 
-    // update auras at form change, ignore this at mods reapply (.reset stats/etc) when form not change.
+    // update auras at form change, ignore this at mods reapply (.reset stats/etc) when form not change. (形态真正改变时刷新装备与光环，纯重算属性时跳过)
     if (!reapplyMods)
         UpdateEquipSpellsAtFormChange();
 
@@ -18723,7 +18803,7 @@ void Player::InitDisplayIds()
         return;
     }
 
-    // reset scale before reapply auras
+    // reset scale before reapply auras (重新应用光环前先重置模型缩放比例)
     SetObjectScale(DEFAULT_OBJECT_SCALE);
 
     uint8 gender = getGender();
@@ -18763,11 +18843,11 @@ bool Player::CanSeeVendorItem(Creature const* vendor, VendorItem const* vendorIt
     if (IsGameMaster())
         return true;
 
-    // class wrong item skip only for bindable case
+    // class wrong item skip only for bindable case (职业不符的物品仅在可绑定限制生效时隐藏)
     if ((proto->AllowableClass & getClassMask()) == 0 && proto->Bonding == BIND_WHEN_PICKED_UP)
         return false;
 
-    // race wrong item skip always
+    // race wrong item skip always (种族不符的商人商品始终隐藏)
     if ((proto->AllowableRace & getRaceMask()) == 0)
         return false;
 
@@ -18777,10 +18857,11 @@ bool Player::CanSeeVendorItem(Creature const* vendor, VendorItem const* vendorIt
     return true;
 }
 
-// Return true is the bought item has a max count to force refresh of window by caller
+// Return true is the bought item has a max count to force refresh of window by caller (若购买限量物品则返回 true 以便调用方刷新商人列表)
+/// 从商人处购买指定物品（校验库存、荣誉/竞技场点、声望折扣与扩展花费）
 bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, uint8 bag, uint8 slot)
 {
-    // cheating attempt
+    // cheating attempt (校验购买数量与背包目标槽位，防止作弊)
     if (count < 1) count = 1;
 
     if (!IsAlive())
@@ -18823,13 +18904,13 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
     }
 
     VendorItem const* crItem = vendorslot < vCount ? vItems->GetItem(vendorslot) : tItems->GetItem(vendorslot - vCount);
-    if (!crItem || crItem->item != item)                    // store diff item (cheating)
+    if (!crItem || crItem->item != item)                    // store diff item (cheating) (试图将不同物品堆叠到已有物品上，防作弊)
     {
         SendBuyError(BuyResult::CANT_FIND_ITEM, pCreature, vendorslot);
         return false;
     }
 
-    // hidden from this player in the vendor list (cheating)
+    // hidden from this player in the vendor list (cheating) (该玩家不可见此商品，防作弊)
     if (!CanSeeVendorItem(pCreature, crItem, pProto))
     {
         SendBuyError(BuyResult::CANT_FIND_ITEM, pCreature, vendorslot);
@@ -18838,7 +18919,7 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
 
     uint32 totalCount = pProto->BuyCount * count;
 
-    // check current item amount if it limited
+    // check current item amount if it limited (检查商人限量物品的当前库存)
     if (crItem->maxcount != 0)
     {
         if (pCreature->GetVendorItemCurrentCount(crItem) < totalCount)
@@ -18863,21 +18944,21 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
             return false;
         }
 
-        // honor points price
+        // honor points price (校验扩展花费中的荣誉点消耗)
         if (GetHonorPoints() < (iece->reqhonorpoints * count))
         {
             SendEquipError(EQUIP_ERR_NOT_ENOUGH_HONOR_POINTS, nullptr, nullptr);
             return false;
         }
 
-        // arena points price
+        // arena points price (校验扩展花费中的竞技场点数消耗)
         if (GetArenaPoints() < (iece->reqarenapoints * count))
         {
             SendEquipError(EQUIP_ERR_NOT_ENOUGH_ARENA_POINTS, nullptr, nullptr);
             return false;
         }
 
-        // item base price
+        // item base price (计算基础金币价格与购买数量校验)
         for (uint8 i = 0; i < MAX_EXTENDED_COST_ITEMS; ++i)
         {
             if (iece->reqitem[i] && !HasItemCount(iece->reqitem[i], iece->reqitemcount[i] * count))
@@ -18887,7 +18968,7 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
             }
         }
 
-        // check for personal arena rating requirement
+        // check for personal arena rating requirement (检查竞技场物品所需的个人/战队等级要求)
         if (GetMaxPersonalArenaRatingRequirement() < iece->reqpersonalarenarating)
         {
             SendEquipError(EQUIP_ERR_PERSONAL_ARENA_RATING_TOO_LOW, nullptr, nullptr);
@@ -18897,7 +18978,7 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
 
     uint32 price = pProto->BuyPrice * count;
 
-    // reputation discount
+    // reputation discount (应用阵营声望折扣倍率)
     price = uint32(floor(price * GetReputationPriceDiscount(pCreature)));
 
     if (GetMoney() < price)
@@ -18964,7 +19045,7 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
 
     WorldPacket data(SMSG_BUY_ITEM, 8 + 4 + 4 + 4);
     data << pCreature->GetObjectGuid();
-    data << uint32(vendorslot + 1);                 // numbered from 1 at client
+    data << uint32(vendorslot + 1);                 // numbered from 1 at client (客户端商人槽位从 1 开始计数)
     data << uint32(crItem->maxcount > 0 ? new_count : 0xFFFFFFFF);
     data << uint32(totalCount);
     GetSession()->SendPacket(data);
@@ -18976,9 +19057,9 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
 
 uint32 Player::GetMaxPersonalArenaRatingRequirement()
 {
-    // returns the maximal personal arena rating that can be used to purchase items requiring this condition
-    // the personal rating of the arena team must match the required limit as well
-    // so return max[in arenateams](min(personalrating[teamtype], teamrating[teamtype]))
+    // returns the maximal personal arena rating that can be used to purchase items requiring this condition (返回可用于购买竞技场装备的最高有效个人等级：)
+    // the personal rating of the arena team must match the required limit as well (个人等级与战队等级均须达标，)
+    // so return max[in arenateams](min(personalrating[teamtype], teamrating[teamtype])) (故取各战队中 min(个人等级, 战队等级) 的最大值)
     uint32 max_personal_rating = 0;
     for (int i = 0; i < MAX_ARENA_SLOT; ++i)
     {
@@ -19000,7 +19081,7 @@ uint8 Player::GetHighestPvPRankIndex() const
     for (uint8 rank = 1; rank <= 28; ++rank)
     {
         if (HasTitle(rank))
-            // Old rank index starts at 5, values below 5 are discontinued negative ranks
+            // Old rank index starts at 5, values below 5 are discontinued negative ranks (旧版军衔索引从 5 起算，低于 5 为已废弃的负声望阶位)
             index = (rank <= 14) ? (rank + 4) : (rank - 10);
     }
 
@@ -19009,25 +19090,25 @@ uint8 Player::GetHighestPvPRankIndex() const
 
 void Player::UpdateHomebindTime(uint32 time)
 {
-    // GMs never get homebind timer online
+    // GMs never get homebind timer online (GM 玩家在无效副本中不触发炉石倒计时)
     if (m_InstanceValid || IsGameMaster())
     {
-        if (m_HomebindTimer)                                // instance valid, but timer not reset
+        if (m_HomebindTimer)                                // instance valid, but timer not reset (当前仍在等待重置，暂不清除计时)
         {
-            // hide reminder
+            // hide reminder (隐藏炉石传送倒计时提示)
             WorldPacket data(SMSG_RAID_GROUP_ONLY, 4 + 4);
             data << uint32(0);
-            data << uint32(ERR_RAID_GROUP_NONE);            // error used only when timer = 0
+            data << uint32(ERR_RAID_GROUP_NONE);            // error used only when timer = 0 (timer=0 时仅作占位)
             GetSession()->SendPacket(data);
         }
-        // instance is valid, reset homebind timer
+        // instance is valid, reset homebind timer (副本状态有效，重置炉石遣返计时器)
         m_HomebindTimer = 0;
     }
     else if (m_HomebindTimer > 0)
     {
         if (time >= m_HomebindTimer)
         {
-            // teleport to homebind location
+            // teleport to homebind location (倒计时结束，将玩家传回炉石绑定点)
             TeleportTo(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, GetOrientation());
         }
         else
@@ -19035,12 +19116,12 @@ void Player::UpdateHomebindTime(uint32 time)
     }
     else
     {
-        // instance is invalid, start homebind timer
+        // instance is invalid, start homebind timer (副本已失效或未在队伍中，启动 60 秒遣返倒计时)
         m_HomebindTimer = 60000;
-        // send message to player
+        // send message to player (向客户端发送即将传回墓地/炉石点提示)
         WorldPacket data(SMSG_RAID_GROUP_ONLY, 4 + 4);
         data << uint32(m_HomebindTimer);
-        data << uint32(ERR_RAID_GROUP_NONE);                // error used only when timer = 0
+        data << uint32(ERR_RAID_GROUP_NONE);                // error used only when timer = 0 (无特殊错误码)
         GetSession()->SendPacket(data);
         DEBUG_LOG("PLAYER: Player '%s' (GUID: %u) will be teleported to homebind in 60 seconds", GetName(), GetGUIDLow());
     }
@@ -19050,7 +19131,7 @@ void Player::UpdatePvP(bool state, bool overriding)
 {
     if (!state || overriding)
     {
-        // Updating into unset state or overriding anything
+        // Updating into unset state or overriding anything (关闭 PvP 状态或强制覆盖时停止立即刷新)
         if (!pvpInfo.timerPvPRemaining || overriding)
         {
             if (IsPvP() != state)
@@ -19062,11 +19143,11 @@ void Player::UpdatePvP(bool state, bool overriding)
     }
     else
     {
-        // Updating into set state
+        // Updating into set state (开启 PvP 状态时设置标志)
         if (!IsPvP())
             SetPvP(state);
 
-        // Refresh timer
+        // Refresh timer (刷新 PvP 5 分钟衰减计时器)
         pvpInfo.timerPvPRemaining = 300000;
     }
 }
@@ -19075,7 +19156,7 @@ void Player::UpdatePvPContested(bool state, bool overriding)
 {
     if (!state || overriding)
     {
-        // Updating into unset state or overriding anything
+        // Updating into unset state or overriding anything (关闭争夺区域 PvP 状态)
         if (!pvpInfo.timerPvPContestedRemaining || overriding)
         {
             if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_CONTESTED_PVP) != state)
@@ -19087,21 +19168,22 @@ void Player::UpdatePvPContested(bool state, bool overriding)
     }
     else
     {
-        // Updating into set state
+        // Updating into set state (开启争夺区域 PvP 状态)
         if (!HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_CONTESTED_PVP))
         {
             SetPvPContested(state);
 
-            // Legacy way of calling MoveInLineOfSight for nearby contested guards
-            // TODO: Find a better way to do this, needs marking for a delayed reaction update
+            // Legacy way of calling MoveInLineOfSight for nearby contested guards (触发周围争夺区守卫视野检查，)
+            // TODO: Find a better way to do this, needs marking for a delayed reaction update (待优化：改为标记延迟反应更新)
             UpdateVisibilityAndView();
         }
 
-        // Refresh timer
+        // Refresh timer (刷新争夺区域 PvP 计时器)
         pvpInfo.timerPvPContestedRemaining = 30000;
     }
 }
 
+/// 检查多彩宝石或其他条件附魔的当前宝石颜色数量要求是否满足
 bool Player::EnchantmentFitsRequirements(uint32 enchantmentcondition, int8 slot) const
 {
     if (!enchantmentcondition)
@@ -19114,7 +19196,7 @@ bool Player::EnchantmentFitsRequirements(uint32 enchantmentcondition, int8 slot)
 
     uint8 curcount[4] = {0, 0, 0, 0};
 
-    // counting current equipped gem colors
+    // counting current equipped gem colors (统计当前已装备物品上的各色宝石数量)
     for (uint8 i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
     {
         if (i == slot)
@@ -19164,18 +19246,18 @@ bool Player::EnchantmentFitsRequirements(uint32 enchantmentcondition, int8 slot)
 
         uint32 _cur_gem = curcount[Condition->Color[i] - 1];
 
-        // if have <CompareColor> use them as count, else use <value> from Condition
+        // if have <CompareColor> use them as count, else use <value> from Condition (若配置了对比颜色则使用其宝石数量作为阈值，否则使用条件常量值)
         uint32 _cmp_gem = Condition->CompareColor[i] ? curcount[Condition->CompareColor[i] - 1] : Condition->Value[i];
 
         switch (Condition->Comparator[i])
         {
-            case 2:                                         // requires less <color> than (<value> || <comparecolor>) gems
+            case 2:                                         // requires less <color> than (<value> || <comparecolor>) gems (要求某色宝石数量少于指定值或对比色数量)
                 activate &= _cur_gem < _cmp_gem;
                 break;
-            case 3:                                         // requires more <color> than (<value> || <comparecolor>) gems
+            case 3:                                         // requires more <color> than (<value> || <comparecolor>) gems (要求某色宝石数量多于指定值或对比色数量)
                 activate &= _cur_gem > _cmp_gem;
                 break;
-            case 5:                                         // requires at least <color> than (<value> || <comparecolor>) gems
+            case 5:                                         // requires at least <color> than (<value> || <comparecolor>) gems (要求某色宝石数量不少于指定值)
                 activate &= _cur_gem >= _cmp_gem;
                 break;
         }
@@ -19188,10 +19270,10 @@ bool Player::EnchantmentFitsRequirements(uint32 enchantmentcondition, int8 slot)
 
 void Player::CorrectMetaGemEnchants(uint8 exceptslot, bool apply)
 {
-    // cycle all equipped items
+    // cycle all equipped items (遍历全部已装备槽位以校验多彩宝石激活状态)
     for (uint32 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
     {
-        // enchants for the slot being socketed are handled by Player::ApplyItemMods
+        // enchants for the slot being socketed are handled by Player::ApplyItemMods (正在镶嵌的目标装备本身由 ApplyItemMods 处理)
         if (slot == exceptslot)
             continue;
 
@@ -19213,13 +19295,13 @@ void Player::CorrectMetaGemEnchants(uint8 exceptslot, bool apply)
             uint32 condition = enchantEntry->EnchantmentCondition;
             if (condition)
             {
-                // was enchant active with/without item?
+                // was enchant active with/without item? (判断该附魔在当前状态下是否已激活)
                 bool wasactive = EnchantmentFitsRequirements(condition, apply ? exceptslot : -1);
-                // should it now be?
+                // should it now be? (判断变更后该附魔是否应激活)
                 if (wasactive != EnchantmentFitsRequirements(condition, apply ? -1 : exceptslot))
                 {
-                    // ignore item gem conditions
-                    // if state changed, (dis)apply enchant
+                    // ignore item gem conditions (在无视宝石条件模式或状态变化时应用/移除)
+                    // if state changed, (dis)apply enchant (若激活状态变化则应用或移除多彩宝石属性)
                     ApplyEnchantment(pItem, EnchantmentSlot(enchant_slot), !wasactive, true, true);
                 }
             }
@@ -19227,33 +19309,33 @@ void Player::CorrectMetaGemEnchants(uint8 exceptslot, bool apply)
     }
 }
 
-// if false -> then toggled off if was on| if true -> toggled on if was off AND meets requirements
+// if false -> then toggled off if was on| if true -> toggled on if was off AND meets requirements (传入 false 时强制关闭已激活多彩；传入 true 时若满足条件则开启)
 void Player::ToggleMetaGemsActive(uint8 exceptslot, bool apply)
 {
-    // cycle all equipped items
+    // cycle all equipped items (遍历所有已装备部位)
     for (int slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
     {
-        // enchants for the slot being socketed are handled by WorldSession::HandleSocketOpcode(WorldPacket& recv_data)
+        // enchants for the slot being socketed are handled by WorldSession::HandleSocketOpcode(WorldPacket& recv_data) (排除正在操作的插槽自身)
         if (slot == exceptslot)
             continue;
 
         Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
 
-        if (!pItem || !pItem->GetProto()->Socket[0].Color)  // if item has no sockets or no item is equipped go to next item
+        if (!pItem || !pItem->GetProto()->Socket[0].Color)  // if item has no sockets or no item is equipped go to next item (无物品或无宝石插槽则跳过)
             continue;
 
-        // cycle all (gem)enchants
+        // cycle all (gem)enchants (遍历该装备的所有宝石附魔槽位)
         for (uint32 enchant_slot = SOCK_ENCHANTMENT_SLOT; enchant_slot < SOCK_ENCHANTMENT_SLOT + 3; ++enchant_slot)
         {
             uint32 enchant_id = pItem->GetEnchantmentId(EnchantmentSlot(enchant_slot));
-            if (!enchant_id)                                // if no enchant go to next enchant(slot)
+            if (!enchant_id)                                // if no enchant go to next enchant(slot) (该槽位无附魔则跳过)
                 continue;
 
             SpellItemEnchantmentEntry const* enchantEntry = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
             if (!enchantEntry)
                 continue;
 
-            // only metagems to be (de)activated, so only enchants with condition
+            // only metagems to be (de)activated, so only enchants with condition (仅切换带激活条件的多彩宝石附魔)
             uint32 condition = enchantEntry->EnchantmentCondition;
             if (condition)
                 ApplyEnchantment(pItem, EnchantmentSlot(enchant_slot), apply);
@@ -19263,13 +19345,13 @@ void Player::ToggleMetaGemsActive(uint8 exceptslot, bool apply)
 
 void Player::SetBattleGroundEntryPoint(Player* leader /*= nullptr*/)
 {
-    // chat command use case, or non-group join
+    // chat command use case, or non-group join (GM 命令入场或非组队进入场景)
     if (!leader || !leader->IsInWorld() || leader->IsTaxiFlying() || leader->GetMap()->IsDungeon() || leader->GetMap()->IsBattleGroundOrArena())
         leader = this;
 
     if (leader->IsInWorld() && !leader->IsTaxiFlying())
     {
-        // If map is dungeon find linked graveyard
+        // If map is dungeon find linked graveyard (若原位置在副本中，则查找关联的入口墓地作为返回点)
         if (leader->GetMap()->IsDungeon())
         {
             if (const WorldSafeLocsEntry* entry = leader->GetMap()->GetGraveyardManager().GetClosestGraveYard(leader->GetPositionX(), leader->GetPositionY(), leader->GetPositionZ(), leader->GetMapId(), leader->GetTeam()))
@@ -19281,7 +19363,7 @@ void Player::SetBattleGroundEntryPoint(Player* leader /*= nullptr*/)
             else
                 sLog.outError("SetBattleGroundEntryPoint: Dungeon map %u has no linked graveyard, setting home location as entry point.", leader->GetMapId());
         }
-        // If new entry point is not BG or arena set it
+        // If new entry point is not BG or arena set it (仅当源位置不是战场或竞技场时才记录为返回点)
         else if (!leader->GetMap()->IsBattleGroundOrArena())
         {
             m_bgData.joinPos = WorldLocation(leader->GetMapId(), leader->GetPositionX(), leader->GetPositionY(), leader->GetPositionZ(), leader->GetOrientation());
@@ -19290,7 +19372,7 @@ void Player::SetBattleGroundEntryPoint(Player* leader /*= nullptr*/)
         }
     }
 
-    // In error cases use homebind position
+    // In error cases use homebind position (异常回退至炉石绑定点)
     m_bgData.joinPos = WorldLocation(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, 0.0f);
     m_bgData.m_needSave = true;
 }
@@ -19301,19 +19383,19 @@ void Player::LeaveBattleground(bool teleportToEntryPoint)
     {
         bg->RemovePlayerAtLeave(GetObjectGuid(), teleportToEntryPoint, true);
 
-        // call after remove to be sure that player resurrected for correct cast
+        // call after remove to be sure that player resurrected for correct cast (先移出战场团队并确保复活后再施法)
         if (bg->IsBattleGround() && !IsGameMaster() && sWorld.getConfig(CONFIG_BOOL_BATTLEGROUND_CAST_DESERTER))
         {
             if (bg->GetStatus() == STATUS_IN_PROGRESS || bg->GetStatus() == STATUS_WAIT_JOIN)
             {
-                // lets check if player was teleported from BG and schedule delayed Deserter spell cast
+                // lets check if player was teleported from BG and schedule delayed Deserter spell cast (若玩家提前离开战场则安排延迟施加逃亡者减益)
                 if (IsBeingTeleportedFar())
                 {
                     ScheduleDelayedOperation(DELAYED_SPELL_CAST_DESERTER);
                     return;
                 }
 
-                CastSpell(this, SPELL_ID_BATTLEGROUND_DESERTER, TRIGGERED_OLD_TRIGGERED);               // Deserter
+                CastSpell(this, SPELL_ID_BATTLEGROUND_DESERTER, TRIGGERED_OLD_TRIGGERED);               // Deserter (逃亡者法术 ID)
             }
         }
     }
@@ -19321,31 +19403,31 @@ void Player::LeaveBattleground(bool teleportToEntryPoint)
 
 bool Player::CanJoinToBattleground() const
 {
-    // check Deserter debuff
+    // check Deserter debuff (检查玩家是否带有逃亡者减益)
     return GetDummyAura(SPELL_ID_BATTLEGROUND_DESERTER) == nullptr;
 }
 
 bool Player::CanReportAfkDueToLimit()
 {
-    // a player can complain about 15 people per 5 minutes
+    // a player can complain about 15 people per 5 minutes (每 5 分钟最多举报 15 名挂机玩家)
     return m_bgData.bgAfkReportedCount++ < 15;
 }
 
-/// This player has been blamed to be inactive in a battleground
+/// This player has been blamed to be inactive in a battleground (记录该玩家被队友举报战场挂机)
 void Player::ReportedAfkBy(Player* reporter)
 {
     BattleGround* bg = GetBattleGround();
     if (!bg || bg != reporter->GetBattleGround() || GetTeam() != reporter->GetTeam())
         return;
 
-    // check if player has 'Idle' or 'Inactive' debuff
+    // check if player has 'Idle' or 'Inactive' debuff (若已有空闲或非活跃减益则跳过)
     if (m_bgData.bgAfkReporter.find(reporter->GetGUIDLow()) == m_bgData.bgAfkReporter.end() && !HasAura(43680, EFFECT_INDEX_0) && !HasAura(43681, EFFECT_INDEX_0) && reporter->CanReportAfkDueToLimit())
     {
         m_bgData.bgAfkReporter.insert(reporter->GetGUIDLow());
-        // 3 players have to complain to apply debuff
+        // 3 players have to complain to apply debuff (满 3 名不同队友举报即触发挂机减益)
         if (m_bgData.bgAfkReporter.size() >= 3)
         {
-            // cast 'Idle' spell
+            // cast 'Idle' spell (施加战场“空闲”法术)
             CastSpell(this, 43680, TRIGGERED_OLD_TRIGGERED);
             m_bgData.bgAfkReporter.clear();
         }
@@ -19374,34 +19456,34 @@ void Player::DestroyAtClient(WorldObject* target, bool skipRemovalOfAt)
 
 bool Player::IsVisibleInGridForPlayer(Player* pl) const
 {
-    // gamemaster in GM mode see all, including ghosts
+    // gamemaster in GM mode see all, including ghosts (开启 GM 模式的管理员可见所有玩家，含幽灵)
     if (pl->IsGameMaster() && GetSession()->GetSecurity() <= pl->GetSession()->GetSecurity())
         return true;
 
-    // player see dead player/ghost from own group/raid
+    // player see dead player/ghost from own group/raid (同小队或团队成员始终可见彼此的灵魂)
     if (IsInGroup(pl))
         return true;
 
-    // Live player see live player or dead player with not realized corpse
+    // Live player see live player or dead player with not realized corpse (存活玩家可见存活玩家及尚未释放灵魂的尸体)
     if (pl->IsAlive() || pl->m_deathTimer > 0)
         return IsAlive() || m_deathTimer > 0;
 
-    // Ghost see other friendly ghosts, that's for sure
+    // Ghost see other friendly ghosts, that's for sure (幽灵互相可见同阵营幽灵)
     if (!(IsAlive() || m_deathTimer > 0) && CanCooperate(pl))
         return true;
 
-    // Dead player see live players near own corpse
+    // Dead player see live players near own corpse (灵魂靠近自身尸体或可见范围内的存活玩家时可见)
     if (IsAlive())
     {
         if (Corpse* corpse = pl->GetCorpse())
         {
-            // 20 - aggro distance for same level, 25 - max additional distance if player level less that creature level
+            // 20 - aggro distance for same level, 25 - max additional distance if player level less that creature level (仅可看见自身尸体附近一定范围内的单位)
             if (corpse->IsWithinDistInMap(this, (20 + 25) * sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO)))
                 return true;
         }
     }
 
-    // and not see any other
+    // and not see any other (其余情况不可见)
     return false;
 }
 
@@ -19410,23 +19492,23 @@ bool Player::IsVisibleGloballyFor(Player* u) const
     if (!u)
         return false;
 
-    // Always can see self
+    // Always can see self (全局列表始终可见自己)
     if (u == this)
         return true;
 
-    // Visible units, always are visible for all players
+    // Visible units, always are visible for all players (处于可见状态的玩家对全局列表可见)
     if (GetVisibility() == VISIBILITY_ON)
         return true;
 
-    // GMs are visible for higher gms (or players are visible for gms)
+    // GMs are visible for higher gms (or players are visible for gms) (低权限 GM 对高权限 GM 可见)
     if (u->GetSession()->GetSecurity() > SEC_PLAYER)
         return GetSession()->GetSecurity() <= u->GetSession()->GetSecurity();
 
-    // non faction visibility non-breakable for non-GMs
+    // non faction visibility non-breakable for non-GMs (普通玩家非同阵营不可见，无跨阵营全局透视)
     if (GetVisibility() == VISIBILITY_OFF)
         return false;
 
-    // non-gm stealth/invisibility not hide from global player lists
+    // non-gm stealth/invisibility not hide from global player lists (普通潜行/隐形不从全局在线列表中隐藏)
     return true;
 }
 
@@ -19444,6 +19526,7 @@ void Player::BeforeVisibilityDestroy(Creature* creature)
         static_cast<Pet*>(creature)->Unsummon(PET_SAVE_REAGENTS);
 }
 
+/// 更新指定目标对象在玩家客户端的可见性（创建或销毁）
 void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject* target, UpdateData& updateData)
 {
     if (HasAtClient(target))
@@ -19569,30 +19652,31 @@ void Player::SetGroup(Group* group, int8 subgroup)
         m_group.unlink();
     else
     {
-        // never use SetGroup without a subgroup unless you specify nullptr for group
+        // never use SetGroup without a subgroup unless you specify nullptr for group (设置有效队伍时必须指定合法子队编号)
         MANGOS_ASSERT(subgroup >= 0);
         m_group.link(group, this);
         m_group.setSubGroup((uint8)subgroup);
     }
 }
 
+/// 玩家加入地图前发送初始数据包（绑定点、教程、熟练度、动作条、初始法术等）
 void Player::SendInitialPacketsBeforeAddToMap()
 {
     WorldPacket data(SMSG_SET_REST_START, 4);
-    data << uint32(0);                                      // unknown, may be rest state time or experience
+    data << uint32(0);                                      // unknown, may be rest state time or experience (未知字段，可能为休息状态计时)
     GetSession()->SendPacket(data);
 
-    // Homebind
+    // Homebind (发送炉石绑定点位置)
     data.Initialize(SMSG_BINDPOINTUPDATE, 5 * 4);
     data << m_homebindX << m_homebindY << m_homebindZ;
     data << (uint32) m_homebindMapId;
     data << (uint32) m_homebindAreaId;
     GetSession()->SendPacket(data);
 
-    // SMSG_SET_PROFICIENCY
-    // SMSG_UPDATE_AURA_DURATION
+    // SMSG_SET_PROFICIENCY (发送初始护甲与武器熟练度)
+    // SMSG_UPDATE_AURA_DURATION (通知自身初始光环剩余时间)
 
-    // tutorial stuff
+    // tutorial stuff (发送新手教程掩码)
     GetSession()->SendTutorialsData();
 
     data.Initialize(SMSG_INSTANCE_DIFFICULTY, 4 + 4);
@@ -19607,32 +19691,33 @@ void Player::SendInitialPacketsBeforeAddToMap()
     SendInitialActionButtons();
     m_reputationMgr.SendInitialReputations();
 
-    // SMSG_SET_AURA_SINGLE
+    // SMSG_SET_AURA_SINGLE (发送隐藏栏位光环时间)
 
     data.Initialize(SMSG_LOGIN_SETTIMESPEED, 4 + 4);
     data << uint32(secsToTimeBitFields(sWorld.GetGameTime()));
-    data << (float)0.01666667f;                             // game speed
+    data << (float)0.01666667f;                             // game speed (同步当前服务器游戏时间与流逝速率)
     GetSession()->SendPacket(data);
 
     if (!GetSession()->PlayerLoading())
         SetMover(this);
 }
 
+/// 玩家加入地图后发送区域状态、登录光效、移动速度及续飞数据
 void Player::SendInitialPacketsAfterAddToMap(bool reconnect)
 {
-    // update zone
+    // update zone (加入地图后刷新当前所在区域与子区域)
     uint32 newzone, newarea;
     GetZoneAndAreaId(newzone, newarea);
-    UpdateZone(newzone, newarea);                           // also call SendInitWorldStates();
+    UpdateZone(newzone, newarea);                           // also call SendInitWorldStates(); (同时内部会下发世界状态)
 
     GetSession()->ResetTimeSync();
     GetSession()->SendTimeSync();
 
     if (!reconnect)
     {
-        // set some aura effects that send packet to player client after add player to map
-        // SendMessageToSet not send it to player not it map, only for aura that not changed anything at re-apply
-        // same auras state lost at far teleport, send it one more time in this case also
+        // set some aura effects that send packet to player client after add player to map (玩家加入地图后重发部分需要地图上下文的自身光环包，)
+        // SendMessageToSet not send it to player not it map, only for aura that not changed anything at re-apply (避免远距离传送后客户端丢失水下呼吸/跟踪/变身等状态)
+        // same auras state lost at far teleport, send it one more time in this case also (跨地图传送后补发一次客户端光环状态)
         static const AuraType auratypes[] =
         {
             SPELL_AURA_GHOST,        SPELL_AURA_TRANSFORM,                 SPELL_AURA_WATER_WALK,
@@ -19650,13 +19735,13 @@ void Player::SendInitialPacketsAfterAddToMap(bool reconnect)
 
     SendAuraDurationsOnLogin();
 
-    if (IsImmobilizedState()) // TODO: Figure out if this protocol is correct
+    if (IsImmobilizedState()) // TODO: Figure out if this protocol is correct (待办：确认强制移动速度包协议细节)
         SendMoveRoot(true);
 
-    SendEnchantmentDurations();                             // must be after add to map
-    SendItemDurations();                                    // must be after add to map
+    SendEnchantmentDurations();                             // must be after add to map (必须在加入地图后发送登录事件)
+    SendItemDurations();                                    // must be after add to map (必须在加入地图后激活飞行续飞)
 
-    CastSpell(this, 836, TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_IGNORE_GCD); // LOGINEFFECT
+    CastSpell(this, 836, TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_IGNORE_GCD); // LOGINEFFECT (发送登录光效通知)
 
     SendExtraAuraDurationsOnLogin(true);
     SendExtraAuraDurationsOnLogin(false);
@@ -19692,7 +19777,7 @@ void Player::SendTransferAbortedByLockStatus(MapEntry const* mapEntry, AreaTrigg
         switch (lockStatus)
         {
             case AREA_LOCKSTATUS_MISSING_ITEM:
-                if (GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC) // these have custom error in Map.dbc
+                if (GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC) // these have custom error in Map.dbc (此类跨地图错误使用 Map.dbc 中的自定义提示文本)
                     break;
             case AREA_LOCKSTATUS_TOO_LOW_LEVEL:
             case AREA_LOCKSTATUS_QUEST_NOT_COMPLETED:
@@ -19721,18 +19806,18 @@ void Player::SendTransferAbortedByLockStatus(MapEntry const* mapEntry, AreaTrigg
             break;
         case AREA_LOCKSTATUS_QUEST_NOT_COMPLETED:
         {
-            if (mapEntry->MapID == 269)                     // Exception for Black Morass
+            if (mapEntry->MapID == 269)                     // Exception for Black Morass (黑色沼泽副本传送特例提示)
             {
                 GetSession()->SendAreaTriggerMessage("%s", GetSession()->GetMangosString(LANG_TELEREQ_QUEST_BLACK_MORASS));
                 break;
             }
-            if (mapEntry->IsContinent())               // do not report anything for quest areatrigge
+            if (mapEntry->IsContinent())               // do not report anything for quest areatrigge (任务类区域触发器不输出失败提示)
             {
                 DEBUG_LOG("SendTransferAbortedByLockStatus: LockAreaStatus %u, do not teleport, no message sent (mapId %u)", lockStatus, mapEntry->MapID);
                 break;
             }
         }
-            // No break here!
+            // No break here! (此处有意穿透至默认失败消息分支)
         case AREA_LOCKSTATUS_MISSING_ITEM:
             GetSession()->SendTransferAborted(mapEntry->MapID, TRANSFER_ABORT_DIFFICULTY, GetDifficulty());
             break;
@@ -19750,7 +19835,7 @@ void Player::SendTransferAbortedByLockStatus(MapEntry const* mapEntry, AreaTrigg
         case AREA_LOCKSTATUS_NOT_ALLOWED:
         case AREA_LOCKSTATUS_RAID_LOCKED:
         case AREA_LOCKSTATUS_UNKNOWN_ERROR:
-            // ToDo: SendAreaTriggerMessage or Transfer Abort for these cases!
+            // ToDo: SendAreaTriggerMessage or Transfer Abort for these cases! (待办：为其余锁定状态补充区域或传送中止提示)
             break;
         case AREA_LOCKSTATUS_OK:
             sLog.outError("SendTransferAbortedByLockStatus: LockAreaStatus AREA_LOCKSTATUS_OK received for %s (mapId %u)", GetGuidStr().c_str(), mapEntry->MapID);
@@ -19764,7 +19849,7 @@ void Player::SendTransferAbortedByLockStatus(MapEntry const* mapEntry, AreaTrigg
 
 void Player::SendInstanceResetWarning(uint32 mapid, uint32 time)
 {
-    // type of warning, based on the time remaining until reset
+    // type of warning, based on the time remaining until reset (根据距离团队副本重置的剩余时间选择警告类型)
     uint32 type;
     if (time > 3600)
         type = RAID_INSTANCE_WELCOME;
@@ -19789,11 +19874,11 @@ void Player::ApplyEquipCooldown(Item* pItem)
 
     for (const auto& spellData : pItem->GetProto()->Spells)
     {
-        // no spell
+        // no spell (无绑定法术)
         if (!spellData.SpellId)
             continue;
 
-        // wrong triggering type (note: ITEM_SPELLTRIGGER_ON_NO_DELAY_USE not have cooldown)
+        // wrong triggering type (note: ITEM_SPELLTRIGGER_ON_NO_DELAY_USE not have cooldown) (仅对常规使用型法术应用装备冷却)
         if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_USE)
             continue;
 
@@ -19812,16 +19897,16 @@ void Player::ApplyEquipCooldown(Item* pItem)
 
 void Player::resetSpells()
 {
-    // not need after this call
+    // not need after this call (遗忘全部法术前先重置天赋)
     if (HasAtLoginFlag(AT_LOGIN_RESET_SPELLS))
         RemoveAtLoginFlag(AT_LOGIN_RESET_SPELLS, true);
 
-    // make full copy of map (spells removed and marked as deleted at another spell remove
-    // and we can't use original map for safe iterative with visit each spell at loop end
+    // make full copy of map (spells removed and marked as deleted at another spell remove (先拷贝法术表，因为 removeSpell 过程中会修改或标记删除条目)
+    // and we can't use original map for safe iterative with visit each spell at loop end (无法直接在原哈希表上安全迭代)
     PlayerSpellMap smap = GetSpellMap();
 
     for (PlayerSpellMap::const_iterator iter = smap.begin(); iter != smap.end(); ++iter)
-        removeSpell(iter->first, false, false);             // only iter->first can be accessed, object by iter->second can be deleted already
+        removeSpell(iter->first, false, false);             // only iter->first can be accessed, object by iter->second can be deleted already (迭代时仅读取法术 ID，指针可能已被销毁)
 
     LearnDefaultSkills();
     learnDefaultSpells();
@@ -19830,15 +19915,15 @@ void Player::resetSpells()
 
 void Player::learnDefaultSpells()
 {
-    // learn default race/class spells
+    // learn default race/class spells (学习种族与职业默认初始法术)
     PlayerInfo const* info = sObjectMgr.GetPlayerInfo(getRace(), getClass());
 
     for (uint32 tspell : info->spell)
     {
         DEBUG_LOG("PLAYER (Class: %u Race: %u): Adding initial spell, id = %u", uint32(getClass()), uint32(getRace()), tspell);
-        if (!IsInWorld())                                   // will send in INITIAL_SPELLS in list anyway at map add
+        if (!IsInWorld())                                   // will send in INITIAL_SPELLS in list anyway at map add (未在世界中时将在加入地图时随 INITIAL_SPELLS 统一下发)
             addSpell(tspell, true, true, true, false);
-        else                                                // but send in normal spell in game learn case
+        else                                                // but send in normal spell in game learn case (在游戏中执行时逐个发送学习包)
             learnSpell(tspell, true);
     }
 }
@@ -19847,7 +19932,7 @@ void Player::learnQuestRewardedSpells(Quest const* quest)
 {
     uint32 spell_id = quest->GetRewSpellCast();
 
-    // skip quests without rewarded spell
+    // skip quests without rewarded spell (跳过无奖励法术的任务)
     if (!spell_id)
         return;
 
@@ -19855,7 +19940,7 @@ void Player::learnQuestRewardedSpells(Quest const* quest)
     if (!spellInfo)
         return;
 
-    // check learned spells state
+    // check learned spells state (校验法术是否已在任务完成时正常学会)
     bool found = false;
     for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
@@ -19866,11 +19951,11 @@ void Player::learnQuestRewardedSpells(Quest const* quest)
         }
     }
 
-    // skip quests with not teaching spell or already known spell
+    // skip quests with not teaching spell or already known spell (跳过非教导型法术或已学会法术)
     if (!found)
         return;
 
-    // Prevent learning profession specializations, because unlearning and re-learning a profession doesn't automatically re-add the specialization
+    // Prevent learning profession specializations, because unlearning and re-learning a profession doesn't automatically re-add the specialization (防止遗忘专业后重学时自动补学专业专精法术)
     uint32 learned_0 = spellInfo->EffectTriggerSpell[EFFECT_INDEX_0];
     if (sSpellMgr.GetSpellRank(learned_0) > 1)
         return;
@@ -19880,10 +19965,10 @@ void Player::learnQuestRewardedSpells(Quest const* quest)
 
 void Player::learnQuestRewardedSpells()
 {
-    // learn spells received from quest completing
+    // learn spells received from quest completing (补学所有已完成任务的奖励法术)
     for (QuestStatusMap::const_iterator itr = mQuestStatus.begin(); itr != mQuestStatus.end(); ++itr)
     {
-        // skip no rewarded quests
+        // skip no rewarded quests (跳过尚未交付领奖的任务)
         if (!itr->second.m_rewarded)
             continue;
 
@@ -19931,14 +20016,14 @@ void Player::SendExtraAuraDurationsOnLogin(bool visible)
     {
         SpellAuraHolder* holder = itr->second;
 
-        if (visible && holder->GetAuraSlot() >= MAX_AURAS) // passive auras are not visible
+        if (visible && holder->GetAuraSlot() >= MAX_AURAS) // passive auras are not visible (跳过不可见被动光环)
             continue;
         if (!visible)
         {
             if (holder->GetAuraSlot() < MAX_AURAS)
                 continue;
 
-            // TODO: Send racials - atm sending procs and quiver aura per sniff
+            // TODO: Send racials - atm sending procs and quiver aura per sniff (待办：参照抓包下发种族与箭袋等触发光环)
             if (!holder->HasAuraType(SPELL_AURA_PROC_TRIGGER_SPELL) && !holder->HasAuraType(SPELL_AURA_MOD_RANGED_AMMO_HASTE))
                 continue;
         }
@@ -19947,13 +20032,13 @@ void Player::SendExtraAuraDurationsOnLogin(bool visible)
         ++counter;
     }
 
-    if (!visible) // slots >= 56 are sent as singles
+    if (!visible) // slots >= 56 are sent as singles (槽位 >= 56 的隐藏光环使用单包下发)
     {
         std::sort(holders.begin(), holders.end(), [](SpellAuraHolder* left, SpellAuraHolder* right) { return left->GetAuraSlot() < right->GetAuraSlot(); });
         for (SpellAuraHolder* holder : holders)
             holder->SendAuraDurationToCaster(this);
     }
-    else // visible slots (<= 56) are sent in a single packet
+    else // visible slots (<= 56) are sent in a single packet (可见光环槽位 <= 56 打包汇总发送)
     {
         WorldPacket data(SMSG_INIT_EXTRA_AURA_INFO, (8 + (1 + 4 + 4 + 4) * holders.size()));
         data << GetPackGUID();
@@ -20036,7 +20121,7 @@ void Player::ResetDailyQuestStatus()
     for (uint32 quest_daily_idx = 0; quest_daily_idx < PLAYER_MAX_DAILY_QUESTS; ++quest_daily_idx)
         SetUInt32Value(PLAYER_FIELD_DAILY_QUESTS_1 + quest_daily_idx, 0);
 
-    // DB data deleted in caller
+    // DB data deleted in caller (日常任务数据库记录由调用方统一删除)
     m_DailyQuestChanged = false;
 }
 
@@ -20046,7 +20131,7 @@ void Player::ResetWeeklyQuestStatus()
         return;
 
     m_weeklyquests.clear();
-    // DB data deleted in caller
+    // DB data deleted in caller (周常任务数据库记录由调用方统一删除)
     m_WeeklyQuestChanged = false;
 }
 
@@ -20056,7 +20141,7 @@ void Player::ResetMonthlyQuestStatus()
         return;
 
     m_monthlyquests.clear();
-    // DB data deleted in caller
+    // DB data deleted in caller (月常任务数据库记录由调用方统一删除)
     m_MonthlyQuestChanged = false;
 }
 
@@ -20076,7 +20161,7 @@ bool Player::InArena() const
 
 bool Player::GetBGAccessByLevel(BattleGroundTypeId bgTypeId) const
 {
-    // get a template bg instead of running one
+    // get a template bg instead of running one (获取战场模板以检查准入等级)
     BattleGround* bg = sBattleGroundMgr.GetBattleGroundTemplate(bgTypeId);
     if (!bg)
         return false;
@@ -20125,12 +20210,15 @@ float Player::GetRepairPriceMultiplier(Creature const* vendor) const
 
 /**
  * Check spell availability for training base at SkillLineAbility/SkillRaceClassInfo data.
+ * 基于 SkillLineAbility 与 SkillRaceClassInfo 数据检查法术是否满足职业/种族/等级训练条件。
  * Checked allowed race/class and dependent from race/class allowed min level
+ * 校验允许的种族、职业以及对应最低需求等级。
  *
- * @param spell_id  checked spell id
+ * @param spell_id  checked spell id (待检查的法术 ID)
  * @param pReqlevel if arg provided then function work in view mode (level check not applied but detected minlevel returned to var by arg pointer.
                     if arg not provided then considered train action mode and level checked
- * @return          true if spell available for show in trainer list (with skip level check) or training.
+ *                  (若传入 pReqlevel 则为列表预览模式：不拦截等级并返回最低学习等级；否则为实际学习校验模式)
+ * @return          true if spell available for show in trainer list (with skip level check) or training. (满足条件返回 true)
  */
 bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= nullptr*/) const
 {
@@ -20144,11 +20232,11 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= nul
     for (SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
     {
         SkillLineAbilityEntry const* abilityEntry = _spell_idx->second;
-        // skip wrong race skills
+        // skip wrong race skills (跳过种族不匹配的技能)
         if (abilityEntry->racemask && (abilityEntry->racemask & racemask) == 0)
             continue;
 
-        // skip wrong class skills
+        // skip wrong class skills (跳过职业不匹配的技能)
         if (abilityEntry->classmask && (abilityEntry->classmask & classmask) == 0)
             continue;
 
@@ -20161,7 +20249,7 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= nul
                 if (skillRCEntry->flags & SKILL_FLAG_NOT_TRAINABLE)
                     return false;
 
-                if (pReqlevel)                              // show trainers list case
+                if (pReqlevel)                              // show trainers list case (训练师列表预览模式：返回所需等级并放行)
                 {
                     if (skillRCEntry->reqLevel)
                     {
@@ -20169,7 +20257,7 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= nul
                         return true;
                     }
                 }
-                else                                        // check availble case at train
+                else                                        // check availble case at train (实际学习校验模式：检查玩家等级)
                 {
                     if (skillRCEntry->reqLevel && GetLevel() < skillRCEntry->reqLevel)
                         return false;
@@ -20208,7 +20296,7 @@ bool Player::HasQuestForGO(int32 GOId) const
 
             for (int j = 0; j < QUEST_OBJECTIVES_COUNT; ++j)
             {
-                if (qinfo->ReqCreatureOrGOId[j] >= 0)       // skip non GO case
+                if (qinfo->ReqCreatureOrGOId[j] >= 0)       // skip non GO case (跳过非游戏对象类任务目标)
                     continue;
 
                 if ((-1)*GOId == qinfo->ReqCreatureOrGOId[j] && qs.m_creatureOrGOcount[j] < qinfo->ReqCreatureOrGOCount[j])
@@ -20252,7 +20340,7 @@ void Player::UpdateEverything()
 
 void Player::SummonIfPossible(bool agree, ObjectGuid guid)
 {
-    // old duplicate summon notification from client or hacking
+    // old duplicate summon notification from client or hacking (忽略过期或重复的召唤响应，防止作弊)
     if (guid != m_summoner)
         return;
 
@@ -20262,15 +20350,15 @@ void Player::SummonIfPossible(bool agree, ObjectGuid guid)
         return;
     }
 
-    // expire and auto declined
+    // expire and auto declined (召唤请求已过期或被玩家拒绝)
     if (m_summon_expire < time(nullptr))
         return;
 
-    // stop taxi flight at summon
+    // stop taxi flight at summon (接受召唤时中断正在进行的飞行路线)
     TaxiFlightInterrupt();
 
-    // drop flag at summon
-    // this code can be reached only when GM is summoning player who carries flag, because player should be immune to summoning spells when he carries flag
+    // drop flag at summon (接受召唤时强制丢弃战场旗帜)
+    // this code can be reached only when GM is summoning player who carries flag, because player should be immune to summoning spells when he carries flag (仅当 GM 强召持旗玩家时才会触发此处丢旗)
     if (BattleGround* bg = GetBattleGround())
         bg->HandlePlayerDroppedFlag(this);
 
@@ -20309,7 +20397,7 @@ void Player::AutoUnequipOffhandIfNeed(uint8 bag)
 
     ItemPrototype const* itemProto = offItem->GetProto();
 
-    // need unequip offhand for 2h-weapon
+    // need unequip offhand for 2h-weapon (装备双手武器时自动卸下副手物品)
     if ((CanDualWield() || itemProto->InventoryType == INVTYPE_SHIELD || itemProto->InventoryType == INVTYPE_HOLDABLE) &&
             !IsTwoHandUsed())
         return;
@@ -20326,8 +20414,8 @@ void Player::AutoUnequipOffhandIfNeed(uint8 bag)
     {
         MoveItemFromInventory(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND, true);
         CharacterDatabase.BeginTransaction();
-        offItem->DeleteFromInventoryDB();                   // deletes item from character's inventory
-        offItem->SaveToDB();                                // recursive and not have transaction guard into self, item not in inventory and can be save standalone
+        offItem->DeleteFromInventoryDB();                   // deletes item from character's inventory (从角色背包销毁物品并将数量归零)
+        offItem->SaveToDB();                                // recursive and not have transaction guard into self, item not in inventory and can be save standalone (此时物品已不在背包中，可安全独立删除)
         CharacterDatabase.CommitTransaction();
 
         std::string subject = GetSession()->GetMangosString(LANG_NOT_EQUIPPED_ITEM);
@@ -20335,6 +20423,7 @@ void Player::AutoUnequipOffhandIfNeed(uint8 bag)
     }
 }
 
+/// 检查玩家是否装备了施放指定法术所需的特定类别武器或装备
 bool Player::HasItemFitToSpellReqirements(SpellEntry const* spellInfo, Item const* ignoreItem, uint32* error) const
 {
     if (spellInfo->EquippedItemClass < 0)
@@ -20354,8 +20443,8 @@ bool Player::HasItemFitToSpellReqirements(SpellEntry const* spellInfo, Item cons
         return false;
     }
 
-    // scan other equipped items for same requirements (mostly 2 daggers/etc)
-    // for optimize check 2 used cases only
+    // scan other equipped items for same requirements (mostly 2 daggers/etc) (扫描其他已装备部位是否仍满足法术物品需求，如双持匕首)
+    // for optimize check 2 used cases only (仅优化检查常用的主手/副手及指定槽位)
     switch (spellInfo->EquippedItemClass)
     {
         case ITEM_CLASS_WEAPON:
@@ -20368,18 +20457,18 @@ bool Player::HasItemFitToSpellReqirements(SpellEntry const* spellInfo, Item cons
         }
         case ITEM_CLASS_ARMOR:
         {
-            // tabard not have dependent spells
+            // tabard not have dependent spells (战袍等无相关装备依赖施法)
             for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_MAINHAND; ++i)
                 if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
                     if (item != ignoreItem && item->IsFitToSpellRequirements(spellInfo))
                         return true;
 
-            // shields can be equipped to offhand slot
+            // shields can be equipped to offhand slot (盾牌可装备在副手槽位)
             if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND))
                 if (item != ignoreItem && item->IsFitToSpellRequirements(spellInfo))
                     return true;
 
-            // ranged slot can have some armor subclasses
+            // ranged slot can have some armor subclasses (远程槽位可装配圣物/神像/图腾等防具子类)
             if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED))
                 if (item != ignoreItem && item->IsFitToSpellRequirements(spellInfo))
                     return true;
@@ -20396,7 +20485,7 @@ bool Player::HasItemFitToSpellReqirements(SpellEntry const* spellInfo, Item cons
 
 bool Player::CanNoReagentCast(SpellEntry const* spellInfo) const
 {
-    // don't take reagents for spells with SPELL_ATTR_EX5_NO_REAGENT_WHILE_PREP
+    // don't take reagents for spells with SPELL_ATTR_EX5_NO_REAGENT_WHILE_PREP (带有准备阶段免材料属性的法术不消耗施法材料)
     if (spellInfo->HasAttribute(SPELL_ATTR_EX5_NO_REAGENT_COST_WITH_AURA) && HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREPARATION))
         return true;
 
@@ -20410,7 +20499,7 @@ void Player::RemoveItemDependentAurasAndCasts(Item* pItem)
     {
         SpellAuraHolder* holder = itr->second;
 
-        // skip passive (passive item dependent spells work in another way) and not self applied auras
+        // skip passive (passive item dependent spells work in another way) and not self applied auras (跳过被动光环及非自身施放的光环)
         SpellEntry const* spellInfo = holder->GetSpellProto();
         if (holder->IsPassive() ||  holder->GetCasterGuid() != GetObjectGuid())
         {
@@ -20418,19 +20507,19 @@ void Player::RemoveItemDependentAurasAndCasts(Item* pItem)
             continue;
         }
 
-        // skip if not item dependent or have alternative item
+        // skip if not item dependent or have alternative item (若不依赖物品或身上仍有替代装备则保留)
         if (HasItemFitToSpellReqirements(spellInfo, pItem))
         {
             ++itr;
             continue;
         }
 
-        // no alt item, remove aura, restart check
+        // no alt item, remove aura, restart check (无替代装备，移除该光环并重新迭代)
         RemoveAurasDueToSpell(holder->GetId());
         itr = auras.begin();
     }
 
-    // currently casted spells can be dependent from item
+    // currently casted spells can be dependent from item (打断当前正在施放但已失去装备依赖的法术)
     for (uint32 i = 0; i < CURRENT_MAX_SPELL; ++i)
         if (Spell* spell = GetCurrentSpell(CurrentSpellTypes(i)))
             if (!HasItemFitToSpellReqirements(spell->m_spellInfo, pItem))
@@ -20439,23 +20528,23 @@ void Player::RemoveItemDependentAurasAndCasts(Item* pItem)
 
 uint32 Player::GetResurrectionSpellId() const
 {
-    // search priceless resurrection possibilities
+    // search priceless resurrection possibilities (按优先级查找免费复活方式：灵魂石 > 扭曲虚空 > 复生)
     uint32 prio = 0;
     uint32 spell_id = 0;
     AuraList const& dummyAuras = GetAurasByType(SPELL_AURA_DUMMY);
     for (auto dummyAura : dummyAuras)
     {
-        // Soulstone Resurrection                           // prio: 3 (max, non death persistent)
+        // Soulstone Resurrection                           // prio: 3 (max, non death persistent) (灵魂石复活，最高优先级 3)
         if (prio < 2 && dummyAura->GetSpellProto()->SpellVisual == 99 && dummyAura->GetSpellProto()->SpellIconID == 92)
         {
             switch (dummyAura->GetId())
             {
-                case 20707: spell_id =  3026; break;        // rank 1
-                case 20762: spell_id = 20758; break;        // rank 2
-                case 20763: spell_id = 20759; break;        // rank 3
-                case 20764: spell_id = 20760; break;        // rank 4
-                case 20765: spell_id = 20761; break;        // rank 5
-                case 27239: spell_id = 27240; break;        // rank 6
+                case 20707: spell_id =  3026; break;        // rank 1 (1 阶)
+                case 20762: spell_id = 20758; break;        // rank 2 (2 阶)
+                case 20763: spell_id = 20759; break;        // rank 3 (3 阶)
+                case 20764: spell_id = 20760; break;        // rank 4 (4 阶)
+                case 20765: spell_id = 20761; break;        // rank 5 (5 阶)
+                case 27239: spell_id = 27240; break;        // rank 6 (6 阶)
                 default:
                     sLog.outError("Unhandled spell %u: S.Resurrection", dummyAura->GetId());
                     continue;
@@ -20463,7 +20552,7 @@ uint32 Player::GetResurrectionSpellId() const
 
             prio = 3;
         }
-        // Twisting Nether                                  // prio: 2 (max)
+        // Twisting Nether                                  // prio: 2 (max) (扭曲虚空饰品效果，优先级 2)
         else if (dummyAura->GetId() == 23701 && roll_chance_i(10))
         {
             prio = 2;
@@ -20471,17 +20560,17 @@ uint32 Player::GetResurrectionSpellId() const
         }
     }
 
-    // Reincarnation (passive spell)                        // prio: 1
+    // Reincarnation (passive spell)                        // prio: 1 (萨满复生被动，优先级 1)
     if (prio < 1 && HasSpell(20608) && IsSpellReady(21169) && HasItemCount(17030, EFFECT_INDEX_1))
         spell_id = 21169;
 
     return spell_id;
 }
 
-// Used in triggers for check "Only to targets that grant experience or honor" req
+// Used in triggers for check "Only to targets that grant experience or honor" req (用于检查“仅对可提供经验或荣誉的目标生效”触发条件)
 bool Player::isHonorOrXPTarget(Unit* pVictim) const
 {
-    // Victim level less gray level
+    // Victim level less gray level (目标等级低于灰名门槛则不提供经验/荣誉)
     if (MaNGOS::XP::IsTrivialLevelDifference(GetLevel(), pVictim->GetLevelForTarget(this)))
         return false;
 
@@ -20497,10 +20586,10 @@ bool Player::isHonorOrXPTarget(Unit* pVictim) const
 
 void Player::RewardSinglePlayerAtKill(Unit* pVictim)
 {
-    // honor can be in PvP and !PvP (racial leader) cases
+    // honor can be in PvP and !PvP (racial leader) cases (击杀玩家或敌对种族领袖均可获得荣誉)
     RewardHonor(pVictim, 1);
 
-    // xp and reputation only in !PvP case
+    // xp and reputation only in !PvP case (仅击杀非 PvP 生物才奖励经验与声望)
     if (!pVictim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && pVictim->GetTypeId() == TYPEID_UNIT)
     {
         Creature* creatureVictim = static_cast<Creature*>(pVictim);
@@ -20510,7 +20599,7 @@ void Player::RewardSinglePlayerAtKill(Unit* pVictim)
         if (Pet* pet = GetPet())
             pet->GivePetXP(MaNGOS::XP::Gain(pet, creatureVictim));
 
-        // normal creature (not pet/etc) can be only in !PvP case
+        // normal creature (not pet/etc) can be only in !PvP case (仅常规非宠物生物触发击杀任务计数)
         if (CreatureInfo const* normalInfo = creatureVictim->GetCreatureInfo())
             KilledMonster(normalInfo, creatureVictim);
     }
@@ -20522,7 +20611,7 @@ void Player::RewardPlayerAndGroupAtEventCredit(uint32 creature_id, WorldObject* 
 
     ObjectGuid creature_guid = pRewardSource && pRewardSource->GetTypeId() == TYPEID_UNIT ? pRewardSource->GetObjectGuid() : ObjectGuid();
 
-    // prepare data for near group iteration
+    // prepare data for near group iteration (遍历附近队伍/团队成员共享任务事件计数)
     if (Group* pGroup = GetGroup())
     {
         for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
@@ -20532,20 +20621,20 @@ void Player::RewardPlayerAndGroupAtEventCredit(uint32 creature_id, WorldObject* 
                 continue;
 
             if (!pGroupGuy->IsAtGroupRewardDistance(pRewardSource))
-                continue;                                   // member (alive or dead) or his corpse at req. distance
+                continue;                                   // member (alive or dead) or his corpse at req. distance (成员存活或尸体在有效共享距离内)
 
-            // quest objectives updated only for alive group member or dead but with not released body
+            // quest objectives updated only for alive group member or dead but with not released body (仅存活或未释放灵魂的队友获得任务目标计数)
             if (pGroupGuy->IsAlive() || !pGroupGuy->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
                 pGroupGuy->KilledMonsterCredit(creature_id, creature_guid);
         }
     }
-    else                                                    // if (!pGroup)
+    else                                                    // if (!pGroup) (单人玩家情况)
         KilledMonsterCredit(creature_id, creature_guid);
 }
 
 void Player::RewardPlayerAndGroupAtCast(WorldObject* pRewardSource, uint32 spellid)
 {
-    // prepare data for near group iteration
+    // prepare data for near group iteration (遍历附近队伍/团队成员共享施法任务计数)
     if (Group* pGroup = GetGroup())
     {
         for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
@@ -20555,14 +20644,14 @@ void Player::RewardPlayerAndGroupAtCast(WorldObject* pRewardSource, uint32 spell
                 continue;
 
             if (!pGroupGuy->IsAtGroupRewardDistance(pRewardSource))
-                continue;                               // member (alive or dead) or his corpse at req. distance
+                continue;                               // member (alive or dead) or his corpse at req. distance (成员或其尸体在有效共享距离内)
 
-            // quest objectives updated only for alive group member or dead but with not released body
+            // quest objectives updated only for alive group member or dead but with not released body (仅存活或未释放灵魂的队友更新施法计数)
             if (pGroupGuy->IsAlive() || !pGroupGuy->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
                 pGroupGuy->CastedCreatureOrGO(pRewardSource->GetEntry(), pRewardSource->GetObjectGuid(), spellid, pGroupGuy == this);
         }
     }
-    else                                                    // if (!pGroup)
+    else                                                    // if (!pGroup) (单人玩家情况)
         CastedCreatureOrGO(pRewardSource->GetEntry(), pRewardSource->GetObjectGuid(), spellid);
 }
 
@@ -20576,7 +20665,7 @@ bool Player::IsAtGroupRewardDistance(WorldObject const* pRewardSource) const
 
 void Player::AddResurrectRequest(ObjectGuid casterGuid, SpellEntry const* spellInfo, Position position, uint32 mapId, uint32 health, uint32 mana, bool isSpiritHealer, const char* sentName)
 {
-    if (isRessurectRequested()) // already have one active request
+    if (isRessurectRequested()) // already have one active request (已存在待响应的复活请求时忽略新请求)
         return;
 
     setResurrectRequestData(casterGuid, mapId, position.x, position.y, position.z, health, mana);
@@ -20591,26 +20680,26 @@ void Player::SendResurrectRequest(SpellEntry const* spellInfo, bool isSpiritHeal
 
     data << sentName;
     data << uint8(isSpiritHealer);
-    // override delay sent with SMSG_CORPSE_RECLAIM_DELAY, set instant resurrection for spells with this attribute
+    // override delay sent with SMSG_CORPSE_RECLAIM_DELAY, set instant resurrection for spells with this attribute (带有忽略复活延迟属性的法术允许立即复活)
     data << uint8(!spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_RES_TIMER));
     GetSession()->SendPacket(data);
 }
 
 void Player::ResurrectUsingRequestDataInit()
 {
-    /// Teleport before resurrecting by player, otherwise the player might get attacked from creatures near his corpse
+    /// Teleport before resurrecting by player, otherwise the player might get attacked from creatures near his corpse (由他人复活前先传送至目标位置，避免复活后立即被尸体附近怪物攻击)
     if (m_resurrectGuid.IsPlayer())
         TeleportTo(m_resurrectMap, m_resurrectX, m_resurrectY, m_resurrectZ, GetOrientation());
 
-    // we cannot resurrect player when we triggered far teleport
-    // player will be resurrected upon teleportation
+    // we cannot resurrect player when we triggered far teleport (若触发跨地图远距离传送则延后至切图完成后复活)
+    // player will be resurrected upon teleportation (传送完成后由 DELAYED_RESURRECT_PLAYER 执行复活)
     if (IsBeingTeleported())
     {
         ScheduleDelayedOperation(DELAYED_RESURRECT_PLAYER);
         return;
     }
 
-    // Redundant unless at some point we dont teleport on rezzurect
+    // Redundant unless at some point we dont teleport on rezzurect (传送完毕执行最终复活步骤)
     ResurrectUsingRequestDataFinish();
 }
 
@@ -20639,8 +20728,8 @@ void Player::UpdateClientControl(Unit const* target, bool enabled, bool forced) 
 {
     if (target)
     {
-        // Sending disabled control multiple times for the same unit is harmless (seen in data all the time)
-        // Do a double-check if we should enable it only
+        // Sending disabled control multiple times for the same unit is harmless (seen in data all the time) (重复下发禁用控制权无害)
+        // Do a double-check if we should enable it only (仅在启用控制权时严格校验目标是否仍为当前控制对象)
         if (forced || !enabled || target->IsClientControlled(this))
         {
             const PackedGuid& packedGuid = target->GetPackGUID();
@@ -20654,7 +20743,7 @@ void Player::UpdateClientControl(Unit const* target, bool enabled, bool forced) 
 
 void Player::UpdateZoneDependentAuras()
 {
-    // Some spells applied at enter into zone (with subzones), aura removed in UpdateAreaDependentAuras that called always at zone->area update
+    // Some spells applied at enter into zone (with subzones), aura removed in UpdateAreaDependentAuras that called always at zone->area update (进入主区域时应用区域依赖光环)
     SpellAreaForAreaMapBounds saBounds = sSpellMgr.GetSpellAreaForAreaMapBounds(m_zoneUpdateId);
     for (SpellAreaForAreaMap::const_iterator itr = saBounds.first; itr != saBounds.second; ++itr)
         itr->second->ApplyOrRemoveSpellIfCan(this, m_zoneUpdateId, 0, true);
@@ -20662,10 +20751,10 @@ void Player::UpdateZoneDependentAuras()
 
 void Player::UpdateAreaDependentAuras()
 {
-    // remove auras from spells with area limitations
+    // remove auras from spells with area limitations (移除不适用于当前子区域的光环)
     for (SpellAuraHolderMap::iterator iter = m_spellAuraHolders.begin(); iter != m_spellAuraHolders.end();)
     {
-        // use m_zoneUpdateId for speed: UpdateArea called from UpdateZone or instead UpdateZone in both cases m_zoneUpdateId up-to-date
+        // use m_zoneUpdateId for speed: UpdateArea called from UpdateZone or instead UpdateZone in both cases m_zoneUpdateId up-to-date (使用已刷新的 m_zoneUpdateId 加快判断)
         if (sSpellMgr.GetSpellAllowedInLocationError(iter->second->GetSpellProto(), GetMapId(), m_zoneUpdateId, m_areaUpdateId, this) != SPELL_CAST_OK)
         {
             RemoveSpellAuraHolder(iter->second);
@@ -20675,7 +20764,7 @@ void Player::UpdateAreaDependentAuras()
             ++iter;
     }
 
-    // some auras applied at subzone enter
+    // some auras applied at subzone enter (应用进入子区域触发的光环)
     SpellAreaForAreaMapBounds saBounds = sSpellMgr.GetSpellAreaForAreaMapBounds(m_areaUpdateId);
     for (SpellAreaForAreaMap::const_iterator itr = saBounds.first; itr != saBounds.second; ++itr)
         itr->second->ApplyOrRemoveSpellIfCan(this, m_zoneUpdateId, m_areaUpdateId, true);
@@ -20699,7 +20788,7 @@ struct UpdateZoneDependentPetsHelper
 
 void Player::UpdateZoneDependentPets()
 {
-    // check pet (permanent pets ignored), minipet, guardians (including protector)
+    // check pet (permanent pets ignored), minipet, guardians (including protector) (检查非永久宠物、小宠物及守护者在当前区域是否允许存在)
     CallForAllControlledUnits(UpdateZoneDependentPetsHelper(this, m_zoneUpdateId, m_areaUpdateId), CONTROLLED_PET | CONTROLLED_GUARDIANS | CONTROLLED_MINIPET);
 }
 
@@ -20708,7 +20797,7 @@ uint32 Player::GetCorpseReclaimDelay(bool pvp) const
     time_t now = time(nullptr);
     if (now > m_deathExpireTime)
         now = m_deathExpireTime;
-    // 0..2 full period
+    // 0..2 full period (按死亡累计次数计算 0..2 个完整复活惩罚周期)
     return getCorpseReclaimDelayHelper(m_deathExpireTime, now, pvp);
 }
 
@@ -20723,7 +20812,7 @@ void Player::UpdateCorpseReclaimDelay()
     time_t now = time(nullptr);
     if (now < m_deathExpireTime)
     {
-        // full and partly periods 1..3
+        // full and partly periods 1..3 (计算已过时间并折算剩余复活延迟毫秒数)
         uint32 count = uint32((m_deathExpireTime - now) / DEATH_EXPIRE_STEP + 1);
         if (count < MAX_DEATH_COUNT)
             m_deathExpireTime = now + (count + 1) * DEATH_EXPIRE_STEP;
@@ -20758,7 +20847,7 @@ void Player::SendCorpseReclaimDelay(bool load) const
     else
         delay = GetCorpseReclaimDelay(corpse->GetType() == CORPSE_RESURRECTABLE_PVP);
 
-    //! corpse reclaim delay 30 * 1000ms or longer at often deaths
+    //! corpse reclaim delay 30 * 1000ms or longer at often deaths (频繁死亡时复活延迟最少 30 秒)
     WorldPacket data(SMSG_CORPSE_RECLAIM_DELAY, 4);
     data << uint32(delay * IN_MILLISECONDS);
     GetSession()->SendPacket(data);
@@ -20781,11 +20870,11 @@ Player* Player::GetNextRaidMemberWithLowestLifePercentage(float radius, AuraType
         {
             float x, y, z;
             GetPosition(x, y, z);
-            // CanAssist check duel and controlled by enemy
+            // CanAssist check duel and controlled by enemy (过滤无法协助、决斗中或被敌方控制的队员)
             if (IsInMap(target) && target->IsWithinDist3d(x, y, z, radius) &&
                     !target->HasInvisibilityAura() && CanAssist(target) && !target->HasAuraType(noAuraType))
             {
-                // First not picked
+                // First not picked (筛选生命百分比最低的团队成员)
                 if (!lowestPercentagePlayer)
                 {
                     lowestPercentagePlayer = target;
@@ -20832,7 +20921,7 @@ void Player::UpdateGroupLeaderFlag(const bool remove /*= false*/)
 
 void Player::SetBattleGroundRaid(Group* group, int8 subgroup)
 {
-    // we must move references from m_group to m_originalGroup
+    // we must move references from m_group to m_originalGroup (进入战场团队前将原野外队伍引用转移至 m_originalGroup)
     SetOriginalGroup(GetGroup(), GetSubGroup());
 
     m_group.unlink();
@@ -20842,7 +20931,7 @@ void Player::SetBattleGroundRaid(Group* group, int8 subgroup)
 
 void Player::RemoveFromBattleGroundRaid()
 {
-    // remove existing reference
+    // remove existing reference (离开战场团队后移除战场队伍引用)
     m_group.unlink();
     if (Group* group = GetOriginalGroup())
     {
@@ -20858,7 +20947,7 @@ void Player::SetOriginalGroup(Group* group, int8 subgroup)
         m_originalGroup.unlink();
     else
     {
-        // never use SetOriginalGroup without a subgroup unless you specify nullptr for group
+        // never use SetOriginalGroup without a subgroup unless you specify nullptr for group (设置原队伍时必须指定子队编号)
         MANGOS_ASSERT(subgroup >= 0);
         m_originalGroup.link(group, this);
         m_originalGroup.setSubGroup((uint8)subgroup);
@@ -20879,7 +20968,7 @@ void Player::UpdateTerainEnvironmentFlags(Map* m, float x, float y, float z)
         return;
     }
 
-    // Environment has liquid information
+    // Environment has liquid information (地图地形返回了液体数据，判定深浅与液体类型)
     SetEnvironmentFlags(ENVIRONMENT_FLAG_LIQUID, true);
 
     if (uint32 liqEntry = liquid_status.entry)
@@ -20902,26 +20991,26 @@ void Player::UpdateTerainEnvironmentFlags(Map* m, float x, float y, float z)
         m_lastLiquid = liquid;
     }
 
-    // All liquid types: check under surface level
+    // All liquid types: check under surface level (任何液体：检测是否完全浸没于液面之下)
     if (liquid_status.type_flags & (MAP_LIQUID_TYPE_WATER | MAP_LIQUID_TYPE_OCEAN | MAP_LIQUID_TYPE_MAGMA | MAP_LIQUID_TYPE_SLIME))
         SetEnvironmentFlags(ENVIRONMENT_FLAG_UNDERWATER, (res & LIQUID_MAP_UNDER_WATER));
 
-    // In water: on or under surface level
+    // In water: on or under surface level (处于水中：位于水面或水下)
     if (liquid_status.type_flags & (MAP_LIQUID_TYPE_WATER | MAP_LIQUID_TYPE_OCEAN))
         SetEnvironmentFlags(ENVIRONMENT_FLAG_IN_WATER, (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER)));
 
-    // In magma: on, under, or slightly above surface level
+    // In magma: on, under, or slightly above surface level (处于岩浆中)
     if (liquid_status.type_flags & MAP_LIQUID_TYPE_MAGMA)
         SetEnvironmentFlags(ENVIRONMENT_FLAG_IN_MAGMA, (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER | LIQUID_MAP_WATER_WALK)));
 
-    // In slime: on, under, or slightly above surface level
+    // In slime: on, under, or slightly above surface level (处于软泥/毒水中)
     if (liquid_status.type_flags & MAP_LIQUID_TYPE_SLIME)
         SetEnvironmentFlags(ENVIRONMENT_FLAG_IN_SLIME, (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER | LIQUID_MAP_WATER_WALK)));
 
-    // In deep water: on, under, above surface level
+    // In deep water: on, under, above surface level (处于深海疲劳区域)
     SetEnvironmentFlags(ENVIRONMENT_FLAG_HIGH_SEA, (liquid_status.type_flags & MAP_LIQUID_TYPE_DEEP_WATER));
 
-    // All liquid types: check if deep enough level for swimming
+    // All liquid types: check if deep enough level for swimming (液体深度是否足以游泳)
     SetEnvironmentFlags(ENVIRONMENT_FLAG_HIGH_LIQUID, ((res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER)) && liquid_status.level > (liquid_status.depth_level + collisionHeight * 0.75)));
 }
 
@@ -20936,10 +21025,10 @@ bool ItemPosCount::isContainedIn(ItemPosCountVec const& vec) const
 
 bool Player::CanUseBattleGroundObject() const
 {
-    // TODO : some spells gives player ForceReaction to one faction (ReputationMgr::ApplyForceReaction)
-    // maybe gameobject code should handle that ForceReaction usage
-    return (IsAlive() &&                                    // living
-            !isTotalImmune() &&                             // vulnerable (not immune)
+    // TODO : some spells gives player ForceReaction to one faction (ReputationMgr::ApplyForceReaction) (待办：部分法术会强制改变阵营声望反应，)
+    // maybe gameobject code should handle that ForceReaction usage (需确认游戏对象交互是否需同步支持)
+    return (IsAlive() &&                                    // living (必须存活)
+            !isTotalImmune() &&                             // vulnerable (not immune) (未处于无敌/免疫状态)
             !HasAura(SPELL_RECENTLY_DROPPED_FLAG, EFFECT_INDEX_0));
 }
 
@@ -20951,7 +21040,7 @@ bool Player::isTotalImmune() const
     for (auto itr : immune)
     {
         immuneMask |= itr->GetModifier()->m_miscvalue;
-        if (immuneMask & SPELL_SCHOOL_MASK_ALL)             // total immunity
+        if (immuneMask & SPELL_SCHOOL_MASK_ALL)             // total immunity (具备法术全免疫光环，如圣盾术/冰箱)
             return true;
     }
     return false;
@@ -21000,7 +21089,7 @@ void Player::SetTitle(CharTitlesEntry const* title, bool lost, bool send)
 
     WorldPacket data(SMSG_TITLE_EARNED, 4 + 4);
     data << uint32(title->bit_index);
-    data << uint32(lost ? 0 : 1);                           // 1 - earned, 0 - lost
+    data << uint32(lost ? 0 : 1);                           // 1 - earned, 0 - lost (1 表示获得称号，0 表示失去称号)
     GetSession()->SendPacket(data);
 }
 
@@ -21051,7 +21140,7 @@ Item* Player::ConvertItem(Item* item, uint32 newItemId)
     if (!pNewItem)
         return nullptr;
 
-    // copy enchantments
+    // copy enchantments (物品转换时复制原附魔)
     for (uint8 j = PERM_ENCHANTMENT_SLOT; j <= TEMP_ENCHANTMENT_SLOT; ++j)
     {
         if (item->GetEnchantmentId(EnchantmentSlot(j)))
@@ -21059,7 +21148,7 @@ Item* Player::ConvertItem(Item* item, uint32 newItemId)
                                      item->GetEnchantmentDuration(EnchantmentSlot(j)), item->GetEnchantmentCharges(EnchantmentSlot(j)));
     }
 
-    // copy durability
+    // copy durability (复制当前耐久度状态)
     if (item->GetUInt32Value(ITEM_FIELD_DURABILITY) < item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY))
     {
         double loosePercent = 1 - item->GetUInt32Value(ITEM_FIELD_DURABILITY) / double(item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY));
@@ -21071,7 +21160,7 @@ Item* Player::ConvertItem(Item* item, uint32 newItemId)
         ItemPosCountVec dest;
         uint8 bagSlot = 0;
         InventoryResult msg = CanStoreItem(item->GetBagSlot(), item->GetSlot(), dest, pNewItem, bagSlot, true);
-        // ignore cast/combat time restriction
+        // ignore cast/combat time restriction (非装备直接换装不校验战斗限制，仅转换形态)
         if (msg == EQUIP_ERR_OK)
         {
             DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
@@ -21083,7 +21172,7 @@ Item* Player::ConvertItem(Item* item, uint32 newItemId)
         ItemPosCountVec dest;
         uint8 bagSlot;
         InventoryResult msg = CanBankItem(item->GetBagSlot(), item->GetSlot(), dest, pNewItem, true, bagSlot);
-        // ignore cast/combat time restriction
+        // ignore cast/combat time restriction (先移除旧物品)
         if (msg == EQUIP_ERR_OK)
         {
             DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
@@ -21094,7 +21183,7 @@ Item* Player::ConvertItem(Item* item, uint32 newItemId)
     {
         uint16 dest;
         InventoryResult msg = CanEquipItem(item->GetSlot(), dest, pNewItem, true, false);
-        // ignore cast/combat time restriction
+        // ignore cast/combat time restriction (存入或装备新物品)
         if (msg == EQUIP_ERR_OK)
         {
             DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
@@ -21104,7 +21193,7 @@ Item* Player::ConvertItem(Item* item, uint32 newItemId)
         }
     }
 
-    // fail
+    // fail (目标位置校验失败，中止转换)
     delete pNewItem;
     return nullptr;
 }
@@ -21139,7 +21228,7 @@ void Player::learnClassLevelSpells(bool includeHighLevelQuestRewards)
 
     uint32 family = clsEntry->spellfamily;
 
-    // special cases which aren't sourced from trainers and normally require quests to obtain - added here for convenience
+    // special cases which aren't sourced from trainers and normally require quests to obtain - added here for convenience (机器人：补充需通过任务获取的特殊职业核心法术)
     ObjectMgr::QuestMap const& qTemplates = sObjectMgr.GetQuestTemplates();
     for (const auto& qTemplate : qTemplates)
     {
@@ -21147,18 +21236,18 @@ void Player::learnClassLevelSpells(bool includeHighLevelQuestRewards)
         if (!quest)
             continue;
 
-        // only class quests player could do
+        // only class quests player could do (仅限该玩家职业可接取的职业任务奖励法术)
         if (quest->GetRequiredClasses() == 0 || !SatisfyQuestClass(quest, false) || !SatisfyQuestRace(quest, false) || !SatisfyQuestLevel(quest, false))
             continue;
 
-        // custom filter for scripting purposes
+        // custom filter for scripting purposes (若为自定义高阶任务奖励法术按参数过滤)
         if (!includeHighLevelQuestRewards && quest->GetMinLevel() >= 60)
             continue;
 
         learnQuestRewardedSpells(quest);
     }
 
-    // learn trainer spells
+    // learn trainer spells (从训练师模板中学习符合等级的职业法术)
     for (uint32 id = 0; id < sCreatureStorage.GetMaxEntry(); ++id)
     {
         CreatureInfo const* co = sCreatureStorage.LookupEntry<CreatureInfo>(id);
@@ -21197,14 +21286,14 @@ void Player::learnClassLevelSpells(bool includeHighLevelQuestRewards)
                 for (auto learnedSpell : tSpell->learnedSpell)
                 {
 
-                    // skip wrong class/race skills
+                    // skip wrong class/race skills (跳过不符职业或种族的技能)
                     if (!IsSpellFitByClassAndRace(learnedSpell, &reqLevel))
                         continue;
 
                     if (tSpell->conditionId && !sObjectMgr.IsConditionSatisfied(tSpell->conditionId, this, GetMap(), this, CONDITION_FROM_TRAINER))
                         continue;
 
-                    // skip spells with first rank learned as talent (and all talents then also)
+                    // skip spells with first rank learned as talent (and all talents then also) (跳过天赋树法术)
                     uint32 first_rank = sSpellMgr.GetFirstSpellInChain(learnedSpell);
                     reqLevel = tSpell->isProvidedReqLevel ? tSpell->reqLevel : std::max(reqLevel, tSpell->reqLevel);
                     bool isValidTalent = GetTalentSpellCost(first_rank) && HasSpell(first_rank) && reqLevel <= GetLevel();
@@ -21217,17 +21306,17 @@ void Player::learnClassLevelSpells(bool includeHighLevelQuestRewards)
                     if (!proto)
                         continue;
 
-                    // fix activate state for non-stackable low rank (and find next spell for !active case)
+                    // fix activate state for non-stackable low rank (and find next spell for !active case) (修正不可叠加低阶法术的激活状态)
                     if (uint32 nextId = sSpellMgr.GetSpellBookSuccessorSpellId(proto->Id))
                     {
                         if (HasSpell(nextId))
                         {
-                            // high rank already known so this must !active
+                            // high rank already known so this must !active (高阶已学，低阶标记为非激活)
                             continue;
                         }
                     }
 
-                    // skip other spell families (minus a few exceptions)
+                    // skip other spell families (minus a few exceptions) (跳过非本职业法术族条目)
                     if (proto->SpellFamilyName != family)
                     {
                         SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(learnedSpell);
@@ -21258,11 +21347,11 @@ void Player::learnClassLevelSpells(bool includeHighLevelQuestRewards)
                         }
                     }
 
-                    // skip wrong class/race skills
+                    // skip wrong class/race skills (跳过不符职业或种族的技能)
                     if (!IsSpellFitByClassAndRace(learnedSpell))
                         continue;
 
-                    // skip broken spells
+                    // skip broken spells (跳过缺少有效等级记录的异常法术)
                     if (!SpellMgr::IsSpellValid(proto, this, false))
                         continue;
 
@@ -21318,13 +21407,13 @@ void Player::_LoadSkills(std::unique_ptr<QueryResult> queryResult)
                 continue;
             }
 
-            // set fixed skill ranges
+            // set fixed skill ranges (某些特殊技能拥有固定不变的上下限)
             switch (GetSkillRangeType(pSkill, false))
             {
-                case SKILL_RANGE_LANGUAGE:                  // 300..300
+                case SKILL_RANGE_LANGUAGE:                  // 300..300 (骑术/语言/武器大师等固定 300/300)
                     value = max = 300;
                     break;
-                case SKILL_RANGE_MONO:                      // 1..1, grey monolite bar
+                case SKILL_RANGE_MONO:                      // 1..1, grey monolite bar (专精或纯被动技能固定 1/1)
                 {
                     SkillRaceClassInfoEntry const* entry = GetSkillInfo(skillId);
                     if (entry && entry->flags & SKILL_FLAG_MAXIMIZED)
@@ -21347,8 +21436,8 @@ void Player::_LoadSkills(std::unique_ptr<QueryResult> queryResult)
                 continue;
             }
 
-            // Deduct current skill step from skill max value using data from dbc
-            // TODO: Maybe save step to db in the future?
+            // Deduct current skill step from skill max value using data from dbc (根据 DBC 的 SkillTiers 反推当前技能所处阶位 step)
+            // TODO: Maybe save step to db in the future? (待办：未来可考虑直接将技能阶位存入数据库)
             uint16 step = 0;
 
             uint32 raceMask = getRaceMask();
@@ -21391,7 +21480,7 @@ void Player::_LoadSkills(std::unique_ptr<QueryResult> queryResult)
 
             ++count;
 
-            if (count >= PLAYER_MAX_SKILLS)                 // client limit
+            if (count >= PLAYER_MAX_SKILLS)                 // client limit (技能总数不得超过客户端上限 PLAYER_MAX_SKILLS)
             {
                 sLog.outError("Character %u has more than %u skills.", GetGUIDLow(), PLAYER_MAX_SKILLS);
                 break;
@@ -21412,11 +21501,11 @@ InventoryResult Player::CanEquipUniqueItem(Item* pItem, uint8 eslot) const
 {
     ItemPrototype const* pProto = pItem->GetProto();
 
-    // proto based limitations
+    // proto based limitations (按物品模板的唯一持有/唯一装备限制校验)
     if (InventoryResult res = CanEquipUniqueItem(pProto, eslot))
         return res;
 
-    // check unique-equipped on gems
+    // check unique-equipped on gems (检查已镶嵌珠宝的唯一装备限制)
     for (uint32 enchant_slot = SOCK_ENCHANTMENT_SLOT; enchant_slot < SOCK_ENCHANTMENT_SLOT + 3; ++enchant_slot)
     {
         uint32 enchant_id = pItem->GetEnchantmentId(EnchantmentSlot(enchant_slot));
@@ -21439,10 +21528,10 @@ InventoryResult Player::CanEquipUniqueItem(Item* pItem, uint8 eslot) const
 
 InventoryResult Player::CanEquipUniqueItem(ItemPrototype const* itemProto, uint8 except_slot) const
 {
-    // check unique-equipped on item
+    // check unique-equipped on item (检查物品本身的唯一装备限制)
     if (itemProto->Flags & ITEM_FLAG_UNIQUE_EQUIPPABLE)
     {
-        // there is an equip limit on this item
+        // there is an equip limit on this item (校验装备栏及身上已装备数量是否超限)
         if (HasItemOrGemWithIdEquipped(itemProto->ItemId, 1, except_slot))
             return EQUIP_ERR_ITEM_UNIQUE_EQUIPABLE;
     }
@@ -21450,20 +21539,21 @@ InventoryResult Player::CanEquipUniqueItem(ItemPrototype const* itemProto, uint8
     return EQUIP_ERR_OK;
 }
 
+/// 结算玩家坠落高度与安全坠落减免，计算并施加坠落伤害
 void Player::HandleFall(MovementInfo const& movementInfo)
 {
-    // calculate total z distance of the fall
+    // calculate total z distance of the fall (计算坠落总高度差)
     Position const& position = movementInfo.GetPos();
     float z_diff = m_lastFallZ - position.z;
     DEBUG_LOG("zDiff = %f", z_diff);
 
-    // Players with low fall distance, Feather Fall or physical immunity (charges used) are ignored
-    // 14.57 can be calculated by resolving damageperc formula below to 0
+    // Players with low fall distance, Feather Fall or physical immunity (charges used) are ignored (短距离坠落、缓落或物理免疫时不受坠落伤害)
+    // 14.57 can be calculated by resolving damageperc formula below to 0 (14.57 码为坠落伤害公式的零点阈值)
     if (z_diff >= 14.57f && !IsDead() && !IsGameMaster() && !HasMovementFlag(MOVEFLAG_ONTRANSPORT) &&
             !HasAuraType(SPELL_AURA_HOVER) && !HasAuraType(SPELL_AURA_FEATHER_FALL) &&
             !IsFreeFlying() && !IsImmuneToDamage(SPELL_SCHOOL_MASK_NORMAL))
     {
-        // Safe fall, fall height reduction
+        // Safe fall, fall height reduction (应用安全坠落/羽落术减伤高度折抵)
         int32 safe_fall = GetTotalAuraModifier(SPELL_AURA_SAFE_FALL);
 
         float damageperc = 0.018f * (z_diff - safe_fall) - 0.2426f;
@@ -21477,23 +21567,24 @@ void Player::HandleFall(MovementInfo const& movementInfo)
 
             if (damage > 0)
             {
-                // Prevent fall damage from being more than the player maximum health
+                // Prevent fall damage from being more than the player maximum health (限制单次坠落伤害不超过玩家最大生命值)
                 if (damage > GetMaxHealth())
                     damage = GetMaxHealth();
 
-                // Gust of Wind
+                // Gust of Wind (防止特定击退法术等触发无谓记录)
                 if (GetDummyAura(43621))
                     damage = GetMaxHealth() / 2;
 
                 EnvironmentalDamage(DAMAGE_FALL, damage);
             }
 
-            // Z given by moveinfo, LastZ, FallTime, WaterZ, MapZ, Damage, Safefall reduction
+            // Z given by moveinfo, LastZ, FallTime, WaterZ, MapZ, Damage, Safefall reduction (记录坠落伤害调试日志)
             DEBUG_LOG("FALLDAMAGE z=%f sz=%f pZ=%f FallTime=%d mZ=%f damage=%d SF=%d", position.z, height, GetPositionZ(), movementInfo.GetFallTime(), height, damage, safe_fall);
         }
     }
 }
 
+/// 学习指定天赋树节点的下一等级并校验前提天赋与已投入点数
 void Player::LearnTalent(uint32 talentId, uint32 talentRank)
 {
     uint32 CurTalentPoints = GetFreeTalentPoints();
@@ -21514,11 +21605,11 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank)
     if (!talentTabInfo)
         return;
 
-    // prevent learn talent for different class (cheating)
+    // prevent learn talent for different class (cheating) (禁止学习其他职业的天赋，防作弊)
     if ((getClassMask() & talentTabInfo->ClassMask) == 0)
         return;
 
-    // find current max talent rank
+    // find current max talent rank (查找当前已学的该天赋最高等级)
     uint32 curtalent_maxrank = 0;
     for (int32 k = MAX_TALENT_RANK - 1; k > -1; --k)
     {
@@ -21529,15 +21620,15 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank)
         }
     }
 
-    // we already have same or higher talent rank learned
+    // we already have same or higher talent rank learned (已学会同级或更高等级天赋则拒绝)
     if (curtalent_maxrank >= (talentRank + 1))
         return;
 
-    // check if we have enough talent points
+    // check if we have enough talent points (校验剩余可用天赋点数)
     if (CurTalentPoints < (talentRank - curtalent_maxrank + 1))
         return;
 
-    // Check if it requires another talent
+    // Check if it requires another talent (校验前置依赖天赋等级)
     if (talentInfo->DependsOn > 0)
     {
         if (TalentEntry const* depTalentInfo = sTalentStore.LookupEntry(talentInfo->DependsOn))
@@ -21555,22 +21646,22 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank)
         }
     }
 
-    // Check if it requires spell
+    // Check if it requires spell (校验是否已学会前置依赖法术)
     if (talentInfo->DependsOnSpell && !HasSpell(talentInfo->DependsOnSpell))
         return;
 
-    // Find out how many points we have in this field
+    // Find out how many points we have in this field (统计当前天赋页已投入的总点数)
     uint32 spentPoints = 0;
 
     uint32 tTab = talentInfo->TalentTab;
     if (talentInfo->Row > 0)
     {
         unsigned int numRows = sTalentStore.GetNumRows();
-        for (unsigned int i = 0; i < numRows; ++i)          // Loop through all talents.
+        for (unsigned int i = 0; i < numRows; ++i)          // Loop through all talents. (遍历该职业当前天赋树页的所有天赋)
         {
-            // Someday, someone needs to revamp
+            // Someday, someone needs to revamp (注：此处按天赋树全部遍历计算已投点数，)
             const TalentEntry* tmpTalent = sTalentStore.LookupEntry(i);
-            if (tmpTalent)                                  // the way talents are tracked
+            if (tmpTalent)                                  // the way talents are tracked (日后可优化天赋点数追踪方式)
             {
                 if (tmpTalent->TalentTab == tTab)
                 {
@@ -21589,11 +21680,11 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank)
         }
     }
 
-    // not have required min points spent in talent tree
+    // not have required min points spent in talent tree (当前天赋页投入点数未达到该行所需门槛)
     if (spentPoints < (talentInfo->Row * MAX_TALENT_RANK))
         return;
 
-    // spell not set in talent.dbc
+    // spell not set in talent.dbc (Talent.dbc 中未配置对应法术)
     uint32 spellid = talentInfo->RankID[talentRank];
     if (spellid == 0)
     {
@@ -21601,11 +21692,11 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank)
         return;
     }
 
-    // already known
+    // already known (目标天赋法术已学会)
     if (HasSpell(spellid))
         return;
 
-    // learn! (other talent ranks will unlearned at learning)
+    // learn! (other talent ranks will unlearned at learning) (学习新等级天赋，低等级天赋将自动遗忘)
     learnSpell(spellid, false, true);
     DETAIL_LOG("TalentID: %u Rank: %u Spell: %u\n", talentId, talentRank, spellid);
 }
@@ -21659,7 +21750,7 @@ bool Player::IsPetNeedBeTemporaryUnsummoned(Pet* pet) const
             return true;
     }
 
-    if (HasAuraType(SPELL_AURA_FLY)) // if not IsMounted and has aura, means we are removing flying mount
+    if (HasAuraType(SPELL_AURA_FLY)) // if not IsMounted and has aura, means we are removing flying mount (若未上马但存在飞行光环，视为正在解除飞行坐骑)
         return true;
 
     if (IsTaxiFlying())
@@ -21673,7 +21764,7 @@ void Player::ResummonPetTemporaryUnSummonedIfAny()
     if (!m_temporaryUnsummonedPetNumber)
         return;
 
-    // not resummon in not appropriate state
+    // not resummon in not appropriate state (死亡、飞行、骑乘或战场准备期等不适合时暂不召回宠物)
     if (IsPetNeedBeTemporaryUnsummoned(nullptr))
         return;
 
@@ -21689,7 +21780,7 @@ void Player::ResummonPetTemporaryUnSummonedIfAny()
 
 void Player::_SaveBGData()
 {
-    // nothing save
+    // nothing save (战场数据无修改，跳过保存)
     if (!m_bgData.m_needSave)
         return;
 
@@ -21703,7 +21794,7 @@ void Player::_SaveBGData()
     if (m_bgData.bgInstanceID)
     {
         stmt = CharacterDatabase.CreateStatement(insBGData, "INSERT INTO character_battleground_data VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        /* guid, bgInstanceID, bgTeam, x, y, z, o, map */
+        /* guid, bgInstanceID, bgTeam, x, y, z, o, map (保存战场实例与入场前位置) */
         stmt.addUInt32(GetGUIDLow());
         stmt.addUInt32(m_bgData.bgInstanceID);
         stmt.addUInt32(uint32(m_bgData.bgTeam));
@@ -21748,7 +21839,7 @@ void Player::SetHomebindToLocation(WorldLocation const& loc, uint32 area_id)
     m_homebindY = loc.coord_y;
     m_homebindZ = loc.coord_z;
 
-    // update sql homebind
+    // update sql homebind (将新炉石绑定点写入数据库)
     CharacterDatabase.PExecute("UPDATE character_homebind SET map = '%u', zone = '%u', position_x = '%f', position_y = '%f', position_z = '%f' WHERE guid = '%u'",
                                m_homebindMapId, m_homebindAreaId, m_homebindX, m_homebindY, m_homebindZ, GetGUIDLow());
 }
@@ -21801,7 +21892,7 @@ void Player::SetRestType(RestType n_r_type, uint32 areaTriggerId /*= 0*/)
     {
         RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING);
 
-        // Set player to FFA PVP when not in rested environment.
+        // Set player to FFA PVP when not in rested environment. (在 FFA 服务器中离开休息区时开启自由混战 PvP 标志)
         if (sWorld.IsFFAPvPRealm())
             SetPvPFreeForAll(true);
     }
@@ -21820,7 +21911,7 @@ void Player::SetRestType(RestType n_r_type, uint32 areaTriggerId /*= 0*/)
 void Player::SendDuelCountdown(uint32 counter) const
 {
     WorldPacket data(SMSG_DUEL_COUNTDOWN, 4);
-    data << uint32(counter);                                // seconds
+    data << uint32(counter);                                // seconds (倒计时秒数)
     GetSession()->SendPacket(data);
 }
 
@@ -21843,6 +21934,7 @@ bool Player::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex
     return Unit::IsImmuneToSpellEffect(spellInfo, index, castOnSelf);
 }
 
+/// 检查玩家进入区域触发器对应副本的准入条件（等级、钥匙、任务、次数与人数上限）
 AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& miscRequirement, bool forceAllChecks)
 {
     miscRequirement = 0;
@@ -21856,22 +21948,22 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
 
     bool isRegularTargetMap = !mapEntry->IsNonRaidDungeon() || GetDifficulty() == REGULAR_DIFFICULTY;
 
-    // Heroic allowed only on TBC instances
+    // Heroic allowed only on TBC instances (英雄难度仅适用于 TBC 资料片副本)
     if (!isRegularTargetMap && mapEntry->IsDungeon() && mapEntry->Expansion() != 1)
         return AREA_LOCKSTATUS_MISSING_DIFFICULTY;
 
-    // Expansion requirement
+    // Expansion requirement (检查玩家账号资料片权限)
     if (GetSession()->GetExpansion() < mapEntry->Expansion())
     {
         miscRequirement = mapEntry->Expansion();
         return AREA_LOCKSTATUS_INSUFFICIENT_EXPANSION;
     }
 
-    // Gamemaster can always enter
+    // Gamemaster can always enter (GM 模式下忽略常规门禁条件直接放行)
     if (IsGameMaster())
         return AREA_LOCKSTATUS_OK;
 
-    // Level Requirements
+    // Level Requirements (检查进入副本的最低/最高等级限制)
     if (GetLevel() < at->requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
     {
         miscRequirement = at->requiredLevel;
@@ -21883,7 +21975,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
         return AREA_LOCKSTATUS_TOO_LOW_LEVEL;
     }
 
-    // Raid Requirements
+    // Raid Requirements (检查是否必须处于团队中才能进入)
     if (mapEntry->IsRaid() && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_RAID))
         if (!GetGroup() || !GetGroup()->IsRaidGroup())
             return AREA_LOCKSTATUS_RAID_LOCKED;
@@ -21893,7 +21985,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
         return AREA_LOCKSTATUS_OK;
 #endif
 
-    // Item Requirements: must have requiredItem OR requiredItem2, report the first one that's missing
+    // Item Requirements: must have requiredItem OR requiredItem2, report the first one that's missing (校验钥匙/门任务物品需求)
     if (at->requiredItem)
     {
         if (!HasItemCount(at->requiredItem, 1) &&
@@ -21908,7 +22000,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
         miscRequirement = at->requiredItem2;
         return AREA_LOCKSTATUS_MISSING_ITEM;
     }
-    // Heroic item requirements
+    // Heroic item requirements (校验英雄副本所需的声望钥匙)
     if (!isRegularTargetMap && at->heroicKey)
     {
         if (!HasItemCount(at->heroicKey, 1) && (!at->heroicKey2 || !HasItemCount(at->heroicKey2, 1)))
@@ -21923,7 +22015,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
         return AREA_LOCKSTATUS_MISSING_ITEM;
     }
 
-    // Quest Requirements
+    // Quest Requirements (校验前置开门任务完成状态)
     if (isRegularTargetMap && at->requiredQuest && !GetQuestRewardStatus(at->requiredQuest))
     {
         miscRequirement = at->requiredQuest;
@@ -21935,30 +22027,30 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
         return AREA_LOCKSTATUS_QUEST_NOT_COMPLETED;
     }
 
-    // If the map is not created, assume it is possible to enter it.
+    // If the map is not created, assume it is possible to enter it. (若目标副本地图尚未创建，默认允许进入)
     DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(at->target_mapId);
     Map* map = sMapMgr.FindMap(at->target_mapId, state ? state->GetInstanceId() : 0);
 
-    // check if this account try to abuse reseting instance
+    // check if this account try to abuse reseting instance (校验每小时最多进入 5 个新副本的防刷机制)
     if (mapEntry->IsNonRaidDungeon() && ((map && map->GetDifficulty() == DUNGEON_DIFFICULTY_NORMAL) || (GetDifficulty() == DUNGEON_DIFFICULTY_NORMAL)))
     {
         if (!CanEnterNewInstance(state ? state->GetInstanceId() : 0))
             return AREA_LOCKSTATUS_TOO_MANY_INSTANCE;
     }
 
-    // Map's state check
+    // Map's state check (检查目标副本实例当前是否允许进入)
     if (map && map->IsDungeon())
     {
-        // cannot enter if the instance is full (player cap), GMs don't count, must not check when teleporting around the same map
+        // cannot enter if the instance is full (player cap), GMs don't count, must not check when teleporting around the same map (检查副本人数上限，GM 不计入人数且同图传送不校验)
         if (GetMapId() != at->target_mapId || forceAllChecks)
             if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
                 return AREA_LOCKSTATUS_INSTANCE_IS_FULL;
 
-        // In Combat check
+        // In Combat check (首领战斗进行中禁止进入)
         if (map && map->GetInstanceData() && map->GetInstanceData()->IsEncounterInProgress())
             return AREA_LOCKSTATUS_ZONE_IN_COMBAT;
 
-        // Bind Checks
+        // Bind Checks (副本进度绑定兼容性与重置校验)
         InstancePlayerBind* pBind = GetBoundInstance(at->target_mapId, GetDifficulty());
         if (pBind && pBind->perm && pBind->state != state)
             return AREA_LOCKSTATUS_HAS_BIND;
@@ -21971,36 +22063,36 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
 
 float Player::ComputeRest(time_t timePassed, bool offline /*= false*/, bool inRestPlace /*= false*/) const
 {
-    // Every 8h in resting zone we gain a bubble
-    // A bubble is 5% of the total xp so there is 20 bubbles
-    // So we gain (total XP/20 every 8h) (8h = 288800 sec)
-    // (TotalXP/20)/28800; simplified to (TotalXP/576000) per second
-    // Client automatically double the value sent so we have to divide it by 2
-    // So final formula (TotalXP/1152000)
-    float bonus = timePassed * (GetUInt32Value(PLAYER_NEXT_LEVEL_XP) / 1152000.0f); // Get the gained rest xp for given second
+    // Every 8h in resting zone we gain a bubble (在休息区每 8 小时获得 1 格双倍精力，共 20 格)
+    // A bubble is 5% of the total xp so there is 20 bubbles (每格为升级所需总经验的 5%)
+    // So we gain (total XP/20 every 8h) (8h = 288800 sec) (即每 8 小时获得 总经验/20)
+    // (TotalXP/20)/28800; simplified to (TotalXP/576000) per second (化简为每秒 TotalXP / 576000)
+    // Client automatically double the value sent so we have to divide it by 2 (因客户端默认显示双倍值，服务端计算结果需除以 2)
+    // So final formula (TotalXP/1152000) (最终公式为每秒 TotalXP / 1152000)
+    float bonus = timePassed * (GetUInt32Value(PLAYER_NEXT_LEVEL_XP) / 1152000.0f); // Get the gained rest xp for given second (计算给定时间段内累积的休息经验)
     if (!offline)
-        bonus *= sWorld.getConfig(CONFIG_FLOAT_RATE_REST_INGAME);                   // Apply the custom setting
+        bonus *= sWorld.getConfig(CONFIG_FLOAT_RATE_REST_INGAME);                   // Apply the custom setting (乘以服务器自定义休息经验倍率)
     else
     {
         if (inRestPlace)
             bonus *= sWorld.getConfig(CONFIG_FLOAT_RATE_REST_OFFLINE_IN_TAVERN_OR_CITY);
         else
-            bonus *= sWorld.getConfig(CONFIG_FLOAT_RATE_REST_OFFLINE_IN_WILDERNESS) / 4.0f; // bonus is reduced by 4 when not in rest place
+            bonus *= sWorld.getConfig(CONFIG_FLOAT_RATE_REST_OFFLINE_IN_WILDERNESS) / 4.0f; // bonus is reduced by 4 when not in rest place (离线不在旅店或主城休息区时，获取速率降低为 1/4)
     }
     return bonus;
 }
 
-// player is interacting so we have to remove non authorized aura
+// player is interacting so we have to remove non authorized aura (玩家正在进行交互操作，移除不允许的隐蔽类光环)
 void Player::DoInteraction()
 {
-    // remove some aura like stealth aura
+    // remove some aura like stealth aura (交互时移除潜行等非授权光环)
     RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_INTERACTING);
     SendForcedObjectUpdate();
 }
 
 void Player::DoLoot()
 {
-    // remove some aura like stealth aura
+    // remove some aura like stealth aura (拾取时移除潜行等非授权光环)
     RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_LOOTING);
     SendForcedObjectUpdate();
 }
@@ -22027,16 +22119,17 @@ bool Player::IsPreventingDeath() const
     return m_ExtraFlags & PLAYER_EXTRA_GM_UNKILLABLE;
 }
 
+/// 触发并发送玩家的全局公共冷却（GCD）
 void Player::AddGCD(SpellEntry const& spellEntry, uint32 /*forcedDuration = 0*/, bool updateClient /*= false*/)
 {
     int32 gcdDuration = spellEntry.StartRecoveryTime;
     if (!spellEntry.StartRecoveryCategory && !gcdDuration)
         return;
 
-    // gcd modifier auras applied only to self spells and only player have mods for this
+    // gcd modifier auras applied only to self spells and only player have mods for this (应用减少公共冷却的法术修正与光环)
     ApplySpellMod(spellEntry.Id, SPELLMOD_GLOBAL_COOLDOWN, gcdDuration);
 
-    // apply haste rating
+    // apply haste rating (应用法术/近战急速等级对 GCD 的缩减)
     if (spellEntry.StartRecoveryCategory == 133 && gcdDuration == 1500 &&
         spellEntry.DmgClass != SPELL_DAMAGE_CLASS_MELEE && spellEntry.DmgClass != SPELL_DAMAGE_CLASS_RANGED &&
         !spellEntry.HasAttribute(SPELL_ATTR_USES_RANGED_SLOT) && !spellEntry.HasAttribute(SPELL_ATTR_IS_ABILITY))
@@ -22049,7 +22142,7 @@ void Player::AddGCD(SpellEntry const& spellEntry, uint32 /*forcedDuration = 0*/,
     if (!gcdDuration)
         return;
 
-    // TODO: Remove this once spells are queuable and GCD is checked on execute
+    // TODO: Remove this once spells are queuable and GCD is checked on execute (待办：若实现法术队列并统一在执行时检查 GCD，可移除此偏移)
     if (uint32 latency = GetSession()->GetLatency())
     {
         if (latency > 300)
@@ -22065,7 +22158,7 @@ void Player::AddGCD(SpellEntry const& spellEntry, uint32 /*forcedDuration = 0*/,
     if (!updateClient)
         return;
 
-    // send to client
+    // send to client (向客户端发送全局公共冷却时间)
     WorldPacket data(SMSG_SPELL_COOLDOWN, 8 + 1 + 4);
     data << GetObjectGuid();
     data << uint8(SPELL_COOLDOWN_FLAG_INCLUDE_GCD);
@@ -22074,11 +22167,12 @@ void Player::AddGCD(SpellEntry const& spellEntry, uint32 /*forcedDuration = 0*/,
     GetSession()->SendPacket(data);
 }
 
+/// 为指定法术及关联类别添加冷却时间并通知客户端
 void Player::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* itemProto /*= nullptr*/, bool permanent /*= false*/, uint32 forcedDuration /*= 0*/, bool ignoreCat /*= false*/)
 {
     uint32 spellCategory = spellEntry.Category;
-    uint32 recTime = spellEntry.RecoveryTime; // int because of spellmod calculations
-    uint32 categoryRecTime = ignoreCat ? 0 : spellEntry.CategoryRecoveryTime; // int because of spellmod calculations
+    uint32 recTime = spellEntry.RecoveryTime; // int because of spellmod calculations (使用有符号整型以便进行法术修正减免运算)
+    uint32 categoryRecTime = ignoreCat ? 0 : spellEntry.CategoryRecoveryTime; // int because of spellmod calculations (使用有符号整型防止负向溢出)
     uint32 itemId = 0;
 
     auto pickCooldowns = [&](ItemPrototype const* itemProto)
@@ -22130,14 +22224,14 @@ void Player::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* item
         recTime = forcedDuration;
     else
     {
-        // shoot spells used equipped item cooldown values already assigned in GetAttackTime(RANGED_ATTACK)
-        // prevent 0 cooldowns set by another way
+        // shoot spells used equipped item cooldown values already assigned in GetAttackTime(RANGED_ATTACK) (魔杖射击等法术沿用远程武器攻击间隔，)
+        // prevent 0 cooldowns set by another way (防止被其他途径覆盖为 0)
         if (spellEntry.HasAttribute(SPELL_ATTR_USES_RANGED_SLOT) && !spellEntry.HasAttribute(SPELL_ATTR_EX2_DO_NOT_RESET_COMBAT_TIMERS))
             recTime += GetFloatValue(UNIT_FIELD_RANGEDATTACKTIME);
     }
 
-    // blizzlike code for choosing which is recTime > categoryRecTime after spellmod application
-    // We use signed intermediates to prevent uint32 underflow when a flat reduction exceeds the CD value
+    // blizzlike code for choosing which is recTime > categoryRecTime after spellmod application (按官服规则在应用法术修正后比较单法术与类别冷却)
+    // We use signed intermediates to prevent uint32 underflow when a flat reduction exceeds the CD value (使用有符号中间量防止固定减免超出原冷却导致无符号下溢)
     if (recTime)
     {
         int32 signedRecTime = static_cast<int32>(recTime);
@@ -22157,14 +22251,14 @@ void Player::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* item
             if (ItemPrototype const* itemProto = sObjectMgr.GetItemPrototype(oldItemId))
                 pickCooldowns(itemProto);
 
-        // ready to add the cooldown
-        if (recTime || categoryRecTime) // only send event if was permanent but no cds
+        // ready to add the cooldown (就绪，向冷却表写入单法术冷却与类别冷却)
+        if (recTime || categoryRecTime) // only send event if was permanent but no cds (仅在需同步客户端的冷却场景发送事件)
             m_cooldownMap.AddCooldown(GetMap()->GetCurrentClockTime(), spellEntry.Id, recTime, spellCategory, categoryRecTime, itemId);
 
-        // after some aura fade or potion activation we have to send cooldown event to start cd client side
+        // after some aura fade or potion activation we have to send cooldown event to start cd client side (药水生效或光环结束后通知客户端开始倒计时)
         if (haveToSendEvent)
         {
-            // client keeps track of category cd by original spellId
+            // client keeps track of category cd by original spellId (客户端按原始法术 ID 追踪所属类别冷却)
             if (spellCategory && spellEntry.HasAttribute(SPELL_ATTR_COOLDOWN_ON_EVENT))
             {
                 auto itr = m_cooldownMap.FindByCategory(spellCategory);
@@ -22177,7 +22271,7 @@ void Player::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* item
                 }
             }
 
-            // Send activate cooldown timer (possible 0) at client side
+            // Send activate cooldown timer (possible 0) at client side (向客户端下发冷却计时包)
             WorldPacket data(SMSG_COOLDOWN_EVENT, (4 + 8));
             data << uint32(spellEntry.Id);
             data << GetObjectGuid();
@@ -22211,9 +22305,9 @@ void Player::RemoveSpellCategoryCooldown(uint32 category, bool updateClient /*= 
 void Player::RemoveAllCooldowns(bool sendOnly /*= false*/)
 {
     std::set<uint32> spellsSent;
-    // not reset gcd (usually small enough)
+    // not reset gcd (usually small enough) (不重置极短的公共冷却)
 
-    // reset normal cd
+    // reset normal cd (清除非永久常规法术冷却)
     for (auto& cdItr : m_cooldownMap)
     {
         auto& cdData = cdItr.second;
@@ -22224,7 +22318,7 @@ void Player::RemoveAllCooldowns(bool sendOnly /*= false*/)
         }
     }
 
-    // reset lockout spell
+    // reset lockout spell (清除法术反制/学派锁定冷却)
     for (auto& lockoutItr : m_lockoutMap)
     {
         SpellSchoolMask lockoutSchoolMask = SpellSchoolMask(1 << lockoutItr.first);
@@ -22250,7 +22344,7 @@ void Player::LockOutSpells(SpellSchoolMask schoolMask, uint32 duration)
     ByteBuffer cdData;
     uint32 spellCount = 0;
 
-    // Send CD to clients
+    // Send CD to clients (通知客户端各法术冷却状态)
     for (auto ownerSpellItr : GetSpellMap())
     {
         if (ownerSpellItr.second.state == PLAYERSPELL_REMOVED)
@@ -22259,7 +22353,7 @@ void Player::LockOutSpells(SpellSchoolMask schoolMask, uint32 duration)
         uint32 unSpellId = ownerSpellItr.first;
         SpellEntry const* spellEntry = sSpellTemplate.LookupEntry<SpellEntry>(unSpellId);
 
-        // Not send cooldown for this spells
+        // Not send cooldown for this spells (跳过特殊被动/隐藏法术)
         if (spellEntry->HasAttribute(SPELL_ATTR_COOLDOWN_ON_EVENT))
             continue;
 
@@ -22270,7 +22364,7 @@ void Player::LockOutSpells(SpellSchoolMask schoolMask, uint32 duration)
         if ((schoolMask & GetSpellSchoolMask(spellEntry)) && (!spellCDFound || expireTime < lockoutExpireTime))
         {
             cdData << uint32(unSpellId);
-            cdData << uint32(duration);                     // in m.secs
+            cdData << uint32(duration);                     // in m.secs (将持续时间转为毫秒)
             ++spellCount;
         }
     }
@@ -22281,7 +22375,7 @@ void Player::LockOutSpells(SpellSchoolMask schoolMask, uint32 duration)
     data.append(cdData);
     GetSession()->SendPacket(data);
 
-    // store lockout
+    // store lockout (记录该法术的学派锁定冷却时间)
     WorldObject::LockOutSpells(schoolMask, duration);
 }
 
@@ -22295,7 +22389,7 @@ void Player::RemoveSpellLockout(SpellSchoolMask spellSchoolMask, std::set<uint32
         uint32 unSpellId = ownerSpellItr.first;
         SpellEntry const* spellEntry = sSpellTemplate.LookupEntry<SpellEntry>(unSpellId);
 
-        // Not send cooldown for this spells
+        // Not send cooldown for this spells (跳过无需通知客户端的法术)
         if (!spellEntry || !(GetSpellSchoolMask(spellEntry) & spellSchoolMask) || spellEntry->HasAttribute(SPELL_ATTR_COOLDOWN_ON_EVENT))
             continue;
 
@@ -22311,8 +22405,8 @@ void Player::RemoveSpellLockout(SpellSchoolMask spellSchoolMask, std::set<uint32
     }
 }
 
-/* System for limiting instance entering to 5 per hour */
-// check if player can enter new instance
+/* System for limiting instance entering to 5 per hour (限制每小时最多进入 5 个新副本的防刷机制) */
+// check if player can enter new instance (检查玩家当前是否允许进入新的副本实例)
 bool Player::CanEnterNewInstance(uint32 instanceId)
 {
     if (IsGameMaster())
@@ -22324,7 +22418,7 @@ bool Player::CanEnterNewInstance(uint32 instanceId)
     return m_enteredInstances.size() < PLAYER_NEW_INSTANCE_LIMIT_PER_HOUR;
 }
 
-// when instance was entered
+// when instance was entered (记录进入该副本实例的时间戳)
 void Player::AddNewInstanceId(uint32 instanceId)
 {
     if (m_enteredInstances.find(instanceId) == m_enteredInstances.end())
@@ -22371,7 +22465,7 @@ void Player::_SaveNewInstanceIdTimer()
     }
 }
 
-// Clears timers that expired
+// Clears timers that expired (清除已超过 1 小时滚动窗口的副本进入计时记录)
 void Player::UpdateNewInstanceIdTimers(TimePoint const& now)
 {
     for (auto iter = m_enteredInstances.begin(); iter != m_enteredInstances.end();)
@@ -22404,7 +22498,7 @@ void Player::SendPetBar()
 
 void Player::StartCinematic()
 {
-    // server sent cinematic start?
+    // server sent cinematic start? (通知过场动画管理器开始播放)
     if (!m_cinematicMgr)
         return;
 
@@ -22413,7 +22507,7 @@ void Player::StartCinematic()
 
 void Player::StopCinematic()
 {
-    // any cinematic started?
+    // any cinematic started? (通知过场动画管理器停止播放)
     if (!m_cinematicMgr)
         return;
 
@@ -22449,13 +22543,13 @@ bool Player::GetsRecruitAFriendBonus()
                     continue;
 
                 if (!player->IsAtRecruitAFriendDistance(this))
-                    continue;                               // member (alive or dead) or his corpse at req. distance
+                    continue;                               // member (alive or dead) or his corpse at req. distance (战友招募队友须在有效经验共享距离内)
 
-                    // level must be allowed to get RaF bonus
+                    // level must be allowed to get RaF bonus (受招募等级上限限制)
                 if (player->GetLevel() > sWorld.getConfig(CONFIG_UINT32_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL))
                     continue;
 
-                // level difference must be small enough to get RaF bonus, UNLESS we are lower level
+                // level difference must be small enough to get RaF bonus, UNLESS we are lower level (双倍/三倍经验要求双方等级差不超过 3 级，低等级方例外)
                 if (player->GetLevel() < GetLevel())
                     if (uint8(GetLevel() - player->GetLevel()) > sWorld.getConfig(CONFIG_UINT32_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL_DIFFERENCE))
                         continue;
@@ -22515,7 +22609,7 @@ bool Player::SetStunnedByLogout(bool apply)
 {
     if (SetStunned(apply, ObjectGuid(), 0, true))
     {
-        // Sit down when eligible:
+        // Sit down when eligible: (符合条件时在等待登出期间坐下)
         if (apply)
         {
             if (IsStandState())
@@ -22524,7 +22618,7 @@ bool Player::SetStunnedByLogout(bool apply)
                     SetStandState(UNIT_STAND_STATE_SIT);
             }
         }
-        // Stand up on cancel
+        // Stand up on cancel (取消登出时起立)
         else if (getStandState() == UNIT_STAND_STATE_SIT)
             SetStandState(UNIT_STAND_STATE_STAND);
 

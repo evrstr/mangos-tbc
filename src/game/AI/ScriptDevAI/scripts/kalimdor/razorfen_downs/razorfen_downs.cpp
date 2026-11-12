@@ -21,6 +21,10 @@ SDComment: Quest 3525
 SDCategory: Razorfen Downs
 EndScriptData */
 
+/**
+ * 剃刀高地：首领战斗与 NPC 交互脚本
+ */
+
 /* ContentData
 npc_belnistrasz
 EndContentData */
@@ -32,41 +36,42 @@ EndContentData */
 # npc_belnistrasz
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_EXTINGUISHING_THE_IDOL    = 3525,
+    QUEST_EXTINGUISHING_THE_IDOL    = 3525,                 // 任务 ID
 
-    SAY_BELNISTRASZ_READY           = -1129005,
-    SAY_BELNISTRASZ_START_RIT       = -1129006,
-    SAY_BELNISTRASZ_AGGRO_1         = -1129007,
-    SAY_BELNISTRASZ_AGGRO_2         = -1129008,
-    SAY_BELNISTRASZ_3_MIN           = -1129009,
-    SAY_BELNISTRASZ_2_MIN           = -1129010,
-    SAY_BELNISTRASZ_1_MIN           = -1129011,
-    SAY_BELNISTRASZ_FINISH          = -1129012,
+    SAY_BELNISTRASZ_READY           = -1129005,             // 剧情台词/喊话文本 ID
+    SAY_BELNISTRASZ_START_RIT       = -1129006,             // 剧情台词/喊话文本 ID
+    SAY_BELNISTRASZ_AGGRO_1         = -1129007,             // 剧情台词/喊话文本 ID
+    SAY_BELNISTRASZ_AGGRO_2         = -1129008,             // 剧情台词/喊话文本 ID
+    SAY_BELNISTRASZ_3_MIN           = -1129009,             // 剧情台词/喊话文本 ID
+    SAY_BELNISTRASZ_2_MIN           = -1129010,             // 剧情台词/喊话文本 ID
+    SAY_BELNISTRASZ_1_MIN           = -1129011,             // 剧情台词/喊话文本 ID
+    SAY_BELNISTRASZ_FINISH          = -1129012,             // 剧情台词/喊话文本 ID
 
-    NPC_IDOL_ROOM_SPAWNER           = 8611,
+    NPC_IDOL_ROOM_SPAWNER           = 8611,                 // NPC 条目 ID
 
-    NPC_WITHERED_BATTLE_BOAR        = 7333,
-    NPC_WITHERED_QUILGUARD          = 7329,
-    NPC_DEATHS_HEAD_GEOMANCER       = 7335,
-    NPC_PLAGUEMAW_THE_ROTTING       = 7356,
+    NPC_WITHERED_BATTLE_BOAR        = 7333,                 // NPC 条目 ID
+    NPC_WITHERED_QUILGUARD          = 7329,                 // NPC 条目 ID
+    NPC_DEATHS_HEAD_GEOMANCER       = 7335,                 // NPC 条目 ID
+    NPC_PLAGUEMAW_THE_ROTTING       = 7356,                 // NPC 条目 ID
 
-    GO_BELNISTRASZ_BRAZIER          = 152097,
-    GO_IDOL_OVEN_FIRE               = 151951,
-    GO_IDOL_CUP_FIRE                = 151952,
-    GO_IDOL_MOUTH_FIRE              = 151973,
+    GO_BELNISTRASZ_BRAZIER          = 152097,               // 游戏对象条目 ID
+    GO_IDOL_OVEN_FIRE               = 151951,               // 游戏对象条目 ID
+    GO_IDOL_CUP_FIRE                = 151952,               // 游戏对象条目 ID
+    GO_IDOL_MOUTH_FIRE              = 151973,               // 游戏对象条目 ID
 
-    SPELL_ARCANE_INTELLECT          = 13326,                // use this somewhere (he has it as default)
-    SPELL_FIREBALL                  = 9053,
-    SPELL_FROST_NOVA                = 11831,
-    SPELL_IDOL_SHUTDOWN             = 12774,
-    SPELL_IDOL_ROOM_SHAKE           = 12816,
+    SPELL_ARCANE_INTELLECT          = 13326,                // use this somewhere (he has it as default) (说明)
+    SPELL_FIREBALL                  = 9053,                 // 技能法术：火球术
+    SPELL_FROST_NOVA                = 11831,                // 技能法术 ID
+    SPELL_IDOL_SHUTDOWN             = 12774,                // 技能法术 ID
+    SPELL_IDOL_ROOM_SHAKE           = 12816,                // 技能法术 ID
 
-    // summon spells only exist in 1.x
-    // SPELL_SUMMON_1                  = 12694,             // NPC_WITHERED_BATTLE_BOAR
-    // SPELL_SUMMON_2                  = 14802,             // NPC_DEATHS_HEAD_GEOMANCER
-    // SPELL_SUMMON_3                  = 14801,             // NPC_WITHERED_QUILGUARD
+    // summon spells only exist in 1.x (召唤法术)
+    // SPELL_SUMMON_1                  = 12694,             // NPC_WITHERED_BATTLE_BOAR (说明)
+    // SPELL_SUMMON_2                  = 14802,             // NPC_DEATHS_HEAD_GEOMANCER (说明)
+    // SPELL_SUMMON_3                  = 14801,             // NPC_WITHERED_QUILGUARD (说明)
 };
 
 static float m_fSpawnerCoord[3][4] =
@@ -78,6 +83,7 @@ static float m_fSpawnerCoord[3][4] =
 
 static const uint32 aGOList[] = {GO_IDOL_OVEN_FIRE, GO_IDOL_CUP_FIRE, GO_IDOL_MOUTH_FIRE};
 
+// npc_belnistraszAI NPC 脚本 AI
 struct npc_belnistraszAI : public npc_escortAI
 {
     npc_belnistraszAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -95,7 +101,7 @@ struct npc_belnistraszAI : public npc_escortAI
     uint32 m_uiFireballTimer;
     uint32 m_uiFrostNovaTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiFireballTimer  = 1000;
         m_uiFrostNovaTimer = 6000;
@@ -129,7 +135,7 @@ struct npc_belnistraszAI : public npc_escortAI
         {
             uint32 uiEntry = 0;
 
-            // ref TARGET_LOCATION_CASTER_RANDOM_CIRCUMFERENCE
+            // ref TARGET_LOCATION_CASTER_RANDOM_CIRCUMFERENCE (说明)
             float angle = 2.0f * M_PI_F * rand_norm_f();
             float fX, fZ, fY;
             pSummoner->GetClosePoint(fX, fZ, fY, 0.0f, 2.0f, angle);
@@ -152,7 +158,7 @@ struct npc_belnistraszAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         SpawnerSummon(pSummoned);
     }
@@ -162,7 +168,7 @@ struct npc_belnistraszAI : public npc_escortAI
         m_creature->SummonCreature(NPC_IDOL_ROOM_SPAWNER, m_fSpawnerCoord[iType][0], m_fSpawnerCoord[iType][1], m_fSpawnerCoord[iType][2], m_fSpawnerCoord[iType][3], TEMPSPAWN_TIMED_DESPAWN, 10000);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         if (uiPointId == 24)
         {
@@ -171,7 +177,7 @@ struct npc_belnistraszAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         if (HasEscortState(STATE_ESCORT_PAUSED))
         {
@@ -239,7 +245,7 @@ struct npc_belnistraszAI : public npc_escortAI
                         m_creature->RemoveAurasDueToSpell(SPELL_IDOL_SHUTDOWN);
                         SetEscortPaused(false);
 
-                        // Desactivate the fires on the idol now it is extinguished
+                        // Desactivate the fires on the idol now it is extinguished (说明)
                         DoCastSpellIfCan(m_creature, SPELL_IDOL_ROOM_SHAKE);
                         GameObjectList lOvenFires;
                         for (auto&& gameObjectEntry : aGOList)
@@ -283,12 +289,12 @@ struct npc_belnistraszAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_belnistrasz(Creature* pCreature)
+UnitAI* GetAI_npc_belnistrasz(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_belnistraszAI(pCreature);
 }
 
-bool QuestAccept_npc_belnistrasz(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_belnistrasz(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_EXTINGUISHING_THE_IDOL)
     {
@@ -303,7 +309,7 @@ bool QuestAccept_npc_belnistrasz(Player* pPlayer, Creature* pCreature, const Que
     return true;
 }
 
-void AddSC_razorfen_downs()
+void AddSC_razorfen_downs() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_belnistrasz";

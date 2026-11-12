@@ -20,7 +20,7 @@
 #include "Spells/SpellAuras.h"
 #include "Spells/SpellMgr.h"
 
-// 14185 - Preparation
+// 14185 - Preparation (伺机待发：立即重置闪避、疾跑、消失、冷血、暗影步与预谋的冷却时间)
 struct Preparation : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -36,14 +36,14 @@ struct Preparation : public SpellScript
 
 enum
 {
-    SPELL_DISTRACT      = 1725,
-    SPELL_EARTHBIND     = 3600,
-    SPELL_MASS_DISPEL   = 39897,
-    SPELL_MASS_DISPEL_2 = 32592,
+    SPELL_DISTRACT      = 1725,                             // 扰乱
+    SPELL_EARTHBIND     = 3600,                             // 地缚图腾减速脉冲
+    SPELL_MASS_DISPEL   = 39897,                            // 群体驱散
+    SPELL_MASS_DISPEL_2 = 32592,                            // 群体驱散（变体）
 };
 
-// Warning: Also currently used by Prowl
-// 1784 - Stealth, 5215 - Prowl
+// Warning: Also currently used by Prowl (警告：同时用于德鲁伊潜行 Prowl)
+// 1784 - Stealth, 5215 - Prowl (潜行与潜伏：地缚图腾和群体驱散不会打破潜行)
 struct Stealth : public AuraScript
 {
     bool OnCheckProc(Aura* /*aura*/, ProcExecutionData& data) const override // per 1.12.0 patch notes - no other indication of how it works
@@ -62,6 +62,7 @@ struct Stealth : public AuraScript
     }
 };
 
+// 施放已学习的最高等级潜行并清除其冷却时间
 void CastHighestStealthRank(Unit* caster)
 {
     if (!caster->IsPlayer())
@@ -76,26 +77,26 @@ void CastHighestStealthRank(Unit* caster)
     if (!stealthSpellEntry)
         return;
 
-    // reset cooldown on it if needed
+    // reset cooldown on it if needed (若潜行在冷却中则先移除冷却)
     if (!caster->IsSpellReady(*stealthSpellEntry))
         caster->RemoveSpellCooldown(*stealthSpellEntry);
 
     caster->CastSpell(nullptr, stealthSpellEntry, TRIGGERED_OLD_TRIGGERED);
 }
 
-// 1856 - Vanish
+// 1856 - Vanish (消失：强制进入最高等级潜行状态，并处理套装移速加成)
 struct VanishRogue : public SpellScript
 {
     void OnCast(Spell* spell) const override
     {
         CastHighestStealthRank(spell->GetCaster());
         // meant to be hooked like override scripts but we dont have that functionality yet
-        if (spell->GetCaster()->HasAura(23582, EFFECT_INDEX_0)) // amount has trigger chance 100
+        if (spell->GetCaster()->HasAura(23582, EFFECT_INDEX_0)) // amount has trigger chance 100 (T3 套装移动速度触发)
             spell->GetCaster()->CastSpell(nullptr, 23583, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
-// 6770 - Sap
+// 6770 - Sap (闷棍：手动在命中时移除目标的潜行状态)
 struct SapRogue : public SpellScript
 {
     // SPELL_ATTR_EX3_SUPPRESS_TARGET_PROCS prevents sap to proc stealth normally
@@ -106,7 +107,7 @@ struct SapRogue : public SpellScript
     }
 };
 
-// 13983 - Setup
+// 13983 - Setup (调整天赋：仅当目标当前正在瞄准/选中触发者时允许触发连击点)
 struct SetupRogue : public AuraScript
 {
     bool OnCheckProc(Aura* /*aura*/, ProcExecutionData& data) const override
@@ -115,7 +116,7 @@ struct SetupRogue : public AuraScript
     }
 };
 
-// 14082 - Dirty Deeds
+// 14082 - Dirty Deeds (卑鄙行径：对生命值低于 35% 的目标按天赋效果 0 数值提高伤害)
 struct DirtyDeeds : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -140,26 +141,27 @@ struct DirtyDeeds : public AuraScript
                 return;
             }
 
-            // effect 0 have expected value but in negative state
+            // effect 0 have expected value but in negative state (效果 0 存的是负值能量消耗减免，取反即对应增伤百分比)
             totalMod *= (-eff0->GetModifier()->m_amount + 100.0f) / 100.0f;
         }
     }
 };
 
-// 31228 - Cheat Death
+// 31228 - Cheat Death (装死天赋：未在内置冷却中时按几率免疫致死，将血量保留至 10% 并触发 31231)
 struct CheatDeathRogue : public AuraScript
 {
     void OnAbsorb(Aura* aura, int32& currentAbsorb, int32& remainingDamage, uint32& /*reflectedSpellId*/, int32& /*reflectDamage*/, bool& preventedDeath, bool& dropCharge, DamageEffectType /*damageType*/) const override
     {
         if (!preventedDeath && aura->GetTarget()->IsPlayer() &&
             aura->GetHolder()->IsProcReady(aura->GetTarget()->GetMap()->GetCurrentClockTime()) &&
-            // Only if no cooldown
+            // Only if no cooldown (冷却就绪且随机判定成功)
             roll_chance_i(aura->GetModifier()->m_amount))
             // Only if roll
         {
             preventedDeath = true;
         }
         // always skip this spell in charge dropping, absorb amount calculation since it has chance as m_amount and doesn't need to absorb any damage
+        // 不消耗常规吸收量，仅作致死保护标志判定
         dropCharge = false;
         currentAbsorb = 0; // absorb is only done in death prevention case
         remainingDamage += currentAbsorb;
@@ -170,13 +172,13 @@ struct CheatDeathRogue : public AuraScript
         SpellEntry const* cheatDeath = sSpellTemplate.LookupEntry<SpellEntry>(31231);
         aura->GetTarget()->CastSpell(nullptr, cheatDeath, TRIGGERED_OLD_TRIGGERED);
         aura->GetHolder()->SetProcCooldown(std::chrono::seconds(60), aura->GetTarget()->GetMap()->GetCurrentClockTime());
-        // with health > 10% lost health until health==10%, in other case no losses
+        // with health > 10% lost health until health==10%, in other case no losses (将剩余伤害截断至刚好保留 10% 最大生命值)
         uint32 health10 = aura->GetTarget()->GetMaxHealth() / 10;
         remainingDamage = aura->GetTarget()->GetHealth() > health10 ? aura->GetTarget()->GetHealth() - health10 : 0;
     }
 };
 
-// 45182 - Cheating Death
+// 45182 - Cheating Death (装死减伤光环：在 3 秒内根据韧性提供最高 90% 全伤害减免)
 struct CheatingDeath : public AuraScript
 {
     void OnAuraInit(Aura* aura) const override
@@ -209,6 +211,7 @@ struct CheatingDeath : public AuraScript
         if (!aura->GetTarget()->IsPlayer())
             return;
 
+        // 减伤比例受韧性（暴击减免等级）乘以 8 倍影响，封顶 -90%
         float mod = static_cast<Player*>(aura->GetTarget())->GetRatingBonusValue(CR_CRIT_TAKEN_MELEE) * (-8.0f);
         if (mod < float(aura->GetModifier()->m_amount))
             mod = float(aura->GetModifier()->m_amount);
@@ -217,7 +220,7 @@ struct CheatingDeath : public AuraScript
     }
 };
 
-// 16511 - Hemorrhage
+// 16511 - Hemorrhage (出血：命中后额外触发流血/连击关联子法术 34071)
 struct Hemorrhage : public SpellScript
 {
     void OnAfterHit(Spell* spell) const override
@@ -226,6 +229,7 @@ struct Hemorrhage : public SpellScript
     }
 };
 
+// 注册盗贼职业法术脚本
 void LoadRogueScripts()
 {
     RegisterSpellScript<Preparation>("spell_preparation");

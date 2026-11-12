@@ -27,6 +27,7 @@
 #include "Entities/Unit.h"
 #include "World/World.h"
 
+/// 判断指定技能 ID 是否为主专业技能（查询 SkillLine.dbc 分类）
 bool IsPrimaryProfessionSkill(uint32 skill)
 {
     SkillLineEntry const* pSkill = sSkillLineStore.LookupEntry(skill);
@@ -39,20 +40,24 @@ bool IsPrimaryProfessionSkill(uint32 skill)
     return true;
 }
 
+/// 构造函数
 SpellMgr::SpellMgr()
 {
 }
 
+/// 析构函数
 SpellMgr::~SpellMgr()
 {
 }
 
+/// 获取 SpellMgr 全局唯一单例
 SpellMgr& SpellMgr::Instance()
 {
     static SpellMgr spellMgr;
     return spellMgr;
 }
 
+/// 获取法术基础持续时间（毫秒，-1 表示永久）
 int32 GetSpellDuration(SpellEntry const* spellInfo)
 {
     if (!spellInfo)
@@ -63,6 +68,7 @@ int32 GetSpellDuration(SpellEntry const* spellInfo)
     return (du->Duration[0] == -1) ? -1 : abs(du->Duration[0]);
 }
 
+/// 获取法术最大持续时间（毫秒，连击点终结技等会使用该上限）
 int32 GetSpellMaxDuration(SpellEntry const* spellInfo)
 {
     if (!spellInfo)
@@ -73,6 +79,7 @@ int32 GetSpellMaxDuration(SpellEntry const* spellInfo)
     return (du->Duration[2] == -1) ? -1 : abs(du->Duration[2]);
 }
 
+/// 计算最终法术持续时间（综合连击点数插值、光环脚本、天赋加成及急速缩减）
 int32 CalculateSpellDuration(SpellEntry const* spellInfo, Unit const* caster, Unit const* target, AuraScript* auraScript)
 {
     int32 duration = GetSpellDuration(spellInfo);
@@ -81,12 +88,14 @@ int32 CalculateSpellDuration(SpellEntry const* spellInfo, Unit const* caster, Un
     {
         int32 maxduration = GetSpellMaxDuration(spellInfo);
 
+        // 玩家施放随连击点变化的终结技时，按当前连击点在基础与最大持续时间之间线性插值
         if (duration != maxduration && caster->IsPlayer())
             duration += int32((maxduration - duration) * caster->GetComboPoints() / 5);
 
         if (auraScript)
             duration = auraScript->OnDurationCalculate(caster, target, duration);
 
+        // 应用施法者玩家身上的持续时间法术修饰器及急速对周期性法术的影响
         if (Player* modOwner = caster->GetSpellModOwner())
         {
             modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_DURATION, duration);
@@ -104,11 +113,12 @@ int32 CalculateSpellDuration(SpellEntry const* spellInfo, Unit const* caster, Un
     return duration;
 }
 
+/// 计算法术最终施法时间（处理特殊物品/法术特例、交易栏瞬发、等级缩放、猎人远程补偿与急速加成）
 uint32 GetSpellCastTime(SpellEntry const* spellInfo, WorldObject* caster, Spell* spell, bool consume)
 {
     if (spell)
     {
-        // Workaround for custom cast time
+        // Workaround for custom cast time (针对特定法术/物品的自定义施法时间特例处理)
         switch (spellInfo->Id)
         {
             case 3366:  // Opening - seems to have a settable timer per usage
@@ -131,11 +141,11 @@ uint32 GetSpellCastTime(SpellEntry const* spellInfo, WorldObject* caster, Spell*
                 break;
         }
 
-        // some triggered spells have data only usable for client
+        // some triggered spells have data only usable for client (部分触发法术的施法时间仅用于客户端显示，服务端按瞬发处理)
         if (spell->IsTriggeredSpellWithRedundantCastTime())
             return 0;
 
-        // spell targeted to non-trading trade slot item instant at trade success apply
+        // spell targeted to non-trading trade slot item instant at trade success apply (对交易栏“不被交易物品”槽位附魔时瞬间完成施法)
         if (caster->IsPlayer())
             if (TradeData* my_trade = static_cast<Player*>(caster)->GetTradeData())
                 if (Item* nonTrade = my_trade->GetTraderData()->GetItem(TRADE_SLOT_NONTRADED))
@@ -145,18 +155,20 @@ uint32 GetSpellCastTime(SpellEntry const* spellInfo, WorldObject* caster, Spell*
 
     SpellCastTimesEntry const* spellCastTimeEntry = sSpellCastTimesStore.LookupEntry(spellInfo->CastingTimeIndex);
 
-    // not all spells have cast time index and this is all is passive abilities
+    // not all spells have cast time index and this is all is passive abilities (无施法时间索引的法术均为被动技能或瞬发，返回 0)
     if (!spellCastTimeEntry)
         return 0;
 
+    // 根据施法者相对法术基准等级的差值按等级缩放基础施法时间，并限制不低于最小施法时间
     int32 spellRank = caster && caster->IsUnit() ? static_cast<Unit*>(caster)->GetSpellRank(spellInfo) : 0;
     int32 castTime = spellCastTimeEntry->CastTime + spellCastTimeEntry->CastTimePerLevel * (spellRank / 5 - spellInfo->baseLevel);
     castTime = std::max(castTime, spellCastTimeEntry->MinCastTime);
 
-    // Hunter Ranged spells need cast time + 0.5s to reflect tooltips, excluding Auto Shot
+    // Hunter Ranged spells need cast time + 0.5s to reflect tooltips, excluding Auto Shot (猎人远程技能除自动射击外需额外加 0.5 秒以匹配技能说明)
     if (spellInfo->HasAttribute(SPELL_ATTR_USES_RANGED_SLOT) && (!spell || !spell->IsAutoRepeat()))
         castTime += 500;
 
+    // 应用玩家天赋/光环对施法时间的平直/百分比修饰，并乘以施法速度或远程攻速倍率
     if (spell)
     {
         if (Player* modOwner = caster->GetSpellModOwner())
@@ -175,6 +187,7 @@ uint32 GetSpellCastTime(SpellEntry const* spellInfo, WorldObject* caster, Spell*
     return (castTime > 0) ? uint32(castTime) : 0;
 }
 
+/// 计算用于法术强度/治疗加成系数公式的有效施法时间（含 1.5s~7s 截断、混合伤害/DoT 分摊、AOE/吸取与额外效果惩罚）
 uint32 GetSpellCastTimeForBonus(SpellEntry const* spellProto, DamageEffectType damagetype)
 {
     uint32 CastingTime = (!IsChanneledSpell(spellProto)) || spellProto->HasAttribute(SPELL_ATTR_EX5_SPELL_HASTE_AFFECTS_PERIODIC) ? GetSpellCastTime(spellProto, nullptr) : GetSpellDuration(spellProto);
@@ -190,10 +203,12 @@ uint32 GetSpellCastTimeForBonus(SpellEntry const* spellProto, DamageEffectType d
     bool DirectDamage = false;
     bool AreaEffect   = false;
 
+    // 扫描各效果目标，判断是否包含范围（AOE）效果
     for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
         if (IsAreaEffectTarget(SpellTarget(spellProto->EffectImplicitTargetA[i])) || IsAreaEffectTarget(SpellTarget(spellProto->EffectImplicitTargetB[i])))
             AreaEffect = true;
 
+    // 统计直接伤害/治疗、持续时间（overTime）以及额外控制/减速/占位效果惩罚计数
     for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
         switch (spellProto->Effect[i])
@@ -215,7 +230,7 @@ uint32 GetSpellCastTimeForBonus(SpellEntry const* spellProto, DamageEffectType d
                         if (GetSpellDuration(spellProto))
                             overTime = GetSpellDuration(spellProto);
                         break;
-                    // Penalty for additional effects
+                    // Penalty for additional effects (附加非伤害效果的系数惩罚计数)
                     case SPELL_AURA_DUMMY:
                         ++effects;
                         break;
@@ -225,7 +240,7 @@ uint32 GetSpellCastTimeForBonus(SpellEntry const* spellProto, DamageEffectType d
                     case SPELL_AURA_MOD_CONFUSE:
                     case SPELL_AURA_MOD_STUN:
                     case SPELL_AURA_MOD_ROOT:
-                        // -10% per effect
+                        // -10% per effect (控制类效果按双倍权重扣减加成系数)
                         effects += 2;
                         break;
                     default:
@@ -237,14 +252,14 @@ uint32 GetSpellCastTimeForBonus(SpellEntry const* spellProto, DamageEffectType d
         }
     }
 
-    // Combined Spells with Both Over Time and Direct Damage
+    // Combined Spells with Both Over Time and Direct Damage (兼具直接伤害与持续伤害/治疗的混合法术按各自占比拆分施法时间)
     if (overTime > 0 && CastingTime > 0 && DirectDamage)
     {
         // mainly for DoTs which are 3500 here otherwise
         uint32 OriginalCastTime = GetSpellCastTime(spellProto, nullptr);
         if (OriginalCastTime > 7000) OriginalCastTime = 7000;
         if (OriginalCastTime < 1500) OriginalCastTime = 1500;
-        // Portion to Over Time
+        // Portion to Over Time (计算持续部分所占比例 PtOT)
         float PtOT = (overTime / 15000.0f) / ((overTime / 15000.0f) + (OriginalCastTime / 3500.0f));
 
         if (damagetype == DOT)
@@ -255,11 +270,11 @@ uint32 GetSpellCastTimeForBonus(SpellEntry const* spellProto, DamageEffectType d
             CastingTime = 0;
     }
 
-    // Area Effect Spells receive only half of bonus
+    // Area Effect Spells receive only half of bonus (群体范围法术的法术加成系数减半)
     if (AreaEffect)
         CastingTime /= 2;
 
-    // 50% for damage and healing spells for leech spells from damage bonus and 0% from healing
+    // 50% for damage and healing spells for leech spells from damage bonus and 0% from healing (生命吸取类法术仅享有一半系数加成)
     for (int j = 0; j < MAX_EFFECT_INDEX; ++j)
     {
         if (spellProto->Effect[j] == SPELL_EFFECT_HEALTH_LEECH ||
@@ -270,20 +285,21 @@ uint32 GetSpellCastTimeForBonus(SpellEntry const* spellProto, DamageEffectType d
         }
     }
 
-    // -5% of total per any additional effect (multiplicative)
+    // -5% of total per any additional effect (multiplicative) (每个附加效果叠乘 0.95 衰减系数)
     for (int i = 0; i < effects; ++i)
         CastingTime *= 0.95f;
 
     return CastingTime;
 }
 
+/// 获取法术光环的最大跳数（依据持续时间上限 30 秒与周期振幅计算，默认返回 6）
 uint16 GetSpellAuraMaxTicks(SpellEntry const* spellInfo)
 {
     int32 DotDuration = GetSpellDuration(spellInfo);
     if (DotDuration == 0)
         return 1;
 
-    // 200% limit
+    // 200% limit (持续时间最长按 30 秒上限折算跳数)
     if (DotDuration > 30000)
         DotDuration = 30000;
 
@@ -303,6 +319,7 @@ uint16 GetSpellAuraMaxTicks(SpellEntry const* spellInfo)
     return 6;
 }
 
+/// 按法术 ID 获取光环最大周期跳数
 uint16 GetSpellAuraMaxTicks(uint32 spellId)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -315,9 +332,10 @@ uint16 GetSpellAuraMaxTicks(uint32 spellId)
     return GetSpellAuraMaxTicks(spellInfo);
 }
 
+/// 计算法术默认伤害/治疗加成系数（TBC 标准 3.5 秒规则与 DoT 15 秒规则）
 float CalculateDefaultCoefficient(SpellEntry const* spellProto, DamageEffectType const damagetype)
 {
-    // Damage over Time spells bonus calculation
+    // Damage over Time spells bonus calculation (持续性伤害/治疗法术按 15 秒基准与总跳数分摊单跳系数)
     float DotFactor = 1.0f;
     if (damagetype == DOT)
     {
@@ -328,12 +346,13 @@ float CalculateDefaultCoefficient(SpellEntry const* spellProto, DamageEffectType
             DotFactor /= DotTicks;
     }
 
-    // Distribute Damage over multiple effects, reduce by AoE
+    // Distribute Damage over multiple effects, reduce by AoE (按有效施法时间除以 3.5 秒得到基础加成系数)
     float coeff = GetSpellCastTimeForBonus(spellProto, damagetype) / 3500.0f;
 
     return coeff * DotFactor;
 }
 
+/// 判断法术关联的武器攻击槽位（主手/副手/远程）
 WeaponAttackType GetWeaponAttackType(SpellEntry const* spellInfo)
 {
     if (!spellInfo)
@@ -349,7 +368,7 @@ WeaponAttackType GetWeaponAttackType(SpellEntry const* spellInfo)
             return RANGED_ATTACK;
         default:
         {
-            // Wands
+            // Wands (魔杖攻击使用远程攻击类型)
             if (spellInfo->HasAttribute(SPELL_ATTR_EX3_NORMAL_RANGED_ATTACK))
                 return RANGED_ATTACK;
             if (spellInfo->HasAttribute(SPELL_ATTR_EX3_REQUIRES_OFFHAND_WEAPON))
@@ -359,9 +378,10 @@ WeaponAttackType GetWeaponAttackType(SpellEntry const* spellInfo)
     }
 }
 
+/// 判断目标类型是否为显式指定的友方单体/小队/团队目标
 bool IsExplicitPositiveTarget(uint32 targetA)
 {
-    // positive targets that in target selection code expect target in m_targets, so not that auto-select target by spell data by m_caster and etc
+    // positive targets that in target selection code expect target in m_targets, so not that auto-select target by spell data by m_caster and etc (需要显式/预设友方目标的目标模式)
     switch (targetA)
     {
         case TARGET_UNIT_FRIEND:
@@ -376,9 +396,10 @@ bool IsExplicitPositiveTarget(uint32 targetA)
     return false;
 }
 
+/// 判断目标类型是否为显式指定的敌方单体或目标点
 bool IsExplicitNegativeTarget(uint32 targetA)
 {
-    // non-positive targets that in target selection code expect target in m_targets, so not that auto-select target by spell data by m_caster and etc
+    // non-positive targets that in target selection code expect target in m_targets, so not that auto-select target by spell data by m_caster and etc (需要显式/预设敌方目标或坐标的目标模式)
     switch (targetA)
     {
         case TARGET_UNIT_ENEMY:
@@ -390,9 +411,10 @@ bool IsExplicitNegativeTarget(uint32 targetA)
     return false;
 }
 
+/// 检查在当前变形姿态下施放法术是否满足姿态限制，返回对应施法错误码
 SpellCastResult GetErrorAtShapeshiftedCast(SpellEntry const* spellInfo, uint32 form)
 {
-    // talents that learn spells can have stance requirements that need ignore
+    // talents that learn spells can have stance requirements that need ignore (学习法术的天赋忽略姿态限制，该限制仅作用于客户端提示)
     // (this requirement only for client-side stance show in talent description)
     if (GetTalentSpellCost(spellInfo->Id) > 0 &&
             (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_LEARN_SPELL || spellInfo->Effect[EFFECT_INDEX_1] == SPELL_EFFECT_LEARN_SPELL || spellInfo->Effect[EFFECT_INDEX_2] == SPELL_EFFECT_LEARN_SPELL))
@@ -400,10 +422,10 @@ SpellCastResult GetErrorAtShapeshiftedCast(SpellEntry const* spellInfo, uint32 f
 
     uint32 stanceMask = (form ? convertEnumToFlag(form) : 0);
 
-    if (stanceMask & spellInfo->StancesNot)                 // can explicitly not be casted in this stance
+    if (stanceMask & spellInfo->StancesNot)                 // can explicitly not be casted in this stance (明确禁止在当前姿态施放)
         return SPELL_FAILED_NOT_SHAPESHIFT;
 
-    if (stanceMask & spellInfo->Stances)                    // can explicitly be casted in this stance
+    if (stanceMask & spellInfo->Stances)                    // can explicitly be casted in this stance (允许在当前姿态施放)
         return SPELL_CAST_OK;
 
     bool actAsShifted = false;
@@ -415,19 +437,19 @@ SpellCastResult GetErrorAtShapeshiftedCast(SpellEntry const* spellInfo, uint32 f
             sLog.outError("GetErrorAtShapeshiftedCast: unknown shapeshift %u", form);
             return SPELL_CAST_OK;
         }
-        actAsShifted = !(shapeInfo->flags1 & 1);            // shapeshift acts as normal form for spells
+        actAsShifted = !(shapeInfo->flags1 & 1);            // shapeshift acts as normal form for spells (判断该变形是否视为正式变形姿态)
     }
 
     if (actAsShifted)
     {
-        if (spellInfo->HasAttribute(SPELL_ATTR_NOT_SHAPESHIFT)) // not while shapeshifted
+        if (spellInfo->HasAttribute(SPELL_ATTR_NOT_SHAPESHIFT)) // not while shapeshifted (变形期间禁止施放)
             return SPELL_FAILED_NOT_SHAPESHIFT;
-        if (spellInfo->Stances != 0)                   // needs other shapeshift
+        if (spellInfo->Stances != 0)                   // needs other shapeshift (需要特定变形姿态才能施放)
             return SPELL_FAILED_ONLY_SHAPESHIFT;
     }
     else
     {
-        // needs shapeshift
+        // needs shapeshift (未变形但法术要求处于变形状态)
         if (!spellInfo->HasAttribute(SPELL_ATTR_EX2_ALLOW_WHILE_NOT_SHAPESHIFTED) && spellInfo->Stances != 0)
             return SPELL_FAILED_ONLY_SHAPESHIFT;
     }
@@ -435,9 +457,10 @@ SpellCastResult GetErrorAtShapeshiftedCast(SpellEntry const* spellInfo, uint32 f
     return SPELL_CAST_OK;
 }
 
+/// 从数据库 spell_target_position 表加载并校验法术固定目标传送/落点坐标
 void SpellMgr::LoadSpellTargetPositions()
 {
-    mSpellTargetPositions.clear();                          // need for reload case
+    mSpellTargetPositions.clear();                          // need for reload case (重载前清空旧缓存)
 
     uint32 count = 0;
 
@@ -514,6 +537,7 @@ void SpellMgr::LoadSpellTargetPositions()
     sLog.outString();
 }
 
+/// 法术等级链批量加载辅助模板：记录各等级法术，并将第一级配置自动填充到缺失的高等级法术中
 template <typename EntryType, typename WorkerType, typename StorageType>
 struct SpellRankHelper
 {
@@ -529,7 +553,7 @@ struct SpellRankHelper
 
         uint32 first_id = mgr.GetFirstSpellInChain(spell_id);
 
-        // most spell ranks expected same data
+        // most spell ranks expected same data (大多数法术等级链共享第一级配置)
         if (first_id)
         {
             firstRankSpells.insert(first_id);
@@ -548,12 +572,12 @@ struct SpellRankHelper
     }
     void FillHigherRanks()
     {
-        // check that first rank added for custom ranks
+        // check that first rank added for custom ranks (校验存在自定义高等级配置时第一级也必须已录入)
         for (std::set<uint32>::const_iterator itr = firstRankSpellsWithCustomRanks.begin(); itr != firstRankSpellsWithCustomRanks.end(); ++itr)
             if (!worker.HasEntry(*itr))
                 sLog.outErrorDb("Spell %u must be listed in `%s` as first rank for listed custom ranks of spell but not found!", *itr, worker.TableName());
 
-        // fill absent non first ranks data base at first rank data
+        // fill absent non first ranks data base at first rank data (将第一级数据自动补全到未单独配置的后续等级)
         for (std::set<uint32>::const_iterator itr = firstRankSpells.begin(); itr != firstRankSpells.end(); ++itr)
         {
             if (worker.SetStateToEntry(*itr))
@@ -568,17 +592,18 @@ struct SpellRankHelper
     uint32 customRank;
 };
 
+/// spell_proc_event 表加载回调工作器：校验并填充法术触发事件配置
 struct DoSpellProcEvent
 {
     DoSpellProcEvent(SpellProcEventMap& _spe_map) : spe_map(_spe_map), customProc(0), count(0) {}
     void operator()(uint32 spell_id)
     {
         SpellProcEventEntry const& spe = state->second;
-        // add ranks only for not filled data (some ranks have ppm data different for ranks for example)
+        // add ranks only for not filled data (some ranks have ppm data different for ranks for example) (仅为未单独配置的等级填充触发规则)
         SpellProcEventMap::const_iterator spellItr = spe_map.find(spell_id);
         if (spellItr == spe_map.end())
             spe_map[spell_id] = spe;
-        // if custom rank data added then it must be same except ppm
+        // if custom rank data added then it must be same except ppm (若高等级有自定义条目，除 ppm 外其余字段必须与第一级一致)
         else
         {
             SpellProcEventEntry const& r_spe = spellItr->second;
@@ -603,7 +628,7 @@ struct DoSpellProcEvent
             if (spe.procEx != r_spe.procEx)
                 sLog.outErrorDb("Spell %u listed in `spell_proc_event` as custom rank have different procEx from first rank in chain", spell_id);
 
-            // only ppm allowed has been different from first rank
+            // only ppm allowed has been different from first rank (仅允许 ppmRate 随法术等级变化)
 
             if (spe.customChance != r_spe.customChance)
                 sLog.outErrorDb("Spell %u listed in `spell_proc_event` as custom rank have different customChance from first rank in chain", spell_id);
@@ -616,7 +641,7 @@ struct DoSpellProcEvent
     static const char* TableName() { return "spell_proc_event"; }
     bool IsValidCustomRank(SpellProcEventEntry const& spe, uint32 entry, uint32 first_id) const
     {
-        // let have independent data in table for spells with ppm rates (exist rank dependent ppm rate spells)
+        // let have independent data in table for spells with ppm rates (exist rank dependent ppm rate spells) (仅带有 ppmRate 的高等级条目允许独立录入)
         if (!spe.ppmRate)
         {
             sLog.outErrorDb("Spell %u listed in `spell_proc_event` is not first rank (%u) in chain", entry, first_id);
@@ -659,7 +684,7 @@ struct DoSpellProcEvent
                 isCustom = true;
         }
 
-        // totally redundant record
+        // totally redundant record (检测所有字段均为空的无效冗余记录)
         if (!spe.schoolMask && !spe.procFlags &&
                 !spe.procEx && !spe.ppmRate && !spe.customChance && !spe.cooldown)
         {
@@ -691,9 +716,10 @@ struct DoSpellProcEvent
     uint32 count;
 };
 
+/// 从数据库 spell_proc_event 表加载法术触发事件规则，并自动补全高等级法术链
 void SpellMgr::LoadSpellProcEvents()
 {
-    mSpellProcEventMap.clear();                             // need for reload case
+    mSpellProcEventMap.clear();                             // need for reload case (重载前清空触发事件表)
 
     //                                             0      1           2                3                 4                 5                 6          7       8        9             10
     auto queryResult = WorldDatabase.Query("SELECT entry, SchoolMask, SpellFamilyName, SpellFamilyMask0, SpellFamilyMask1, SpellFamilyMask2, procFlags, procEx, ppmRate, CustomChance, Cooldown FROM spell_proc_event");
@@ -741,6 +767,7 @@ void SpellMgr::LoadSpellProcEvents()
     sLog.outString();
 }
 
+/// spell_proc_item_enchant 表加载辅助回调：为高等级法术复制物品附魔 PPM 概率
 struct DoSpellProcItemEnchant
 {
     DoSpellProcItemEnchant(SpellProcItemEnchantMap& _procMap, float _ppm) : procMap(_procMap), ppm(_ppm) {}
@@ -750,9 +777,10 @@ struct DoSpellProcItemEnchant
     float ppm;
 };
 
+/// 从数据库 spell_proc_item_enchant 表加载物品附魔触发概率（PPM）配置
 void SpellMgr::LoadSpellProcItemEnchant()
 {
-    mSpellProcItemEnchantMap.clear();                       // need for reload case
+    mSpellProcItemEnchantMap.clear();                       // need for reload case (重载前清空物品附魔触发映射)
 
     uint32 count = 0;
 
@@ -809,9 +837,10 @@ void SpellMgr::LoadSpellProcItemEnchant()
     sLog.outString();
 }
 
+/// 判断光环是否为在施法结束（CAST_END）时才触发消耗的法术修饰光环
 bool IsCastEndProcModifierAura(SpellEntry const* spellInfo, SpellEffectIndex effecIdx, SpellEntry const* procSpell)
 {
-    // modifier auras that can proc on cast end
+    // modifier auras that can proc on cast end (在施法完成瞬间触发消耗的修饰类光环)
     switch (AuraType(spellInfo->EffectApplyAuraName[effecIdx]))
     {
         case SPELL_AURA_ADD_FLAT_MODIFIER:
@@ -844,26 +873,28 @@ bool IsCastEndProcModifierAura(SpellEntry const* spellInfo, SpellEffectIndex eff
     }
 }
 
+/// 判定指定触发事件配置与光环触发标志是否允许由当前候选法术/攻击结果触发
 bool SpellMgr::IsSpellProcEventCanTriggeredBy(SpellProcEventEntry const* spellProcEvent, uint32 EventProcFlag, SpellEntry const* spellInfo, uint32 procFlags, uint32 procExtra)
 {
     // No extra req need
     uint32 procEvent_procEx = PROC_EX_NONE;
 
-    // check prockFlags for condition
+    // check prockFlags for condition (校验触发事件标志位是否匹配)
     if ((procFlags & EventProcFlag) == 0)
         return false;
 
-    // Always trigger for this
+    // Always trigger for this (心跳、击杀、陷阱激活、死亡事件无条件放行后续判定)
     if (EventProcFlag & (PROC_FLAG_HEARTBEAT | PROC_FLAG_KILL | PROC_FLAG_ON_TRAP_ACTIVATION | PROC_FLAG_DEATH))
         return true;
 
+    // 区分周期性治疗（HoT）与周期性伤害（DoT），防止纯伤害光环被 HoT 错误触发或反之
     if (procFlags & PROC_FLAG_DEAL_HARMFUL_PERIODIC && EventProcFlag & PROC_FLAG_DEAL_HARMFUL_PERIODIC)
     {
         if (procExtra & PROC_EX_INTERNAL_HOT)
         {
             if (EventProcFlag == PROC_FLAG_DEAL_HARMFUL_PERIODIC)
             {
-                // no aura with only PROC_FLAG_DONE_PERIODIC and spellFamilyName == 0 can proc from a HOT.
+                // no aura with only PROC_FLAG_DONE_PERIODIC and spellFamilyName == 0 can proc from a HOT. (仅含周期触发且无家族名的光环不可由 HoT 触发)
                 if (!spellInfo->SpellFamilyName)
                     return false;
             }
@@ -894,7 +925,7 @@ bool SpellMgr::IsSpellProcEventCanTriggeredBy(SpellProcEventEntry const* spellPr
                 return false;
     }
 
-    if (spellProcEvent)     // Exist event data
+    if (spellProcEvent)     // Exist event data (存在数据库自定义触发条件时校验学派与家族名)
     {
         // Store extra req
         procEvent_procEx = spellProcEvent->procEx;
@@ -918,14 +949,14 @@ bool SpellMgr::IsSpellProcEventCanTriggeredBy(SpellProcEventEntry const* spellPr
         }
     }
 
-    // Check for extra req (if none) and hit/crit
+    // Check for extra req (if none) and hit/crit (校验扩展命中结果掩码)
     if (procEvent_procEx == PROC_EX_NONE)
     {
-        // No extra req, so can trigger for (damage/healing present) and cast end/hit/crit
+        // No extra req, so can trigger for (damage/healing present) and cast end/hit/crit (未指定扩展要求时默认在施法结束、普通命中或暴击时触发)
         if (procExtra & (PROC_EX_CAST_END | PROC_EX_NORMAL_HIT | PROC_EX_CRITICAL_HIT))
             return true;
     }
-    else // all spells hits here only if resist/reflect/immune/evade
+    else // all spells hits here only if resist/reflect/immune/evade (存在自定义扩展掩码时按位匹配具体命中结果)
     {
         // Exist req for PROC_EX_EX_TRIGGER_ON_NO_DAMAGE
         if (procEvent_procEx & PROC_EX_EX_TRIGGER_ON_NO_DAMAGE)
@@ -937,9 +968,10 @@ bool SpellMgr::IsSpellProcEventCanTriggeredBy(SpellProcEventEntry const* spellPr
     return false;
 }
 
+/// 从数据库 spell_elixir 表加载药剂、合剂及食物互斥掩码
 void SpellMgr::LoadSpellElixirs()
 {
-    mSpellElixirs.clear();                                  // need for reload case
+    mSpellElixirs.clear();                                  // need for reload case (重载前清空药剂分类映射)
 
     uint32 count = 0;
 
@@ -985,13 +1017,14 @@ void SpellMgr::LoadSpellElixirs()
     sLog.outString();
 }
 
+/// spell_threat 表加载回调工作器：校验多目标效果冲突并填充法术仇恨修正数据
 struct DoSpellThreat
 {
     DoSpellThreat(SpellThreatMap& _threatMap) : threatMap(_threatMap), count(0) {}
     void operator()(uint32 spell_id)
     {
         SpellThreatEntry const& ste = state->second;
-        // add ranks only for not filled data (spells adding flat threat are usually different for ranks)
+        // add ranks only for not filled data (spells adding flat threat are usually different for ranks) (仅填充尚未单独配置的等级)
         SpellThreatMap::const_iterator spellItr = threatMap.find(spell_id);
         if (spellItr == threatMap.end())
             threatMap[spell_id] = ste;
@@ -1019,7 +1052,7 @@ struct DoSpellThreat
     {
         threatMap[spell->Id] = ste;
 
-        // flat threat bonus and attack power bonus currently only work properly when all
+        // flat threat bonus and attack power bonus currently only work properly when all (固定仇恨与 AP 加成在多效果目标不同时需配合 inverseEffectMask 使用)
         // effects have same targets, otherwise, we'd need to separate it by effect index
         if (ste.inverseEffectMask == 0 && (ste.threat || ste.ap_bonus != 0.f))
         {
@@ -1050,9 +1083,10 @@ struct DoSpellThreat
     uint32 count;
 };
 
+/// 从数据库 spell_threat 表加载法术固定仇恨、仇恨倍率与 AP 仇恨加成
 void SpellMgr::LoadSpellThreats()
 {
-    mSpellThreatMap.clear();                                // need for reload case
+    mSpellThreatMap.clear();                                // need for reload case (重载前清空仇恨映射)
 
     //                                             0      1       2           3         4
     auto queryResult = WorldDatabase.Query("SELECT entry, Threat, multiplier, ap_bonus, InverseEffectMask FROM spell_threat");
@@ -1093,6 +1127,7 @@ void SpellMgr::LoadSpellThreats()
     sLog.outString();
 }
 
+/// 判断法术 1 的各效果家族影响掩码是否覆盖法术 2
 bool SpellMgr::IsSpellCanAffectSpell(SpellEntry const* spellInfo_1, SpellEntry const* spellInfo_2) const
 {
     for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -1104,6 +1139,7 @@ bool SpellMgr::IsSpellCanAffectSpell(SpellEntry const* spellInfo_1, SpellEntry c
     return false;
 }
 
+/// 判断法术是否为专业技能或骑术学习法术
 bool SpellMgr::IsProfessionOrRidingSpell(uint32 spellId)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -1118,6 +1154,7 @@ bool SpellMgr::IsProfessionOrRidingSpell(uint32 spellId)
     return IsProfessionOrRidingSkill(skill);
 }
 
+/// 判断法术是否为专业技能学习法术
 bool SpellMgr::IsProfessionSpell(uint32 spellId)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -1132,6 +1169,7 @@ bool SpellMgr::IsProfessionSpell(uint32 spellId)
     return IsProfessionSkill(skill);
 }
 
+/// 判断法术是否为主专业技能学习法术
 bool SpellMgr::IsPrimaryProfessionSpell(uint32 spellId)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -1146,11 +1184,13 @@ bool SpellMgr::IsPrimaryProfessionSpell(uint32 spellId)
     return IsPrimaryProfessionSkill(skill);
 }
 
+/// 判断法术是否为主专业技能的初级（第 1 阶）学习法术
 bool SpellMgr::IsPrimaryProfessionFirstRankSpell(uint32 spellId) const
 {
     return IsPrimaryProfessionSpell(spellId) && GetSpellRank(spellId) == 1;
 }
 
+/// 判断法术是否为达到特定技能点自动学会的技能奖励法术
 bool SpellMgr::IsSkillBonusSpell(uint32 spellId) const
 {
     SkillLineAbilityMapBounds bounds = GetSkillLineAbilityMapBoundsBySpellId(spellId);
@@ -1168,13 +1208,14 @@ bool SpellMgr::IsSkillBonusSpell(uint32 spellId) const
     return false;
 }
 
+/// 根据目标等级自动降级选择合适的增益法术等级（实现低等级玩家增益自动降级规则）
 SpellEntry const* SpellMgr::SelectAuraRankForLevel(SpellEntry const* spellInfo, uint32 level) const
 {
-    // fast case
+    // fast case (目标等级在法术等级-10范围内无需降级)
     if (level + 10 >= spellInfo->spellLevel)
         return spellInfo;
 
-    // ignore selection for passive spells
+    // ignore selection for passive spells (被动法术不做自动降级)
     if (IsPassiveSpell(spellInfo))
         return spellInfo;
 
@@ -1197,7 +1238,7 @@ SpellEntry const* SpellMgr::SelectAuraRankForLevel(SpellEntry const* spellInfo, 
     if (!needRankSelection || GetSpellRank(spellInfo->Id) == 0)
         return spellInfo;
 
-    // Check for lower rank of same spell if config is set to auto downrank
+    // Check for lower rank of same spell if config is set to auto downrank (若开启自动降级配置，沿等级链向下寻找适配等级的法术)
     if (sWorld.getConfig(CONFIG_BOOL_AUTO_DOWNRANK))
     {
         for (uint32 nextSpellId = spellInfo->Id; nextSpellId != 0; nextSpellId = GetPrevSpellInChain(nextSpellId))
@@ -1220,6 +1261,7 @@ SpellEntry const* SpellMgr::SelectAuraRankForLevel(SpellEntry const* spellInfo, 
 
 typedef std::unordered_map<uint32, uint32> AbilitySpellPrevMap;
 
+/// 递归辅助函数：根据 SkillLineAbility.dbc 的 forward_spellid 链路构建法术等级链节点
 static void LoadSpellChains_AbilityHelper(SpellChainMap& chainMap, AbilitySpellPrevMap const& prevRanks, uint32 spell_id, uint32 prev_id, uint32 deep = 30)
 {
     // spell already listed in chains store
@@ -1285,12 +1327,13 @@ static void LoadSpellChains_AbilityHelper(SpellChainMap& chainMap, AbilitySpellP
     chainMap[spell_id] = node;
 }
 
+/// 从 Talent.dbc、SkillLineAbility.dbc 与数据库 spell_chain 表加载并校验全部法术等级链
 void SpellMgr::LoadSpellChains()
 {
-    mSpellChains.clear();                                   // need for reload case
+    mSpellChains.clear();                                   // need for reload case (重载前清空法术等级链)
     mSpellChainsNext.clear();                               // need for reload case
 
-    // load known data for talents
+    // load known data for talents (从 Talent.dbc 加载多级天赋等级链)
     for (unsigned int i = 0; i < sTalentStore.GetNumRows(); ++i)
     {
         TalentEntry const* talentInfo = sTalentStore.LookupEntry(i);
@@ -1323,7 +1366,7 @@ void SpellMgr::LoadSpellChains()
         }
     }
 
-    // load known data from spell abilities
+    // load known data from spell abilities (从 SkillLineAbility.dbc 的前向法术指针构建技能等级链)
     {
         // we can calculate ranks only after full data generation
         AbilitySpellPrevMap prevRanks;
@@ -1404,7 +1447,7 @@ void SpellMgr::LoadSpellChains()
         }
     }
 
-    // load custom case
+    // load custom case (从数据库 spell_chain 表加载补充或自定义等级链并校验一致性)
     auto queryResult = WorldDatabase.Query("SELECT spell_id, prev_spell, first_spell, `rank`, req_spell FROM spell_chain");
     if (!queryResult)
     {
@@ -1551,7 +1594,7 @@ void SpellMgr::LoadSpellChains()
     }
     while (queryResult->NextRow());
 
-    // additional integrity checks
+    // additional integrity checks (二次遍历执行全链条前驱与前置法术完整性校验)
     for (SpellChainMap::const_iterator i = mSpellChains.begin(); i != mSpellChains.end(); ++i)
     {
         if (i->second.prev)
@@ -1599,7 +1642,7 @@ void SpellMgr::LoadSpellChains()
         }
     }
 
-    // fill next rank cache
+    // fill next rank cache (构建反向索引 mSpellChainsNext 以便快速查询后续升级法术)
     for (SpellChainMap::const_iterator i = mSpellChains.begin(); i != mSpellChains.end(); ++i)
     {
         uint32 spell_id = i->first;
@@ -1630,11 +1673,12 @@ void SpellMgr::LoadSpellChains()
     sLog.outString();
 }
 
+/// 从 Spell.dbc 扫描 SPELL_EFFECT_SKILL 效果并建立法术学习技能映射
 void SpellMgr::LoadSpellLearnSkills()
 {
-    mSpellLearnSkills.clear();                              // need for reload case
+    mSpellLearnSkills.clear();                              // need for reload case (重载前清空学习技能映射)
 
-    // search auto-learned skills and add its to map also for use in unlearn spells/talents
+    // search auto-learned skills and add its to map also for use in unlearn spells/talents (扫描 Spell.dbc 中包含学习技能效果的法术)
     uint32 dbc_count = 0;
     BarGoLink bar(sSpellTemplate.GetMaxEntry());
     for (uint32 spell = 0; spell < sSpellTemplate.GetMaxEntry(); ++spell)
@@ -1668,9 +1712,10 @@ void SpellMgr::LoadSpellLearnSkills()
     sLog.outString();
 }
 
+/// 从数据库 spell_learn_spell 表及 Spell.dbc 扫描加载法术连带学习关系
 void SpellMgr::LoadSpellLearnSpells()
 {
-    mSpellLearnSpells.clear();                              // need for reload case
+    mSpellLearnSpells.clear();                              // need for reload case (重载前清空连带学习法术映射)
 
     //                                             0      1        2
     auto queryResult = WorldDatabase.Query("SELECT entry, SpellID, Active FROM spell_learn_spell");
@@ -1724,7 +1769,7 @@ void SpellMgr::LoadSpellLearnSpells()
     }
     while (queryResult->NextRow());
 
-    // search auto-learned spells and add its to map also for use in unlearn spells/talents
+    // search auto-learned spells and add its to map also for use in unlearn spells/talents (补充扫描 Spell.dbc 中的 SPELL_EFFECT_LEARN_SPELL 自动学习关系)
     uint32 dbc_count = 0;
     for (uint32 spell = 0; spell < sSpellTemplate.GetMaxEntry(); ++spell)
     {
@@ -1777,11 +1822,12 @@ void SpellMgr::LoadSpellLearnSpells()
     sLog.outString();
 }
 
+/// 加载并严格校验 spell_script_target 表中的法术脚本目标（生物/游戏对象/GUID/StringId）
 void SpellMgr::LoadSpellScriptTarget()
 {
     sSpellScriptTargetStorage.Load();
 
-    // Check content
+    // Check content (校验数据库条目法术、目标模式、实体模板/GUID/StringId 的合法性)
     for (SQLMultiStorage::SQLSIterator<SpellTargetEntry> itr = sSpellScriptTargetStorage.getDataBegin<SpellTargetEntry>(); itr < sSpellScriptTargetStorage.getDataEnd<SpellTargetEntry>(); ++itr)
     {
         SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(itr->spellId);
@@ -1905,7 +1951,7 @@ void SpellMgr::LoadSpellScriptTarget()
         }
     }
 
-    // Check all spells
+    // Check all spells (反向巡检 Spell.dbc 中使用脚本附近单位目标的法术是否缺失数据库记录)
     if (!sLog.HasLogFilter(LOG_FILTER_DB_STRICTED_CHECK))
     {
         for (uint32 i = 1; i < sSpellTemplate.GetMaxEntry(); ++i)
@@ -1934,9 +1980,10 @@ void SpellMgr::LoadSpellScriptTarget()
     sLog.outString();
 }
 
+/// 从数据库 spell_pet_auras 表加载主人法术与宠物被动光环的映射关系
 void SpellMgr::LoadSpellPetAuras()
 {
-    mSpellPetAuraMap.clear();                               // need for reload case
+    mSpellPetAuraMap.clear();                               // need for reload case (重载前清空宠物光环映射)
 
     uint32 count = 0;
 
@@ -2008,6 +2055,7 @@ void SpellMgr::LoadSpellPetAuras()
     sLog.outString();
 }
 
+/// 校验法术有效性（如制造物品、关联学习法术及所需材料是否存在于模板表）
 /// Some checks for spells, to prevent adding deprecated/broken spells for trainers, spell book, etc
 bool SpellMgr::IsSpellValid(SpellEntry const* spellInfo, Player* pl, bool msg)
 {
@@ -2083,9 +2131,10 @@ bool SpellMgr::IsSpellValid(SpellEntry const* spellInfo, Player* pl, bool msg)
     return true;
 }
 
+/// 从数据库 spell_area 表加载区域限制与进出区域自动施放/移除光环配置
 void SpellMgr::LoadSpellAreas()
 {
-    mSpellAreaMap.clear();                                  // need for reload case
+    mSpellAreaMap.clear();                                  // need for reload case (重载前清空区域法术映射)
     mSpellAreaForAuraMap.clear();
 
     uint32 count = 0;
@@ -2239,7 +2288,7 @@ void SpellMgr::LoadSpellAreas()
                 continue;
             }
 
-            // not allow autocast chains by auraSpell field (but allow use as alternative if not present)
+            // not allow autocast chains by auraSpell field (but allow use as alternative if not present) (禁止通过 auraSpell 形成自动施放链式循环)
             if (spellArea.autocast && spellArea.auraSpell > 0)
             {
                 bool chain = false;
@@ -2295,13 +2344,14 @@ void SpellMgr::LoadSpellAreas()
     sLog.outString();
 }
 
+/// 检查法术在当前地图、区域、子区域及战场/竞技场环境下的施放合法性
 SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const* spellInfo, uint32 map_id, uint32 zone_id, uint32 area_id, Player const* player) const
 {
-    // normal case
+    // normal case (检查 Spell.dbc 自身的 AreaId 区域限制)
     if (spellInfo->AreaId > 0 && spellInfo->AreaId != zone_id && spellInfo->AreaId != area_id)
         return SPELL_FAILED_REQUIRES_AREA;
 
-    // continent limitation (virtual continent), ignore for GM
+    // continent limitation (virtual continent), ignore for GM (仅限外域/飞行大陆限制，GM 豁免)
     if (spellInfo->HasAttribute(SPELL_ATTR_EX4_ONLY_FLYING_AREAS) && !(player && player->IsGameMaster()))
     {
         uint32 v_map = GetVirtualMapForMapAndZone(map_id, zone_id);
@@ -2310,7 +2360,7 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const* spell
             return SPELL_FAILED_REQUIRES_AREA;
     }
 
-    // raid instance limitation
+    // raid instance limitation (团队副本禁用限制)
     if (spellInfo->HasAttribute(SPELL_ATTR_EX6_NOT_IN_RAID_INSTANCES))
     {
         MapEntry const* mapEntry = sMapStore.LookupEntry(map_id);
@@ -2318,7 +2368,7 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const* spell
             return SPELL_FAILED_REQUIRES_AREA;
     }
 
-    // DB base check (if non empty then must fit at least single for allow)
+    // DB base check (if non empty then must fit at least single for allow) (若 spell_area 存在配置，至少需满足其中一条)
     SpellAreaMapBounds saBounds = GetSpellAreaMapBounds(spellInfo->Id);
     if (saBounds.first != saBounds.second)
     {
@@ -2332,7 +2382,7 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const* spell
 
     // bg spell checks
 
-    // do not allow spells to be cast in arenas
+    // do not allow spells to be cast in arenas (竞技场内禁止标志或冷却超过 15 分钟的法术)
     // - with SPELL_ATTR_EX4_NOT_USABLE_IN_ARENA flag
     // - with greater than 15 min CD
     if (spellInfo->HasAttribute(SPELL_ATTR_EX4_NOT_IN_ARENA) ||
@@ -2340,7 +2390,7 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const* spell
         if (player && player->InArena())
             return SPELL_FAILED_NOT_IN_ARENA;
 
-    // Spell casted only on battleground
+    // Spell casted only on battleground (仅限战场使用的法术)
     if (spellInfo->HasAttribute(SPELL_ATTR_EX3_ONLY_BATTLEGROUNDS))
         if (!player || !player->InBattleGround())
             return SPELL_FAILED_ONLY_BATTLEGROUNDS;
@@ -2398,6 +2448,7 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const* spell
     return SPELL_CAST_OK;
 }
 
+/// 从 SkillLineAbility.dbc 构建按法术 ID 与技能 ID 索引的双重映射表
 void SpellMgr::LoadSkillLineAbilityMaps()
 {
     mSkillLineAbilityMapBySpellId.clear();
@@ -2422,6 +2473,7 @@ void SpellMgr::LoadSkillLineAbilityMaps()
     sLog.outString();
 }
 
+/// 从 SkillRaceClassInfo.dbc 构建按技能 ID 索引的种族/职业限制映射表
 void SpellMgr::LoadSkillRaceClassInfoMap()
 {
     mSkillRaceClassInfoMap.clear();
@@ -2436,7 +2488,7 @@ void SpellMgr::LoadSkillRaceClassInfoMap()
         if (!skillRCInfo)
             continue;
 
-        // not all skills really listed in ability skills list
+        // not all skills really listed in ability skills list (过滤无对应 SkillLine 的无效技能条目)
         if (!sSkillLineStore.LookupEntry(skillRCInfo->skillId))
             continue;
 
@@ -2449,6 +2501,7 @@ void SpellMgr::LoadSkillRaceClassInfoMap()
     sLog.outString();
 }
 
+/// 启动校验工具：对照数据库校验表核对代码中硬编码引用的法术 ID、家族掩码、图标与效果是否匹配
 void SpellMgr::CheckUsedSpells(char const* table) const
 {
     uint32 countSpells = 0;
@@ -2535,7 +2588,7 @@ void SpellMgr::CheckUsedSpells(char const* table) const
             continue;
         }
 
-        // now checks of requirements
+        // now checks of requirements (对照 Spell.dbc 模板逐项核对法术属性)
 
         if (spell)
         {
@@ -2695,9 +2748,10 @@ void SpellMgr::CheckUsedSpells(char const* table) const
     sLog.outString(">> Checked %u spells and %u spell masks", countSpells, countMasks);
 }
 
+/// 获取法术所属的控制递减（DR）组别（优先匹配职业家族特例，再回退到机制掩码）
 DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto, bool triggered)
 {
-    // Explicit Diminishing Groups
+    // Explicit Diminishing Groups (显式按职业家族和法术 ID 映射特定递减组别)
     switch (spellproto->SpellFamilyName)
     {
         case SPELLFAMILY_GENERIC:
@@ -2778,7 +2832,7 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
             break;
     }
 
-    // Get by mechanic
+    // Get by mechanic (未命中职业特例时，依据法术控制机制类型映射递减组别)
     uint32 mechanic = GetAllSpellMechanicMask(spellproto);
     if (!mechanic)
         return DIMINISHING_NONE;
@@ -2809,6 +2863,7 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
     return DIMINISHING_NONE;
 }
 
+/// 判断指定的控制递减组别在 PvP 中是否有最大持续时间上限
 bool IsDiminishingReturnsGroupDurationLimited(DiminishingGroup group)
 {
     switch (group)
@@ -2833,6 +2888,7 @@ bool IsDiminishingReturnsGroupDurationLimited(DiminishingGroup group)
     }
 }
 
+/// 判断指定递减组别在当前战斗类型（PvP/PvE）下是否对持续时间进行递减折算
 bool IsDiminishingReturnsGroupDurationDiminished(DiminishingGroup group, bool pvp)
 {
     switch (group)
@@ -2844,6 +2900,7 @@ bool IsDiminishingReturnsGroupDurationDiminished(DiminishingGroup group, bool pv
     }
 }
 
+/// 获取递减组别的适用范围类型（仅对玩家生效 DRTYPE_PLAYER 或全单位生效 DRTYPE_ALL）
 DiminishingReturnsType GetDiminishingReturnsGroupType(DiminishingGroup group)
 {
     switch (group)
@@ -2874,6 +2931,7 @@ DiminishingReturnsType GetDiminishingReturnsGroupType(DiminishingGroup group)
     return DRTYPE_NONE;
 }
 
+/// 判断指定递减组别在当前战斗环境下是否追踪递减层数
 bool IsSubjectToDiminishingLevels(DiminishingGroup group, bool pvp)
 {
     if ((GetDiminishingReturnsGroupType(group) == DRTYPE_PLAYER && pvp) || GetDiminishingReturnsGroupType(group) == DRTYPE_ALL)
@@ -2881,6 +2939,7 @@ bool IsSubjectToDiminishingLevels(DiminishingGroup group, bool pvp)
     return false;
 }
 
+/// 判断法术是否为特殊的生物施放且受控递减的技能
 bool IsCreatureDRSpell(SpellEntry const* spellInfo)
 {
     switch (spellInfo->Id)
@@ -2892,6 +2951,7 @@ bool IsCreatureDRSpell(SpellEntry const* spellInfo)
     }
 }
 
+/// 检查玩家在当前区域与子区域是否满足该 SpellArea 条目的全部前置条件
 bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32 newArea) const
 {
     if (conditionId)
@@ -2952,6 +3012,7 @@ bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32
     return true;
 }
 
+/// 根据区域条件检查结果，为玩家自动施加或移除对应的区域光环法术
 void SpellArea::ApplyOrRemoveSpellIfCan(Player* player, uint32 newZone, uint32 newArea, bool onlyApply) const
 {
     MANGOS_ASSERT(player);
@@ -2965,6 +3026,7 @@ void SpellArea::ApplyOrRemoveSpellIfCan(Player* player, uint32 newZone, uint32 n
         player->RemoveAurasDueToSpell(spellId);
 }
 
+/// spell_affect 表加载回调工作器：将影响掩码同步填充至同等级链的高等级法术
 struct DoSpellAffectMasks
 {
     DoSpellAffectMasks(SpellAffectMap& _spellAffectMap, uint8& _effectId, uint64& _spellAffectMask) : spellAffectMap(_spellAffectMap), effectId(_effectId), spellAffectMask(_spellAffectMask) {}
@@ -2975,9 +3037,10 @@ struct DoSpellAffectMasks
     uint64& spellAffectMask;
 };
 
+/// 从数据库 spell_affect 表加载法术家族影响掩码，并校验可能缺失配置的修饰类光环
 void SpellMgr::LoadSpellAffects()
 {
-    mSpellAffectMap.clear();                                // need for reload case
+    mSpellAffectMap.clear();                                // need for reload case (重载前清空影响掩码映射)
 
     uint32 count = 0;
 
@@ -3042,7 +3105,7 @@ void SpellMgr::LoadSpellAffects()
 
         uint64 spellAffectMask = fields[2].GetUInt64();
 
-        // Spell.dbc have own data for low part of SpellFamilyMask
+        // Spell.dbc have own data for low part of SpellFamilyMask (若与 DBC 自带 EffectItemType 完全一致则提示冗余跳过)
         if (spellInfo->EffectItemType[effectId])
         {
             if (static_cast<uint64>(spellInfo->EffectItemType[effectId]) == spellAffectMask)

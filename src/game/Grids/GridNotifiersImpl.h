@@ -205,11 +205,12 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     if (i_dynobject.GetDistance(target, true, DIST_CALC_NONE) > radius * radius)
         return;
 
-    // Evade target
+    // Evade target | 跳过处于脱战重置（Evade）状态的目标
     if (target->GetCombatManager().IsInEvadeMode())
         return;
 
     // Check player targets and remove if in GM mode or GM invisibility (for not self casting case)
+    // 对非自身施法情况，排除开启 GM 模式或 GM 隐身的玩家目标
     if (target->GetTypeId() == TYPEID_PLAYER && target != i_check && (((Player*)target)->IsGameMaster() || ((Player*)target)->GetVisibility() == VISIBILITY_OFF))
         return;
 
@@ -225,7 +226,7 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
             if (i_spellST->CanNotHitWithSpellEffect(eff_index))
                 continue;
 
-            // only creature entries supported for this target type
+            // only creature entries supported for this target type | 此目标过滤仅支持生物条目，跳过游戏对象类型
             if (i_spellST->type == SPELL_TARGET_TYPE_GAMEOBJECT || i_spellST->type == SPELL_TARGET_TYPE_GAMEOBJECT_GUID)
                 continue;
 
@@ -243,10 +244,11 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
         if (!found)
             return;
     }
-    // This condition is only needed due to missing neutral spell type
+    // This condition is only needed due to missing neutral spell type | 仅因缺少中立法术标记，非脚本类目标需按正负面阵营过滤
     else if (!i_script)
     {
         // for player casts use less strict negative and more stricted positive targeting
+        // 区分友方协助与敌对攻击判定
         if (i_positive)
         {
             if (!caster->CanAssistSpell(target, spellInfo))
@@ -271,8 +273,8 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     if (spellInfo->HasAttribute(SPELL_ATTR_EX5_NOT_ON_PLAYER_CONTROLLED_NPC) && target->IsPlayerControlled() && target->GetTypeId() != TYPEID_PLAYER)
         return;
 
-    // Check target immune to spell or aura
-    if (!spellInfo->HasAttribute(SPELL_ATTR_NO_IMMUNITIES)) // confirmed 40657 - Ancient Flames goes through immunity
+    // Check target immune to spell or aura | 检查目标是否免疫该法术或特定效果索引
+    if (!spellInfo->HasAttribute(SPELL_ATTR_NO_IMMUNITIES)) // confirmed 40657 - Ancient Flames goes through immunity | 已确认 40657 远古烈焰可穿透免疫
         if (target->IsImmuneToSpell(spellInfo, false, (1 << eff_index), caster) || target->IsImmuneToSpellEffect(spellInfo, eff_index, false))
             return;
 
@@ -281,6 +283,7 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
 
     // Apply PersistentAreaAura on target
     // in case 2 dynobject overlap areas for same spell, same holder is selected, so dynobjects share holder
+    // 向目标施加持久区域光环；若同一施法者的两个同法术区域重叠，则复用同一个 SpellAuraHolder
     SpellAuraHolder* holder = target->GetSpellAuraHolder(spellInfo->Id, i_dynobject.GetCasterGuid());
 
     if (holder)
@@ -329,14 +332,14 @@ inline void MaNGOS::DynamicObjectUpdater::Visit(PlayerMapType&  m)
         VisitHelper(itr.getSource());
 }
 
-// SEARCHERS & LIST SEARCHERS & WORKERS
+// SEARCHERS & LIST SEARCHERS & WORKERS | 搜索器、列表搜索器与执行器模板实现
 
-// WorldObject searchers & workers
+// WorldObject searchers & workers | WorldObject 搜索器实现
 
 template<class Check>
 void MaNGOS::WorldObjectSearcher<Check>::Visit(GameObjectMapType& m)
 {
-    // already found
+    // already found | 已命中目标则提前返回
     if (i_object)
         return;
 
@@ -645,7 +648,7 @@ void MaNGOS::LocalizedPacketDo<Builder>::operator()(Player* p)
     int32 loc_idx = p->GetSession()->GetSessionDbLocaleIndex();
     uint32 cache_idx = loc_idx + 1;
 
-    // create if not cached yet
+    // create if not cached yet | 若当前语言索引尚未缓存则通过 Builder 构建并存入缓存
     if (i_data_cache.size() < cache_idx + 1 || !i_data_cache[cache_idx])
     {
         if (i_data_cache.size() < cache_idx + 1)
@@ -668,7 +671,7 @@ void MaNGOS::LocalizedPacketListDo<Builder>::operator()(Player* p)
     uint32 cache_idx = loc_idx + 1;
     WorldPacketList* data_list;
 
-    // create if not cached yet
+    // create if not cached yet | 若当前语言索引尚未缓存则生成并缓存多包列表
     if (i_data_cache.size() < cache_idx + 1 || i_data_cache[cache_idx].empty())
     {
         if (i_data_cache.size() < cache_idx + 1)

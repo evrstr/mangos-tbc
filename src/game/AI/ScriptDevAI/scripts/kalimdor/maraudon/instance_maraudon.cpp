@@ -23,6 +23,10 @@ EndScriptData
 
 */
 
+/**
+ * 玛拉顿 (Maraudon) 副本数据管理脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "maraudon.h"
 
@@ -42,7 +46,7 @@ void instance_maraudon::OnObjectCreate(GameObject* go)
     switch (go->GetEntry())
     {
         case GO_LARVA_SPEWER:
-            // If Noxxion encounter is done, stop spewing larvas
+            // If Noxxion encounter is done, stop spewing larvas (说明)
             if (GetData(TYPE_NOXXION) == DONE)
                 go->SetLootState(GO_ACTIVATED);
             break;
@@ -56,22 +60,22 @@ void instance_maraudon::SetData(uint32 type, uint32 data)
 {
     if (type == TYPE_NOXXION)
     {
-        // Do nothing if we are receiving the same data
+        // Do nothing if we are receiving the same data (说明)
         if (m_encounter[TYPE_NOXXION] == data)
             return;
 
         m_encounter[type] = data;
         switch (data)
         {
-            // If Noxxion encounter is done or spewer attacked, stop spewing larvas
+            // If Noxxion encounter is done or spewer attacked, stop spewing larvas (说明)
             case DONE:
-                // Destroy the corruption spewer near Noxxion
+                // Destroy the corruption spewer near Noxxion (说明)
                 if (GameObject* go = GetSingleGameObjectFromStorage(GO_CORRUPTION_SPEWER))
                     go->SetLootState(GO_ACTIVATED);
-                // no break, the special part is also executed
+                // no break, the special part is also executed (说明)
             case SPECIAL:
                 m_spewLarvaTimer = 0;
-                // Destroy the larva spewer if not already done
+                // Destroy the larva spewer if not already done (说明)
                 if (GameObject* go = GetSingleGameObjectFromStorage(GO_LARVA_SPEWER))
                 {
                     if (go->GetLootState() != GO_ACTIVATED)
@@ -146,13 +150,13 @@ void instance_maraudon::OnCreatureEvade(Creature* creature)
 
 void instance_maraudon::Update(uint32 uiDiff)
 {
-    // Nicely spew a larva that will go toward Noxxion (pathing is handled by DB)
+    // Nicely spew a larva that will go toward Noxxion (pathing is handled by DB) (说明)
     if (m_spewLarvaTimer)
     {
         if (m_spewLarvaTimer <= uiDiff)
         {
             if (GameObject* pGo = GetSingleGameObjectFromStorage(GO_LARVA_SPEWER))
-                pGo->SummonCreature(NPC_SPEWED_LARVA, spawnLocation.x, spawnLocation.y, spawnLocation.z, spawnLocation.o, TEMPSPAWN_TIMED_DESPAWN, 10 * MINUTE * IN_MILLISECONDS); // Despawn is handled by DBScript we just want to avoid an infinite number of larvas near Noxxion
+                pGo->SummonCreature(NPC_SPEWED_LARVA, spawnLocation.x, spawnLocation.y, spawnLocation.z, spawnLocation.o, TEMPSPAWN_TIMED_DESPAWN, 10 * MINUTE * IN_MILLISECONDS); // Despawn is handled by DBScript we just want to avoid an infinite number of larvas near Noxxion (说明)
             m_spewLarvaTimer = 1 * MINUTE * IN_MILLISECONDS;
         }
         else
@@ -160,7 +164,7 @@ void instance_maraudon::Update(uint32 uiDiff)
     }
 }
 
-InstanceData* GetInstanceData_instance_maraudon(Map* map)
+InstanceData* GetInstanceData_instance_maraudon(Map* map) // 创建并返回副本数据实例
 {
     return new instance_maraudon(map);
 }
@@ -169,6 +173,7 @@ InstanceData* GetInstanceData_instance_maraudon(Map* map)
 ## go_larva_spewer
 #################*/
 
+// go_ai_larva_spewer 游戏对象脚本 AI
 struct go_ai_larva_spewer : public GameObjectAI
 {
     go_ai_larva_spewer(GameObject* go) : GameObjectAI(go) {}
@@ -189,7 +194,7 @@ GameObjectAI* GetAI_go_larva_spewer(GameObject* go)
     return new go_ai_larva_spewer(go);
 }
 
-void AddSC_instance_maraudon()
+void AddSC_instance_maraudon() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_maraudon";

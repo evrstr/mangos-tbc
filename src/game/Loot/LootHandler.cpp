@@ -28,6 +28,7 @@
 #include "Groups/Group.h"
 #include "Entities/GameObject.h"
 
+/// 处理玩家从拾取窗口拾取指定槽位物品请求
 void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recv_data)
 {
     uint8 itemSlot;
@@ -72,6 +73,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理玩家拾取金币请求（单人拾取或队伍均分）
 void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: CMSG_LOOT_MONEY");
@@ -87,6 +89,7 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recv_data*/)
     pLoot->SendGold(_player);
 }
 
+/// 处理玩家打开目标拾取窗口请求（校验存活、站立、非昏迷及交互距离）
 void WorldSession::HandleLootOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: CMSG_LOOT");
@@ -165,6 +168,7 @@ void WorldSession::HandleLootOpcode(WorldPacket& recv_data)
         GetPlayer()->InterruptNonMeleeSpells(false);
 }
 
+/// 处理玩家关闭拾取窗口释放拾取权请求
 void WorldSession::HandleLootReleaseOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: CMSG_LOOT_RELEASE");
@@ -176,6 +180,7 @@ void WorldSession::HandleLootReleaseOpcode(WorldPacket& recv_data)
         loot->Release(_player);
 }
 
+/// 处理队长分配模式下队长将指定物品分配给队员请求
 void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recv_data)
 {
     uint8      itemSlot;        // slot sent in LOOT_RESPONSE
@@ -249,6 +254,7 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理队长更改队伍拾取方式、分配者与物品品质阈值请求
 void WorldSession::HandleLootMethodOpcode(WorldPacket& recv_data)
 {
     uint32 lootMethod;
@@ -272,6 +278,7 @@ void WorldSession::HandleLootMethodOpcode(WorldPacket& recv_data)
     group->SendUpdate();
 }
 
+/// 处理玩家对组队 Roll 点物品提交需求/贪婪/分解/放弃投票
 void WorldSession::HandleLootRoll(WorldPacket& recv_data)
 {
     ObjectGuid lootedTarget;

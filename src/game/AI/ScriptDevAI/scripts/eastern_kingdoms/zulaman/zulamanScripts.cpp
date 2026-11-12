@@ -21,6 +21,8 @@ SDComment: Forest Frog will turn into different NPC's. Workaround to prevent new
 SDCategory: Zul'Aman
 EndScriptData */
 
+// 祖阿曼（Zul'Aman）阿曼尼斥候敲锣、狂暴战熊与杂项生物 AI
+
 /* ContentData
 npc_forest_frog
 npc_harrison_jones_za
@@ -42,87 +44,89 @@ EndContentData */
 ## npc_forest_frog
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_REMOVE_AMANI_CURSE    = 43732,
-    SPELL_PUSH_MOJO             = 43923,
+    SPELL_REMOVE_AMANI_CURSE    = 43732,                    // removeamani诅咒 法术 ID
+    SPELL_PUSH_MOJO             = 43923,                    // pushmojo 法术 ID
     SPELL_SUMMON_AMANI_CHARM_1  = 43756, // Amani Charm Box (186734)
     SPELL_SUMMON_AMANI_CHARM_2  = 43824, // Amani Charm Box (186740)
     SPELL_SUMMON_AMANI_CHARM_3  = 43825, // Amani Charm Box (186741)
     SPELL_SUMMON_AMANI_CHARM_4  = 43826, // Amani Charm Box (186739)
     SPELL_SUMMON_AMANI_CHARM_5  = 43835, // Amani Treasure Box (186744)
     SPELL_SUMMON_MONEY_BAG      = 43774, // Money Bag (186736)
-    SPELL_STEALTH               = 34189,
+    SPELL_STEALTH               = 34189,                    // 潜行 法术 ID
     
-    NPC_FOREST_FROG             = 24396,
-    NPC_MANNUTH                 = 24397,
-    NPC_DEEZ                    = 24403,
-    NPC_GALATHRYN               = 24404,
-    NPC_ADARRAH                 = 24405,
-    NPC_FUDGERICK               = 24406,
-    NPC_DARWEN                  = 24407,
-    NPC_GUNTER                  = 24408,
-    NPC_KYREN                   = 24409,
-    NPC_MITZI                   = 24445,
-    NPC_CHRISTIAN               = 24448,
-    NPC_BRENNAN                 = 24453,
-    NPC_HOLLEE                  = 24455,
+    NPC_FOREST_FROG             = 24396,                    // forestfrog Entry ID
+    NPC_MANNUTH                 = 24397,                    // mannuth Entry ID
+    NPC_DEEZ                    = 24403,                    // deez Entry ID
+    NPC_GALATHRYN               = 24404,                    // galathryn Entry ID
+    NPC_ADARRAH                 = 24405,                    // adarrah Entry ID
+    NPC_FUDGERICK               = 24406,                    // fudgerick Entry ID
+    NPC_DARWEN                  = 24407,                    // darwen Entry ID
+    NPC_GUNTER                  = 24408,                    // gunter Entry ID
+    NPC_KYREN                   = 24409,                    // kyren Entry ID
+    NPC_MITZI                   = 24445,                    // mitzi Entry ID
+    NPC_CHRISTIAN               = 24448,                    // christian Entry ID
+    NPC_BRENNAN                 = 24453,                    // brennan Entry ID
+    NPC_HOLLEE                  = 24455,                    // hollee Entry ID
 
-    SAY_MANNUTH_1               = -1568122,
-    SAY_MANNUTH_2               = -1568123,
-    SAY_MANNUTH_3               = -1568124,
-    SAY_MANNUTH_4               = -1568125,
-    SAY_DEEZ_1                  = -1568126,
-    SAY_DEEZ_2                  = -1568127,
-    SAY_DEEZ_3                  = -1568128,
-    SAY_DEEZ_4                  = -1568129,
-    SAY_GALATHRYN_1             = -1568130,
-    SAY_GALATHRYN_2             = -1568131,
-    SAY_GALATHRYN_3             = -1568132,
-    SAY_GALATHRYN_4             = -1568133,
-    SAY_ADARRAH_1               = -1568134,
-    SAY_ADARRAH_2               = -1568135,
-    SAY_ADARRAH_3               = -1568136,
-    SAY_ADARRAH_4               = -1568137,
-    SAY_DARWEN_1                = -1568138,
-    SAY_DARWEN_2                = -1568139,
-    SAY_DARWEN_3                = -1568140,
-    SAY_DARWEN_4                = -1568141,
-    SAY_FUDGERICK_1             = -1568142,
-    SAY_FUDGERICK_2             = -1568143,
-    SAY_FUDGERICK_3             = -1568144,
-    SAY_FUDGERICK_4             = -1568145,
-    SAY_GUNTER_1                = -1568146,
-    SAY_GUNTER_2                = -1568147,
-    SAY_GUNTER_3                = -1568148,
-    SAY_GUNTER_4                = -1568149,
-    SAY_KYREN_1                 = -1568150,
-    SAY_KYREN_2                 = -1568151,
-    SAY_KYREN_3                 = -1568152,
-    SAY_KYREN_4                 = -1568153,
-    SAY_MITZI_1                 = -1568154,
-    SAY_MITZI_2                 = -1568155,
-    SAY_MITZI_3                 = -1568156,
-    SAY_MITZI_4                 = -1568157,
-    SAY_CHRISTIAN_1             = -1568158,
-    SAY_CHRISTIAN_2             = -1568159,
-    SAY_CHRISTIAN_3             = -1568160,
-    SAY_CHRISTIAN_4             = -1568161,
-    SAY_BRENNAN_1               = -1568162,
-    SAY_BRENNAN_2               = -1568163,
-    SAY_BRENNAN_3               = -1568164,
-    SAY_BRENNAN_4               = -1568165,
-    SAY_HOLLEE_1                = -1568166,
-    SAY_HOLLEE_2                = -1568167,
-    SAY_HOLLEE_3                = -1568168,
-    SAY_HOLLEE_4                = -1568169,
-    SAY_MOJO                    = -1568170,
+    SAY_MANNUTH_1               = -1568122,                 // mannuth1 台词广播 ID
+    SAY_MANNUTH_2               = -1568123,                 // mannuth2 台词广播 ID
+    SAY_MANNUTH_3               = -1568124,                 // mannuth3 台词广播 ID
+    SAY_MANNUTH_4               = -1568125,                 // mannuth4 台词广播 ID
+    SAY_DEEZ_1                  = -1568126,                 // deez1 台词广播 ID
+    SAY_DEEZ_2                  = -1568127,                 // deez2 台词广播 ID
+    SAY_DEEZ_3                  = -1568128,                 // deez3 台词广播 ID
+    SAY_DEEZ_4                  = -1568129,                 // deez4 台词广播 ID
+    SAY_GALATHRYN_1             = -1568130,                 // galathryn1 台词广播 ID
+    SAY_GALATHRYN_2             = -1568131,                 // galathryn2 台词广播 ID
+    SAY_GALATHRYN_3             = -1568132,                 // galathryn3 台词广播 ID
+    SAY_GALATHRYN_4             = -1568133,                 // galathryn4 台词广播 ID
+    SAY_ADARRAH_1               = -1568134,                 // adarrah1 台词广播 ID
+    SAY_ADARRAH_2               = -1568135,                 // adarrah2 台词广播 ID
+    SAY_ADARRAH_3               = -1568136,                 // adarrah3 台词广播 ID
+    SAY_ADARRAH_4               = -1568137,                 // adarrah4 台词广播 ID
+    SAY_DARWEN_1                = -1568138,                 // darwen1 台词广播 ID
+    SAY_DARWEN_2                = -1568139,                 // darwen2 台词广播 ID
+    SAY_DARWEN_3                = -1568140,                 // darwen3 台词广播 ID
+    SAY_DARWEN_4                = -1568141,                 // darwen4 台词广播 ID
+    SAY_FUDGERICK_1             = -1568142,                 // fudgerick1 台词广播 ID
+    SAY_FUDGERICK_2             = -1568143,                 // fudgerick2 台词广播 ID
+    SAY_FUDGERICK_3             = -1568144,                 // fudgerick3 台词广播 ID
+    SAY_FUDGERICK_4             = -1568145,                 // fudgerick4 台词广播 ID
+    SAY_GUNTER_1                = -1568146,                 // gunter1 台词广播 ID
+    SAY_GUNTER_2                = -1568147,                 // gunter2 台词广播 ID
+    SAY_GUNTER_3                = -1568148,                 // gunter3 台词广播 ID
+    SAY_GUNTER_4                = -1568149,                 // gunter4 台词广播 ID
+    SAY_KYREN_1                 = -1568150,                 // kyren1 台词广播 ID
+    SAY_KYREN_2                 = -1568151,                 // kyren2 台词广播 ID
+    SAY_KYREN_3                 = -1568152,                 // kyren3 台词广播 ID
+    SAY_KYREN_4                 = -1568153,                 // kyren4 台词广播 ID
+    SAY_MITZI_1                 = -1568154,                 // mitzi1 台词广播 ID
+    SAY_MITZI_2                 = -1568155,                 // mitzi2 台词广播 ID
+    SAY_MITZI_3                 = -1568156,                 // mitzi3 台词广播 ID
+    SAY_MITZI_4                 = -1568157,                 // mitzi4 台词广播 ID
+    SAY_CHRISTIAN_1             = -1568158,                 // christian1 台词广播 ID
+    SAY_CHRISTIAN_2             = -1568159,                 // christian2 台词广播 ID
+    SAY_CHRISTIAN_3             = -1568160,                 // christian3 台词广播 ID
+    SAY_CHRISTIAN_4             = -1568161,                 // christian4 台词广播 ID
+    SAY_BRENNAN_1               = -1568162,                 // brennan1 台词广播 ID
+    SAY_BRENNAN_2               = -1568163,                 // brennan2 台词广播 ID
+    SAY_BRENNAN_3               = -1568164,                 // brennan3 台词广播 ID
+    SAY_BRENNAN_4               = -1568165,                 // brennan4 台词广播 ID
+    SAY_HOLLEE_1                = -1568166,                 // hollee1 台词广播 ID
+    SAY_HOLLEE_2                = -1568167,                 // hollee2 台词广播 ID
+    SAY_HOLLEE_3                = -1568168,                 // hollee3 台词广播 ID
+    SAY_HOLLEE_4                = -1568169,                 // hollee4 台词广播 ID
+    SAY_MOJO                    = -1568170,                 // mojo 台词广播 ID
 
-    POINT_DESPAWN               = 1,
+    POINT_DESPAWN               = 1,                        // 消除 路径点 ID
 
-    SOUND_ID_FROG               = 8353,
+    SOUND_ID_FROG               = 8353,                     // IDfrog 音效 ID
 };
 
+// 随从/NPC AI：frog（forest_frog）
 struct npc_forest_frogAI : public ScriptedAI
 {
     npc_forest_frogAI(Creature* creature) : ScriptedAI(creature)
@@ -133,17 +137,20 @@ struct npc_forest_frogAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
     uint8 m_uiEvent;
-    uint32 m_uiEventTimer;
-    ObjectGuid m_rescuePlayerGuid;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
+    ObjectGuid m_rescuePlayerGuid;                          // rescuePlayer 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 movementType, uint32 data) override
     {
         if (movementType == POINT_MOTION_TYPE && data == POINT_DESPAWN)
             m_creature->ForcedDespawn(1000);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_uiEventTimer)
@@ -335,6 +342,7 @@ struct npc_forest_frogAI : public ScriptedAI
         }
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* caster, const SpellEntry* spell) override
     {
         if (spell->Id == SPELL_REMOVE_AMANI_CURSE && caster->GetTypeId() == TYPEID_PLAYER && m_creature->GetEntry() == NPC_FOREST_FROG)
@@ -361,25 +369,27 @@ struct npc_forest_frogAI : public ScriptedAI
 ## npc_harrison_jones_za
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START               = -1568079,
-    SAY_AT_GONG             = -1568080,
-    SAY_OPEN_ENTRANCE       = -1568081,
-    SAY_OPEN_ENTRANCE_2     = -1568086,
-    SAY_SOUND_ALARM         = -1568087,
+    SAY_START               = -1568079,                     // 开始 台词广播 ID
+    SAY_AT_GONG             = -1568080,                     // atgong 台词广播 ID
+    SAY_OPEN_ENTRANCE       = -1568081,                     // openentrance 台词广播 ID
+    SAY_OPEN_ENTRANCE_2     = -1568086,                     // openentrance2 台词广播 ID
+    SAY_SOUND_ALARM         = -1568087,                     // sound警报 台词广播 ID
 
-    GOSSIP_ITEM_ID_BEGIN    = -3568000,
+    GOSSIP_ITEM_ID_BEGIN    = -3568000,                     // 物品IDbegin 对话菜单选项 ID
 
-    SPELL_BANGING_THE_GONG  = 45225,
-    SPELL_SPEAR_THROW       = 43647,
+    SPELL_BANGING_THE_GONG  = 45225,                        // bangingthegong 法术 ID
+    SPELL_SPEAR_THROW       = 43647,                        // spearthrow 法术 ID
 
-    EQUIP_ID_HUGE_MAUL      = 1012, // item id 5301
-    EQUIP_ID_GUARDIAN       = 23597, // item id 33979
+    EQUIP_ID_HUGE_MAUL      = 1012, // item id 5301 (物品ID5301)
+    EQUIP_ID_GUARDIAN       = 23597, // item id 33979 (物品ID33979)
 
-    ENTRY_HARRISON_WITH_HAT = 24375,
+    ENTRY_HARRISON_WITH_HAT = 24375,                        // harrisonwithhat Entry ID
 };
 
+// 随从/NPC AI：jonesza（harrison_jones_za）
 struct npc_harrison_jones_zaAI : public npc_escortAI
 {
     npc_harrison_jones_zaAI(Creature* creature) : npc_escortAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -388,7 +398,7 @@ struct npc_harrison_jones_zaAI : public npc_escortAI
     }
 
     instance_zulaman* m_instance;
-    uint32 m_uiSoundAlarmTimer;
+    uint32 m_uiSoundAlarmTimer;                             // SoundAlarm 技能计时器
 
     void WaypointReached(uint32 pointId) override
     {
@@ -456,6 +466,7 @@ struct npc_harrison_jones_zaAI : public npc_escortAI
         }
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
     void StartEvent()
@@ -508,6 +519,7 @@ struct npc_harrison_jones_zaAI : public npc_escortAI
     }
 };
 
+// NPC 对话交互入口函数：npc_harrison_jones_za
 bool GossipHello_npc_harrison_jones_za(Player* player, Creature* creature)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)creature->GetInstanceData();
@@ -561,11 +573,13 @@ bool ProcessEventId_event_ritual_of_power(uint32 /*eventId*/, Object* source, Ob
 ## npc_amanishi_lookout
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_GAUNTLET_START = -1568088
+    SAY_GAUNTLET_START = -1568088                           // gauntlet开始 台词广播 ID
 };
 
+// 随从/NPC AI：lookout（amanishi_lookout）
 struct npc_amanishi_lookoutAI : public ScriptedAI
 {
     npc_amanishi_lookoutAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -575,6 +589,7 @@ struct npc_amanishi_lookoutAI : public ScriptedAI
 
     instance_zulaman* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
     void MoveInLineOfSight(Unit* who) override
@@ -610,6 +625,7 @@ struct npc_amanishi_lookoutAI : public ScriptedAI
         }
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != EXTERNAL_WAYPOINT_MOVE)
@@ -624,13 +640,15 @@ struct npc_amanishi_lookoutAI : public ScriptedAI
 ## npc_amanishi_tempest
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_THUNDERCLAP       = 44033,
-    SPELL_SUMMON_WARRIOR    = 43486,
-    SPELL_SUMMON_EAGLE      = 43487,
+    SPELL_THUNDERCLAP       = 44033,                        // thunderclap 法术 ID
+    SPELL_SUMMON_WARRIOR    = 43486,                        // 召唤战士 法术 ID
+    SPELL_SUMMON_EAGLE      = 43487,                        // 召唤eagle 法术 ID
 };
 
+// 随从/NPC AI：tempest（amanishi_tempest）
 struct npc_amanishi_tempestAI : public ScriptedAI
 {
     npc_amanishi_tempestAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -640,10 +658,11 @@ struct npc_amanishi_tempestAI : public ScriptedAI
 
     instance_zulaman* m_instance;
 
-    uint32 m_uiSummonEagleTimer;
-    uint32 m_uiSummonWarriorTimer;
-    uint32 m_uiThunderclapTimer;
+    uint32 m_uiSummonEagleTimer;                            // SummonEagle 技能计时器
+    uint32 m_uiSummonWarriorTimer;                          // SummonWarrior 技能计时器
+    uint32 m_uiThunderclapTimer;                            // Thunderclap 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiSummonEagleTimer = 25000;
@@ -658,11 +677,13 @@ struct npc_amanishi_tempestAI : public ScriptedAI
             m_instance->SetData(TYPE_AKILZON_GAUNTLET, SPECIAL);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->SetWalk(false);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_instance && m_instance->IsAkilzonGauntletSpawning())
@@ -699,7 +720,7 @@ struct npc_amanishi_tempestAI : public ScriptedAI
         else
             m_uiThunderclapTimer -= diff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
@@ -707,30 +728,32 @@ struct npc_amanishi_tempestAI : public ScriptedAI
 ## npc_harkor
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GOSSIP_ITEM_ID_HARKOR_FREE  = -3568001,
-    GOSSIP_ITEM_ID_HARKOR_DONE  = -3568002,
-    GOSSIP_MENU_ID_HARKOR_DONE  = 8917,
-    GOSSIP_MENU_ID_HARKOR_DONE2 = 8875,
+    GOSSIP_ITEM_ID_HARKOR_FREE  = -3568001,                 // 物品IDharkor释放 对话菜单选项 ID
+    GOSSIP_ITEM_ID_HARKOR_DONE  = -3568002,                 // 物品IDharkordone 对话菜单选项 ID
+    GOSSIP_MENU_ID_HARKOR_DONE  = 8917,                     // menuIDharkordone 对话菜单选项 ID
+    GOSSIP_MENU_ID_HARKOR_DONE2 = 8875,                     // menuIDharkordone2 对话菜单选项 ID
 
-    SAY_HARKOR_HELP_1           = -1568089,
-    SAY_HARKOR_HELP_2           = -1568090,
-    SAY_HARKOR_HELP_3           = -1568091,
-    SAY_HARKOR_HELP_4           = -1568092,
-    SAY_HARKOR_EVENT_1          = -1568093,
-    SAY_HARKOR_EVENT_2          = -1568094,
-    SAY_HARKOR_EVENT_3          = -1568095,
+    SAY_HARKOR_HELP_1           = -1568089,                 // harkorhelp1 台词广播 ID
+    SAY_HARKOR_HELP_2           = -1568090,                 // harkorhelp2 台词广播 ID
+    SAY_HARKOR_HELP_3           = -1568091,                 // harkorhelp3 台词广播 ID
+    SAY_HARKOR_HELP_4           = -1568092,                 // harkorhelp4 台词广播 ID
+    SAY_HARKOR_EVENT_1          = -1568093,                 // harkor事件1 台词广播 ID
+    SAY_HARKOR_EVENT_2          = -1568094,                 // harkor事件2 台词广播 ID
+    SAY_HARKOR_EVENT_3          = -1568095,                 // harkor事件3 台词广播 ID
 
-    EQUIP_ID_HARKOR             = 23999,
+    EQUIP_ID_HARKOR             = 23999,                    // IDharkor 标识 ID
 
-    SPELL_CRATE_BURST           = 43255,
+    SPELL_CRATE_BURST           = 43255,                    // crateburst 法术 ID
 
-    SOUND_ID_MONEY              = 677,
-    SOUND_ID_CHEER              = 2725,
-    SOUND_ID_APPLAUD            = 6113,
+    SOUND_ID_MONEY              = 677,                      // IDmoney 音效 ID
+    SOUND_ID_CHEER              = 2725,                     // IDcheer 音效 ID
+    SOUND_ID_APPLAUD            = 6113,                     // IDapplaud 音效 ID
 };
 
+// 随从/NPC AI：标识 ID（harkor）
 struct npc_harkorAI : public ScriptedAI
 {
     npc_harkorAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -739,17 +762,18 @@ struct npc_harkorAI : public ScriptedAI
     }
 
     instance_zulaman* m_instance;
-    bool m_bCompletedChestEvent;
-    bool m_bChestEventInProgress;
-    bool m_bReachedEntrance;
-    bool m_bCanCelebrate;
+    bool m_bCompletedChestEvent;                            // CompletedChestEvent 状态标记
+    bool m_bChestEventInProgress;                           // ChestEventInProgress 状态标记
+    bool m_bReachedEntrance;                                // ReachedEntrance 状态标记
+    bool m_bCanCelebrate;                                   // CanCelebrate 状态标记
     uint8 m_uiEvent;
-    uint32 m_uiEventTimer;
-    uint32 m_uiHelpShoutTimer;
-    uint32 m_uiCelebrateTimer;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
+    uint32 m_uiHelpShoutTimer;                              // HelpShout 技能计时器
+    uint32 m_uiCelebrateTimer;                              // Celebrate 技能计时器
     uint8 m_uiHelpShoutCounter;
     GameObjectList lCoinList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_bChestEventInProgress = false;
@@ -793,6 +817,7 @@ struct npc_harkorAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_bReachedEntrance)
@@ -988,6 +1013,7 @@ struct npc_harkorAI : public ScriptedAI
         m_creature->GetMotionMaster()->MoveWaypoint(0, PATH_FROM_EXTERNAL, 2000);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != EXTERNAL_WAYPOINT_MOVE)
@@ -1046,6 +1072,7 @@ struct npc_harkorAI : public ScriptedAI
     }
 };
 
+// NPC 对话交互入口函数：npc_harkor
 bool GossipHello_npc_harkor(Player* player, Creature* creature)
 {
     ScriptedInstance* instance = static_cast<ScriptedInstance*>(creature->GetInstanceData());
@@ -1090,32 +1117,34 @@ bool GossipSelect_npc_harkor(Player* player, Creature* creature, uint32 /*uiSend
 ## npc_tanzar
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GOSSIP_ITEM_ID_TANZAR_FREE  = -3568003,
-    GOSSIP_ITEM_ID_TANZAR_DONE  = -3568004,
-    GOSSIP_ITEM_ID_TANZAR_DONE2 = -3568005,
-    GOSSIP_MENU_ID_TANZAR_DONE  = 8916,
-    GOSSIP_MENU_ID_TANZAR_DONE2 = 8804,
-    GOSSIP_MENU_ID_TANZAR_DONE3 = 8807,
+    GOSSIP_ITEM_ID_TANZAR_FREE  = -3568003,                 // 物品IDtanzar释放 对话菜单选项 ID
+    GOSSIP_ITEM_ID_TANZAR_DONE  = -3568004,                 // 物品IDtanzardone 对话菜单选项 ID
+    GOSSIP_ITEM_ID_TANZAR_DONE2 = -3568005,                 // 物品IDtanzardone2 对话菜单选项 ID
+    GOSSIP_MENU_ID_TANZAR_DONE  = 8916,                     // menuIDtanzardone 对话菜单选项 ID
+    GOSSIP_MENU_ID_TANZAR_DONE2 = 8804,                     // menuIDtanzardone2 对话菜单选项 ID
+    GOSSIP_MENU_ID_TANZAR_DONE3 = 8807,                     // menuIDtanzardone3 对话菜单选项 ID
 
-    SAY_TANZAR_HELP_1           = -1568096,
-    SAY_TANZAR_HELP_2           = -1568097,
-    SAY_TANZAR_HELP_3           = -1568098,
-    SAY_TANZAR_HELP_4           = -1568099,
-    SAY_TANZAR_EVENT_1          = -1568100,
-    SAY_TANZAR_EVENT_2          = -1568101,
-    SAY_TANZAR_EVENT_3          = -1568102,
-    SAY_TANZAR_EVENT_3_ALT      = -1568103,
-    SAY_TANZAR_EVENT_4          = -1568104,
+    SAY_TANZAR_HELP_1           = -1568096,                 // tanzarhelp1 台词广播 ID
+    SAY_TANZAR_HELP_2           = -1568097,                 // tanzarhelp2 台词广播 ID
+    SAY_TANZAR_HELP_3           = -1568098,                 // tanzarhelp3 台词广播 ID
+    SAY_TANZAR_HELP_4           = -1568099,                 // tanzarhelp4 台词广播 ID
+    SAY_TANZAR_EVENT_1          = -1568100,                 // tanzar事件1 台词广播 ID
+    SAY_TANZAR_EVENT_2          = -1568101,                 // tanzar事件2 台词广播 ID
+    SAY_TANZAR_EVENT_3          = -1568102,                 // tanzar事件3 台词广播 ID
+    SAY_TANZAR_EVENT_3_ALT      = -1568103,                 // tanzar事件3alt 台词广播 ID
+    SAY_TANZAR_EVENT_4          = -1568104,                 // tanzar事件4 台词广播 ID
 
-    SOUND_ID_APPLAUD_TANZAR     = 6402,
-    SOUND_ID_CHEER_TANZAR       = 6400,
-    SOUND_ID_EVENT_CELEBRATION  = 12135,
+    SOUND_ID_APPLAUD_TANZAR     = 6402,                     // IDapplaudtanzar 音效 ID
+    SOUND_ID_CHEER_TANZAR       = 6400,                     // IDcheertanzar 音效 ID
+    SOUND_ID_EVENT_CELEBRATION  = 12135,                    // ID事件celebration 音效 ID
 
-    EQUIP_ID_BONE_HAMMERS       = 1117,
+    EQUIP_ID_BONE_HAMMERS       = 1117,                     // IDbonehammers 标识 ID
 };
 
+// 随从/NPC AI：标识 ID（tanzar）
 struct npc_tanzarAI : public ScriptedAI
 {
     npc_tanzarAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -1124,13 +1153,14 @@ struct npc_tanzarAI : public ScriptedAI
     }
 
     instance_zulaman* m_instance;
-    bool m_bCompletedChestEvent;
-    bool m_bChestEventInProgress;
+    bool m_bCompletedChestEvent;                            // CompletedChestEvent 状态标记
+    bool m_bChestEventInProgress;                           // ChestEventInProgress 状态标记
     uint8 m_uiEvent;
-    uint32 m_uiEventTimer;
-    uint32 m_uiHelpShoutTimer;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
+    uint32 m_uiHelpShoutTimer;                              // HelpShout 技能计时器
     uint8 m_uiHelpShoutCounter;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_bChestEventInProgress = false;
@@ -1147,6 +1177,7 @@ struct npc_tanzarAI : public ScriptedAI
             m_uiHelpShoutTimer = 15000;
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_uiHelpShoutTimer && !m_bChestEventInProgress && !m_bCompletedChestEvent)
@@ -1325,6 +1356,7 @@ struct npc_tanzarAI : public ScriptedAI
         m_creature->GetMotionMaster()->MoveWaypoint(0, PATH_FROM_EXTERNAL, 1000);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != EXTERNAL_WAYPOINT_MOVE)
@@ -1380,6 +1412,7 @@ struct npc_tanzarAI : public ScriptedAI
     }
 };
 
+// NPC 对话交互入口函数：npc_tanzar
 bool GossipHello_npc_tanzar(Player* player, Creature* creature)
 {
     ScriptedInstance* instance = static_cast<ScriptedInstance*>(creature->GetInstanceData());
@@ -1430,24 +1463,26 @@ bool GossipSelect_npc_tanzar(Player* player, Creature* creature, uint32 /*uiSend
 ## npc_kraz
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GOSSIP_ITEM_ID_KRAZ_FREE    = -3568006,
-    GOSSIP_ITEM_ID_KRAZ_DONE    = -3568007,
+    GOSSIP_ITEM_ID_KRAZ_FREE    = -3568006,                 // 物品IDkraz释放 对话菜单选项 ID
+    GOSSIP_ITEM_ID_KRAZ_DONE    = -3568007,                 // 物品IDkrazdone 对话菜单选项 ID
     NPC_TEXT_ID_KRAZ_DONE       = 11602, // unknown gossip menu entry
     NPC_TEXT_ID_KRAZ_DONE2      = 11604, // unknown gossip menu entry
 
-    SPELL_EXPLOSIVE_CHARGE      = 43418,
+    SPELL_EXPLOSIVE_CHARGE      = 43418,                    // explosive冲锋 法术 ID
 
-    SAY_KRAZ_HELP_1             = -1568105,
-    SAY_KRAZ_HELP_2             = -1568106,
-    SAY_KRAZ_HELP_3             = -1568107,
-    SAY_KRAZ_EVENT_1            = -1568108,
-    SAY_KRAZ_EVENT_2            = -1568109,
-    SAY_KRAZ_EVENT_3            = -1568110,
-    SAY_KRAZ_EVENT_4            = -1568111,
+    SAY_KRAZ_HELP_1             = -1568105,                 // krazhelp1 台词广播 ID
+    SAY_KRAZ_HELP_2             = -1568106,                 // krazhelp2 台词广播 ID
+    SAY_KRAZ_HELP_3             = -1568107,                 // krazhelp3 台词广播 ID
+    SAY_KRAZ_EVENT_1            = -1568108,                 // kraz事件1 台词广播 ID
+    SAY_KRAZ_EVENT_2            = -1568109,                 // kraz事件2 台词广播 ID
+    SAY_KRAZ_EVENT_3            = -1568110,                 // kraz事件3 台词广播 ID
+    SAY_KRAZ_EVENT_4            = -1568111,                 // kraz事件4 台词广播 ID
 };
 
+// 随从/NPC AI：标识 ID（kraz）
 struct npc_krazAI : public ScriptedAI
 {
     npc_krazAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -1456,14 +1491,15 @@ struct npc_krazAI : public ScriptedAI
     }
 
     instance_zulaman* m_instance;
-    bool m_bCompletedChestEvent;
-    bool m_bChestEventInProgress;
+    bool m_bCompletedChestEvent;                            // CompletedChestEvent 状态标记
+    bool m_bChestEventInProgress;                           // ChestEventInProgress 状态标记
     uint8 m_uiEvent;
-    uint32 m_uiEventTimer;
-    uint32 m_uiHelpShoutTimer;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
+    uint32 m_uiHelpShoutTimer;                              // HelpShout 技能计时器
     uint8 m_uiHelpShoutCounter;
     GameObjectList lCoinList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_bChestEventInProgress = false;
@@ -1480,6 +1516,7 @@ struct npc_krazAI : public ScriptedAI
             m_uiHelpShoutTimer = 15000;
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_uiHelpShoutTimer && !m_bChestEventInProgress && !m_bCompletedChestEvent)
@@ -1620,6 +1657,7 @@ struct npc_krazAI : public ScriptedAI
         m_creature->GetMotionMaster()->MoveWaypoint(0, PATH_FROM_EXTERNAL, 2000);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != EXTERNAL_WAYPOINT_MOVE)
@@ -1647,6 +1685,7 @@ struct npc_krazAI : public ScriptedAI
     }
 };
 
+// NPC 对话交互入口函数：npc_kraz
 bool GossipHello_npc_kraz(Player* player, Creature* creature)
 {
     ScriptedInstance* instance = static_cast<ScriptedInstance*>(creature->GetInstanceData());
@@ -1691,31 +1730,33 @@ bool GossipSelect_npc_kraz(Player* player, Creature* creature, uint32 /*uiSender
 ## npc_ashli
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GOSSIP_ITEM_ID_ASHLI_FREE   = -3568008,
-    GOSSIP_ITEM_ID_ASHLI_DONE   = -3568009,
-    GOSSIP_MENU_ID_ASHLI_DONE   = 8876,
-    GOSSIP_MENU_ID_ASHLI_DONE2  = 8877,
+    GOSSIP_ITEM_ID_ASHLI_FREE   = -3568008,                 // 物品IDashli释放 对话菜单选项 ID
+    GOSSIP_ITEM_ID_ASHLI_DONE   = -3568009,                 // 物品IDashlidone 对话菜单选项 ID
+    GOSSIP_MENU_ID_ASHLI_DONE   = 8876,                     // menuIDashlidone 对话菜单选项 ID
+    GOSSIP_MENU_ID_ASHLI_DONE2  = 8877,                     // menuIDashlidone2 对话菜单选项 ID
 
-    SAY_ASHLI_HELP_1            = -1568112,
-    SAY_ASHLI_HELP_2            = -1568113,
-    SAY_ASHLI_HELP_3            = -1568114,
-    SAY_ASHLI_HELP_4            = -1568115,
-    SAY_ASHLI_EVENT_1           = -1568116,
-    SAY_ASHLI_EVENT_2           = -1568117,
-    SAY_ASHLI_EVENT_3           = -1568118,
-    SAY_ASHLI_EVENT_4           = -1568119,
+    SAY_ASHLI_HELP_1            = -1568112,                 // ashlihelp1 台词广播 ID
+    SAY_ASHLI_HELP_2            = -1568113,                 // ashlihelp2 台词广播 ID
+    SAY_ASHLI_HELP_3            = -1568114,                 // ashlihelp3 台词广播 ID
+    SAY_ASHLI_HELP_4            = -1568115,                 // ashlihelp4 台词广播 ID
+    SAY_ASHLI_EVENT_1           = -1568116,                 // ashli事件1 台词广播 ID
+    SAY_ASHLI_EVENT_2           = -1568117,                 // ashli事件2 台词广播 ID
+    SAY_ASHLI_EVENT_3           = -1568118,                 // ashli事件3 台词广播 ID
+    SAY_ASHLI_EVENT_4           = -1568119,                 // ashli事件4 台词广播 ID
 
-    SPELL_ASHLIS_FIREBALL       = 43515,
-    SPELL_ASHLIS_FIREBALL_01    = 43520,
-    SPELL_ASHLIS_FIREBALL_02    = 43525,
+    SPELL_ASHLIS_FIREBALL       = 43515,                    // ashlisfireball 法术 ID
+    SPELL_ASHLIS_FIREBALL_01    = 43520,                    // ashlisfireball01 法术 ID
+    SPELL_ASHLIS_FIREBALL_02    = 43525,                    // ashlisfireball02 法术 ID
 
-    SOUND_ID_EXCLAMATION        = 6120,
-    SOUND_ID_APPLAUD_ASHLI      = 2847,
-    SOUND_ID_APPLAUD_ASHLI2     = 6122,
+    SOUND_ID_EXCLAMATION        = 6120,                     // IDexclamation 音效 ID
+    SOUND_ID_APPLAUD_ASHLI      = 2847,                     // IDapplaudashli 音效 ID
+    SOUND_ID_APPLAUD_ASHLI2     = 6122,                     // IDapplaudashli2 音效 ID
 };
 
+// 随从/NPC AI：标识 ID（ashli）
 struct npc_ashliAI : public ScriptedAI
 {
     npc_ashliAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -1725,17 +1766,18 @@ struct npc_ashliAI : public ScriptedAI
     }
 
     instance_zulaman* m_instance;
-    bool m_bCompletedChestEvent;
-    bool m_bChestEventInProgress;
-    bool m_bReachedEntrance;
-    bool m_bCanCelebrate;
+    bool m_bCompletedChestEvent;                            // CompletedChestEvent 状态标记
+    bool m_bChestEventInProgress;                           // ChestEventInProgress 状态标记
+    bool m_bReachedEntrance;                                // ReachedEntrance 状态标记
+    bool m_bCanCelebrate;                                   // CanCelebrate 状态标记
     uint8 m_uiEvent;
-    uint32 m_uiEventTimer;
-    uint32 m_uiHelpShoutTimer;
-    uint32 m_uiCelebrateTimer;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
+    uint32 m_uiHelpShoutTimer;                              // HelpShout 技能计时器
+    uint32 m_uiCelebrateTimer;                              // Celebrate 技能计时器
     uint8 m_uiHelpShoutCounter;
     GameObjectList lCoinList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_bChestEventInProgress = false;
@@ -1784,6 +1826,7 @@ struct npc_ashliAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_bReachedEntrance)
@@ -1951,6 +1994,7 @@ struct npc_ashliAI : public ScriptedAI
         m_uiEventTimer = 3000;
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != EXTERNAL_WAYPOINT_MOVE)
@@ -2009,6 +2053,7 @@ struct npc_ashliAI : public ScriptedAI
     }
 };
 
+// NPC 对话交互入口函数：npc_ashli
 bool GossipHello_npc_ashli(Player* player, Creature* creature)
 {
     ScriptedInstance* instance = static_cast<ScriptedInstance*>(creature->GetInstanceData());
@@ -2054,16 +2099,18 @@ bool GossipSelect_npc_ashli(Player* player, Creature* creature, uint32 /*uiSende
 ## npc_amanishi_scout
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_ALERT_DRUMS               = 42177,
-    SPELL_SHOOT                     = 16496,
-    SPELL_MULTI_SHOT                = 43205,
-    SPELL_SUMMON_AMANISHI_SENTRIES  = 42179,
+    SPELL_ALERT_DRUMS               = 42177,                // alertdrums 法术 ID
+    SPELL_SHOOT                     = 16496,                // shoot 法术 ID
+    SPELL_MULTI_SHOT                = 43205,                // multishot 法术 ID
+    SPELL_SUMMON_AMANISHI_SENTRIES  = 42179,                // 召唤amanishisentries 法术 ID
 
-    SAY_ALARM                       = -1568120,
+    SAY_ALARM                       = -1568120,             // 警报 台词广播 ID
 };
 
+// 随从/NPC AI：scout（amanishi_scout）
 struct npc_amanishi_scoutAI : public ScriptedAI
 {
     npc_amanishi_scoutAI(Creature* creature) : ScriptedAI(creature)
@@ -2074,11 +2121,12 @@ struct npc_amanishi_scoutAI : public ScriptedAI
 
     instance_zulaman* m_instance;
 
-    uint32 m_uiShootTimer;
-    uint32 m_uiMultiShotTimer;
-    ObjectGuid m_targetDrumGuid;
-    ObjectGuid m_targetHutGuid;
+    uint32 m_uiShootTimer;                                  // Shoot 技能计时器
+    uint32 m_uiMultiShotTimer;                              // MultiShot 技能计时器
+    ObjectGuid m_targetDrumGuid;                            // targetDrum 实体 GUID
+    ObjectGuid m_targetHutGuid;                             // targetHut 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiShootTimer = 2000;
@@ -2117,6 +2165,7 @@ struct npc_amanishi_scoutAI : public ScriptedAI
         }
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != POINT_MOTION_TYPE || pointId != 1)
@@ -2157,6 +2206,7 @@ struct npc_amanishi_scoutAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim() || GetCombatScriptStatus())
@@ -2178,7 +2228,7 @@ struct npc_amanishi_scoutAI : public ScriptedAI
         else
             m_uiMultiShotTimer -= diff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
@@ -2186,6 +2236,7 @@ struct npc_amanishi_scoutAI : public ScriptedAI
 ## go_wooden_door
 ######*/
 
+// 游戏对象使用交互回调：go_wooden_door
 bool GOUse_go_wooden_door(Player* player, GameObject* go)
 {
     ScriptedInstance* instance = static_cast<ScriptedInstance*>(go->GetInstanceData());
@@ -2208,9 +2259,10 @@ bool GOUse_go_wooden_door(Player* player, GameObject* go)
     return false;
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_CALL_OF_THE_BEAST = 43360,
+    SPELL_CALL_OF_THE_BEAST = 43360,                        // 呼唤ofthebeast 法术 ID
 };
 
 struct CallOfTheBeast : public AuraScript
@@ -2222,6 +2274,7 @@ struct CallOfTheBeast : public AuraScript
     }
 };
 
+// 随从/NPC AI：trash开战触发（eagle_trash_aggro_trigger）
 struct npc_eagle_trash_aggro_triggerAI : public ScriptedAI
 {
     npc_eagle_trash_aggro_triggerAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_zulaman*>(creature->GetMap()->GetInstanceData()))
@@ -2233,6 +2286,7 @@ struct npc_eagle_trash_aggro_triggerAI : public ScriptedAI
 
     instance_zulaman* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
 
@@ -2264,6 +2318,7 @@ struct npc_eagle_trash_aggro_triggerAI : public ScriptedAI
     }
 };
 
+// 注册并载入脚本模块：zulaman
 void AddSC_zulaman()
 {
     Script* pNewScript = new Script;

@@ -4,18 +4,18 @@
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
-// battlegrounds
+// battlegrounds (战场脚本声明)
 extern void AddSC_battleground();
 
-// custom
+// custom (自定义脚本声明)
 
-// examples
+// examples (示例脚本声明)
 extern void AddSC_example_creature();
 extern void AddSC_example_escort();
 extern void AddSC_example_gossip_codebox();
 extern void AddSC_example_misc();
 
-// world
+// world (大世界、节日活动与通用系统脚本声明)
 extern void AddSC_areatrigger_scripts();
 extern void AddSC_bosses_emerald_dragons();
 extern void AddSC_generic_creature();
@@ -38,7 +38,7 @@ extern void AddSC_midsummer_festival();
 extern void AddSC_hallows_end();
 extern void AddSC_brewfest();
 
-// eastern kingdoms
+// eastern kingdoms (东部王国地下城、团队副本与野外区域脚本声明)
 extern void AddSC_blackrock_depths();                       // blackrock_depths
 extern void AddSC_boss_ambassador_flamelash();
 extern void AddSC_boss_coren_direbrew();
@@ -192,7 +192,7 @@ extern void AddSC_westfall();
 extern void AddSC_wetlands();
 extern void AddSC_world_eastern_kingdoms();
 
-// kalimdor
+// kalimdor (卡利姆多地下城、团队副本与野外区域脚本声明)
 extern void AddSC_instance_blackfathom_deeps();             // blackfathom_deeps
 extern void AddSC_boss_aeonus();                            // COT, dark_portal
 extern void AddSC_boss_chrono_lord_deja();
@@ -270,7 +270,7 @@ extern void AddSC_world_kalimdor();
 // northrend
 // removed
 
-// outland
+// outland (外域地下城、团队副本与野外区域脚本声明)
 extern void AddSC_boss_exarch_maladaar();                   // auchindoun, auchenai_crypts
 extern void AddSC_boss_shirrak();
 extern void AddSC_boss_nexusprince_shaffar();               // auchindoun, mana_tombs
@@ -367,20 +367,21 @@ extern void AddSC_boss_terokk();
 extern void AddSC_OutlandWorldScript();
 extern void AddSC_zangarmarsh();
 
+// 集中注册所有 C++ 脚本模块到 ScriptDevAIMgr 脚本管理器
 void AddScripts()
 {
-    // battlegrounds
+    // battlegrounds (注册战场脚本)
     AddSC_battleground();
 
-    // custom
+    // custom (注册自定义脚本)
 
-    // examples
+    // examples (注册示例脚本)
     AddSC_example_creature();
     AddSC_example_escort();
     AddSC_example_gossip_codebox();
     AddSC_example_misc();
 
-    // world
+    // world (注册大世界、节日活动与通用系统脚本)
     AddSC_areatrigger_scripts();
     AddSC_bosses_emerald_dragons();
     AddSC_generic_creature();
@@ -403,7 +404,7 @@ void AddScripts()
     AddSC_hallows_end();
     AddSC_brewfest();
 
-    // eastern kingdoms
+    // eastern kingdoms (注册东部王国地下城与野外脚本)
     AddSC_blackrock_depths();                               // blackrock_depths
     AddSC_boss_ambassador_flamelash();
     AddSC_boss_coren_direbrew();
@@ -557,7 +558,7 @@ void AddScripts()
     AddSC_wetlands();
     AddSC_world_eastern_kingdoms();
 
-    // kalimdor
+    // kalimdor (注册卡利姆多地下城与野外脚本)
     AddSC_instance_blackfathom_deeps();                     // blackfathom deeps
     AddSC_boss_aeonus();                                    // CoT, dark_portal
     AddSC_boss_chrono_lord_deja();
@@ -635,7 +636,7 @@ void AddScripts()
     // northrend
     // removed
 
-    // outland
+    // outland (注册外域地下城与野外脚本)
     AddSC_boss_exarch_maladaar();                           // auchindoun, auchenai_crypts
     AddSC_boss_shirrak();
     AddSC_boss_nexusprince_shaffar();                       // auchindoun, mana_tombs

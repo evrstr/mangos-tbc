@@ -26,6 +26,7 @@ namespace MaNGOS
 {
     /**
      * OperatorNew policy creates an object on the heap using new.
+     * OperatorNew 策略使用 new 在堆上创建对象。
      */
     template<class T>
     class OperatorNew
@@ -46,6 +47,7 @@ namespace MaNGOS
     /**
      * LocalStaticCreation policy creates an object on the stack
      * the first time call Create.
+     * LocalStaticCreation 策略在首次调用 Create 时在静态对齐存储区上原地构造对象。
      */
     template<class T>
     class LocalStaticCreation
@@ -80,6 +82,7 @@ namespace MaNGOS
 
     /**
      * CreateUsingMalloc by pass the memory manger.
+     * CreateUsingMalloc 绕过常规内存管理器，直接使用 malloc/free 分配与释放对象。
      */
     template<class T>
     class CreateUsingMalloc
@@ -105,6 +108,7 @@ namespace MaNGOS
 
     /**
      * CreateOnCallBack creates the object base on the call back.
+     * CreateOnCallBack 基于外部回调策略创建与销毁对象。
      */
     template<class T, class CALL_BACK>
     class CreateOnCallBack

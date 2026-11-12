@@ -21,6 +21,8 @@ SDComment: Placeholder
 SDCategory: Blasted Lands
 EndScriptData */
 
+// 诅咒之地（Blasted Lands）恶魔仪式与任务事件脚本
+
 /* ContentData
 EndContentData */
 
@@ -40,7 +42,7 @@ bool TrapTargetSearchRuneOfTheDefiler(Unit* unit)
 
 std::function<bool(Unit*)> functionRuneOfTheDefiler = &TrapTargetSearchRuneOfTheDefiler;
 
-// 12938 - Fel Curse
+// 12938 - Fel Curse (12938 - 魔能 诅咒)
 struct FelCurse : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -49,6 +51,7 @@ struct FelCurse : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：blasted_lands
 void AddSC_blasted_lands()
 {
     Script* pNewScript = new Script;

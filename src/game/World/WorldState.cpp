@@ -28,6 +28,7 @@
 #include <World/WorldStateDefines.h>
 #include "AI/ScriptDevAI/scripts/world/scourge_invasion.h"
 
+/// 飞艇/海船停靠事件 ID 映射
 enum
 {
     GROMGOLUC_EVENT_1   = 15312,
@@ -46,6 +47,7 @@ enum
     GROMGOLOG_EVENT_4   = 15325,
 };
 
+/// 安其拉战争物资类型到客户端当前数量 WorldStateID 的映射
 std::map<AQResources, WorldStateID> aqWorldstateMap =
 {
     {AQ_PEACEBLOOM, WORLD_STATE_AQ_PEACEBLOOM_NOW},
@@ -126,13 +128,14 @@ WorldState::~WorldState()
 {
 }
 
+/// 从数据库 world_state 表加载各全服世界事件的持久化状态并触发初始化
 void WorldState::Load()
 {
     std::unique_ptr<QueryResult> result(CharacterDatabase.Query("SELECT Id, Data FROM world_state"));
 
     if (result)
     {
-        // always one row
+        // always one row | 按行解析各 SaveId 对应的序列化数据
         do
         {
             Field* fields = result->Fetch();
@@ -243,7 +246,7 @@ void WorldState::Load()
                 case SAVE_ID_EXPANSION_RELEASE:
                     if (data.size())
                     {
-                        uint32 expansion; // need to read as number not as character
+                        uint32 expansion; // need to read as number not as character | 必须按整型读取而非 uint8 字符读取
                         loadStream >> expansion;
                         m_expansion = expansion;
                     }
@@ -499,7 +502,7 @@ void WorldState::HandlePlayerEnterZone(Player* player, uint32 zoneId)
         default:
             break;
     }
-    if (IsHolidayActive(HOLIDAY_FIRE_FESTIVAL)) // On midsummer starting, players can end up without buff but with bonfire in zone - keeping like this for simplicity and optimization
+    if (IsHolidayActive(HOLIDAY_FIRE_FESTIVAL)) // On midsummer starting, players can end up without buff but with bonfire in zone - keeping like this for simplicity and optimization | 仲夏火焰节期间，按大地图区域记录玩家并检测是否授予篝火祝福光环
     {
         if (player->GetMap()->IsContinent())
         {
@@ -551,7 +554,7 @@ void WorldState::HandlePlayerLeaveZone(Player* player, uint32 zoneId)
             if (player->GetTeam() == HORDE)
                 player->RemoveAurasDueToSpell(SPELL_NAZGRELS_FAVOR);
             auto position = std::find(m_magtheridonHeadPlayers.begin(), m_magtheridonHeadPlayers.end(), player->GetObjectGuid());
-            if (position != m_magtheridonHeadPlayers.end()) // == myVector.end() means the element was not found
+            if (position != m_magtheridonHeadPlayers.end()) // == myVector.end() means the element was not found | 未找到元素时迭代器等于 end()
                 m_magtheridonHeadPlayers.erase(position);
             break;
         }
@@ -656,7 +659,7 @@ bool WorldState::IsConditionFulfilled(uint32 conditionId, uint32 state) const
         return m_aqData.m_WarEffortCounters[id] == aqWorldStateTotalsMap[id].second;
     }
 
-    // Scourge Invasion
+    // Scourge Invasion | 天灾入侵各区域残余浮空城判定
     switch (conditionId)
     {
         case WORLD_STATE_SCOURGE_WINTERSPRING:
@@ -773,14 +776,14 @@ void WorldState::HandleExternalEvent(uint32 eventId, uint32 param)
             m_emeraldDragonsState |= 1 << bossId;
             if (m_emeraldDragonsState == 0xF)
                 m_emeraldDragonsTimer = 30 * HOUR * IN_MILLISECONDS;
-            Save(SAVE_ID_EMERALD_DRAGONS); // save to DB right away
+            Save(SAVE_ID_EMERALD_DRAGONS); // save to DB right away | 立即将翡翠巨龙击杀状态持久化到数据库
             break;
         }
         case CUSTOM_EVENT_HIGHLORD_KRUUL_DIED:
         {
             m_highlordKruulSpawned = false;
             m_highlordKruulTimer = urand(4 * HOUR * IN_MILLISECONDS, 6 * HOUR * IN_MILLISECONDS);
-            Save(SAVE_ID_HIGHLORD_KRUUL); // save to DB right away
+            Save(SAVE_ID_HIGHLORD_KRUUL); // save to DB right away | 立即将库鲁尔重生倒计时保存至数据库
             break;
         }
         case CUSTOM_EVENT_LOVE_IS_IN_THE_AIR_LEADER:
@@ -791,7 +794,7 @@ void WorldState::HandleExternalEvent(uint32 eventId, uint32 param)
             break;
         }
         case CUSTOM_EVENT_ADALS_SONG_OF_BATTLE:
-            m_adalSongOfBattleTimer = 120 * MINUTE * IN_MILLISECONDS; // Two hours duration
+            m_adalSongOfBattleTimer = 120 * MINUTE * IN_MILLISECONDS; // Two hours duration | 阿达尔的战歌持续 2 小时
             BuffAdalsSongOfBattle();
             break;
     }
@@ -918,7 +921,7 @@ void WorldState::ExecuteOnZonePlayers(uint32 zoneId, std::function<void(Player*)
             executor(player);
 }
 
-// Emerald Dragons
+// Emerald Dragons | 翡翠四绿龙世界 Boss 刷新管理
 enum EmeraldDragons : uint32
 {
     NPC_YSONDRE = 14887,
@@ -979,7 +982,7 @@ void WorldState::RespawnEmeraldDragons()
     });
 }
 
-// War effort section
+// War effort section | 安其拉开门物资捐献与阶段推进逻辑
 
 void WorldState::AddWarEffortProgress(AQResources resource, uint32 count)
 {
@@ -1361,7 +1364,7 @@ uint32 AhnQirajData::GetDaysRemaining() const
     return uint32(m_timer / (DAY * IN_MILLISECONDS)) + 1;
 }
 
-// Scourge invasion section
+// Scourge invasion section | 天灾入侵世界事件逻辑（区域浮空城刷怪、主城袭击与胜利计数）
 
 void WorldState::SetScourgeInvasionState(SIState state)
 {
@@ -1391,7 +1394,7 @@ void WorldState::StartScourgeInvasion(bool sendMail)
                 StartNewCityAttackIfTime(SI_TIMER_STORMWIND, zone.second.zoneId);
         }
 
-        // randomization of init so that not every invasion starts the same way
+        // randomization of init so that not every invasion starts the same way | 随机打乱区域顺序，避免每次天灾入侵均按固定顺序开启
         std::vector<uint32> randomIds(m_siData.m_invasionPoints.size());
         uint32 i = 0;
         for (auto& zone : m_siData.m_invasionPoints)
@@ -1611,7 +1614,7 @@ void WorldState::BroadcastSIWorldstates()
     for (const auto& itr : m)
     {
         Player* pl = itr.second;
-        // do not process players which are not in world
+        // do not process players which are not in world | 跳过尚未加入地图世界的玩家
         if (!pl->IsInWorld())
             continue;
 
@@ -1674,7 +1677,7 @@ void WorldState::StartNewInvasionIfTime(uint32 attackTimeVar, uint32 zoneId)
 {
     TimePoint now = sWorld.GetCurrentClockTime();
 
-    // Not yet time
+    // Not yet time | 未到下次入侵触发时间
     if (now < sWorldState.GetSITimer(SITimers(attackTimeVar)))
         return;
 
@@ -1685,7 +1688,7 @@ void WorldState::StartNewCityAttackIfTime(uint32 attackTimeVar, uint32 zoneId)
 {
     TimePoint now = sWorld.GetCurrentClockTime();
 
-    // Not yet time
+    // Not yet time | 未到下次主城袭击触发时间
     if (now < sWorldState.GetSITimer(SITimers(attackTimeVar)))
         return;
 
@@ -1700,11 +1703,11 @@ void WorldState::StartNewInvasion(uint32 zoneId)
     if (IsActiveZone(zoneId))
         return;
 
-    // Don't attack same zone as before.
+    // Don't attack same zone as before. | 避免连续两次袭击同一区域
     if (zoneId == sWorldState.GetLastAttackZone())
         return;
 
-    // If we have at least one victory and more than 1 active zones stop here.
+    // If we have at least one victory and more than 1 active zones stop here. | 若已有击退记录且当前活跃入侵区超过 1 个，则暂不新开入侵
     if (GetActiveZones() > 1 && sWorldState.GetBattlesWon() > 0)
         return;
 
@@ -1746,6 +1749,7 @@ void WorldState::StartNewCityAttack(uint32 zoneId)
 
     // If any of the required maps are not available we return. Will cause the invasion to be started
     // on next update instead
+    // 若所需地图尚未就绪则返回，待下次更新周期重试开启主城袭击
     if (!mapPtr)
     {
         sLog.outError("ScourgeInvasionEvent::StartNewCityAttackIfTime unable to access required map (%d). Retrying next update.", zone.map);
@@ -1768,6 +1772,7 @@ bool WorldState::ResumeInvasion(ScourgeInvasionData::InvasionZone& zone)
 {
     // Dont have a save variable to know which necropolises had already been destroyed, so we
     // just summon the same amount, but not necessarily the same necropolises
+    // 重启恢复区域天灾入侵：仅记录剩余浮空城数量，按数量重新生成克尔苏加德之口
     sLog.outBasic("[Scourge Invasion Event] Resuming Scourge invasion in zone %d", zone.zoneId);
 
     uint32 num_necropolises_remaining = sWorldState.GetSIRemaining(SIRemaining(zone.remainingVar));
@@ -1799,7 +1804,7 @@ bool WorldState::SummonMouth(Map* map, ScourgeInvasionData::InvasionZone& zone, 
     AddPendingInvasion(zone.zoneId);
     map->GetMessager().AddMessage([=](Map* map)
     {
-        // Remove old mouth if required.
+        // Remove old mouth if required. | 如有旧的克尔苏加德之口残留则先移除
         Creature* existingMouth = map->GetCreature(zone.mouthGuid);
 
         if (existingMouth)
@@ -1871,9 +1876,10 @@ void WorldState::HandleActiveZone(uint32 attackTimeVar, uint32 zoneId, uint32 re
         map->GetMessager().AddMessage([=](Map* map)
         {
             // Handles the inactive zone, without a Mouth of Kel'Thuzad summoned (which spawns the whole zone event).
+            // 校验区域内克尔苏加德之口是否仍存活；若区域内浮空城已全部被击毁且倒计时结束，则判定该区域防守胜利
             Creature* mouth = map->GetCreature(zone.mouthGuid);
             if (!mouth)
-                sWorldState.SetMouthGuid(zone.zoneId, ObjectGuid()); // delays spawning until next tick
+                sWorldState.SetMouthGuid(zone.zoneId, ObjectGuid()); // delays spawning until next tick | 清空 GUID 以便下次 Tick 重新生成
             // Handles the active zone that has no necropolis left.
             else if (timePoint < now && remaining == 0)
             {
@@ -1940,6 +1946,7 @@ void WorldState::OnEnable(ScourgeInvasionData::InvasionZone& zone)
 {
     // If there were remaining necropolises in the old zone before shutdown, we
     // restore that zone
+    // 若停服前该区域仍有未击毁的浮空城，则恢复入侵；否则按计时器开启新入侵
     if (sWorldState.GetSIRemaining(SIRemaining(zone.remainingVar)) > 0)
         ResumeInvasion(zone);
     // Otherwise we start a new Invasion
@@ -2015,7 +2022,7 @@ uint32 WorldState::GetTimerIdForZone(uint32 zoneId)
     return attackTime;
 }
 
-// Highlord Kruul
+// Highlord Kruul | 燃烧的远征前夕世界 Boss：大领主库鲁尔刷新与位置表
 enum HighlordKruul : uint32
 {
     NPC_HIGHLORD_KRUUL = 18338
@@ -2084,7 +2091,7 @@ enum
     QUEST_A_CHARITABLE_DONATION             = 11545,
     QUEST_A_MAGNANIMOUS_BENEFACTOR          = 11549,
 
-    // optional Sunwell Plateau PTR progressive release gates
+    // optional Sunwell Plateau PTR progressive release gates | 可选的太阳之井高地 PTR 渐进开门任务
     QUEST_AGAMATH_THE_FIRST_GATE            = 11551,
     QUEST_ROHENDOR_THE_SECOND_GATE          = 11552,
     QUEST_ARCHONISUS_THE_FINAL_GATE         = 11553,
@@ -2655,7 +2662,7 @@ void WorldState::StartExpansionEvent()
 
 void WorldState::FillInitialWorldStates(ByteBuffer& data, uint32& count, uint32 zoneId, uint32 /*areaId*/)
 {
-    if (m_siData.m_state != STATE_0_DISABLED) // scourge invasion active - need to send all worldstates
+    if (m_siData.m_state != STATE_0_DISABLED) // scourge invasion active - need to send all worldstates | 天灾入侵开启时，向所有进入世界的玩家下发天灾入侵世界状态
     {
         uint32 victories = GetBattlesWon();
 

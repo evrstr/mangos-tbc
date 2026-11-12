@@ -1,100 +1,176 @@
 = ScriptDev2 Milestones =
+= ScriptDev2 里程碑更新日志 =
 
 *Current Version: <<currentMS, ScriptDev2 - 0.8  (17 November 2014)>>*
+*当前版本：<<currentMS, ScriptDev2 - 0.8  (2014年11月17日)>>*
 
 *Supports:*
+*支持版本：*
 
 * Classic (1.12.1), see https://github.com/scriptdev2/scriptdev2-classic
+  （经典旧世 1.12.1，参见 https://github.com/scriptdev2/scriptdev2-classic）
 * TBC (2.4.3), see https://github.com/scriptdev2/scriptdev2-tbc
+  （燃烧的远征 2.4.3，参见 https://github.com/scriptdev2/scriptdev2-tbc）
 * WotLK (3.3.5a), see  https://github.com/scriptdev2/scriptdev2
+  （巫妖王之怒 3.3.5a，参见 https://github.com/scriptdev2/scriptdev2）
 * Cata (4.3.4), see  https://github.com/scriptdev2/scriptdev2-cata
+  （大地的裂变 4.3.4，参见 https://github.com/scriptdev2/scriptdev2-cata）
 
 [[currentMS]]
 == Milestone ScriptDev2 - 0.8 ==
+== 里程碑 ScriptDev2 - 0.8 ==
 
 === General ===
+=== 通用 ===
 * Implemented various missing quest scripts and similar events
+  （实现了多个缺失的任务脚本及相关事件）
 * Implemented many missing escort quests
+  （实现了大量缺失的护送任务）
 
 === WotLK content ===
+=== 巫妖王之怒（WotLK）内容 ===
 * Implemented full script for Ulduar
+  （实现了奥杜尔的完整脚本）
 * Implemented full script for Culling of Stratholme
+  （实现了净化斯坦索姆的完整脚本）
 
 === TBC content ===
+=== 燃烧的远征（TBC）内容 ===
 * Implemented script for event boss Headless Horseman
+  （实现了节日首领无头骑士的脚本）
 * Various improvements and bug fixes
+  （多项改进与缺陷修复）
 
 === Classic content ===
+=== 经典旧世（Classic）内容 ===
 * Implemented script for boss Viscidus in AQ40
+  （实现了安其拉神殿首领维希度斯的脚本）
 * Various improvements and bug fixes
+  （多项改进与缺陷修复）
 
 ==== Statistics ====
+==== 统计 ====
 * Total number of changes: over 144 revisions
+  （总变更数：超过 144 个修订版本）
 * Fixed many bugs from forum and issues from github
+  （修复了来自论坛和 GitHub issue 的大量缺陷）
 
 
 == Milestone ScriptDev2 - 0.7 ==
+== 里程碑 ScriptDev2 - 0.7 ==
 
 === General ===
+=== 通用 ===
 * Unify texts loading with the core
+  （统一了与核心之间的文本加载机制）
 * Implemented support for ScriptEffect spell hooks
+  （实现了对 ScriptEffect 法术钩子的支持）
 * Implemented various missing quest scripts and similar events
+  （实现了多个缺失的任务脚本及相关事件）
 
 === WotLK content ===
+=== 巫妖王之怒（WotLK）内容 ===
 * Finished script content for Death Knight area and Obsidian Sanctum
+  （完成了死亡骑士新手区与黑曜石圣殿的脚本内容）
 * Implemented full script for Oculus and Pit of Saron instances
+  （实现了魔环与萨隆矿坑副本的完整脚本）
 * Improved script for the following dungeons or bosses: Ruby Sanctum, Halls of Stone, Ormorok, Hadronox, Herald Volazj, Skadi and Sapphiron
+  （改进了以下副本或首领的脚本：红玉圣殿、岩石大厅、奥莫洛克、哈多诺克斯、传令官沃拉兹、残忍的斯卡迪以及萨菲隆）
 * Implemented various missing achievements
+  （实现了多项缺失的成就）
 
 === TBC content ===
+=== 燃烧的远征（TBC）内容 ===
 * Implemented script support for the Chess event, SSC water and Simon game
+  （实现了国际象棋事件、毒蛇神殿水体及西蒙游戏等脚本支持）
 * Improved script for the following dungeons or bosses: Felmyst, Kil'jaeden, Zul'jin, Al'ar, Shadow Labyrinth, Black Temple, Nazan and Vazruden and Netherspite
+  （改进了以下副本或首领的脚本：菲米丝、基尔加丹、祖尔金、奥、暗影迷宫、黑暗神殿、纳杉与瓦兹德以及虚空幽龙）
 * Implemented Year event boss - Ahune
+  （实现了年度节日首领——埃霍恩）
 * Implemented Zul'Aman and Shattered Halls loot modes.
+  （实现了祖阿曼和破碎大厅的战利品模式）
 
 === Classic content ===
+=== 经典旧世（Classic）内容 ===
 * Improve script for the following dungeons or bosses: Razorgore, Archaedas, Zul'farrak, Ruins of AQ, Baroness Anastari and Zul'gurub
+  （改进了以下副本或首领的脚本：狂野的拉佐格尔、阿扎达斯、祖尔法拉克、安其拉废墟、安娜丝塔丽男爵夫人以及祖尔格拉布）
 * Implemented Dire Maul loot modes (tribute run event)
+  （实现了厄运之槌战利品模式，即贡品路线事件）
 
 ==== Statistics ====
+==== 统计 ====
 * Total number of changes: over 166 revisions (183 commits)
+  （总变更数：超过 166 个修订版本 / 183 次提交）
 * Lots of bugs from forum and issues from github fixed
+  （修复了来自论坛和 GitHub issue 的大量缺陷）
 
 
 == Milestone ScriptDev2 - 0.6 ==
+== 里程碑 ScriptDev2 - 0.6 ==
 
 === General ===
+=== 通用 ===
 * Added distinct script library support for all the server versions
+  （为所有服务端版本添加了独立脚本库支持）
 * Unified instance handling and added some generic patterns
+  （统一了副本处理并添加了通用模式）
 * Added support for spell scripts
+  （添加了对法术脚本的支持）
 * Added support for world scripts for more complicated events
+  （添加了对更复杂事件的世界脚本支持）
 * Codestyle cleanup on all scripts
+  （对所有脚本进行了代码风格清理）
 * Convert many old scripts to EventAI
+  （将许多旧脚本转换为 EventAI）
 * Convert many old gossip scripts to DB-gossip system
+  （将许多旧对话脚本转换为数据库对话系统）
 * Added script placeholders for future 4.x content
+  （为未来的 4.x 内容添加了脚本占位符）
 * Implemented various missing quest scripts and similar events
+  （实现了多个缺失的任务脚本及相关事件）
 
 === WotLK content ===
+=== 巫妖王之怒（WotLK）内容 ===
 * Added script content for the following dungeons: Azjol Nerub, Ahn-Kahet, Drak'tharon Keep, Gundrak, Halls of Stone, Oculus, Utgarde Keep, Utgarde Pinnacle, Violet Hold, Nexus
+  （为以下副本添加了脚本内容：艾卓-尼鲁布、安卡赫特、达克萨隆要塞、古达克、岩石大厅、魔环、乌特加德城堡、乌特加德之巅、紫罗兰监狱、魔枢）
 * Finished raid script for Naxxramas and Onyxia
+  （完成了纳克萨玛斯和奥妮克希亚的团队副本脚本）
 * Added partial script content for the following: Eye of Eternity, Ruby Sanctum, Trial of the Crusader, Ulduar, Death Knight area quests.
+  （为以下内容添加了部分脚本：永恒之眼、红玉圣殿、十字军的试炼、奥杜尔、死亡骑士区域任务）
 * Added some basic script support for all bosses in Icecrown Citadel
+  （为冰冠堡垒的所有首领添加了基础脚本支持）
 * Implemented Year event boss - Apothecary Hummel
+  （实现了年度节日首领——药剂师汉摩尔）
 
 === TBC content ===
+=== 燃烧的远征（TBC）内容 ===
 * Cleanup and improve all the existing scripts by removing workarounds and adding missing content for all dungeons and raids.
+  （通过移除临时变通代码并补全所有地下城与团队副本缺失内容，清理并改进了所有现有脚本）
 * Added script for the following dungeons or bosses: Arcatraz, Blood Furnace, Sunwell Plateau, A'lar, The Lurker Below, Malacras, Zul'jin.
+  （为以下副本或首领添加了脚本：禁魔监狱、鲜血熔炉、太阳之井高地、奥、鱼斯拉、妖术领主玛拉卡斯、祖尔金）
 * Improve scripts for: Auchenai Crypts, Sethekk Halls, Shadow Labyrinth, Black Morass, Old Hillsbrad Foothills, Steamvault, Shattered Halls, Botanica, Mechanar, Karazhan, Black Temple, The Eye, Serperntshrine Cavern, Zul'Aman.
+  （改进了以下副本脚本：奥金尼地穴、塞泰克大厅、暗影迷宫、黑色沼泽、旧希尔斯布莱德丘陵、蒸汽地窟、破碎大厅、生态船、能源舰、卡拉赞、黑暗神殿、风暴要塞、毒蛇神殿、祖阿曼）
 * Properly downgraded Naxxramas and Onyxia for TBC and Classic versions
+  （为 TBC 和 Classic 版本正确降级适配了纳克萨玛斯和奥妮克希亚）
 * Implemented Year event boss - Coren Direbrew
+  （实现了年度节日首领——科林·烈酒）
 
 === Classic content ===
+=== 经典旧世（Classic）内容 ===
 * Implemented epic quests script for the opening of Ahn'Qiraj and Onyxia events.
+  （实现了安其拉开门和奥妮克希亚事件的史诗任务脚本）
 * Cleanup and improve all the existing scripts by removing workarounds and adding missing content for all dungeons and raids.
+  （通过移除临时变通代码并补全所有地下城与团队副本缺失内容，清理并改进了所有现有脚本）
 * Added or substantially improved script for the following dungeons: Blackrock Depths, Deathmines, Dire Maul, Gnomeregan, Razorfen Kraul, Shadowfang Keep, Sunken Temple, Wailing Caverns, Uldaman, Ruins of AQ
+  （新增或大幅改进了以下副本脚本：黑石深渊、死亡矿井、厄运之槌、诺莫瑞根、剃刀沼泽、影牙城堡、沉没的神庙、哀嚎洞穴、奥达曼、安其拉废墟）
 * Improve script for the following dungeons: Blackrock Spire, Blackfathom Deeps, Marauudon, Scholomance, Stratholme, Blackwing Lair, Molten Core, Emerald Dragons, Temple of AQ, Zul'Gurub
+  （改进了以下副本脚本：黑石塔、黑暗深渊、玛拉顿、通灵学院、斯坦索姆、黑翼之巢、熔火之心、翡翠巨龙、安其拉神殿、祖尔格拉布）
 * Properly downgraded Lord Kazzak for Classic version
+  （为 Classic 版本正确降级适配了卡扎克领主）
 
 ==== Statistics ====
+==== 统计 ====
 * Total number of changes: over 1300 revisions (1300 commits)
+  （总变更数：超过 1300 个修订版本 / 1300 次提交）
 * Lots of bugs from forum and issues from github fixed
+  （修复了来自论坛和 GitHub issue 的大量缺陷）

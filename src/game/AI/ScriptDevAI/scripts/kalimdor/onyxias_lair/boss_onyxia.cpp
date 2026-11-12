@@ -21,31 +21,36 @@ SDComment: Visual improvement needed in phase 2: flying animation while hovering
 SDCategory: Onyxia's Lair
 EndScriptData */
 
+/**
+ * 奥妮克希亚的巢穴：黑龙公主奥妮克希亚 (Onyxia) 战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "onyxias_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_AGGRO                   = -1249000,
-    SAY_KILL                    = -1249001,
-    SAY_PHASE_2_TRANS           = -1249002,
-    SAY_PHASE_3_TRANS           = -1249003,
-    EMOTE_BREATH                = -1249004,
-    SAY_KITE                    = -1249005,
+    SAY_AGGRO                   = -1249000,                 // 剧情台词/喊话文本 ID
+    SAY_KILL                    = -1249001,                 // 剧情台词/喊话文本 ID
+    SAY_PHASE_2_TRANS           = -1249002,                 // 剧情台词/喊话文本 ID
+    SAY_PHASE_3_TRANS           = -1249003,                 // 剧情台词/喊话文本 ID
+    EMOTE_BREATH                = -1249004,                 // 剧情台词/喊话文本 ID
+    SAY_KITE                    = -1249005,                 // 剧情台词/喊话文本 ID
 
-    SPELL_WINGBUFFET            = 18500,
-    SPELL_FLAMEBREATH           = 18435,
-    SPELL_CLEAVE                = 19983,
-    SPELL_TAILSWEEP             = 15847,
-    SPELL_KNOCK_AWAY            = 19633,
-    SPELL_FIREBALL              = 18392,
+    SPELL_WINGBUFFET            = 18500,                    // 技能法术 ID
+    SPELL_FLAMEBREATH           = 18435,                    // 技能法术 ID
+    SPELL_CLEAVE                = 19983,                    // 技能法术：顺劈斩
+    SPELL_TAILSWEEP             = 15847,                    // 技能法术 ID
+    SPELL_KNOCK_AWAY            = 19633,                    // 技能法术 ID
+    SPELL_FIREBALL              = 18392,                    // 技能法术：火球术
 
-    SPELL_DRAGON_HOVER          = 18430,
-    SPELL_SPEED_BURST           = 18391,
-    SPELL_PACIFY_SELF           = 19951,
+    SPELL_DRAGON_HOVER          = 18430,                    // 技能法术 ID
+    SPELL_SPEED_BURST           = 18391,                    // 技能法术 ID
+    SPELL_PACIFY_SELF           = 19951,                    // 技能法术 ID
 
-    // Not much choise about these. We have to make own defintion on the direction/start-end point
+    // Not much choise about these. We have to make own defintion on the direction/start-end point (说明)
     SPELL_BREATH_NORTH_TO_SOUTH = 17086,                    // 20x in "array"
     SPELL_BREATH_SOUTH_TO_NORTH = 18351,                    // 11x in "array"
 
@@ -57,33 +62,33 @@ enum
     SPELL_BREATH_SW_TO_NE       = 18596,                    // 12x in "array"
     SPELL_BREATH_NE_TO_SW       = 18617,                    // 12x in "array"
 
-    SPELL_VISUAL_BREATH_A       = 4880,                     // Only and all of the above Breath spells (and their triggered spells) have these visuals
-    SPELL_VISUAL_BREATH_B       = 4919,
+    SPELL_VISUAL_BREATH_A       = 4880,                     // Only and all of the above Breath spells (and their triggered spells) have these visuals (说明)
+    SPELL_VISUAL_BREATH_B       = 4919,                     // 技能法术 ID
 
     SPELL_BREATH_ENTRANCE       = 21131,                    // 8x in "array", different initial cast than the other arrays
 
-    SPELL_BELLOWINGROAR         = 18431,
+    SPELL_BELLOWINGROAR         = 18431,                    // 技能法术 ID
     SPELL_HEATED_GROUND         = 22191,                    // Prevent players from hiding in the tunnels when it is time for Onyxia's breath
 
-    // SPELL_SUMMON_ONYXIAN_WHELPS = 20171,                    // Periodic spell triggering SPELL_SUMMON_ONYXIAN_WHELP every 2 secs. Possibly used in Phase 2 for summoning whelps but data like duration or caster are unkown
-    // SPELL_SUMMON_ONYXIAN_WHELP  = 20172,                    // Triggered by SPELL_SUMMON_ONYXIAN_WHELPS
+    // SPELL_SUMMON_ONYXIAN_WHELPS = 20171,                    // Periodic spell triggering SPELL_SUMMON_ONYXIAN_WHELP every 2 secs. Possibly used in Phase 2 for summoning whelps but data like duration or caster are unkown (说明)
+    // SPELL_SUMMON_ONYXIAN_WHELP  = 20172,                    // Triggered by SPELL_SUMMON_ONYXIAN_WHELPS (说明)
 
-    POINT_ID_NORTH              = 0,
-    POINT_ID_SOUTH              = 4,
+    POINT_ID_NORTH              = 0,                        // 路径点 ID
+    POINT_ID_SOUTH              = 4,                        // 路径点 ID
     NUM_MOVE_POINT              = 8,
     MAX_POINTS                  = 10,
-    POINT_ID_LIFTOFF            = 1 + NUM_MOVE_POINT,
-    POINT_ID_INIT_NORTH         = 2 + NUM_MOVE_POINT,
-    POINT_ID_LAND               = 3 + NUM_MOVE_POINT,
+    POINT_ID_LIFTOFF            = 1 + NUM_MOVE_POINT,       // 路径点 ID
+    POINT_ID_INIT_NORTH         = 2 + NUM_MOVE_POINT,       // 路径点 ID
+    POINT_ID_LAND               = 3 + NUM_MOVE_POINT,       // 路径点 ID
 
-    PHASE_START                 = 1,                        // Health above 65%, normal ground abilities
-    PHASE_BREATH                = 2,                        // Breath phase (while health above 40%)
-    PHASE_END                   = 3,                        // normal ground abilities + some extra abilities
-    PHASE_BREATH_POST           = 4,                        // Landing and initial fearing
-    PHASE_TO_LIFTOFF            = 5,                        // Movement to south-entrance of room and liftoff there
-    PHASE_BREATH_PRE            = 6,                        // lifting off + initial flying to north side (summons also first pack of whelps)
+    PHASE_START                 = 1,                        // Health above 65%, normal ground abilities (技能)
+    PHASE_BREATH                = 2,                        // Breath phase (while health above 40%) (说明)
+    PHASE_END                   = 3,                        // normal ground abilities + some extra abilities (说明)
+    PHASE_BREATH_POST           = 4,                        // Landing and initial fearing (说明)
+    PHASE_TO_LIFTOFF            = 5,                        // Movement to south-entrance of room and liftoff there (说明)
+    PHASE_BREATH_PRE            = 6,                        // lifting off + initial flying to north side (summons also first pack of whelps) (说明)
 
-    POINT_MID_AIR_LAND          = 4 + NUM_MOVE_POINT,
+    POINT_MID_AIR_LAND          = 4 + NUM_MOVE_POINT,       // 路径点 ID
 
 };
 
@@ -95,14 +100,14 @@ struct OnyxiaMove
 
 static const OnyxiaMove aMoveData[NUM_MOVE_POINT] =
 {
-    {SPELL_BREATH_NORTH_TO_SOUTH,  24.16332f, -216.0808f, -58.98009f},  // north (coords verified in wotlk)
-    {SPELL_BREATH_NE_TO_SW,        10.2191f,  -247.912f,  -60.896f},    // north-east
-    {SPELL_BREATH_EAST_TO_WEST,   -15.00505f, -244.4841f, -60.40087f},  // east (coords verified in wotlk)
-    {SPELL_BREATH_SE_TO_NW,       -63.5156f,  -240.096f,  -60.477f},    // south-east
-    {SPELL_BREATH_SOUTH_TO_NORTH, -66.3589f,  -215.928f,  -64.23904f},  // south (coords verified in wotlk)
-    {SPELL_BREATH_SW_TO_NE,       -58.2509f,  -189.020f,  -60.790f},    // south-west
-    {SPELL_BREATH_WEST_TO_EAST,   -16.70134f, -181.4501f, -61.98513f},  // west (coords verified in wotlk)
-    {SPELL_BREATH_NW_TO_SE,        12.26687f, -181.1084f, -60.23914f},  // north-west (coords verified in wotlk)
+    {SPELL_BREATH_NORTH_TO_SOUTH,  24.16332f, -216.0808f, -58.98009f},  // north (coords verified in wotlk) (北)
+    {SPELL_BREATH_NE_TO_SW,        10.2191f,  -247.912f,  -60.896f},    // north-east (说明)
+    {SPELL_BREATH_EAST_TO_WEST,   -15.00505f, -244.4841f, -60.40087f},  // east (coords verified in wotlk) (东)
+    {SPELL_BREATH_SE_TO_NW,       -63.5156f,  -240.096f,  -60.477f},    // south-east (说明)
+    {SPELL_BREATH_SOUTH_TO_NORTH, -66.3589f,  -215.928f,  -64.23904f},  // south (coords verified in wotlk) (南)
+    {SPELL_BREATH_SW_TO_NE,       -58.2509f,  -189.020f,  -60.790f},    // south-west (说明)
+    {SPELL_BREATH_WEST_TO_EAST,   -16.70134f, -181.4501f, -61.98513f},  // west (coords verified in wotlk) (西)
+    {SPELL_BREATH_NW_TO_SE,        12.26687f, -181.1084f, -60.23914f},  // north-west (coords verified in wotlk) (说明)
 };
 
 static const float landPoints[1][3] =
@@ -112,10 +117,11 @@ static const float landPoints[1][3] =
 
 static const float afSpawnLocations[3][3] =
 {
-    { -30.127f, -254.463f, -89.440f},                       // whelps
-    { -30.817f, -177.106f, -89.258f},                       // whelps
+    { -30.127f, -254.463f, -89.440f},                       // whelps (说明)
+    { -30.817f, -177.106f, -89.258f},                       // whelps (说明)
 };
 
+// OnyxiaActions 战斗行为动作枚举
 enum OnyxiaActions
 {
     ONYXIA_PHASE_2_TRANSITION,
@@ -129,11 +135,12 @@ enum OnyxiaActions
     ONYXIA_KNOCK_AWAY,
     ONYXIA_MOVEMENT,
     ONYXIA_FIREBALL,
-    ONYXIA_ACTION_MAX,
+    ONYXIA_ACTION_MAX,                                      // 战斗行为动作
     ONYXIA_SUMMON_WHELPS,
     ONYXIA_PHASE_TRANSITIONS,
 };
 
+// boss_onyxiaAI 首领战斗 AI
 struct boss_onyxiaAI : public CombatAI
 {
     boss_onyxiaAI(Creature* creature) :
@@ -160,7 +167,7 @@ struct boss_onyxiaAI : public CombatAI
         AddCombatAction(ONYXIA_MOVEMENT, true);
         AddCustomAction(ONYXIA_SUMMON_WHELPS, true, [&]() { SummonWhelps(); }, TIMER_COMBAT_COMBAT);
         AddCustomAction(ONYXIA_PHASE_TRANSITIONS, true, [&]() { PhaseTransition(); }, TIMER_COMBAT_COMBAT);
-        m_creature->SetWalk(false); // onyxia should run when flying
+        m_creature->SetWalk(false); // onyxia should run when flying (说明)
         AddOnKillText(SAY_KILL);
     }
 
@@ -179,7 +186,7 @@ struct boss_onyxiaAI : public CombatAI
 
     ObjectGuid m_fireballVictim;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         if (!IsCombatMovement())
@@ -187,10 +194,10 @@ struct boss_onyxiaAI : public CombatAI
 
         m_uiPhase = PHASE_START;
 
-        m_uiMovePoint = POINT_ID_NORTH;                     // First point reached by the flying Onyxia
+        m_uiMovePoint = POINT_ID_NORTH;                     // First point reached by the flying Onyxia (说明)
 
         m_uiSummonCount = 0;
-        m_uiWhelpsPerWave = 20;                               // Twenty whelps on first summon, 4 - 10 on the nexts
+        m_uiWhelpsPerWave = 20;                               // Twenty whelps on first summon, 4 - 10 on the nexts (说明)
 
         m_bHasYelledLured = false;
         m_HasSummonedFirstWave = false;
@@ -212,7 +219,7 @@ struct boss_onyxiaAI : public CombatAI
 
     void JustReachedHome() override
     {
-        // in case evade in phase 2, see comments for hack where phase 2 is set
+        // in case evade in phase 2, see comments for hack where phase 2 is set (说明)
 
         if (m_instance)
             m_instance->SetData(TYPE_ONYXIA, FAIL);
@@ -224,7 +231,7 @@ struct boss_onyxiaAI : public CombatAI
             m_instance->SetData(TYPE_ONYXIA, DONE);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         if (!m_instance)
             return;
@@ -252,13 +259,13 @@ struct boss_onyxiaAI : public CombatAI
                 spellInfo->Id == SPELL_BREATH_SOUTH_TO_NORTH ||
                 spellInfo->Id == SPELL_BREATH_NORTH_TO_SOUTH)
         {
-            // This was sent with SendMonsterMove - which resulted in better speed than now
+            // This was sent with SendMonsterMove - which resulted in better speed than now (说明)
             m_creature->GetMotionMaster()->MovePoint(m_uiMovePoint, aMoveData[m_uiMovePoint].fX, aMoveData[m_uiMovePoint].fY, aMoveData[m_uiMovePoint].fZ);
             DoCastSpellIfCan(m_creature, SPELL_HEATED_GROUND, CAST_TRIGGERED);
         }
     }
 
-    void MovementInform(uint32 motionType, uint32 pointId) override
+    void MovementInform(uint32 motionType, uint32 pointId) override    // 移动节点到达通知
     {
         if (motionType != POINT_MOTION_TYPE || !m_instance)
             return;
@@ -266,18 +273,18 @@ struct boss_onyxiaAI : public CombatAI
         switch (pointId)
         {
             case POINT_ID_LAND:
-                // undo flying
+                // undo flying (说明)
                 m_creature->HandleEmote(EMOTE_ONESHOT_LAND);
                 m_creature->SetHover(false);
                 m_creature->RemoveAurasDueToSpell(SPELL_PACIFY_SELF);
-                ResetTimer(ONYXIA_PHASE_TRANSITIONS, 2000);                          // Start PHASE_END shortly delayed
+                ResetTimer(ONYXIA_PHASE_TRANSITIONS, 2000);                          // Start PHASE_END shortly delayed (开始)
                 return;
             case POINT_ID_LIFTOFF:
-                ResetTimer(ONYXIA_PHASE_TRANSITIONS, 3500);                           // Start Flying shortly delayed
+                ResetTimer(ONYXIA_PHASE_TRANSITIONS, 3500);                           // Start Flying shortly delayed (开始)
                 m_creature->SetHover(true);
                 m_creature->HandleEmote(EMOTE_ONESHOT_LIFTOFF);
                 break;
-            case POINT_ID_INIT_NORTH:                           // Start PHASE_BREATH
+            case POINT_ID_INIT_NORTH:                           // Start PHASE_BREATH (开始)
                 m_uiPhase = PHASE_BREATH;
                 m_creature->CastSpell(nullptr, SPELL_DRAGON_HOVER, TRIGGERED_OLD_TRIGGERED);
                 m_creature->CastSpell(nullptr, SPELL_PACIFY_SELF, TRIGGERED_OLD_TRIGGERED);
@@ -293,13 +300,13 @@ struct boss_onyxiaAI : public CombatAI
             m_creature->SetFacingToObject(pTrigger);
     }
 
-    void AttackStart(Unit* who) override
+    void AttackStart(Unit* who) override                    // 开始攻击目标回调
     {
         if (m_uiPhase == PHASE_START || m_uiPhase == PHASE_END)
             ScriptedAI::AttackStart(who);
     }
 
-    // Onyxian Whelps summoning during phase 2
+    // Onyxian Whelps summoning during phase 2 (说明)
     void SummonWhelps()
     {
         if (m_uiSummonCount >= m_uiWhelpsPerWave)
@@ -313,7 +320,7 @@ struct boss_onyxiaAI : public CombatAI
 
         for (uint8 i = 0; i < 2; i++)
         {
-            // Should probably make use of SPELL_SUMMON_ONYXIAN_WHELPS instead. Correct caster and removal of the spell is unkown, so make Onyxia do the summoning
+            // Should probably make use of SPELL_SUMMON_ONYXIAN_WHELPS instead. Correct caster and removal of the spell is unkown, so make Onyxia do the summoning (说明)
             if (Creature* pWhelp =  m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[i][0], afSpawnLocations[i][1], afSpawnLocations[i][2], 0.0f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 3 * IN_MILLISECONDS))
             {
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0))
@@ -329,7 +336,7 @@ struct boss_onyxiaAI : public CombatAI
         {
             case PHASE_TO_LIFTOFF:
                 m_uiPhase = PHASE_BREATH_PRE;
-                // Initial Onyxian Whelps spawn
+                // Initial Onyxian Whelps spawn (刷新)
                 ResetTimer(ONYXIA_SUMMON_WHELPS, 3000);
                 if (m_instance)
                     m_instance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
@@ -386,7 +393,7 @@ struct boss_onyxiaAI : public CombatAI
                 m_creature->getThreatManager().modifyThreatPercent(target, -100);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -501,24 +508,24 @@ struct boss_onyxiaAI : public CombatAI
             {
                 if (m_creature->IsNonMeleeSpellCasted(false))
                     return;
-                // 3 possible actions
+                // 3 possible actions (动作)
                 switch (urand(0, 2))
                 {
-                    case 0:                             // breath
+                    case 0:                             // breath (说明)
                         DoScriptText(EMOTE_BREATH, m_creature);
                         DoCastSpellIfCan(m_creature, aMoveData[m_uiMovePoint].uiSpellId, CAST_INTERRUPT_PREVIOUS);
                         m_uiMovePoint += NUM_MOVE_POINT / 2;
                         m_uiMovePoint %= NUM_MOVE_POINT;
                         ResetCombatAction(action, 25000);
                         return;
-                    case 1:                             // a point on the left side
+                    case 1:                             // a point on the left side (说明)
                     {
-                        // C++ is stupid, so add -1 with +7
+                        // C++ is stupid, so add -1 with +7 (说明)
                         m_uiMovePoint += NUM_MOVE_POINT - 1;
                         m_uiMovePoint %= NUM_MOVE_POINT;
                         break;
                     }
-                    case 2:                             // a point on the right side
+                    case 2:                             // a point on the right side (说明)
                         m_uiMovePoint = (m_uiMovePoint + 1) % NUM_MOVE_POINT;
                         break;
                 }
@@ -532,7 +539,7 @@ struct boss_onyxiaAI : public CombatAI
     }
 };
 
-void AddSC_boss_onyxia()
+void AddSC_boss_onyxia() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_onyxia";

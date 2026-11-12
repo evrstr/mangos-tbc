@@ -30,7 +30,7 @@ size_t DatabasePostgre::db_count = 0;
 
 DatabasePostgre::DatabasePostgre()
 {
-    // before first connection
+    // before first connection | 首个实例初始化时检查 libpq 是否支持线程安全
     if (db_count++ == 0)
     {
         if (!PQisthreadsafe())
@@ -55,6 +55,7 @@ PostgreSQLConnection::~PostgreSQLConnection()
     PQfinish(mPGconn);
 }
 
+// 解析连接参数并通过 PQsetdbLogin 建立 PostgreSQL 连接 | Parse infoString and establish PostgreSQL connection via PQsetdbLogin
 bool PostgreSQLConnection::Initialize(const char* infoString)
 {
     Tokens tokens = StrSplit(infoString, ";");
@@ -81,7 +82,7 @@ bool PostgreSQLConnection::Initialize(const char* infoString)
     else
         mPGconn = PQsetdbLogin(host.c_str(), port_or_socket_dir.c_str(), nullptr, nullptr, database.c_str(), user.c_str(), password.c_str());
 
-    /* check to see that the backend connection was successfully made */
+    /* check to see that the backend connection was successfully made | 检查后端数据库连接状态 */
     if (PQstatus(mPGconn) != CONNECTION_OK)
     {
         sLog.outError("Could not connect to Postgre database at %s: %s",
@@ -96,13 +97,14 @@ bool PostgreSQLConnection::Initialize(const char* infoString)
     return true;
 }
 
+// 执行 PostgreSQL 查询并校验返回元组状态 | Execute PostgreSQL query and verify tuple result status
 bool PostgreSQLConnection::_Query(const char* sql, PGresult** pResult, uint64* pRowCount, uint32* pFieldCount)
 {
     if (!mPGconn)
         return false;
 
     uint32 _s = WorldTimer::getMSTime();
-    // Send the query
+    // Send the query | 发送 SQL 查询
     *pResult = PQexec(mPGconn, sql);
     if (!*pResult)
         return false;
@@ -121,7 +123,7 @@ bool PostgreSQLConnection::_Query(const char* sql, PGresult** pResult, uint64* p
 
     *pRowCount = PQntuples(*pResult);
     *pFieldCount = PQnfields(*pResult);
-    // end guarded block
+    // end guarded block | 统计查询耗时与结果规模
 
     if (!*pRowCount)
     {
@@ -132,6 +134,7 @@ bool PostgreSQLConnection::_Query(const char* sql, PGresult** pResult, uint64* p
     return true;
 }
 
+// 执行查询并返回定位到首行的 QueryResultPostgre | Execute query and return QueryResultPostgre positioned at first row
 std::unique_ptr<QueryResult> PostgreSQLConnection::Query(const char* sql)
 {
     if (!mPGconn)
@@ -150,6 +153,7 @@ std::unique_ptr<QueryResult> PostgreSQLConnection::Query(const char* sql)
     return queryResult;
 }
 
+// 执行查询并返回带列名的 QueryNamedResult | Execute query and return QueryNamedResult with column names
 QueryNamedResult* PostgreSQLConnection::QueryNamed(const char* sql)
 {
     if (!mPGconn)
@@ -172,6 +176,7 @@ QueryNamedResult* PostgreSQLConnection::QueryNamed(const char* sql)
     return new QueryNamedResult(queryResult, names);
 }
 
+// 执行无返回行的 SQL 命令 | Execute non-query SQL command
 bool PostgreSQLConnection::Execute(const char* sql)
 {
     if (!mPGconn)
@@ -195,6 +200,7 @@ bool PostgreSQLConnection::Execute(const char* sql)
     return true;
 }
 
+// 执行事务控制命令 | Execute transaction control command
 bool PostgreSQLConnection::_TransactionCmd(const char* sql)
 {
     if (!mPGconn)

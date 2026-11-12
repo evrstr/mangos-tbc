@@ -21,6 +21,7 @@
 
 #include "CreatureAI.h"
 
+// 空生物 AI（哑巴 AI）：不主动索敌、不反击、不执行任何 AI 更新，常用于静态装饰 NPC 或纯脚本触发器
 class NullCreatureAI : public CreatureAI
 {
     public:
@@ -32,10 +33,10 @@ class NullCreatureAI : public CreatureAI
         void AttackedBy(Unit*) override {}
         void EnterEvadeMode() override {}
 
-        bool IsVisible(Unit*) const override { return false;  }
+        bool IsVisible(Unit*) const override { return false;  }         // 对视野检测始终不可见（不响应靠近）
 
         void UpdateAI(const uint32) override {}
-        static int Permissible(const Creature*) { return PERMIT_BASE_IDLE;  }
+        static int Permissible(const Creature*) { return PERMIT_BASE_IDLE;  } // 以最低空闲许可度作为通用兜底 AI
     protected:
         std::string GetAIName() override { return "NullAI"; }
 };

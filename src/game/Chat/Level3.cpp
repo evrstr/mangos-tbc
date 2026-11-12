@@ -71,6 +71,7 @@
 #ifdef BUILD_AHBOT
 #include "AuctionHouseBot/AuctionHouseBot.h"
 
+/// 重建拍卖行机器人 (AHBot) 拍卖物品池
 bool ChatHandler::HandleAHBotRebuildCommand(char* args)
 {
     bool all = false;
@@ -85,6 +86,7 @@ bool ChatHandler::HandleAHBotRebuildCommand(char* args)
     return true;
 }
 
+/// 重载拍卖行机器人全部配置
 bool ChatHandler::HandleAHBotReloadCommand(char* /*args*/)
 {
     if (sAuctionHouseBot.ReloadAllConfig())
@@ -97,6 +99,7 @@ bool ChatHandler::HandleAHBotReloadCommand(char* /*args*/)
     return false;
 }
 
+/// 查看联盟/部落/中立拍卖行机器人在售物品数量统计
 bool ChatHandler::HandleAHBotStatusCommand(char* /*args*/)
 {
     AuctionHouseBotStatusInfo statusInfo;
@@ -127,6 +130,7 @@ bool ChatHandler::HandleAHBotStatusCommand(char* /*args*/)
     return true;
 }
 
+/// 查看或覆写拍卖行机器人针对特定物品的价格与上架参数
 bool ChatHandler::HandleAHBotItemCommand(char* args)
 {
     // .ahbot item #itemid [$itemvalue [$addchance [$minstack [$maxstack]]]] [reset]
@@ -182,7 +186,8 @@ bool ChatHandler::HandleAHBotItemCommand(char* args)
 }
 #endif
 
-// reload commands
+// reload commands | 数据库表热重载命令组
+/// 一键重载所有支持热更新的世界数据库表与配置
 bool ChatHandler::HandleReloadAllCommand(char* /*args*/)
 {
     HandleReloadSkillFishingBaseLevelCommand((char*)"");
@@ -206,6 +211,7 @@ bool ChatHandler::HandleReloadAllCommand(char* /*args*/)
     return true;
 }
 
+/// 重载区域相关表（旅馆触发器、传送点触发器、游戏墓地关联）
 bool ChatHandler::HandleReloadAllAreaCommand(char* /*args*/)
 {
     // HandleReloadQuestAreaTriggersCommand((char*)""); -- reloaded in HandleReloadAllQuestCommand
@@ -216,6 +222,7 @@ bool ChatHandler::HandleReloadAllAreaCommand(char* /*args*/)
     return true;
 }
 
+/// 重载全部战利品掉落模板表
 bool ChatHandler::HandleReloadAllLootCommand(char* /*args*/)
 {
     sLog.outString("Re-Loading Loot Tables...");
@@ -225,6 +232,7 @@ bool ChatHandler::HandleReloadAllLootCommand(char* /*args*/)
     return true;
 }
 
+/// 重载全部 NPC 交互相关表（对话、训练师、商人）
 bool ChatHandler::HandleReloadAllNpcCommand(char* args)
 {
     if (*args != 'a')                                       // will be reloaded from all_gossips
@@ -235,6 +243,7 @@ bool ChatHandler::HandleReloadAllNpcCommand(char* args)
     return true;
 }
 
+/// 重载全部任务及任务接取/交还/触发关联表
 bool ChatHandler::HandleReloadAllQuestCommand(char* /*args*/)
 {
     HandleReloadQuestAreaTriggersCommand((char*)"a");
@@ -246,6 +255,7 @@ bool ChatHandler::HandleReloadAllQuestCommand(char* /*args*/)
     return true;
 }
 
+/// 重载全部数据库事件脚本 (dbscripts_on_*)
 bool ChatHandler::HandleReloadAllScriptsCommand(char* /*args*/)
 {
     sLog.outString("Re-Loading Scripts...");
@@ -261,6 +271,7 @@ bool ChatHandler::HandleReloadAllScriptsCommand(char* /*args*/)
     return true;
 }
 
+/// 重载 EventAI 脚本与召唤信息表
 bool ChatHandler::HandleReloadAllEventAICommand(char* /*args*/)
 {
     HandleReloadEventAISummonsCommand((char*)"a");
@@ -268,6 +279,7 @@ bool ChatHandler::HandleReloadAllEventAICommand(char* /*args*/)
     return true;
 }
 
+/// 重载全部法术自定义扩展配置表
 bool ChatHandler::HandleReloadAllSpellCommand(char* /*args*/)
 {
     HandleReloadSkillDiscoveryTemplateCommand((char*)"a");
@@ -286,6 +298,7 @@ bool ChatHandler::HandleReloadAllSpellCommand(char* /*args*/)
     return true;
 }
 
+/// 重载对话菜单与兴趣点表
 bool ChatHandler::HandleReloadAllGossipsCommand(char* args)
 {
     if (*args != 'a')                                       // already reload from all_scripts
@@ -296,6 +309,7 @@ bool ChatHandler::HandleReloadAllGossipsCommand(char* args)
     return true;
 }
 
+/// 重载物品附魔、目标需求与页文本表
 bool ChatHandler::HandleReloadAllItemCommand(char* /*args*/)
 {
     HandleReloadPageTextsCommand((char*)"a");
@@ -304,6 +318,7 @@ bool ChatHandler::HandleReloadAllItemCommand(char* /*args*/)
     return true;
 }
 
+/// 重载全部本地化多语言翻译表 (locales_*)
 bool ChatHandler::HandleReloadAllLocalesCommand(char* /*args*/)
 {
     HandleReloadLocalesCreatureCommand((char*)"a");
@@ -317,6 +332,7 @@ bool ChatHandler::HandleReloadAllLocalesCommand(char* /*args*/)
     return true;
 }
 
+/// 热重载主服务器配置文件 (mangosd.conf)
 bool ChatHandler::HandleReloadConfigCommand(char* /*args*/)
 {
     sLog.outString("Re-Loading config settings...");
@@ -1072,11 +1088,13 @@ bool ChatHandler::HandleReloadSpawnGroupsCommand(char* /*args*/)
     return true;
 }
 
+/// 重载 ScriptDev2 脚本库配置与文本数据
 bool ChatHandler::HandleLoadScriptsCommand(char* args)
 {
     return *args != 0;
 }
 
+/// 修改目标账号的 GM 权限等级（仅限操作低于自身权限的账号）
 bool ChatHandler::HandleAccountSetGmLevelCommand(char* args)
 {
     char* accountStr = ExtractOptNotLastArg(&args);
@@ -1128,7 +1146,7 @@ bool ChatHandler::HandleAccountSetGmLevelCommand(char* args)
     return true;
 }
 
-/// Set password for account
+/// Set password for account | 管理员重置指定账号的登录密码
 bool ChatHandler::HandleAccountSetPasswordCommand(char* args)
 {
     ///- Get the command line arguments
@@ -1184,6 +1202,7 @@ bool ChatHandler::HandleAccountSetPasswordCommand(char* args)
     return false;
 }
 
+/// 将选中玩家所有已学技能提升至当前等级上限
 bool ChatHandler::HandleMaxSkillCommand(char* /*args*/)
 {
     Player* SelectedPlayer = getSelectedPlayer();
@@ -1199,6 +1218,7 @@ bool ChatHandler::HandleMaxSkillCommand(char* /*args*/)
     return true;
 }
 
+/// 设置选中玩家的指定技能当前值与上限值
 bool ChatHandler::HandleSetSkillCommand(char* args)
 {
     Player* target = getSelectedPlayer();
@@ -1259,6 +1279,7 @@ bool ChatHandler::HandleSetSkillCommand(char* args)
     return true;
 }
 
+/// 让选中玩家遗忘指定法术（或连同所有高阶/全部等级）
 bool ChatHandler::HandleUnLearnCommand(char* args)
 {
     if (!*args)
@@ -1292,6 +1313,7 @@ bool ChatHandler::HandleUnLearnCommand(char* args)
     return true;
 }
 
+/// 列出选中单位当前处于冷却中的所有法术
 bool ChatHandler::HandleCooldownListCommand(char* /*args*/)
 {
     Unit* target = getSelectedUnit();
@@ -1307,6 +1329,7 @@ bool ChatHandler::HandleCooldownListCommand(char* /*args*/)
     return true;
 }
 
+/// 清除选中单位指定法术或全部法术冷却时间
 bool ChatHandler::HandleCooldownClearCommand(char* args)
 {
     Unit* target = getSelectedUnit();
@@ -1349,6 +1372,7 @@ bool ChatHandler::HandleCooldownClearCommand(char* args)
     return true;
 }
 
+/// 仅向选中玩家客户端发送清除全部法术冷却提示包
 bool ChatHandler::HandleCooldownClearClientSideCommand(char*)
 {
     Player* target = getSelectedPlayer();
@@ -1366,6 +1390,7 @@ bool ChatHandler::HandleCooldownClearClientSideCommand(char*)
     return true;
 }
 
+/// 清除选中单位的竞技场长冷却时间限制
 bool ChatHandler::HandleCooldownClearArenaCommand(char*)
 {
     Player* target = getSelectedPlayer();
@@ -1383,6 +1408,7 @@ bool ChatHandler::HandleCooldownClearArenaCommand(char*)
     return true;
 }
 
+/// 让自身学会当前职业及通用的全部非被动技能法术
 bool ChatHandler::HandleLearnAllCommand(char* /*args*/)
 {
     Player* player = getSelectedPlayer();
@@ -1439,6 +1465,7 @@ bool ChatHandler::HandleLearnAllCommand(char* /*args*/)
     return true;
 }
 
+/// 让自身学会全套 GM 常用测试与管理法术
 bool ChatHandler::HandleLearnAllGMCommand(char* /*args*/)
 {
     static uint32 gmSpellList[] =
@@ -1496,6 +1523,7 @@ bool ChatHandler::HandleLearnAllGMCommand(char* /*args*/)
     return true;
 }
 
+/// 让自身学会当前职业全部职业法术与天赋技能
 bool ChatHandler::HandleLearnAllMyClassCommand(char* /*args*/)
 {
     HandleLearnAllMySpellsCommand((char*)"");
@@ -1503,6 +1531,7 @@ bool ChatHandler::HandleLearnAllMyClassCommand(char* /*args*/)
     return true;
 }
 
+/// 让自身学会当前职业所有等级的职业技能书法术
 bool ChatHandler::HandleLearnAllMySpellsCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -1549,6 +1578,7 @@ bool ChatHandler::HandleLearnAllMySpellsCommand(char* /*args*/)
     return true;
 }
 
+/// 让自身学会当前职业全部天赋树的最高等级天赋
 bool ChatHandler::HandleLearnAllMyTalentsCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -1594,6 +1624,7 @@ bool ChatHandler::HandleLearnAllMyTalentsCommand(char* /*args*/)
     return true;
 }
 
+/// 让自身学会全部游戏内种族语言技能
 bool ChatHandler::HandleLearnAllLangCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -1606,6 +1637,7 @@ bool ChatHandler::HandleLearnAllLangCommand(char* /*args*/)
     return true;
 }
 
+/// 为目标玩家补齐当前等级和种族/职业应具备的默认法术与技能
 bool ChatHandler::HandleLearnAllDefaultCommand(char* args)
 {
     Player* target;
@@ -1620,6 +1652,7 @@ bool ChatHandler::HandleLearnAllDefaultCommand(char* args)
     return true;
 }
 
+/// 让选中玩家学习指定 ID 的法术（支持同时学习所有前置等级）
 bool ChatHandler::HandleLearnCommand(char* args)
 {
     Player* player = m_session->GetPlayer();
@@ -1667,6 +1700,7 @@ bool ChatHandler::HandleLearnCommand(char* args)
     return true;
 }
 
+/// 为选中玩家添加或扣除指定数量的物品（支持名称或物品链接）
 bool ChatHandler::HandleAddItemCommand(char* args)
 {
     char* cId = ExtractKeyFromLink(&args, "Hitem");
@@ -1752,6 +1786,7 @@ bool ChatHandler::HandleAddItemCommand(char* args)
     return true;
 }
 
+/// 为选中玩家发放指定套装 ID 的全套装备
 bool ChatHandler::HandleAddItemSetCommand(char* args)
 {
     uint32 itemsetId;
@@ -1816,6 +1851,7 @@ bool ChatHandler::HandleAddItemSetCommand(char* args)
     return true;
 }
 
+/// 跨全服检索指定物品在背包、邮件、拍卖行及公会银行中的存量分布
 bool ChatHandler::HandleListItemCommand(char* args)
 {
     uint32 item_id;
@@ -2024,6 +2060,7 @@ bool ChatHandler::HandleListItemCommand(char* args)
     return true;
 }
 
+/// 列出指定 Entry 的游戏对象在世界中的刷新位置与实例状态
 bool ChatHandler::HandleListObjectCommand(char* args)
 {
     // number or [name] Shift-click form |color|Hgameobject_entry:go_id|h[name]|h|r
@@ -2254,6 +2291,7 @@ bool ChatHandler::HandleListObjectCommand(char* args)
     return true;
 }
 
+/// 列出指定 Entry 的生物在世界中的刷新位置与实例状态
 bool ChatHandler::HandleListCreatureCommand(char* args)
 {
     // number or [name] Shift-click form |color|Hcreature_entry:creature_id|h[name]|h|r
@@ -2508,6 +2546,7 @@ void ChatHandler::ShowItemListHelper(uint32 itemId, int loc_idx, Player* target 
         PSendSysMessage(LANG_ITEM_LIST_CONSOLE, itemId, name.c_str(), usableStr);
 }
 
+/// 按名称模糊检索物品模板、套装、技能、法术、任务、生物、游戏对象及飞行点命令组
 bool ChatHandler::HandleLookupItemCommand(char* args)
 {
     if (!*args)
@@ -3047,6 +3086,7 @@ bool ChatHandler::HandleLookupTaxiNodeCommand(char* args)
  * and then the name of the guild.
  *
  */
+/// 创建新公会并指定会长
 bool ChatHandler::HandleGuildCreateCommand(char* args)
 {
     // guildmaster name optional
@@ -3081,6 +3121,7 @@ bool ChatHandler::HandleGuildCreateCommand(char* args)
     return true;
 }
 
+/// 将指定玩家直接加入目标公会
 bool ChatHandler::HandleGuildInviteCommand(char* args)
 {
     // player name optional
@@ -3107,6 +3148,7 @@ bool ChatHandler::HandleGuildInviteCommand(char* args)
     return true;
 }
 
+/// 将指定玩家从其所属公会中移除
 bool ChatHandler::HandleGuildUninviteCommand(char* args)
 {
     Player* target;
@@ -3128,6 +3170,7 @@ bool ChatHandler::HandleGuildUninviteCommand(char* args)
     return true;
 }
 
+/// 调整目标玩家在其公会中的会阶等级
 bool ChatHandler::HandleGuildRankCommand(char* args)
 {
     char* nameStr = ExtractOptNotLastArg(&args);
@@ -3172,6 +3215,7 @@ bool ChatHandler::HandleGuildRankCommand(char* args)
     return true;
 }
 
+/// 强制解散指定名称的公会
 bool ChatHandler::HandleGuildDeleteCommand(char* args)
 {
     if (!*args)
@@ -3192,6 +3236,7 @@ bool ChatHandler::HandleGuildDeleteCommand(char* args)
     return true;
 }
 
+/// 计算当前玩家与目标玩家或指定单位之间的三维/平面及碰撞体表面距离
 bool ChatHandler::HandleGetDistanceCommand(char* args)
 {
     WorldObject* obj = nullptr;
@@ -3240,6 +3285,7 @@ bool ChatHandler::HandleGetDistanceCommand(char* args)
     return true;
 }
 
+/// 检测当前玩家与选中目标之间是否存在地形与 VMap 视线遮挡
 bool ChatHandler::HandleGetLosCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -3258,6 +3304,7 @@ bool ChatHandler::HandleGetLosCommand(char* /*args*/)
     return true;
 }
 
+/// 立即击杀选中目标（或自身）
 bool ChatHandler::HandleDieCommand(char* args)
 {
     Player* player = m_session->GetPlayer();
@@ -3298,6 +3345,7 @@ bool ChatHandler::HandleDieCommand(char* args)
     return true;
 }
 
+/// 对选中单位造成指定数值的纯物理伤害、指定派系近战伤害或法术伤害
 bool ChatHandler::HandleDamageCommand(char* args)
 {
     if (!*args)
@@ -3382,6 +3430,7 @@ bool ChatHandler::HandleDamageCommand(char* args)
     return true;
 }
 
+/// 修改选中玩家的竞技场点数
 bool ChatHandler::HandleModifyArenaCommand(char* args)
 {
     if (!*args)
@@ -3404,6 +3453,7 @@ bool ChatHandler::HandleModifyArenaCommand(char* args)
     return true;
 }
 
+/// 复活指定在线或离线死亡角色（离线时清除幽灵状态等待上线复活）
 bool ChatHandler::HandleReviveCommand(char* args)
 {
     Player* target;
@@ -3423,6 +3473,7 @@ bool ChatHandler::HandleReviveCommand(char* args)
     return true;
 }
 
+/// 为选中单位直接施加指定法术的光环效果
 bool ChatHandler::HandleAuraCommand(char* args)
 {
     Unit* target = getSelectedUnit();
@@ -3473,6 +3524,7 @@ bool ChatHandler::HandleAuraCommand(char* args)
     return true;
 }
 
+/// 移除选中单位身上指定法术（或全部）的光环效果
 bool ChatHandler::HandleUnAuraCommand(char* args)
 {
     Unit* target = getSelectedUnit();
@@ -3500,6 +3552,7 @@ bool ChatHandler::HandleUnAuraCommand(char* args)
     return true;
 }
 
+/// 将指定墓地 ID 关联到当前所在区域 (game_graveyard_zone)
 bool ChatHandler::HandleLinkGraveCommand(char* args)
 {
     uint32 g_id;
@@ -3546,6 +3599,7 @@ bool ChatHandler::HandleLinkGraveCommand(char* args)
     return true;
 }
 
+/// 查询当前位置附近最近的有效墓地及关联阵营信息
 bool ChatHandler::HandleNearGraveCommand(char* args)
 {
     Team g_team;
@@ -3615,7 +3669,8 @@ bool ChatHandler::HandleNearGraveCommand(char* args)
     return true;
 }
 
-//-----------------------Npc Commands-----------------------
+//-----------------------Npc Commands----------------------- | -----------------------高级 NPC 管理命令-----------------------
+/// 切换选中生物是否允许移动
 bool ChatHandler::HandleNpcAllowMovementCommand(char* /*args*/)
 {
     if (sWorld.getAllowMovement())
@@ -3631,6 +3686,7 @@ bool ChatHandler::HandleNpcAllowMovementCommand(char* /*args*/)
     return true;
 }
 
+/// 在运行时修改选中生物的模板 Entry 并同步数据库刷新点
 bool ChatHandler::HandleNpcChangeEntryCommand(char* args)
 {
     if (!*args)
@@ -3655,6 +3711,7 @@ bool ChatHandler::HandleNpcChangeEntryCommand(char* args)
     return true;
 }
 
+/// 打印选中生物的完整属性、阵营、旗标、AI、模型、刷新时间与位置信息
 bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
 {
     Creature* target = getSelectedCreature();
@@ -3747,6 +3804,7 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
     return true;
 }
 
+/// 打印选中生物当前仇恨列表及嘲讽/敌对状态
 bool ChatHandler::HandleNpcThreatCommand(char* /*args*/)
 {
     Unit* target = getSelectedUnit();
@@ -3931,6 +3989,7 @@ void ChatHandler::HandleCharacterLevel(Player* player, ObjectGuid player_guid, u
     }
 }
 
+/// 调整选中玩家（含离线）的等级并同步属性或数据库记录
 bool ChatHandler::HandleCharacterLevelCommand(char* args)
 {
     char* nameStr = ExtractOptNotLastArg(&args);
@@ -3979,6 +4038,7 @@ bool ChatHandler::HandleCharacterLevelCommand(char* args)
     return true;
 }
 
+/// 提升或降低目标玩家（及宠物）的等级差值
 bool ChatHandler::HandleLevelUpCommand(char* args)
 {
     int32 addlevel = 1;
@@ -4112,6 +4172,7 @@ bool ChatHandler::HandleHideAreaCommand(char* args)
     return true;
 }
 
+/// 分别打开联盟/部落/中立拍卖行或当前所在区域拍卖行窗口
 bool ChatHandler::HandleAuctionAllianceCommand(char* /*args*/)
 {
     m_session->GetPlayer()->SetAuctionAccessMode(m_session->GetPlayer()->GetTeam() != ALLIANCE ? -1 : 0);
@@ -4230,6 +4291,7 @@ bool ChatHandler::HandleAuctionItemCommand(char* args)
     return true;
 }
 
+/// 远程打开当前玩家的个人银行窗口
 bool ChatHandler::HandleBankCommand(char* /*args*/)
 {
     m_session->SendShowBank(m_session->GetPlayer()->GetObjectGuid());
@@ -4237,6 +4299,7 @@ bool ChatHandler::HandleBankCommand(char* /*args*/)
     return true;
 }
 
+/// 远程打开当前玩家的猎人宠物兽栏窗口
 bool ChatHandler::HandleStableCommand(char* /*args*/)
 {
     m_session->SendStablePet(m_session->GetPlayer()->GetObjectGuid());
@@ -4244,6 +4307,7 @@ bool ChatHandler::HandleStableCommand(char* /*args*/)
     return true;
 }
 
+/// 修改当前所在区域的天气类型与强度 (晴/雨/雪/沙尘暴)
 bool ChatHandler::HandleChangeWeatherCommand(char* args)
 {
     // Weather is OFF
@@ -4284,6 +4348,7 @@ bool ChatHandler::HandleChangeWeatherCommand(char* args)
     return true;
 }
 
+/// 将玩家当前位置保存为新的 game_tele 传送点
 bool ChatHandler::HandleTeleAddCommand(char* args)
 {
     if (!*args)
@@ -4324,6 +4389,7 @@ bool ChatHandler::HandleTeleAddCommand(char* args)
     return true;
 }
 
+/// 删除指定名称的 game_tele 传送点
 bool ChatHandler::HandleTeleDelCommand(char* args)
 {
     if (!*args)
@@ -4399,6 +4465,7 @@ bool ChatHandler::HandleListAreaTriggerCommand(char* /*args*/)
     return true;
 }
 
+/// 列出选中单位身上激活的所有光环及其施法者、层数、类型与剩余时间
 bool ChatHandler::HandleListAurasCommand(char* args)
 {
     Unit* unit = getSelectedUnit();
@@ -4493,6 +4560,7 @@ bool ChatHandler::HandleListAurasCommand(char* args)
     return true;
 }
 
+/// 列出当前选中玩家已学习的全部天赋列表
 bool ChatHandler::HandleListTalentsCommand(char* /*args*/)
 {
     Player* player = getSelectedPlayer();
@@ -4530,6 +4598,7 @@ bool ChatHandler::HandleListTalentsCommand(char* /*args*/)
     return true;
 }
 
+/// 重置荣誉、等级、属性、法术、天赋、飞行点命令组
 bool ChatHandler::HandleResetHonorCommand(char* args)
 {
     Player* target;
@@ -4748,12 +4817,14 @@ bool ChatHandler::HandleResetAllCommand(char* args)
     return true;
 }
 
+/// 取消待执行的服务器定时关闭或重启倒计时
 bool ChatHandler::HandleServerShutDownCancelCommand(char* /*args*/)
 {
     sWorld.ShutdownCancel();
     return true;
 }
 
+/// 设定服务器定时关闭（支持自定义延迟秒数与进程退出码）
 bool ChatHandler::HandleServerShutDownCommand(char* args)
 {
     uint32 delay;
@@ -4774,6 +4845,7 @@ bool ChatHandler::HandleServerShutDownCommand(char* args)
     return true;
 }
 
+/// 设定服务器定时重启（退出码 2 供守护脚本拉起重启）
 bool ChatHandler::HandleServerRestartCommand(char* args)
 {
     uint32 delay;
@@ -4834,6 +4906,7 @@ bool ChatHandler::HandleServerIdleShutDownCommand(char* args)
     return true;
 }
 
+/// 为选中玩家直接添加指定任务到任务日志
 bool ChatHandler::HandleQuestAddCommand(char* args)
 {
     Player* player = getSelectedPlayer();
@@ -4890,6 +4963,7 @@ bool ChatHandler::HandleQuestAddCommand(char* args)
     return true;
 }
 
+/// 从选中玩家任务日志移除指定任务并重置其任务进度与状态
 bool ChatHandler::HandleQuestRemoveCommand(char* args)
 {
     Player* player = getSelectedPlayer();
@@ -4938,6 +5012,7 @@ bool ChatHandler::HandleQuestRemoveCommand(char* args)
     return true;
 }
 
+/// 强制将选中玩家的指定任务目标（物品/击杀/声望/金钱）设为已完成
 bool ChatHandler::HandleQuestCompleteCommand(char* args)
 {
     Player* player = getSelectedPlayer();
@@ -5091,6 +5166,7 @@ bool ChatHandler::HandleBanIPCommand(char* args)
     return HandleBanHelper(BAN_IP, args);
 }
 
+/// 账号/角色/IP 封禁、解封及封禁记录查询命令组
 bool ChatHandler::HandleBanHelper(BanMode mode, char* args)
 {
     if (!*args)
@@ -5557,6 +5633,7 @@ bool ChatHandler::HandleBanListIPCommand(char* args)
     return true;
 }
 
+/// 立即重生当前显式选中的死亡生物（若尸体仍在则会先移除）
 bool ChatHandler::HandleRespawnCommand(char* /*args*/)
 {
     Player* pl = m_session->GetPlayer();
@@ -5599,6 +5676,7 @@ bool ChatHandler::HandleRespawnCommand(char* /*args*/)
     return true;
 }
 
+/// 开启或关闭目标玩家的 GM 飞行模式
 bool ChatHandler::HandleGMFlyCommand(char* args)
 {
     bool value;
@@ -5626,6 +5704,7 @@ bool ChatHandler::HandleGMFlyCommand(char* args)
     return true;
 }
 
+/// 开启或关闭自身的 GM 无敌（免死）状态
 bool ChatHandler::HandleGMUnkillableCommand(char* args)
 {
     bool value;
@@ -5641,6 +5720,7 @@ bool ChatHandler::HandleGMUnkillableCommand(char* args)
     return true;
 }
 
+/// 从文件导入角色转储 (PDump) 到指定账号
 bool ChatHandler::HandlePDumpLoadCommand(char* args)
 {
     char* file = ExtractQuotedOrLiteralArg(&args);
@@ -5724,6 +5804,7 @@ bool ChatHandler::HandlePDumpLoadCommand(char* args)
     return true;
 }
 
+/// 将指定角色完整导出为 PDump 转储文件
 bool ChatHandler::HandlePDumpWriteCommand(char* args)
 {
     if (!*args)
@@ -5786,6 +5867,7 @@ bool ChatHandler::HandlePDumpWriteCommand(char* args)
     return true;
 }
 
+/// 调试命令：打印选中单位的 MotionMaster 移动生成器栈与当前移动状态
 bool ChatHandler::HandleMovegensCommand(char* /*args*/)
 {
     Unit* unit = getSelectedUnit();
@@ -5928,6 +6010,7 @@ bool ChatHandler::HandlePrintMovement(char* /*args*/)
     return true;
 }
 
+/// 调试命令：调整全服最大在线人数上限并踢出超出限制的低权限玩家
 bool ChatHandler::HandleServerPLimitCommand(char* args)
 {
     if (*args)
@@ -5979,6 +6062,7 @@ bool ChatHandler::HandleServerPLimitCommand(char* args)
     return true;
 }
 
+/// 命令当前玩家或选中目标施放指定法术 (.cast / .cast back / .cast dist / .cast target / .cast self)
 bool ChatHandler::HandleCastCommand(char* args)
 {
     if (!*args)
@@ -6183,6 +6267,7 @@ bool ChatHandler::HandleCastSelfCommand(char* args)
     return true;
 }
 
+/// 列出目标玩家当前所有已绑定的地下城与团队副本进度
 bool ChatHandler::HandleInstanceListBindsCommand(char* /*args*/)
 {
     Player* player = getSelectedPlayer();
@@ -6235,6 +6320,7 @@ bool ChatHandler::HandleInstanceListBindsCommand(char* /*args*/)
     return true;
 }
 
+/// 解除目标玩家指定地图或全部副本的进度绑定
 bool ChatHandler::HandleInstanceUnbindCommand(char* args)
 {
     if (!*args)
@@ -6477,6 +6563,7 @@ bool ChatHandler::HandleSendMailHelper(MailDraft& draft, char* args)
     return true;
 }
 
+/// 按种族掩码向全服符合条件的玩家批量发送邮件、物品或金币命令组
 bool ChatHandler::HandleSendMassMailCommand(char* args)
 {
     // format: raceMask "subject text" "mail text"
@@ -6750,6 +6837,7 @@ bool ChatHandler::HandleSendMessageCommand(char* args)
     return true;
 }
 
+/// 竞技场点数周结算、赛季奖励发放与重置管理命令组
 bool ChatHandler::HandleArenaFlushPointsCommand(char* /*args*/)
 {
     sBattleGroundMgr.GetMessager().AddMessage([](BattleGroundMgr* mgr)
@@ -6996,6 +7084,7 @@ bool ChatHandler::HandleMmapTestHeight(char* args)
     return true;
 }
 
+/// 全局重置所有团队副本实例并将副本内玩家传回炉石绑定点
 bool ChatHandler::HandleServerResetAllRaidCommand(char* /*args*/)
 {
     PSendSysMessage("Global raid instances reset, all players in raid instances will be teleported to homebind!");
@@ -7003,6 +7092,7 @@ bool ChatHandler::HandleServerResetAllRaidCommand(char* /*args*/)
     return true;
 }
 
+/// 管理 creature_linking 生物联动关系的增删改查命令组
 bool ChatHandler::HandleLinkAddCommand(char* args)
 {
     Player* player = m_session->GetPlayer();
@@ -7198,6 +7288,7 @@ bool ChatHandler::HandleLinkCheckCommand(char* args)
     return true;
 }
 
+/// 查询或操作世界事件进度（安其拉战争物资、天灾入侵、奎尔丹纳斯岛阶段、太阳之井大门、资料片解锁）
 bool ChatHandler::HandleVariablePrint(char* /*args*/)
 {
     Player* player = GetSession()->GetPlayer();
@@ -7403,9 +7494,10 @@ bool ChatHandler::HandleSetVariable(char* args)
     return true;
 }
 
+/// GM 修改属性所用的光环法术 ID 映射表
 enum ModSpells
 {
-    // client spells
+    // client spells | 客户端内置测试属性增益法术
     SPELL_MOD_STRENGTH     = 13372,
     SPELL_MOD_AGILITY      = 13365,
     SPELL_MOD_STAMINA      = 13370,
@@ -7413,7 +7505,7 @@ enum ModSpells
     SPELL_MOD_SPIRIT       = 13368,
     SPELL_MOD_SPELL_POWER  = 22747,
 
-    // custom spells
+    // custom spells | 服务端自定义属性调试光环法术
     SPELL_MOD_ARMOR        = 15170,
     SPELL_MOD_RES_HOLY     = 15171,
     SPELL_MOD_RES_FIRE     = 15172,
@@ -7433,6 +7525,7 @@ enum ModSpells
     SPELL_MOD_BLOCK_CHANCE = 15186,
 };
 
+/// 清除选中单位身上的全部 GM 调试属性光环
 bool ChatHandler::HandleResetModsCommand(char* /*args*/)
 {
     Unit* target = getSelectedUnit();
@@ -7473,6 +7566,7 @@ bool ChatHandler::HandleResetModsCommand(char* /*args*/)
     return true;
 }
 
+/// 通用属性光环修改辅助函数：移除旧光环并按指定数值重施放自定义光环
 bool ChatHandler::ModifyStatCommandHelper(char* args, char const* statName, uint32 spellId)
 {
     if (!*args)
@@ -7626,6 +7720,7 @@ bool ChatHandler::HandleModifyParryCommand(char *args)
     return ModifyStatCommandHelper(args, "Parry Chance", SPELL_MOD_PARRY_CHANCE);
 }
 
+/// 按 dbGuid 顺序依次传送到下一个游戏对象或生物刷新点，便于巡检世界刷怪
 bool ChatHandler::HandleGoNextCommand(char* args)
 {
     Player* player = m_session->GetPlayer();

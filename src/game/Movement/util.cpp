@@ -21,16 +21,17 @@
 
 namespace Movement
 {
-    float gravity = 19.29110527038574f;
+    float gravity = 19.29110527038574f; // WoW 客户端物理重力加速度 (yd/s^2)
 
-    /// Velocity bounds that makes fall speed limited
+    /// Velocity bounds that makes fall speed limited (终端下落速度上限，区分普通坠落与安全缓落)
     float terminalVelocity = 60.148003f;
     float terminalSavefallVelocity = 7.f;
 
     const float terminal_length = float(terminalVelocity* terminalVelocity) / (2.f* gravity);
     const float terminal_savefall_length = (terminalSavefallVelocity* terminalSavefallVelocity) / (2.f* gravity);
-    const float terminalFallTime = float(terminalVelocity / gravity); // the time that needed to reach terminalVelocity
+    const float terminalFallTime = float(terminalVelocity / gravity); // the time that needed to reach terminalVelocity (加速至终端速度所需时间)
 
+    /// 根据下落垂直距离与是否安全缓落，计算坠落耗时（秒）
     float computeFallTime(float path_length, bool isSafeFall)
     {
         if (path_length < 0.f)
@@ -55,6 +56,7 @@ namespace Movement
         return time;
     }
 
+    /// 计算带初始垂直速度的坠落位移高度
     float computeFallElevation(float t_passed, bool isSafeFall, float start_velocity)
     {
         float termVel;
@@ -68,7 +70,7 @@ namespace Movement
         if (start_velocity > termVel)
             start_velocity = termVel;
 
-        float terminal_time = terminalFallTime - start_velocity / gravity; // the time that needed to reach terminalVelocity
+        float terminal_time = terminalFallTime - start_velocity / gravity; // the time that needed to reach terminalVelocity (达到终端速度的剩余加速时间)
 
         if (t_passed > terminal_time)
         {
@@ -81,6 +83,7 @@ namespace Movement
         return result;
     }
 
+    /// 计算初速度为 0 时的自由落体下落距离
     float computeFallElevation(float t_passed)
     {
         float result;
@@ -88,7 +91,7 @@ namespace Movement
         if (t_passed > terminalFallTime)
         {
             // result = terminalVelocity * (t_passed - terminal_time) + gravity*terminal_time*terminal_time*0.5f;
-            // simplified view:
+            // simplified view: (简化表达式：终端速度段匀速位移 + 加速段位移)
             result = terminalVelocity * (t_passed - terminalFallTime) + terminal_length;
         }
         else
@@ -99,6 +102,7 @@ namespace Movement
 
 #define STR(x) #x
 
+    /// MovementFlags 调试名称表
     const char* g_MovementFlag_names[] =
     {
         STR(Forward),            // 0x00000001,

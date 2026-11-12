@@ -26,10 +26,11 @@
 #include "Common.h"
 #include "Multithreading/Threading.h"
 
-/// Command Line Interface handling thread
+/// Command Line Interface handling thread | 命令行界面（CLI）处理线程
 class CliRunnable : public MaNGOS::Runnable
 {
     public:
+        /// 线程主循环入口：从标准输入读取命令并投递到世界线程执行
         void run() override;
 };
 #endif

@@ -1,64 +1,85 @@
 [GUIDE] Introduction to Database content for SD2
+[指南] SD2 数据库内容简介
 ================================================
 
 This guide is intended to help people
+本指南旨在帮助以下用户：
 
 * to understand which information of the database is used with SD2
+  （了解 SD2 使用了数据库中的哪些信息）
 * who want to contribute their patches as complete as possible
+  （希望尽可能完整地提交自己补丁的开发者）
 
 All sql-related files are located in the ScriptDev2/sql and subsequent directories.
+所有 SQL 相关文件均位于 `ScriptDev2/sql` 及其子目录中。
 
 SQL-Files
+SQL 文件说明
 ---------
 
 Files that contain full SD2-Database content
+包含完整 SD2 数据库内容的文件
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For a script we usually have to take care of these files:
+编写或修改脚本时，通常需要维护以下文件：
 
 * mangos_scriptname_full.sql
 +
 This file is applied to the world database (default: mangos), and contains the ScriptNames
+（该文件应用到 world 数据库（默认库名：`mangos`），包含各类 ScriptName 绑定关系）
 +
 * scriptdev2_script_full.sql
 +
 This file is applied to the sd2 database (default: scriptdev2), and contains texts, gossip-items and waypoints
+（该文件应用到 sd2 数据库（默认库名：`scriptdev2`），包含文本、对话选项和路径点）
 
 Patchfiles for incremental Updates
+用于增量更新的补丁文件
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Patches for the databases are stored in the files:
+数据库的增量更新补丁存放在以下文件中：
 
 * Updates/rXXXX_mangos.sql
 +
 This file contains the changes that should be done with the patch to the world-databse
+（该文件包含补丁中针对 world 数据库的变更）
 +
 * Updates/rXXXX_scriptdev2.sql
 +
 This file contains the changes that should be done with the patch to the scriptdev2-database
+（该文件包含补丁中针对 scriptdev2 数据库的变更）
 
 World-Database
+World 数据库
 --------------
 
 ScriptNames of NPCs:
+NPC 的 ScriptName 配置：
 ~~~~~~~~~~~~~~~~~~~~
 
 If we need to assign a ScriptName to a NPC (GameObject-Scripts are similar) the statement is:
+如果需要为某个 NPC 绑定 ScriptName（游戏对象 GameObject 的脚本绑定方式类似），SQL 语句如下：
 
 -----------
 UPDATE creature_template SET ScriptName='npc_and_his_name' WHERE entry=XYZ;
 -----------
 or
+或
 -----------
 UPDATE creature_template SET ScriptName='npc_something_identifying' WHERE entry IN (XYZ, ZYX);
 -----------
 
 'Remark:' For creatures with many difficulty entries, only the one for normal difficulty needs the ScriptName.
+'备注：' 对于拥有多个难度模板（如英雄难度）的生物，只需为普通难度的条目设置 ScriptName 即可。
 
 ScriptNames for scripted_areatrigger:
+scripted_areatrigger 的 ScriptName 配置：
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For Areatriggers (or scripted_event_id) we usally cannot use UPDATE, hence we need to DELETE possible old entries first:
+对于区域触发器（Areatrigger）或 `scripted_event_id`，通常不能直接使用 UPDATE，因此需要先 DELETE 可能存在的旧记录：
 
 -----------
 DELETE FROM scripted_areatrigger WHERE entry=XYZ;
@@ -66,128 +87,174 @@ INSERT INTO scripted_areatrigger VALUES (XYZ, at_some_place);
 -----------
 
 ScriptDev2-Database
+ScriptDev2 数据库
 -------------------
 
 entry-Format for texts and for gossip-texts:
+脚本文本（texts）与对话文本（gossip-texts）的 entry 编号格式：
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The to be used entry is a combination of the number depending on the map and a counter.
+使用的 entry 编号由取决于所属地图的数字与顺序计数器组合而成：
 
 * This is for texts: -1<MapId><three-digit-counter>
+  （脚本文本格式：`-1<MapId><三位计数器>`）
 * For gossip-texts: -3<MapId><three-digit-counter>
+  （对话文本格式：`-3<MapId><三位计数器>`）
 +
 where <MapId> is the ID of the map for instances, or 000 for all other maps.
+其中 `<MapId>` 在副本中为对应的地图 ID，其余非副本地图统一使用 `000`。
 
 Example: Text on WorldMap
+示例：世界地图（非副本）上的文本
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Let's say we want to add a new text to a NPC on Kalimdor (no instance),
 then we need to look which is the last text entry of the format -1000XYZ
 (this one can be found in scriptdev2_script_full.sql).
+假设我们要为卡利姆多（非副本）上的某个 NPC 添加一条新文本，
+则需要先查找形如 `-1000XYZ` 的最后一条文本 entry
+（可在 `scriptdev2_script_full.sql` 中找到）。
 
 On the moment where I write this guide this is:
+在撰写本指南时，最后一条记录为：
 
 ----------
 (-1000589,'Kroshius live? Kroshius crush!',0,1,0,0,'SAY_KROSHIUS_REVIVE');
 ----------
 
 so our first text entry will be -1000590.
+因此，我们新增的第一条文本 entry 就应当是 `-1000590`。
 
 Example: Gossip-Item in Instance
+示例：副本中的对话选项
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Let's say we want to add a new gossip item to a NPC in Culling of Stratholme, this map has the ID 595.
 At this moment there is already some gossip_text, and the last one is
+假设我们要为“净化斯坦索姆”（Culling of Stratholme，地图 ID 为 595）中的某个 NPC 添加一条新的对话选项，
+当前已有若干 `gossip_text`，最后一条是：
 
 ------------
 (-3595005,'So how does the Infinite Dragonflight plan to interfere?','chromie GOSSIP_ITEM_INN_3');
 ------------
 
 so our first gossip-text entry will be -3595006.
+因此，我们新增的第一条对话文本 entry 就应当是 `-3595006`。
 
 Format for texts
+文本记录格式
 ~~~~~~~~~~~~~~~~
 
 The format is `(entry,content_default,sound,type,language,emote,comment)` with these meanings:
+文本字段格式为 `(entry,content_default,sound,type,language,emote,comment)`，各字段含义如下：
 
 entry:: should now be clear ;)
+  （现在你应该已经清楚其规则了 ;)）
 content_default:: is the text (in english) enclosed with '. +
   There are a few placeholders that can be used:
-  +
+  （以单引号 `'` 包裹的英文原文文本。可使用以下占位符：）+
 [horizontal]
 %s;;  self, is the name of the Unit saying the text +
+  （自身名称，即说出该文本的单位名称）+
 The $-placeholders work only if you use DoScriptText with a 'target'.
+  （`$` 开头的占位符仅在使用 `DoScriptText` 并传入了 `'target'` 参数时才有效。）
 $N, $n;;  the [N, n]ame of the target
+  （目标名称）
 $C, $c;;  the [C, c]lass of the target
+  （目标职业）
 $R, $r;;  the [R, r]ace of the target
+  （目标种族）
 $GA:B; ;;  if the target is male then A else B is displayed, Example:
-+
+  （性别分支：若目标为男性则显示 A，否则显示 B，示例：）+
 --------------------------------
 'Time to teach you a lesson in manners, little $Gboy:girl;!'
 --------------------------------
 +
 Remember to escape [red]#\'# with [red]#\'#, Example:
-+
+  （注意将单引号转义为 `\'`，示例：）+
 --------------------------------
 'That \'s my favourite chocolate bar'.
 --------------------------------
 sound:: is the sound ID that shall be played on saying, they are stored in SoundEntries.dbc
-+
+  （发言时播放的音效 ID，存储在 `SoundEntries.dbc` 中）+
 [quote, Ntsc]
 _____________________________
 Sound Ids are stored within the SoundEntries.dbc file. Within that dbc file you will find a reference to the actual file that is played. We cannot help you with reading these files so please do not ask how.
+音效 ID 保存在 `SoundEntries.dbc` 文件中，该 DBC 文件记录了实际播放音频文件的引用路径。我们无法协助你读取这些文件，因此请勿询问如何读取。
 _____________________________
 +
 type:: is the type of the text, there are these possibilities:
-+
+  （文本显示类型，可选值如下：）+
 -------------
-0 CHAT_TYPE_SAY - 'white' text
-1 CHAT_TYPE_YELL - 'red' text
-2 CHAT_TYPE_TEXT_EMOTE - 'yellow' emote-text (no <Name>... )
-3 CHAT_TYPE_BOSS_EMOTE - 'big yellow' emote-text displayed in the center of the screen
-4 CHAT_TYPE_WHISPER - whisper, needs a target
-5 CHAT_TYPE_BOSS_WHISPER - whipser, needs a target
-6 CHAT_TYPE_ZONE_YELL - 'red' text, displayed to everyone in the zone
+0 CHAT_TYPE_SAY - 'white' text (白字“说话”)
+1 CHAT_TYPE_YELL - 'red' text (红字“大喊”)
+2 CHAT_TYPE_TEXT_EMOTE - 'yellow' text (黄字文字表情，不带 <Name>...)
+3 CHAT_TYPE_BOSS_EMOTE - 'big yellow' emote-text displayed in the center of the screen (屏幕中央显示的大号黄色首领表情提示)
+4 CHAT_TYPE_WHISPER - whisper, needs a target (密语，需要指定目标)
+5 CHAT_TYPE_BOSS_WHISPER - whipser, needs a target (首领密语，需要指定目标)
+6 CHAT_TYPE_ZONE_YELL - 'red' text, displayed to everyone in the zone (区域红字大喊，向当前区域所有玩家显示)
 --------------
 +
 language:: is the language of the text (like LANG_GNOMISH), see +enum Language+ in `game/SharedDefines.h` -- usually zero (LANG_UNIVERSAL)
+  （文本所使用的游戏内种族语言，如 `LANG_GNOMISH`，参见 `game/SharedDefines.h` 中的 `enum Language`——通常为 `0` 即 `LANG_UNIVERSAL`）
 emote:: is the emote the npc shall perform on saying the text, can be found in +enum Emote+ in `game/SharedDefines.h`
+  （NPC 说出该文本时执行的表情动作，可在 `game/SharedDefines.h` 的 `enum Emote` 中查找）
 comment:: is a comment to this text, usually the used enum of the script, like SAY_KROSHIUS_REVIVE, if this enum is not identifying the npc, then the name of the npc is put before.
+  （该文本的注释，通常填写脚本中使用的枚举名，如 `SAY_KROSHIUS_REVIVE`；如果该枚举名不能体现所属 NPC，则在前面加上 NPC 名称。）
 
 Format for gossip-texts
+对话文本格式
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The format for gossip texts is `(entry,content_default,comment)` +
 The fields have the same meaning as for script-texts.
+对话文本的格式为 `(entry,content_default,comment)` +
+各字段含义与脚本文本相同。
 
 Format for waypoints
+路径点（waypoints）格式
 ~~~~~~~~~~~~~~~~~~~~
 
 The format for waypoints is `(entry,pointid,location_x,location_y,location_z,waittime,point_comment)` with these meanings:
+路径点的字段格式为 `(entry,pointid,location_x,location_y,location_z,waittime,point_comment)`，各字段含义如下：
 
 entry:: is the entry of the scripted NPC
+  （对应脚本 NPC 的 entry 编号）
 pointid:: is the ID of the point, usally starting with 01, and increasing
+  （路径点编号，通常从 1 / 01 开始递增）
 location_*:: describes the position of the waypoint
+  （描述该路径点的三维坐标位置）
 waittime:: is the time, the mob will wait after reaching _this_ waypoint, before he continues to go to the next
+  （怪物到达*当前*路径点后等待的时间，随后继续前往下一个点）
 point_comment:: is used to note if something special is happening at this point, like quest credit
+  （用于备注该路径点是否会触发特殊事件，例如任务完成计数等）
 
 
 Creating the Patch
+创建补丁
 ------------------
 
 There are different ways to get to a patch, I prefer this workflow:
+制作补丁的方式有多种，我推荐以下工作流程：
 
 For the scriptdev2 database (patch files):
+针对 scriptdev2 数据库（补丁文件）：
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Open scriptdev2_script_full.txt +
 scroll to the right place for the needed SQL-statements, to note the entry. +
 (for texts depending on mapId, and to the last counter, for waypoints behind the last inserted waypoint)
+打开 `scriptdev2_script_full.sql`（原文写作 `scriptdev2_script_full.txt`）+
+滚动到需要添加 SQL 语句的对应位置并记下 entry 编号。+
+（文本按 `mapId` 分区查找最后计数器，路径点则查找最后插入的路径点之后）
 
 Example for normal world text:
+普通世界地图文本示例：
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Assume the last entry in your map (here world-map) was:
+假设你所在地图（此处为世界地图）的最后一条 entry 为：
 
 --------------
 (-1000589,'Kroshius live? Kroshius crush!',0,1,0,0,'SAY_KROSHIUS_REVIVE');
@@ -195,6 +262,7 @@ Assume the last entry in your map (here world-map) was:
 
 Now create a new file: Updates/r0000_scriptdev2.sql
 Add there:
+现在创建一个新文件：`Updates/r0000_scriptdev2.sql`，并写入：
 
 -----------
 DELETE FROM script_texts WHERE entry=-1000590;
@@ -202,6 +270,7 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1000590,'My fancy aggro-text',0,1,0,0,'boss_hogger SAY_AGGRO');
 -----------
 or
+或
 -----------
 DELETE FROM script_texts WHERE entry BETWEEN -1000592 AND -1000590;
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,comment) VALUES
@@ -211,11 +280,14 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 -----------
 
 Hint: the INSERT statements can also be copied from the scriptdev2_script_full.sql
+提示：`INSERT` 语句也可以直接从 `scriptdev2_script_full.sql` 中复制参考。
 
 Example for waypoints:
+路径点示例：
 ^^^^^^^^^^^^^^^^^^^^^^
 
 The required SQL code to add a waypoint is:
+添加路径点所需的 SQL 代码如下：
 
 ----------
 DELETE FROM script_waypoint WHERE entry=<MyNpcEntry>;
@@ -226,14 +298,20 @@ INSERT INTO script_waypoint VALUES
 
 When the Update file is done, append an additional empty line +
 And test these lines for correctness!
+完成更新文件后，在文件末尾追加一个空行 +
+并测试这些 SQL 语句是否正确可执行！
 
 For the scriptdev2 database (full files):
+针对 scriptdev2 数据库（完整文件）：
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If everything works alright, and you finally intend to prepare the full-patch, copy the SQL-Code that is needed to the proper place in scriptdev2_script_full.sql,
 (for a new npc add an empty line), and change the semicolon to a comma:
+如果一切运行正常，准备整理完整补丁时，请将所需的 SQL 代码复制到 `scriptdev2_script_full.sql` 的正确位置
+（若是新增 NPC 则空出一行），并将上一行末尾的分号改为逗号：
 
 Example for world text:
+世界文本示例：
 ^^^^^^^^^^^^^^^^^^^^^^
 
 -----------
@@ -243,15 +321,23 @@ Example for world text:
 -----------
 
 The waypoints are added behind the last waypoint, after an empty line.
+路径点则在最后一个路径点之后空一行再行追加。
 
 For the world database:
+针对 world 数据库：
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Create a new file:  Updates/r0000_mangos.sql +
 In this file put the needed statements for your ScriptNames, append an empty line, convert lineendings to Unix, and then test it for correctness.
+创建一个新文件：`Updates/r0000_mangos.sql` +
+在其中填入绑定 `ScriptName` 所需的 SQL 语句，末尾追加一个空行，将换行符转换为 Unix 格式（LF），然后测试其正确性。
 
 If everything is alright, open mangos_scriptname_full.sql and go to the right place (this is usally sorted alphabetically by zone). +
 Insert the needed statement where it fits (usally again ordered alphabetically)
+如果一切无误，打开 `mangos_scriptname_full.sql` 并定位到对应区域（通常按区域名称字母顺序排列）。+
+将所需语句插入合适位置（通常同样按字母顺序排列）。
 
 After this is done, Create a patch including the (untracked) files in Update/ +
 then you have all information in the created patch, and anyone who wants to test your patch just needs to apply the created files from Updates/
+完成上述步骤后，生成包含 `Updates/` 中（未跟踪）文件的补丁 +
+这样生成的补丁就包含了全部变更信息，任何想测试你补丁的人只需执行 `Updates/` 中生成的 SQL 文件即可。

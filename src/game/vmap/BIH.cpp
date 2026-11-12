@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <cmath>
 
+// 初始化根节点并启动递归空间切分以构建 BIH 层次树
 void BIH::buildHierarchy(std::vector<uint32>& tempTree, buildData& dat, BuildStats& stats)
 {
     // create space for the first node
@@ -34,6 +35,7 @@ void BIH::buildHierarchy(std::vector<uint32>& tempTree, buildData& dat, BuildSta
     subdivide(0, dat.numPrims - 1, tempTree, dat, gridBox, nodeBox, 0, 1, stats);
 }
 
+// 沿最长轴对 [left, right] 范围的图元进行二分划分并压缩空白区域（必要时生成 BVH2 裁剪节点）
 void BIH::subdivide(int left, int right, std::vector<uint32>& tempTree, buildData& dat, AABound& gridBox, AABound& nodeBox, int nodeIndex, int depth, BuildStats& stats)
 {
     if ((right - left + 1) <= dat.maxPrims || depth >= MAX_STACK_SIZE)
@@ -252,6 +254,7 @@ void BIH::subdivide(int left, int right, std::vector<uint32>& tempTree, buildDat
         stats.updateLeaf(depth + 1, 0);
 }
 
+// 将总包围盒、节点数组及重排图元索引写入二进制文件
 bool BIH::writeToFile(FILE* wf) const
 {
     uint32 treeSize = tree.size();
@@ -266,6 +269,7 @@ bool BIH::writeToFile(FILE* wf) const
     return check == (3 + 3 + 2 + treeSize + count);
 }
 
+// 从二进制文件反序列化读取 BIH 树结构
 bool BIH::readFromFile(FILE* rf)
 {
     uint32 treeSize;
@@ -283,6 +287,7 @@ bool BIH::readFromFile(FILE* rf)
     return check == (3 + 3 + 2 + treeSize + count);
 }
 
+// 统计叶节点深度与图元数量分布
 void BIH::BuildStats::updateLeaf(int depth, int n)
 {
     ++numLeaves;

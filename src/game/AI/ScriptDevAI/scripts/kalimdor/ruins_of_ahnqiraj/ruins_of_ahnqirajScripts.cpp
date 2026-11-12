@@ -21,6 +21,10 @@ SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟：小怪与相关事件机制脚本
+ */
+
 /* ContentData
 mob_anubisath_guardian
 EndContentData */
@@ -30,26 +34,28 @@ EndContentData */
 /*######
 ## mob_anubisath_guardian
 ######*/
+// 常量与事件枚举
 enum
 {
-    SPELL_METEOR                 = 24340,
-    SPELL_PLAGUE                 = 22997,
-    SPELL_SHADOW_STORM           = 26546,
-    SPELL_THUNDER_CLAP           = 26554,
-    SPELL_REFLECT_ARFR           = 13022,
-    SPELL_REFLECT_FSSH           = 19595,
-    SPELL_ENRAGE                 = 8599,
-    SPELL_EXPLODE                = 25698,
+    SPELL_METEOR                 = 24340,                   // 技能法术：流星
+    SPELL_PLAGUE                 = 22997,                   // 技能法术 ID
+    SPELL_SHADOW_STORM           = 26546,                   // 技能法术 ID
+    SPELL_THUNDER_CLAP           = 26554,                   // 技能法术 ID
+    SPELL_REFLECT_ARFR           = 13022,                   // 技能法术：法术反射
+    SPELL_REFLECT_FSSH           = 19595,                   // 技能法术：法术反射
+    SPELL_ENRAGE                 = 8599,                    // 技能法术：激怒/狂暴
+    SPELL_EXPLODE                = 25698,                   // 技能法术 ID
 
-    SPELL_SUMMON_ANUB_SWARMGUARD = 17430,
-    SPELL_SUMMON_ANUB_WARRIOR    = 17431,
+    SPELL_SUMMON_ANUB_SWARMGUARD = 17430,                   // 技能法术 ID
+    SPELL_SUMMON_ANUB_WARRIOR    = 17431,                   // 技能法术 ID
 
-    EMOTE_FRENZY                 = -1000002,
+    EMOTE_FRENZY                 = -1000002,                // 剧情台词/喊话文本 ID
 
-    NPC_ANUB_WARRIOR             = 15537,
+    NPC_ANUB_WARRIOR             = 15537,                   // NPC 条目 ID
     NPC_ANUB_SWARM               = 15538
 };
 
+// mob_anubisath_guardianAI AI 逻辑实现
 struct mob_anubisath_guardianAI : public ScriptedAI
 {
     mob_anubisath_guardianAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -68,7 +74,7 @@ struct mob_anubisath_guardianAI : public ScriptedAI
 
     bool m_bIsEnraged;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiSpell1 = urand(0, 1) ? SPELL_METEOR : SPELL_PLAGUE;
         m_uiSpell2 = urand(0, 1) ? SPELL_SHADOW_STORM : SPELL_THUNDER_CLAP;
@@ -85,11 +91,11 @@ struct mob_anubisath_guardianAI : public ScriptedAI
 
     void Aggro(Unit* /*pWho*/) override
     {
-        // spell reflection
+        // spell reflection (法术)
         DoCastSpellIfCan(m_creature, m_uiSpell3);
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         pSummoned->AI()->AttackStart(m_creature->GetVictim());
         ++m_uiSummonCount;
@@ -102,7 +108,7 @@ struct mob_anubisath_guardianAI : public ScriptedAI
 
     void DamageTaken(Unit* /*dealer*/, uint32& /*damage*/, DamageEffectType /*damagetype*/, SpellEntry const* /*spellInfo*/) override
     {
-        // when we reach 10% of HP explode or enrage
+        // when we reach 10% of HP explode or enrage (说明)
         if (!m_bIsEnraged && m_creature->GetHealthPercent() < 10.0f)
         {
             if (m_uiSpell4 == SPELL_ENRAGE)
@@ -116,12 +122,12 @@ struct mob_anubisath_guardianAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        // Meteor or Plague
+        // Meteor or Plague (说明)
         if (m_uiSpell1Timer < uiDiff)
         {
             DoCastSpellIfCan(m_creature->GetVictim(), m_uiSpell1);
@@ -130,7 +136,7 @@ struct mob_anubisath_guardianAI : public ScriptedAI
         else
             m_uiSpell1Timer -= uiDiff;
 
-        // Shadow Storm or Thunder Clap
+        // Shadow Storm or Thunder Clap (说明)
         if (m_uiSpell2Timer < uiDiff)
         {
             DoCastSpellIfCan(m_creature->GetVictim(), m_uiSpell2);
@@ -139,10 +145,10 @@ struct mob_anubisath_guardianAI : public ScriptedAI
         else
             m_uiSpell2Timer -= uiDiff;
 
-        // summon Anubisath Swarmguard or Anubisath Warrior
+        // summon Anubisath Swarmguard or Anubisath Warrior (召唤)
         if (m_uiSpell5Timer < uiDiff)
         {
-            // change for summon spell
+            // change for summon spell (召唤法术)
             if (m_uiSummonCount < 4)
                 DoCastSpellIfCan(m_creature->GetVictim(), m_uiSpell5);
 
@@ -155,12 +161,12 @@ struct mob_anubisath_guardianAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_mob_anubisath_guardian(Creature* pCreature)
+UnitAI* GetAI_mob_anubisath_guardian(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new mob_anubisath_guardianAI(pCreature);
 }
 
-void AddSC_ruins_of_ahnqiraj()
+void AddSC_ruins_of_ahnqiraj() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "mob_anubisath_guardian";

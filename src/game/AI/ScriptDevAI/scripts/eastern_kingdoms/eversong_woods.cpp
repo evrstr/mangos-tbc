@@ -21,6 +21,8 @@ SDComment: Quest support: 8483, 8488, 8490, 9686
 SDCategory: Eversong Woods
 EndScriptData */
 
+// 永歌森林（Eversong Woods）血精灵新手区域脚本
+
 /* ContentData
 npc_kelerun_bloodmourn
 go_harbinger_second_trial
@@ -37,17 +39,18 @@ EndContentData */
 ## npc_kelerun_bloodmourn
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    NPC_KELERUN        = 17807,
-    NPC_BLOODWRATH     = 17809,
-    NPC_LIGHTREND      = 17810,
-    NPC_SWIFTBLADE     = 17811,
-    NPC_SUNSTRIKER     = 17812,
+    NPC_KELERUN        = 17807,                             // kelerun Entry ID
+    NPC_BLOODWRATH     = 17809,                             // bloodwrath Entry ID
+    NPC_LIGHTREND      = 17810,                             // lightrend Entry ID
+    NPC_SWIFTBLADE     = 17811,                             // swiftblade Entry ID
+    NPC_SUNSTRIKER     = 17812,                             // sunstriker Entry ID
 
-    GO_SECOND_TRIAL    = 182052,
-    QUEST_SECOND_TRIAL = 9686,
-    MAX_CHALLENGER     = 4
+    GO_SECOND_TRIAL    = 182052,                            // secondtrial 游戏对象 Entry ID
+    QUEST_SECOND_TRIAL = 9686,                              // secondtrial 任务 ID
+    MAX_CHALLENGER     = 4                                  // challenger 标识 ID
 };
 
 const uint32 uiChallengerId[4] = {NPC_BLOODWRATH, NPC_LIGHTREND, NPC_SWIFTBLADE, NPC_SUNSTRIKER};
@@ -68,6 +71,7 @@ float fChallengerLoc[4][4] =
     {10104.807f, -6611.145f, 4.101f, 4.265f}
 };
 
+// 随从/NPC AI：bloodmourn（kelerun_bloodmourn）
 struct npc_kelerun_bloodmournAI : public ScriptedAI
 {
     npc_kelerun_bloodmournAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -77,17 +81,18 @@ struct npc_kelerun_bloodmournAI : public ScriptedAI
     }
 
     uint32 m_uiNpcFlags;
-    ObjectGuid m_playerGuid;
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
     ObjectGuid m_aChallengerGuids[MAX_CHALLENGER];
 
     uint8 m_uiChallengerCount;
 
-    uint32 m_uiTimeOutTimer;
-    uint32 m_uiCheckAliveStateTimer;
-    uint32 m_uiEngageTimer;
+    uint32 m_uiTimeOutTimer;                                // TimeOut 技能计时器
+    uint32 m_uiCheckAliveStateTimer;                        // CheckAliveState 技能计时器
+    uint32 m_uiEngageTimer;                                 // Engage 技能计时器
 
-    bool m_bIsEventInProgress;
+    bool m_bIsEventInProgress;                              // IsEventInProgress 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_creature->SetUInt32Value(UNIT_NPC_FLAGS, m_uiNpcFlags);
@@ -101,7 +106,7 @@ struct npc_kelerun_bloodmournAI : public ScriptedAI
         m_uiEngageTimer = 0;
 
         m_bIsEventInProgress = false;
-        for (auto& m_aChallengerGuid : m_aChallengerGuids)          // Despawn challengers
+        for (auto& m_aChallengerGuid : m_aChallengerGuids)          // Despawn challengers (消除challengers)
         {
             if (Creature* pChallenger = m_creature->GetMap()->GetCreature(m_aChallengerGuid))
                 pChallenger->ForcedDespawn(1000);
@@ -144,6 +149,7 @@ struct npc_kelerun_bloodmournAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bIsEventInProgress)
@@ -218,6 +224,7 @@ struct npc_kelerun_bloodmournAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_kelerun_bloodmourn
 UnitAI* GetAI_npc_kelerun_bloodmourn(Creature* pCreature)
 {
     return new npc_kelerun_bloodmournAI(pCreature);
@@ -254,14 +261,15 @@ bool GOUse_go_harbinger_second_trial(Player* /*pPlayer*/, GameObject* pGO)
 ## npc_apprentice_mirveda
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_UNEXPECTED_RESULT = 8488,
+    QUEST_UNEXPECTED_RESULT = 8488,                         // unexpectedresult 任务 ID
 
-    SPELL_FIREBALL          = 20811,
+    SPELL_FIREBALL          = 20811,                        // fireball 法术 ID
 
-    NPC_GHARSUL             = 15958,
-    NPC_ANGERSHADE          = 15656
+    NPC_GHARSUL             = 15958,                        // gharsul Entry ID
+    NPC_ANGERSHADE          = 15656                         // angershade Entry ID
 };
 
 // TODO: add monitoring to script
@@ -269,10 +277,11 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
 {
     npc_apprentice_mirvedaAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiFireballTimer;
-    ObjectGuid m_playerGuid;
+    uint32 m_uiFireballTimer;                               // Fireball 技能计时器
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
     std::vector<ObjectGuid> m_summons;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_playerGuid.Clear();
@@ -308,12 +317,14 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
         ScriptedAI::JustRespawned();
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->AI()->AttackStart(m_creature);
         m_summons.push_back(pSummoned->GetObjectGuid());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* pKilled) override
     {
         m_summons.erase(std::remove(m_summons.begin(), m_summons.end(), pKilled->GetObjectGuid()), m_summons.end());
@@ -352,9 +363,10 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
         m_creature->SetActiveObjectState(true);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -366,10 +378,11 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
         else
             m_uiFireballTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 任务接取回调函数：unexpected_results
 bool QuestAccept_unexpected_results(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_UNEXPECTED_RESULT)
@@ -378,6 +391,7 @@ bool QuestAccept_unexpected_results(Player* pPlayer, Creature* pCreature, const 
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_apprentice_mirvedaAI
 UnitAI* GetAI_npc_apprentice_mirvedaAI(Creature* pCreature)
 {
     return new npc_apprentice_mirvedaAI(pCreature);
@@ -387,11 +401,12 @@ UnitAI* GetAI_npc_apprentice_mirvedaAI(Creature* pCreature)
 ## npc_infused_crystal
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_POWERING_OUR_DEFENSES     = 8490,
-    SAY_DEFENSE_FINISH              = -1000668,
-    NPC_ENRAGED_WRAITH              = 17086,
+    QUEST_POWERING_OUR_DEFENSES     = 8490,                 // poweringourdefenses 任务 ID
+    SAY_DEFENSE_FINISH              = -1000668,             // defensefinish 台词广播 ID
+    NPC_ENRAGED_WRAITH              = 17086,                // enragedwraith Entry ID
 };
 
 static const float aSummonPos[6][4] =
@@ -404,6 +419,7 @@ static const float aSummonPos[6][4] =
     {8301.548f, -7247.548f, 139.974f, 1.828518f}
 };
 
+// 随从/NPC AI：crystal（infused_crystal）
 struct npc_infused_crystalAI : public Scripted_NoMovementAI
 {
     npc_infused_crystalAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
@@ -415,13 +431,15 @@ struct npc_infused_crystalAI : public Scripted_NoMovementAI
         Reset();
     }
 
-    bool m_bFirstWave;
-    uint32 m_uiWaveTimer;
+    bool m_bFirstWave;                                      // FirstWave 状态标记
+    uint32 m_uiWaveTimer;                                   // Wave 技能计时器
     uint8 m_uiKilledCount;
-    uint32 m_uiFinishTimer;
+    uint32 m_uiFinishTimer;                                 // Finish 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->AI()->AttackStart(m_creature);
@@ -433,6 +451,7 @@ struct npc_infused_crystalAI : public Scripted_NoMovementAI
             m_uiWaveTimer = std::min(m_uiWaveTimer, (uint32)10000);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiWaveTimer)
@@ -476,6 +495,7 @@ struct npc_infused_crystalAI : public Scripted_NoMovementAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_infused_crystalAI
 UnitAI* GetAI_npc_infused_crystalAI(Creature* pCreature)
 {
     return new npc_infused_crystalAI(pCreature);
@@ -491,6 +511,7 @@ struct HatchlingMovementAI : public ScriptedAI
         }, TIMER_COMBAT_OOC);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 movementType, uint32 data) override
     {
         if (movementType == POINT_MOTION_TYPE && data == 1)
@@ -507,6 +528,7 @@ struct HatchlingMovementAI : public ScriptedAI
     }
 };
 
+// 注册并载入脚本模块：eversong_woods
 void AddSC_eversong_woods()
 {
     Script* pNewScript = new Script;

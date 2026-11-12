@@ -21,10 +21,12 @@
 
 #include "World/World.h"
 
+// 游戏核心数值计算公式集合（荣誉、经验值、灰名等级差及组队经验加成）
 namespace MaNGOS
 {
     namespace Honor
     {
+        // 根据玩家等级与击杀次数计算荣誉击杀基础荣誉值
         inline float hk_honor_at_level(uint32 level, uint32 count = 1)
         {
             return (float)ceil(count * (-0.53177f + 0.59357f * exp((level + 23.54042f) / 26.07859f)));
@@ -32,6 +34,7 @@ namespace MaNGOS
     }
     namespace XP
     {
+        // 判断目标等级是否显著低于玩家等级（属于灰名无经验/无任务收益的等级差）
         inline bool IsTrivialLevelDifference(uint32 unitLvl, uint32 targetLvl)
         {
             if (unitLvl > targetLvl)
@@ -58,6 +61,7 @@ namespace MaNGOS
             return false;
         }
 
+        // 获取玩家当前等级对应的绿色任务最大向下等级差范围
         inline uint32 GetQuestGreenRange(uint32 unitLvl)
         {
             switch (unitLvl / 5)
@@ -87,8 +91,10 @@ namespace MaNGOS
             }
         }
 
+        // 怪物/任务相对玩家的难度颜色枚举
         enum XPColorChar { RED, ORANGE, YELLOW, GREEN, GRAY };
 
+        // 计算玩家等级对应的灰色怪物阈值等级
         inline uint32 GetGrayLevel(uint32 pl_level)
         {
             if (pl_level <= 5)
@@ -100,6 +106,7 @@ namespace MaNGOS
             return pl_level - 9;
         }
 
+        // 根据玩家与怪物等级差返回难度颜色枚举
         inline XPColorChar GetColorCode(uint32 pl_level, uint32 mob_level)
         {
             if (mob_level >= pl_level + 5)
@@ -113,6 +120,7 @@ namespace MaNGOS
             return GRAY;
         }
 
+        // 获取零经验等级差分母（ZD，用于低等级怪物的经验衰减公式）
         inline uint32 GetZeroDifference(uint32 unit_level)
         {
             if (unit_level < 8)  return 5;
@@ -129,6 +137,7 @@ namespace MaNGOS
             return 17;
         }
 
+        // 计算击杀指定等级怪物的基础经验值（区分旧世与外域内容区间）
         inline float BaseGain(uint32 unit_level, uint32 mob_level, ContentLevels content)
         {
             float nBaseExp = unit_level * 5;
@@ -158,6 +167,7 @@ namespace MaNGOS
             return 0;
         }
 
+        // 计算击杀生物最终获得的经验值（综合精英加成、生物经验倍率、伤害占比及地图经验倍率）
         inline uint32 Gain(Unit const* unit, Creature* target)
         {
             if (target->IsTotem() || target->IsPet() || target->IsNoXp() || target->IsCritter())
@@ -182,9 +192,10 @@ namespace MaNGOS
             return (uint32)(std::nearbyint(xp_gain * target->GetMap()->GetXPModRate(RateModType::KILL)));
         }
 
+        // 根据组队人数计算队伍经验加成系数
         inline float xp_in_group_rate(uint32 count, bool /*isRaid*/)
         {
-            // TODO: this formula is completely guesswork only based on a logical assumption
+            // TODO: this formula is completely guesswork only based on a logical assumption (此组队经验系数基于经验推测，非官方精确反推)
             switch (count)
             {
                 case 0:

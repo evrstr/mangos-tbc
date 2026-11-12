@@ -23,6 +23,7 @@
 #include "Entities/ObjectGuid.h"
 #include "Entities/Player.h"
 
+// 处理客户端发起近战攻击请求 (CMSG_ATTACKSWING)
 void WorldSession::HandleAttackSwingOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -48,27 +49,30 @@ void WorldSession::HandleAttackSwingOpcode(WorldPacket& recv_data)
 
     if (!mover->CanAttackNow(enemy))
     {
-        // stop attack state at client
+        // stop attack state at client (无法立即攻击时通知客户端停止攻击状态)
         mover->SendMeleeAttackStop(enemy);
         return;
     }
 
     mover->Attack(enemy, true);
 
-    // each new attack shows its swing error again, even the one last sent
+    // each new attack shows its swing error again, even the one last sent (每次发起新攻击重置挥击错误提示状态，使相同错误可重新提示)
     _player->SwingErrorMsg(SWING_ERROR_NONE);
 }
 
+// 处理客户端停止攻击请求 (CMSG_ATTACKSTOP)
 void WorldSession::HandleAttackStopOpcode(WorldPacket& /*recv_data*/)
 {
     Player* player = GetPlayer();
     // the client keeps its swing until an SMSG_ATTACKSTOP names it as attacker, so a stop without melee is answered with no victim
+    // 客户端需收到以其为攻击者的 SMSG_ATTACKSTOP 才会终止挥击状态；若当前未处于近战攻击状态则以空目标回复停止包
     bool const meleeOn = player->hasUnitState(UNIT_STAT_MELEE_ATTACKING) && player->GetVictim();
     player->AttackStop(false, false, false, true);
     if (!meleeOn)
         player->SendMeleeAttackStop(nullptr);
 }
 
+// 处理客户端切换武器拔出/收起状态请求 (CMSG_SETSHEATHED)
 void WorldSession::HandleSetSheathedOpcode(WorldPacket& recv_data)
 {
     uint32 sheathed;

@@ -37,8 +37,9 @@
 #define VERSION_LEGION_MIN  274
 #define VERSION_LEGION_MAX  274
 
-// Structures for M2 file. Source: https://wowdev.wiki
+// Structures for M2 file. Source: https://wowdev.wiki (M2 模型文件二进制结构定义，参考 wowdev.wiki)
 #pragma pack(push, 1)
+/// M2 样条关键帧数据（当前值与前后切线/控制点）
 template<typename T>
 struct M2SplineKey
 {
@@ -47,86 +48,89 @@ struct M2SplineKey
     T p2;
 };
 
+/// M2 模型文件头（"MD20" 魔数与各数据段偏移/数量）
 struct M2Header
 {
-    char   Magic[4];               // "MD20"
-    uint32 Version;                // The version of the format.
-    uint32 lName;                  // Length of the model's name including the trailing \0
-    uint32 ofsName;                // Offset to the name, it seems like models can get reloaded by this name.should be unique, i guess.
-    uint32 GlobalModelFlags;       // 0x0001: tilt x, 0x0002: tilt y, 0x0008: add 2 fields in header, 0x0020: load .phys data (MoP+), 0x0080: has _lod .skin files (MoP?+), 0x0100: is camera related.
+    char   Magic[4];               // "MD20" (文件魔数标识)
+    uint32 Version;                // The version of the format. (M2 格式版本号)
+    uint32 lName;                  // Length of the model's name including the trailing \0 (模型名称长度，含结尾空字符)
+    uint32 ofsName;                // Offset to the name, it seems like models can get reloaded by this name.should be unique, i guess. (模型名称偏移)
+    uint32 GlobalModelFlags;       // 0x0001: tilt x, 0x0002: tilt y, 0x0008: add 2 fields in header, 0x0020: load .phys data (MoP+), 0x0080: has _lod .skin files (MoP?+), 0x0100: is camera related. (全局模型标志位)
     uint32 nGlobalSequences;
-    uint32 ofsGlobalSequences;     // A list of timestamps.
+    uint32 ofsGlobalSequences;     // A list of timestamps. (全局动画时间戳列表)
     uint32 nAnimations;
-    uint32 ofsAnimations;          // Information about the animations in the model.
+    uint32 ofsAnimations;          // Information about the animations in the model. (动画序列信息)
     uint32 nAnimationLookup;
-    uint32 ofsAnimationLookup;     // Mapping of global IDs to the entries in the Animation sequences block.
+    uint32 ofsAnimationLookup;     // Mapping of global IDs to the entries in the Animation sequences block. (全局动画 ID 查找表)
     uint32 nPlayableAnimationLookup;
-    uint32 ofsPlayableAnimationLookup;     // Mapping of global IDs to the entries in the Animation sequences block.
-    uint32 nBones;                 // MAX_BONES = 0x100
-    uint32 ofsBones;               // Information about the bones in this model.
+    uint32 ofsPlayableAnimationLookup;     // Mapping of global IDs to the entries in the Animation sequences block. (可播放动画查找表)
+    uint32 nBones;                 // MAX_BONES = 0x100 (骨骼数量)
+    uint32 ofsBones;               // Information about the bones in this model. (骨骼数据偏移)
     uint32 nKeyBoneLookup;
-    uint32 ofsKeyBoneLookup;       // Lookup table for key skeletal bones.
+    uint32 ofsKeyBoneLookup;       // Lookup table for key skeletal bones. (关键骨骼查找表)
     uint32 nVertices;
-    uint32 ofsVertices;            // Vertices of the model.
-    uint32 nViews;                 // Views (LOD)
+    uint32 ofsVertices;            // Vertices of the model. (模型顶点数据)
+    uint32 nViews;                 // Views (LOD) (LOD 视图数量)
     uint32 ofsViews;
     uint32 nSubmeshAnimations;
-    uint32 ofsSubmeshAnimations;   // Submesh color and alpha animations definitions.
+    uint32 ofsSubmeshAnimations;   // Submesh color and alpha animations definitions. (子网格颜色与透明度动画)
     uint32 nTextures;
-    uint32 ofsTextures;            // Textures of this model.
+    uint32 ofsTextures;            // Textures of this model. (纹理列表)
     uint32 nTransparency;
-    uint32 ofsTransparency;        // Transparency of textures.
+    uint32 ofsTransparency;        // Transparency of textures. (纹理透明度轨迹)
     uint32 nUnknown;
     uint32 ofsUnknown;
     uint32 nUVAnimation;
     uint32 ofsUVAnimation;
     uint32 nTexReplace;
-    uint32 ofsTexReplace;          // Replaceable Textures.
+    uint32 ofsTexReplace;          // Replaceable Textures. (可替换纹理)
     uint32 nRenderFlags;
-    uint32 ofsRenderFlags;         // Blending modes / render flags.
+    uint32 ofsRenderFlags;         // Blending modes / render flags. (渲染混合标志)
     uint32 nBoneLookupTable;
-    uint32 ofsBoneLookupTable;     // A bone lookup table.
+    uint32 ofsBoneLookupTable;     // A bone lookup table. (骨骼索引表)
     uint32 nTexLookup;
-    uint32 ofsTexLookup;           // The same for textures.
-    uint32 nTexUnits;              // possibly removed with cata?!
-    uint32 ofsTexUnits;            // And texture units. Somewhere they have to be too.
+    uint32 ofsTexLookup;           // The same for textures. (纹理索引表)
+    uint32 nTexUnits;              // possibly removed with cata?! (纹理单元数)
+    uint32 ofsTexUnits;            // And texture units. Somewhere they have to be too. (纹理单元偏移)
     uint32 nTransLookup;
-    uint32 ofsTransLookup;         // Everything needs its lookup. Here are the transparencies.
+    uint32 ofsTransLookup;         // Everything needs its lookup. Here are the transparencies. (透明度索引表)
     uint32 nUVAnimLookup;
     uint32 ofsUVAnimLookup;
-    G3D::AABox BoundingBox;            // min/max( [1].z, 2.0277779f ) - 0.16f seems to be the maximum camera height
+    G3D::AABox BoundingBox;            // min/max( [1].z, 2.0277779f ) - 0.16f seems to be the maximum camera height (轴对齐包围盒)
     float  BoundingSphereRadius;
     G3D::AABox CollisionBox;
     float  CollisionSphereRadius;
     uint32 nBoundingTriangles;
-    uint32 ofsBoundingTriangles;   // Our bounding volumes. Similar structure like in the old ofsViews.
+    uint32 ofsBoundingTriangles;   // Our bounding volumes. Similar structure like in the old ofsViews. (碰撞包围三角面)
     uint32 nBoundingVertices;
     uint32 ofsBoundingVertices;
     uint32 nBoundingNormals;
     uint32 ofsBoundingNormals;
     uint32 nAttachments;
-    uint32 ofsAttachments;         // Attachments are for weapons etc.
+    uint32 ofsAttachments;         // Attachments are for weapons etc. (挂载点，如武器位置)
     uint32 nAttachLookup;
-    uint32 ofsAttachLookup;        // Of course with a lookup.
+    uint32 ofsAttachLookup;        // Of course with a lookup. (挂载点索引表)
     uint32 nEvents;
-    uint32 ofsEvents;              // Used for playing sounds when dying and a lot else.
+    uint32 ofsEvents;              // Used for playing sounds when dying and a lot else. (模型事件点，如音效触发)
     uint32 nLights;
-    uint32 ofsLights;              // Lights are mainly used in loginscreens but in wands and some doodads too.
-    uint32 nCameras;               // Format of Cameras changed with version 271!
-    uint32 ofsCameras;             // The cameras are present in most models for having a model in the Character-Tab.
+    uint32 ofsLights;              // Lights are mainly used in loginscreens but in wands and some doodads too. (光源数据)
+    uint32 nCameras;               // Format of Cameras changed with version 271! (镜头数量)
+    uint32 ofsCameras;             // The cameras are present in most models for having a model in the Character-Tab. (镜头数据偏移)
     uint32 nCameraLookup;
-    uint32 ofsCameraLookup;        // And lookup-time again.
+    uint32 ofsCameraLookup;        // And lookup-time again. (镜头查找表)
     uint32 nRibbonEmitters;
-    uint32 ofsRibbonEmitters;      // Things swirling around. See the CoT-entrance for light-trails.
+    uint32 ofsRibbonEmitters;      // Things swirling around. See the CoT-entrance for light-trails. (丝带发射器)
     uint32 nParticleEmitters;
-    uint32 ofsParticleEmitters;    // Spells and weapons, doodads and loginscreens use them. Blood dripping of a blade? Particles.
+    uint32 ofsParticleEmitters;    // Spells and weapons, doodads and loginscreens use them. Blood dripping of a blade? Particles. (粒子发射器)
 };
 
+/// M2 通用数组描述符（元素数量与文件偏移）
 struct M2Array
 {
     uint32_t number;
     uint32 offset_elements;
 };
+/// M2 动画轨迹头（插值类型、全局序列与时间/值数组）
 struct M2Track
 {
     uint16_t interpolation_type;
@@ -136,17 +140,18 @@ struct M2Track
     M2Array values;
 };
 
+/// M2 镜头数据块（定义视角、裁剪面、镜头位移轨迹与注视目标轨迹）
 struct M2Camera
 {
-    uint32_t type; // 0: portrait, 1: characterinfo; -1: else (flyby etc.); referenced backwards in the lookup table.
-    float fov; // No radians, no degrees. Multiply by 35 to get degrees.
+    uint32_t type; // 0: portrait, 1: characterinfo; -1: else (flyby etc.); referenced backwards in the lookup table. (镜头类型：0 头像，1 角色面板，-1 飞行/过场镜头)
+    float fov; // No radians, no degrees. Multiply by 35 to get degrees. (视场角参数，乘以 35 得角度制 FOV)
     float far_clip;
     float near_clip;
-    M2Track positions; // How the camera's position moves. Should be 3*3 floats.
+    M2Track positions; // How the camera's position moves. Should be 3*3 floats. (镜头位置轨迹)
     G3D::Vector3 position_base;
-    M2Track target_positions; // How the target moves. Should be 3*3 floats.
+    M2Track target_positions; // How the target moves. Should be 3*3 floats. (注视目标位置轨迹)
     G3D::Vector3 target_position_base;
-    M2Track rolldata; // The camera can have some roll-effect. Its 0 to 2*Pi.
+    M2Track rolldata; // The camera can have some roll-effect. Its 0 to 2*Pi. (镜头翻滚角轨迹，0..2*Pi)
 };
 #pragma pack(pop)
 

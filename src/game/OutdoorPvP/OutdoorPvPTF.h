@@ -24,29 +24,30 @@
 #include "Tools/Language.h"
 #include "World/WorldStateDefines.h"
 
+// 泰罗卡森林（Terokkar Forest）灵魂塔野外 PvP 常量定义
 enum
 {
     MAX_TF_TOWERS                               = 5,
 
-    // gameobjects
+    // gameobjects (五座灵魂塔占领点)
     GO_TOWER_BANNER_WEST                        = 183104,
     GO_TOWER_BANNER_NORTH                       = 183411,
     GO_TOWER_BANNER_EAST                        = 183412,
     GO_TOWER_BANNER_SOUTH_EAST                  = 183413,
     GO_TOWER_BANNER_SOUTH                       = 183414,
 
-    // spells
+    // spells (奥金顿的祝福：全控阵营区域增益)
     SPELL_AUCHINDOUN_BLESSING                   = 33377,
 
-    // timers
+    // timers (区域锁定持续时间：6 小时)
     TIMER_TF_LOCK_TIME                          = 6 * HOUR * IN_MILLISECONDS,
     //TIMER_TF_UPDATE_TIME                        = MINUTE * IN_MILLISECONDS,
 
-    // quests
+    // quests (占领灵魂塔任务)
     QUEST_SPIRITS_OF_AUCHINDOUM_ALLIANCE        = 11505,
     QUEST_SPIRITS_OF_AUCHINDOUM_HORDE           = 11506,
 
-    // events
+    // events (五座灵魂塔占领/中立化事件 ID)
     EVENT_WEST_TOWER_PROGRESS_ALLIANCE          = 12226,
     EVENT_WEST_TOWER_PROGRESS_HORDE             = 12225,
     EVENT_WEST_TOWER_NEUTRAL_ALLIANCE           = 12228,
@@ -73,6 +74,7 @@ enum
     EVENT_SOUTH_TOWER_NEUTRAL_HORDE             = 12495,
 };
 
+// 灵魂塔占领事件描述结构
 struct TerokkarTowerEvent
 {
     uint32  eventEntry;
@@ -117,6 +119,7 @@ static const TerokkarTowerEvent terokkarTowerEvents[MAX_TF_TOWERS][4] =
 
 static const uint32 terokkarTowers[MAX_TF_TOWERS] = {GO_TOWER_BANNER_WEST, GO_TOWER_BANNER_NORTH, GO_TOWER_BANNER_EAST, GO_TOWER_BANNER_SOUTH_EAST, GO_TOWER_BANNER_SOUTH};
 
+// 泰罗卡森林灵魂塔野外 PvP 控制器：管理五座灵魂塔争夺、6 小时区域锁定倒计时与奥金顿全控增益
 class OutdoorPvPTF : public OutdoorPvP
 {
         friend class OutdoorPvPMgr;
@@ -136,17 +139,17 @@ class OutdoorPvPTF : public OutdoorPvP
         void Update(uint32 diff) override;
 
     private:
-        void UpdateTimerWorldState();
-        void CalculateTimerWorldStateValues(uint32& firstDigit, uint32& secondDigit, uint32& hoursLeft);
+        void UpdateTimerWorldState(); // 刷新界面倒计时世界状态数字
+        void CalculateTimerWorldStateValues(uint32& firstDigit, uint32& secondDigit, uint32& hoursLeft); // 拆解剩余锁定时间为两位分钟数与小时数
 
-        // process capture events
+        // process capture events (处理单座灵魂塔占领与中立化)
         bool ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team, uint32 newWorldState);
 
-        void LockZone(GameObject* go, uint32 towerId, Team team, uint32 newWorldState);
-        void UnlockZone();
+        void LockZone(GameObject* go, uint32 towerId, Team team, uint32 newWorldState); // 某阵营控制全部 5 座塔时锁定区域
+        void UnlockZone(); // 锁定期满后重置全部灵魂塔并解锁争夺
 
-        void LockTowers(const WorldObject* objRef);
-        void ResetTowers(const WorldObject* objRef);
+        void LockTowers(const WorldObject* objRef); // 锁定所有灵魂塔占领点滑块
+        void ResetTowers(const WorldObject* objRef); // 解锁并重置所有灵魂塔为中立
 
         uint32 m_towerWorldState[MAX_TF_TOWERS];
         uint32 m_zoneWorldState;

@@ -22,9 +22,15 @@ Players should be ~6 seconds airborne, shadow whip should be casted ~3 maybe 4 t
 SDCategory: Hellfire Citadel, Hellfire Ramparts
 EndScriptData */
 
+// 无疤者奥摩尔（地狱火城墙二号首领）
+/* 遭遇战概述：
+ * 无疤者奥摩尔是地狱火城墙二号眼魔首领，施放诡异阴影、背叛光环并召唤地狱猎犬。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO_1                 = 17634,
@@ -46,6 +52,7 @@ enum
     SPELL_SUMMON_FIENDISH_HOUND = 30707,
 };
 
+// OmorActions 相关枚举
 enum OmorActions
 {
     OMOR_ENABLE_SHIELD,
@@ -58,6 +65,7 @@ enum OmorActions
     OMOR_PULL_BACK,
 };
 
+// boss_omor_the_unscarredAI 逻辑实现
 struct boss_omor_the_unscarredAI : public CombatAI
 {
     boss_omor_the_unscarredAI(Creature* creature) : CombatAI(creature, OMOR_ACTION_MAX), m_inRegularMode(creature->GetMap()->IsRegularDifficulty())
@@ -78,12 +86,14 @@ struct boss_omor_the_unscarredAI : public CombatAI
 
     ObjectGuid m_playerGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
         m_playerGuid.Clear();
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 2))
@@ -94,6 +104,7 @@ struct boss_omor_the_unscarredAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         DoBroadcastText(SAY_SUMMON, m_creature);
@@ -102,6 +113,7 @@ struct boss_omor_the_unscarredAI : public CombatAI
             summoned->AI()->AttackStart(pTarget);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DIE, m_creature);
@@ -125,6 +137,7 @@ struct boss_omor_the_unscarredAI : public CombatAI
         CombatAI::OnSpellCooldownAdded(spellInfo);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -196,6 +209,7 @@ struct boss_omor_the_unscarredAI : public CombatAI
     }
 };
 
+// 注册 boss_omor_the_unscarred 脚本
 void AddSC_boss_omor_the_unscarred()
 {
     Script* pNewScript = new Script;

@@ -24,6 +24,7 @@
 
 class PathFinder;
 
+/// 随机移动生成器基类：在指定半径内周期性随机选点并寻路移动（派生出迷惑、漫步、逃跑等模式）
 class AbstractRandomMovementGenerator : public MovementGenerator
 {
     public:
@@ -42,22 +43,24 @@ class AbstractRandomMovementGenerator : public MovementGenerator
         bool Update(Unit& owner, const uint32& diff) override;
 
     protected:
+        /// 选取下一个随机目标点并启动样条移动，返回预计耗时（0 表示寻路失败）
         virtual int32 _setLocation(Unit& owner);
 
-        float i_x, i_y, i_z;
-        float i_radius;
+        float i_x, i_y, i_z;          // 随机活动中心坐标（逃跑模式中为威胁源坐标）
+        float i_radius;               // 随机选点最大半径
         float i_verticalZ;
-        float i_pathLength;
-        bool i_walk;
-        bool i_randomRunWander;
+        float i_pathLength;           // 寻路长度上限（0 为不限制）
+        bool i_walk;                  // 是否步行
+        bool i_randomRunWander;       // 漫步时是否有一定概率随机奔跑
 
         std::unique_ptr<PathFinder> m_pathFinder;
-        ShortTimeTracker i_nextMoveTimer;
-        uint32 i_nextMoveCount, i_nextMoveCountMax;
-        uint32 i_nextMoveDelayMin, i_nextMoveDelayMax;
-        uint32 i_stateActive, i_stateMotion;
+        ShortTimeTracker i_nextMoveTimer; // 两次随机移动之间的停顿计时器
+        uint32 i_nextMoveCount, i_nextMoveCountMax; // 连续移动段数及上限
+        uint32 i_nextMoveDelayMin, i_nextMoveDelayMax; // 停顿时间随机范围 [min, max]
+        uint32 i_stateActive, i_stateMotion; // 激活状态位与正在移动状态位
 };
 
+/// 迷惑移动生成器（CONFUSED_MOTION_TYPE）：在原地小半径内频繁无序游走
 class ConfusedMovementGenerator : public AbstractRandomMovementGenerator
 {
     public:
@@ -67,6 +70,7 @@ class ConfusedMovementGenerator : public AbstractRandomMovementGenerator
         MovementGeneratorType GetMovementGeneratorType() const override { return CONFUSED_MOTION_TYPE; }
 };
 
+/// 随机漫步移动生成器（RANDOM_MOTION_TYPE）：NPC 在刷新点或指定中心周围自由巡游
 class WanderMovementGenerator : public AbstractRandomMovementGenerator
 {
     public:
@@ -76,11 +80,13 @@ class WanderMovementGenerator : public AbstractRandomMovementGenerator
         void Finalize(Unit& owner) override;
         void Interrupt(Unit& owner) override;
 
+        /// 调整当前漫步暂停等待时间
         void AddToRandomPauseTime(int32 waitTimeDiff, bool force);
 
         MovementGeneratorType GetMovementGeneratorType() const override { return RANDOM_MOTION_TYPE; }
 };
 
+/// 限时随机漫步移动生成器（TIMED_RANDOM_MOTION_TYPE）
 class TimedWanderMovementGenerator : public WanderMovementGenerator
 {
     public:
@@ -95,6 +101,7 @@ class TimedWanderMovementGenerator : public WanderMovementGenerator
         ShortTimeTracker m_durationTimer;
 };
 
+/// 逃跑/恐惧移动生成器（FLEEING_MOTION_TYPE）：以危险源为中心向外围安全距离逃窜
 class FleeingMovementGenerator : public AbstractRandomMovementGenerator
 {
     public:
@@ -104,6 +111,7 @@ class FleeingMovementGenerator : public AbstractRandomMovementGenerator
         MovementGeneratorType GetMovementGeneratorType() const override { return FLEEING_MOTION_TYPE; }
 };
 
+/// 限时恐慌逃跑移动生成器（TIMED_FLEEING_MOTION_TYPE）：用于怪物低血量求援或限时恐惧效果
 class PanicMovementGenerator : public FleeingMovementGenerator
 {
     public:

@@ -16,4 +16,5 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+// 实体管理器占位编译单元（主要类型别名定义于 EntitiesMgr.h）
 #include "EntitiesMgr.h"

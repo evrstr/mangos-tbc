@@ -21,10 +21,18 @@ SDComment: TODO: Implement prenerf beams
 SDCategory: Black Temple
 EndScriptData */
 
+// 主母莎赫拉丝（黑暗神殿七号首领）
+/* 遭遇战概述：
+ * 主母莎赫拉丝是统领欢歌大厅的恶魔高阶魅魔；
+ * 核心机制为致命吸引：随机传送多名玩家至同一位置并造成递增连线伤害，需迅速跑开分散；
+ * 同时周期性切换棱光光环，大幅改变各系抗性减伤，并施放暗影之刃与沉默效果。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // Speech'n'Sounds
@@ -65,6 +73,7 @@ static const uint32 aPrismaticAuras[] =
 
 static const uint32 aPeriodicBeams[] = {SPELL_SINFUL_PERIODIC, SPELL_SINISTER_PERIODIC, SPELL_VILE_PERIODIC, SPELL_WICKED_PERIODIC};
 
+// ShahrazActions 相关枚举
 enum ShahrazActions
 {
     SHAHRAZ_ACTION_BERSERK,
@@ -76,6 +85,7 @@ enum ShahrazActions
     SHAHRAZ_ACTION_MAX,
 };
 
+// boss_shahrazAI 逻辑实现
 struct boss_shahrazAI : public CombatAI
 {
     boss_shahrazAI(Creature* creature) : CombatAI(creature, SHAHRAZ_ACTION_MAX), m_instance(static_cast<instance_black_temple*>(creature->GetInstanceData()))
@@ -93,6 +103,7 @@ struct boss_shahrazAI : public CombatAI
 
     uint8 m_currentBeam;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -128,6 +139,7 @@ struct boss_shahrazAI : public CombatAI
         }
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (m_instance)
@@ -136,12 +148,14 @@ struct boss_shahrazAI : public CombatAI
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SHAHRAZ, FAIL);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -150,6 +164,7 @@ struct boss_shahrazAI : public CombatAI
         DoScriptText(SAY_DEATH, m_creature);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -223,11 +238,13 @@ struct boss_shahrazAI : public CombatAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_boss_shahraz(Creature* creature)
 {
     return new boss_shahrazAI(creature);
 }
 
+// 注册 boss_mother_shahraz 脚本
 void AddSC_boss_mother_shahraz()
 {
     Script* pNewScript = new Script;

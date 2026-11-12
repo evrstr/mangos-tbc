@@ -19,6 +19,7 @@
 #ifndef MANGOS_DBCSFRM_H
 #define MANGOS_DBCSFRM_H
 
+/// DBC 二进制文件字段解析格式定义（n=索引主键, i=int32, f=float, s=localizedString, d=顺序ID, b=uint8, x=忽略字段）
 const char AreaTableEntryfmt[] = "iiinixxxxxissssssssssssssssxiiiiixx";
 const char AreaTriggerEntryfmt[] = "niffffffff";
 const char AuctionHouseEntryfmt[] = "niiixxxxxxxxxxxxxxxxx";
@@ -27,11 +28,11 @@ const char BattlemasterListEntryfmt[] = "niiiiiiiiiiiixxssssssssssssssssxx";
 char const CharSectionsEntryfmt[] = "diiiiixxxi";
 char const CharacterFacialHairStylesfmt[] = "iiixxxxxxxx";
 const char CharStartOutfitEntryfmt[] = "diiiiiiiiiiiiixxxxxxxxxxxxxxxxxxxxxxxxxxx";
-// 3*12 new item fields in 3.0.x
+// 3*12 new item fields in 3.0.x | 3.0.x 版本新增 3*12 个物品字段（此处保留 TBC 格式）
 // const char CharStartOutfitEntryfmt[]="diiiiiiiiiiiiiiiiiiiiiiiiixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 const char CharTitlesEntryfmt[] = "nxssssssssssssssssxxxxxxxxxxxxxxxxxxi";
 const char ChatChannelsEntryfmt[] = "iixssssssssssssssssxxxxxxxxxxxxxxxxxx";
-// ChatChannelsEntryfmt, index not used (more compact store)
+// ChatChannelsEntryfmt, index not used (more compact store) | ChatChannelsEntryfmt 未使用主键索引以实现更紧凑存储
 const char ChrClassesEntryfmt[] = "nxixssssssssssssssssxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxix";
 const char ChrRacesEntryfmt[] = "nxixiixxixxxxissssssssssssssssxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxi";
 const char CinematicCameraEntryfmt[] = "nsiffff";

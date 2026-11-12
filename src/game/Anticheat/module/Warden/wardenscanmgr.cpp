@@ -21,6 +21,7 @@ INSTANTIATE_SINGLETON_1(WardenScanMgr);
 
 namespace
 {
+// 将十六进制字符串解析为原始字节数组（要求长度为偶数且仅含大写十六进制字符）
 bool BuildRawData(const std::string &hexData, std::vector<uint8> &out)
 {
     if (!!(hexData.length() % 2))
@@ -61,11 +62,12 @@ bool BuildRawData(const std::string &hexData, std::vector<uint8> &out)
 }
 }
 
+// 从世界数据库 warden_scans 表重载扫描规则（保留已注册的非数据库脚本扫描项）
 void WardenScanMgr::loadFromDB()
 {
     std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT id,type,str,data,address,length,result,flags,comment FROM warden_scans"));
 
-    // copy any non-database scans into a placeholder
+    // copy any non-database scans into a placeholder (保留非数据库来源的脚本扫描，清除旧数据库扫描)
     std::vector<std::shared_ptr<const Scan> > new_scans;
     new_scans.reserve(m_scans.size());
 
@@ -115,7 +117,7 @@ void WardenScanMgr::loadFromDB()
 
                 auto const moduleName = fields[2].GetCppString();
 
-                // optional for this scan to specify a module name to use as a base
+                // optional for this scan to specify a module name to use as a base (可选指定基准模块名)
                 if (moduleName.empty())
                     scan = new WindowsMemoryScan(offset, &expected[0], expected.size(), comment, flags);
                 else
@@ -222,6 +224,7 @@ void WardenScanMgr::loadFromDB()
     sLog.outBasic(">> %lu Warden scans loaded from world database", uint64(m_scans.size()));
 }
 
+// 注册 Mac / Windows 扫描条目到全局管理器
 void WardenScanMgr::AddMacScan(const MacScan *scan)
 {
     m_scans.push_back(std::shared_ptr<const MacScan>(scan));
@@ -242,43 +245,45 @@ void WardenScanMgr::AddWindowsScan(std::shared_ptr<WindowsScan> scan)
     m_scans.push_back(scan);
 }
 
+// 按平台版本、高级扫描、首次登录及在世界标志筛选并随机抽取一批不超包长上限的扫描项
 std::vector<std::shared_ptr<const Scan>> WardenScanMgr::GetRandomScans(ScanFlags flags) const
 {
     std::vector<std::shared_ptr<const Scan>> matches;
     matches.reserve(m_scans.size());
 
-    // save those scans which match the requested flags
+    // save those scans which match the requested flags (筛选满足全部标志位条件的扫描规则)
     for (auto const &scan : m_scans)
     {
         auto const buildMask = scan->flags & (WinAllBuild | MacAllBuild);
 
-        // does the build part of the flags match? if not, continue
+        // does the build part of the flags match? if not, continue (校验客户端平台与版本掩码)
         if (!(flags & buildMask))
             continue;
 
-        // is the scan considered advanced but advanced scans were not requested? if so, continue
+        // is the scan considered advanced but advanced scans were not requested? if so, continue (高级扫描过滤)
         if ((scan->flags & AdvancedScan) && !(flags & AdvancedScan))
             continue;
 
-        // if the scan is an initial-login scan, and that wasn't explicitly requested, do not include it
+        // if the scan is an initial-login scan, and that wasn't explicitly requested, do not include it (首次登录扫描仅在初始登录时下发)
         if ((scan->flags & InitialLogin) && !(flags & InitialLogin))
             continue;
 
-        // if the scan is not an initial-login scan, and that was explicitly requested, do not include it
+        // if the scan is not an initial-login scan, and that was explicitly requested, do not include it (非首次登录扫描不在初始登录阶段混发)
         if (!(scan->flags & InitialLogin) && (flags & InitialLogin))
             continue;
 
-        // if the scan is an in-world scan, and that wasn't explicitly requested, do not include it
+        // if the scan is an in-world scan, and that wasn't explicitly requested, do not include it (在世界扫描要求角色已进入世界)
         if (!!(scan->flags & InWorld) && !(flags & InWorld))
             continue;
 
         matches.push_back(scan);
     }
 
-    // randomize the order of matching scans
+    // randomize the order of matching scans (随机洗牌扫描顺序)
     std::shuffle(matches.begin(), matches.end(), *GetRandomGenerator());
 
     // determine how many of the identified scans we can fit into the client's request and response buffers
+    // 根据配置条数上限及客户端请求/响应缓冲区上限截断本批扫描列表
     size_t request = 0, reply = 0;
 
     // if we have matched too many, shrink.  this will probably be shrunk even further, depending on buffer sizes

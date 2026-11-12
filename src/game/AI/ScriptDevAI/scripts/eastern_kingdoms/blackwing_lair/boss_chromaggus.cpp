@@ -21,24 +21,28 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 克洛玛古斯（Chromaggus）7号首领战 AI（双重吐息与五色苦痛青铜龙狂暴）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_GENERIC_FRENZY_KILL   = -1000001,
-    EMOTE_GENERIC_FRENZY        = -1000002,
-    EMOTE_SHIMMER               = -1469003,
+    EMOTE_GENERIC_FRENZY_KILL   = -1000001,                 // generic狂乱击杀 表情动作 ID
+    EMOTE_GENERIC_FRENZY        = -1000002,                 // generic狂乱 表情动作 ID
+    EMOTE_SHIMMER               = -1469003,                 // shimmer 表情动作 ID
 
-    SPELL_BREATH_SELECTION      = 23195,
+    SPELL_BREATH_SELECTION      = 23195,                    // 吐息selection 法术 ID
     SPELL_BROOD_AFFLICTION      = 23173, // TODO: Rework spell script
 
-    SPELL_ELEMENTAL_SHIELD_BWL  = 22276,
-    SPELL_FRENZY                = 23128,
-    SPELL_ENRAGE                = 23537
+    SPELL_ELEMENTAL_SHIELD_BWL  = 22276,                    // 元素护盾bwl 法术 ID
+    SPELL_FRENZY                = 23128,                    // 狂乱 法术 ID
+    SPELL_ENRAGE                = 23537                     // 狂暴 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ChromaggusActions
 {
     CHROMAGGUS_ENRAGE,
@@ -50,6 +54,7 @@ enum ChromaggusActions
     CHROMAGGUS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（chromaggus）
 struct boss_chromaggusAI : public CombatAI
 {
     boss_chromaggusAI(Creature* creature) : CombatAI(creature, CHROMAGGUS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -86,6 +91,7 @@ struct boss_chromaggusAI : public CombatAI
             m_instance->SetData(TYPE_CHROMAGGUS, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -146,6 +152,7 @@ struct boss_chromaggusAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_chromaggus
 void AddSC_boss_chromaggus()
 {
     Script* pNewScript = new Script;

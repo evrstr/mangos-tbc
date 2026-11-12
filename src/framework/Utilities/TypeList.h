@@ -23,6 +23,7 @@
   @struct TypeList
   TypeList is the most simple but yet the most powerfull class of all.  It holds
   at compile time the different type of objects in a linked list.
+  TypeList 在编译期以链表形式组织多个类型，是元编程多类型容器的基础构建块。
  */
 
 class TypeNull;
@@ -34,7 +35,7 @@ struct TypeList
     typedef TAIL Tail;
 };
 
-// enough for now.. can be expand at any point in time as needed
+// enough for now.. can be expand at any point in time as needed | 当前支持最多 5 个类型参数的展开宏，可按需扩展
 #define TYPELIST_1(T1)                 TypeList<T1, TypeNull>
 #define TYPELIST_2(T1, T2)             TypeList<T1, TYPELIST_1(T2) >
 #define TYPELIST_3(T1, T2, T3)         TypeList<T1, TYPELIST_2(T2, T3) >

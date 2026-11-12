@@ -21,14 +21,17 @@ SDComment: Placeholder
 SDCategory: Elwynn Forest
 EndScriptData */
 
+// 艾尔文森林（Elwynn Forest）人类新手区域脚本
+
 /* ContentData
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    NPC_FORLORN_SPIRIT = 2044,
+    NPC_FORLORN_SPIRIT = 2044,                              // forlorn之魂 Entry ID
 };
 
 // Marshal Haggard's Chest ID: 1562
@@ -53,6 +56,7 @@ struct go_marshal_haggards_chestAI : public GameObjectAI
     }
 };
 
+// 注册并载入脚本模块：elwynn_forest
 void AddSC_elwynn_forest()
 {
     Script* pNewScript = new Script;

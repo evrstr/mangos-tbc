@@ -73,6 +73,7 @@ ObjectAccessor::~ObjectAccessor()
     }
 }
 
+/// 按 GUID 查找单位：玩家跨全服查找，非玩家仅在基准对象 u 所在地图内查找
 Unit*
 ObjectAccessor::GetUnit(WorldObject const& u, ObjectGuid guid)
 {
@@ -122,6 +123,7 @@ Player* ObjectAccessor::FindPlayerByName(const char* name)
     return nullptr;
 }
 
+/// 通过各所属地图的 Messager 异步安全地保存全服所有在线玩家数据
 void ObjectAccessor::SaveAllPlayers() const
 {
     HashMapHolder<Player>::ReadGuard g(HashMapHolder<Player>::GetLock());
@@ -228,6 +230,7 @@ ObjectAccessor::AddCorpsesToGrid(GridPair const& gridpair, GridType& grid, Map* 
         }
 }
 
+/// 将玩家尸体转化为白骨（若地图与对应网格已加载且配置允许）并移除原尸体记录与数据库条目
 Corpse*
 ObjectAccessor::ConvertCorpseForPlayer(ObjectGuid player_guid, bool insignia)
 {
@@ -293,6 +296,7 @@ ObjectAccessor::ConvertCorpseForPlayer(ObjectGuid player_guid, bool insignia)
     return bones;
 }
 
+/// 遍历全部已登记玩家尸体，将已超时的尸体转换为白骨或销毁
 void ObjectAccessor::RemoveOldCorpses()
 {
     time_t now = time(nullptr);

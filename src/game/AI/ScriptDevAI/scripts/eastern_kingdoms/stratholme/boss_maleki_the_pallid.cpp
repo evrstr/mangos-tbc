@@ -21,26 +21,31 @@ SDComment:
 SDCategory: Stratholme
 EndScriptData */
 
+// 苍白的玛勒基（Maleki the Pallid）首领战 AI（冰霜暗影箭雨、冰冻之墓与吸取生命）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_FROST_ARMOR   = 12556,
-    SPELL_FROSTBOLT     = 17503,
-    SPELL_DRAIN_LIFE    = 17238,
-    SPELL_DRAIN_MANA    = 17243,
-    SPELL_ICE_TOMB      = 16869
+    SPELL_FROST_ARMOR   = 12556,                            // 冰霜armor 法术 ID
+    SPELL_FROSTBOLT     = 17503,                            // frostbolt 法术 ID
+    SPELL_DRAIN_LIFE    = 17238,                            // 吸取生命 法术 ID
+    SPELL_DRAIN_MANA    = 17243,                            // 吸取法力 法术 ID
+    SPELL_ICE_TOMB      = 16869                             // ice墓穴 法术 ID
 };
 
+// 首领战 AI：thepallid（maleki_the_pallid）
 struct boss_maleki_the_pallidAI : public ScriptedAI
 {
     boss_maleki_the_pallidAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiDrainManaTimer;
-    uint32 m_uiFrostboltTimer;
-    uint32 m_uiIceTombTimer;
-    uint32 m_uiDrainLifeTimer;
+    uint32 m_uiDrainManaTimer;                              // DrainMana 技能计时器
+    uint32 m_uiFrostboltTimer;                              // Frostbolt 技能计时器
+    uint32 m_uiIceTombTimer;                                // IceTomb 技能计时器
+    uint32 m_uiDrainLifeTimer;                              // DrainLife 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiDrainManaTimer  = 30000;
@@ -51,6 +56,7 @@ struct boss_maleki_the_pallidAI : public ScriptedAI
         DoCastSpellIfCan(nullptr, SPELL_FROST_ARMOR, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -83,7 +89,7 @@ struct boss_maleki_the_pallidAI : public ScriptedAI
         else
             m_uiIceTombTimer -= uiDiff;
 
-        // Drain Life
+        // Drain Life (吸取生命)
         if (m_uiDrainLifeTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
@@ -95,7 +101,7 @@ struct boss_maleki_the_pallidAI : public ScriptedAI
         else
             m_uiDrainLifeTimer -= uiDiff;
 
-        // Drain mana
+        // Drain mana (吸取法力)
         if (m_uiDrainManaTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_DRAIN_MANA, SELECT_FLAG_POWER_MANA))
@@ -107,15 +113,17 @@ struct boss_maleki_the_pallidAI : public ScriptedAI
         else
             m_uiDrainManaTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_maleki_the_pallid
 UnitAI* GetAI_boss_maleki_the_pallid(Creature* pCreature)
 {
     return new boss_maleki_the_pallidAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_maleki_the_pallid
 void AddSC_boss_maleki_the_pallid()
 {
     Script* pNewScript = new Script;

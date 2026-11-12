@@ -23,7 +23,7 @@
 #include "Server/Opcodes.h"
 #include "Server/WorldSession.h"
 
-/// Correspondence between opcodes and their names
+/// Correspondence between opcodes and their names | 全局操作码分发表：定义每个操作码的名称、会话状态要求、线程模型与处理函数
 OpcodeHandler opcodeTable[NUM_MSG_TYPES] =
 {
     /*0x000*/ { "MSG_NULL_ACTION",                              STATUS_NEVER,    PROCESS_INPLACE,      &WorldSession::Handle_NULL                     },

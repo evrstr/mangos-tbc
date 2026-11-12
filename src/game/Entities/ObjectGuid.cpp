@@ -23,6 +23,7 @@
 
 #include <sstream>
 
+// 获取指定 HighGuid 类型对应的调试名称字符串
 char const* ObjectGuid::GetTypeName(HighGuid high)
 {
     switch (high)
@@ -42,6 +43,7 @@ char const* ObjectGuid::GetTypeName(HighGuid high)
     }
 }
 
+// 格式化输出用于日志与调试的可读 GUID 描述字符串
 std::string ObjectGuid::GetString() const
 {
     std::ostringstream str;
@@ -61,6 +63,7 @@ std::string ObjectGuid::GetString() const
     return str.str();
 }
 
+// 生成下一个唯一低位 GUID；若接近上限则报错并安全关闭服务器
 template<HighGuid high>
 uint32 ObjectGuidGenerator<high>::Generate()
 {
@@ -72,30 +75,35 @@ uint32 ObjectGuidGenerator<high>::Generate()
     return m_nextGuid++;
 }
 
+// 将完整 64 位 ObjectGuid 写入字节缓冲区
 ByteBuffer& operator<< (ByteBuffer& buf, ObjectGuid const& guid)
 {
     buf << uint64(guid.GetRawValue());
     return buf;
 }
 
+// 从字节缓冲区读取完整 64 位 ObjectGuid
 ByteBuffer& operator>>(ByteBuffer& buf, ObjectGuid& guid)
 {
     guid.Set(buf.read<uint64>());
     return buf;
 }
 
+// 将压缩后的 PackedGuid 写入字节缓冲区
 ByteBuffer& operator<< (ByteBuffer& buf, PackedGuid const& guid)
 {
     buf.append(guid.m_packedGuid);
     return buf;
 }
 
+// 从字节缓冲区读取压缩 GUID 到目标 ObjectGuid
 ByteBuffer& operator>>(ByteBuffer& buf, PackedGuidReader const& guid)
 {
     guid.m_guidPtr->Set(buf.readPackGUID());
     return buf;
 }
 
+// 显式实例化各常见 HighGuid 类型的 GUID 生成器
 template uint32 ObjectGuidGenerator<HIGHGUID_ITEM>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_PLAYER>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_GAMEOBJECT>::Generate();

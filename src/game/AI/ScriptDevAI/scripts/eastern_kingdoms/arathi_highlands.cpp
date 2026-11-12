@@ -21,6 +21,8 @@ SDComment: Quest support: 660, 665
 SDCategory: Arathi Highlands
 EndScriptData */
 
+// 阿拉希高地（Arathi Highlands）区域杂项与 NPC 脚本
+
 /* ContentData
 npc_professor_phizzlethorpe
 npc_kinelory
@@ -33,28 +35,31 @@ EndContentData */
 ## npc_professor_phizzlethorpe
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_PROGRESS_1          = -1000264,
-    SAY_PROGRESS_2          = -1000265,
-    SAY_PROGRESS_3          = -1000266,
-    EMOTE_PROGRESS_4        = -1000267,
-    SAY_AGGRO               = -1000268,
-    SAY_PROGRESS_5          = -1000269,
-    SAY_PROGRESS_6          = -1000270,
-    SAY_PROGRESS_7          = -1000271,
-    EMOTE_PROGRESS_8        = -1000272,
-    SAY_PROGRESS_9          = -1000273,
+    SAY_PROGRESS_1          = -1000264,                     // progress1 台词广播 ID
+    SAY_PROGRESS_2          = -1000265,                     // progress2 台词广播 ID
+    SAY_PROGRESS_3          = -1000266,                     // progress3 台词广播 ID
+    EMOTE_PROGRESS_4        = -1000267,                     // progress4 表情动作 ID
+    SAY_AGGRO               = -1000268,                     // 开战 台词广播 ID
+    SAY_PROGRESS_5          = -1000269,                     // progress5 台词广播 ID
+    SAY_PROGRESS_6          = -1000270,                     // progress6 台词广播 ID
+    SAY_PROGRESS_7          = -1000271,                     // progress7 台词广播 ID
+    EMOTE_PROGRESS_8        = -1000272,                     // progress8 表情动作 ID
+    SAY_PROGRESS_9          = -1000273,                     // progress9 台词广播 ID
 
-    FACTION_BOOTY_BAY       = 120,
-    QUEST_SUNKEN_TREASURE   = 665,
-    ENTRY_VENGEFUL_SURGE    = 2776
+    FACTION_BOOTY_BAY       = 120,                          // bootybay 阵营 ID
+    QUEST_SUNKEN_TREASURE   = 665,                          // sunkentreasure 任务 ID
+    ENTRY_VENGEFUL_SURGE    = 2776                          // vengefulsurge Entry ID
 };
 
+// 随从/NPC AI：phizzlethorpe（professor_phizzlethorpe）
 struct npc_professor_phizzlethorpeAI : public npc_escortAI
 {
     npc_professor_phizzlethorpeAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
     void WaypointReached(uint32 uiPointId) override
@@ -92,12 +97,14 @@ struct npc_professor_phizzlethorpeAI : public npc_escortAI
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->AI()->AttackStart(m_creature);
     }
 };
 
+// 任务接取回调函数：npc_professor_phizzlethorpe
 bool QuestAccept_npc_professor_phizzlethorpe(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_SUNKEN_TREASURE)
@@ -111,6 +118,7 @@ bool QuestAccept_npc_professor_phizzlethorpe(Player* pPlayer, Creature* pCreatur
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_professor_phizzlethorpe
 UnitAI* GetAI_npc_professor_phizzlethorpe(Creature* pCreature)
 {
     return new npc_professor_phizzlethorpeAI(pCreature);
@@ -120,35 +128,38 @@ UnitAI* GetAI_npc_professor_phizzlethorpe(Creature* pCreature)
 ## npc_kinelory
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START               = -1000948,
-    SAY_REACH_BOTTOM        = -1000949,
-    SAY_AGGRO_KINELORY      = -1000950,
-    SAY_AGGRO_JORELL        = -1000951,
-    SAY_WATCH_BACK          = -1000952,
-    EMOTE_BELONGINGS        = -1000953,
-    SAY_DATA_FOUND          = -1000954,
-    SAY_ESCAPE              = -1000955,
-    SAY_FINISH              = -1000956,
-    EMOTE_HAND_PACK         = -1000957,
+    SAY_START               = -1000948,                     // 开始 台词广播 ID
+    SAY_REACH_BOTTOM        = -1000949,                     // reachbottom 台词广播 ID
+    SAY_AGGRO_KINELORY      = -1000950,                     // 开战kinelory 台词广播 ID
+    SAY_AGGRO_JORELL        = -1000951,                     // 开战jorell 台词广播 ID
+    SAY_WATCH_BACK          = -1000952,                     // watchback 台词广播 ID
+    EMOTE_BELONGINGS        = -1000953,                     // belongings 表情动作 ID
+    SAY_DATA_FOUND          = -1000954,                     // 数据found 台词广播 ID
+    SAY_ESCAPE              = -1000955,                     // escape 台词广播 ID
+    SAY_FINISH              = -1000956,                     // finish 台词广播 ID
+    EMOTE_HAND_PACK         = -1000957,                     // handpack 表情动作 ID
 
-    SPELL_REJUVENATION      = 3627,
-    SPELL_BEAR_FORM         = 4948,
+    SPELL_REJUVENATION      = 3627,                         // rejuvenation 法术 ID
+    SPELL_BEAR_FORM         = 4948,                         // bearform 法术 ID
 
-    NPC_JORELL              = 2733,
-    NPC_QUAE                = 2712,
+    NPC_JORELL              = 2733,                         // jorell Entry ID
+    NPC_QUAE                = 2712,                         // quae Entry ID
 
-    QUEST_HINTS_NEW_PLAGUE  = 660
+    QUEST_HINTS_NEW_PLAGUE  = 660                           // hintsnewplague 任务 ID
 };
 
+// 随从/NPC AI：标识 ID（kinelory）
 struct npc_kineloryAI : public npc_escortAI
 {
     npc_kineloryAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    uint32 m_uiBearFormTimer;
-    uint32 m_uiHealTimer;
+    uint32 m_uiBearFormTimer;                               // BearForm 技能计时器
+    uint32 m_uiHealTimer;                                   // Heal 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiBearFormTimer = urand(5000, 7000);
@@ -191,6 +202,7 @@ struct npc_kineloryAI : public npc_escortAI
         }
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* pWho) override
     {
         if (pWho->GetEntry() == NPC_JORELL)
@@ -234,15 +246,17 @@ struct npc_kineloryAI : public npc_escortAI
         else
             m_uiHealTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_kinelory
 UnitAI* GetAI_npc_kinelory(Creature* pCreature)
 {
     return new npc_kineloryAI(pCreature);
 }
 
+// 任务接取回调函数：npc_kinelory
 bool QuestAccept_npc_kinelory(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_HINTS_NEW_PLAGUE)
@@ -251,6 +265,7 @@ bool QuestAccept_npc_kinelory(Player* pPlayer, Creature* pCreature, const Quest*
     return true;
 }
 
+// 注册并载入脚本模块：arathi_highlands
 void AddSC_arathi_highlands()
 {
     Script* pNewScript = new Script;

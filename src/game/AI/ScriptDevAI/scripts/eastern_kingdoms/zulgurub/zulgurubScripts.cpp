@@ -21,35 +21,39 @@ SDComment:
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 祖尔格拉布（Zul'Gurub）巫毒妖毒云、狂暴小怪与部族硬币兑换脚本
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
 /* ContentData
 EndContentData */
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // npc_soulflayer
-    SPELL_SOUL_TAP               = 24619,
-    SPELL_LIGHTNING_BREATH       = 20543,
-    SPELL_THRASH                 = 8876,
-    SPELL_KNOCKDOWN              = 20276,
-    SPELL_FEAR                   = 22678,
-    SPELL_FRENZY                 = 28371,
-    SPELL_ENRAGE                 = 8269
+    SPELL_SOUL_TAP               = 24619,                   // 灵魂tap 法术 ID
+    SPELL_LIGHTNING_BREATH       = 20543,                   // 闪电吐息 法术 ID
+    SPELL_THRASH                 = 8876,                    // thrash 法术 ID
+    SPELL_KNOCKDOWN              = 20276,                   // 击倒 法术 ID
+    SPELL_FEAR                   = 22678,                   // 恐惧 法术 ID
+    SPELL_FRENZY                 = 28371,                   // 狂乱 法术 ID
+    SPELL_ENRAGE                 = 8269                     // 狂暴 法术 ID
 };
 
 /*######
 ## npc_soulflayer
 ######*/
 
+// 随从/NPC AI：标识 ID（soulflayer）
 struct npc_soulflayerAI : public ScriptedAI
 {
     npc_soulflayerAI(Creature* pCreature) : ScriptedAI(pCreature), m_uiRandomBuffAbility(0) { Reset(); }
 
-    uint32 m_uiSoulTapTimer;
-    uint32 m_uiLightingBreathTimer;
+    uint32 m_uiSoulTapTimer;                                // SoulTap 技能计时器
+    uint32 m_uiLightingBreathTimer;                         // LightingBreath 技能计时器
     uint32 m_uiRandomCcAbility;
-    uint32 m_uiRandomCcAbilityTimer;
+    uint32 m_uiRandomCcAbilityTimer;                        // RandomCcAbility 技能计时器
     uint32 m_uiRandomBuffAbility;
 
     const uint32 spell_list_cc[2] = { SPELL_FEAR, SPELL_KNOCKDOWN };
@@ -68,6 +72,7 @@ struct npc_soulflayerAI : public ScriptedAI
             DoCastSpellIfCan(m_creature, m_uiRandomBuffAbility, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiRandomCcAbilityTimer = urand(2000, 5000);
@@ -78,6 +83,7 @@ struct npc_soulflayerAI : public ScriptedAI
             DoCastSpellIfCan(m_creature, m_uiRandomBuffAbility, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         // Check if we have a valid target, otherwise do nothing
@@ -88,7 +94,7 @@ struct npc_soulflayerAI : public ScriptedAI
         if (m_creature->IsNonMeleeSpellCasted(false))
             return;
 
-        // Soul Tap
+        // Soul Tap (灵魂Tap)
         if (m_uiSoulTapTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_SOUL_TAP, SELECT_TARGET_ANY_ENEMY))
@@ -98,7 +104,7 @@ struct npc_soulflayerAI : public ScriptedAI
         else
             m_uiSoulTapTimer -= uiDiff;
 
-        // Lightning Breath
+        // Lightning Breath (闪电吐息)
         if (m_uiLightingBreathTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_LIGHTNING_BREATH) == CAST_OK)
@@ -108,7 +114,7 @@ struct npc_soulflayerAI : public ScriptedAI
             m_uiLightingBreathTimer -= uiDiff;
 
         // Random time based CC ability
-        // Either Fear or Knockdown
+        // Either Fear or Knockdown (Either恐惧or击倒)
         if (m_uiRandomCcAbilityTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), m_uiRandomCcAbility) == CAST_OK)
@@ -118,16 +124,17 @@ struct npc_soulflayerAI : public ScriptedAI
             m_uiRandomCcAbilityTimer -= uiDiff;
 
         // Random HP based ability
-        // Either Frenzy or Enrage
+        // Either Frenzy or Enrage (Either狂乱or狂暴)
         if (m_uiRandomBuffAbility != SPELL_THRASH)
             if (m_creature->GetHealthPercent() <= 30.0f)
                 if (!m_creature->HasAura(m_uiRandomBuffAbility))
                     DoCastSpellIfCan(m_creature->GetVictim(), m_uiRandomBuffAbility);
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_soulflayer
 UnitAI* GetAI_npc_soulflayer(Creature* pCreature)
 {
     return new npc_soulflayerAI(pCreature);
@@ -143,6 +150,7 @@ enum // leftover hazzarah enum for future docu
     SPELL_SUMMON_ILLUSION_3     = 24729,
 };
 
+// 法术脚本逻辑实现：标识 ID（SummonNightmareIllusion）
 struct SummonNightmareIllusion : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -156,6 +164,7 @@ struct SummonNightmareIllusion : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（DelusionsOfJindo）
 struct DelusionsOfJindo : public SpellScript
 {
     void OnHit(Spell* spell, SpellMissInfo /*missInfo*/) const
@@ -165,6 +174,7 @@ struct DelusionsOfJindo : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SummonShadeOfJindo）
 struct SummonShadeOfJindo : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const
@@ -175,16 +185,17 @@ struct SummonShadeOfJindo : public SpellScript
     }
 };
 
-// 24335 - Wyvern Sting
+// 24335 - Wyvern Sting (24335 - 翼龙 钉刺)
 struct WyvernStingAura : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply && aura->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
-            aura->GetCaster()->CastSpell(aura->GetTarget(), 24336, TRIGGERED_OLD_TRIGGERED); // Wyvern Sting Dot
+            aura->GetCaster()->CastSpell(aura->GetTarget(), 24336, TRIGGERED_OLD_TRIGGERED); // Wyvern Sting Dot (翼龙钉刺Dot)
     }
 };
 
+// 注册并载入脚本模块：zulgurub
 void AddSC_zulgurub()
 {
     Script* pNewScript = new Script;

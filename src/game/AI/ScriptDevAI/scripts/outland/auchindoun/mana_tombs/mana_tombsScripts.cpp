@@ -21,6 +21,12 @@ SDComment: Quest 10218
 SDCategory: Auchindoun, Mana Tombs
 EndScriptData */
 
+// 技师沙欣护送事件脚本（任务 10218：一分耕耘，一分收获）
+/* 事件概述：
+ * 玩家在法力陵墓接取任务 10218 后，护送技师沙欣穿越陵墓回收收集器。
+ * 护送沿途会遭遇三波虚灵伏兵以及暗影领主西拉希斯的袭击。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/escort_ai.h"
 #include "Entities/TemporarySpawn.h"
@@ -29,44 +35,46 @@ EndScriptData */
 ## npc_shaheen
 #####*/
 
+// 沙欣台词、法术、NPC 条目与任务 ID 枚举
 enum
 {
-    SAY_ESCORT_START            = 17246,
-    SAY_START                   = 17248,
-    SAY_FIRST_STOP              = 17249,
-    SAY_FIRST_STOP_COMPLETE     = 17251,
-    SAY_COLLECTOR_SEARCH        = 17252,
-    SAY_COLLECTOR_FOUND         = 17254,
-    SAY_SECOND_STOP             = 17255,
-    SAY_THIRD_STOP              = 17256,
-    SAY_REST                    = 17258,
-    SAY_READY_GO                = 17260,
-    SAY_BREAK_OVER              = 17261,
-    SAY_XIRAXIS_SPAWN           = 17241,
-    SAY_FINAL_STOP_1            = 17243,
-    SAY_FINAL_STOP_2            = 17263,
-    SAY_FINAL_STOP_3            = 17244,
-    SAY_XIRAXIS_DEAD            = 17264,
-    SAY_EVENT_COMPLETE          = 17265,
+    SAY_ESCORT_START            = 17246,                    // 开始护送台词
+    SAY_START                   = 17248,                    // 出发台词
+    SAY_FIRST_STOP              = 17249,                    // 第一停顿点台词
+    SAY_FIRST_STOP_COMPLETE     = 17251,                    // 第一停顿点完成台词
+    SAY_COLLECTOR_SEARCH        = 17252,                    // 寻找收集器台词
+    SAY_COLLECTOR_FOUND         = 17254,                    // 找到收集器台词
+    SAY_SECOND_STOP             = 17255,                    // 第二停顿点台词
+    SAY_THIRD_STOP              = 17256,                    // 第三停顿点台词
+    SAY_REST                    = 17258,                    // 休息台词
+    SAY_READY_GO                = 17260,                    // 准备前进台词
+    SAY_BREAK_OVER              = 17261,                    // 休息结束台词
+    SAY_XIRAXIS_SPAWN           = 17241,                    // 西拉希斯现身台词
+    SAY_FINAL_STOP_1            = 17243,                    // 终点对话 1
+    SAY_FINAL_STOP_2            = 17263,                    // 终点对话 2
+    SAY_FINAL_STOP_3            = 17244,                    // 终点对话 3
+    SAY_XIRAXIS_DEAD            = 17264,                    // 西拉希斯死亡台词
+    SAY_EVENT_COMPLETE          = 17265,                    // 事件完成台词
 
-    EMOTE_TELEPORT              = 17228,
-    SAY_SPAWN                   = 17229,
-    EMOTE_PANEL                 = 17230,
-    SAY_ESCORT_READY            = 17231,
+    EMOTE_TELEPORT              = 17228,                    // 传送表情
+    SAY_SPAWN                   = 17229,                    // 刷新台词
+    EMOTE_PANEL                 = 17230,                    // 操作控制台表情
+    SAY_ESCORT_READY            = 17231,                    // 护送就绪台词
 
-    SPELL_ETHEREAL_TELEPORT     = 34427,
+    SPELL_ETHEREAL_TELEPORT     = 34427,                    // 虚灵传送法术
 
-    NPC_ETHEREAL_SPELLBINDER    = 18312,
-    NPC_ETHEREAL_THEURGIST      = 18315,
-    NPC_ETHEREAL_SORCERER       = 18313,
-    NPC_ETHEREAL_CRYPT_RAIDER   = 18311,
-    NPC_NEXUS_TERROR            = 19307,
-    NPC_ENGINEER_SHAEEN         = 19671,
-    NPC_SHADOW_LORD_XIRAXIS     = 19666,
+    NPC_ETHEREAL_SPELLBINDER    = 18312,                    // 虚灵缚法者
+    NPC_ETHEREAL_THEURGIST      = 18315,                    // 虚灵通灵师
+    NPC_ETHEREAL_SORCERER       = 18313,                    // 虚灵巫师
+    NPC_ETHEREAL_CRYPT_RAIDER   = 18311,                    // 虚灵盗墓者
+    NPC_NEXUS_TERROR            = 19307,                    // 节点恐魔
+    NPC_ENGINEER_SHAEEN         = 19671,                    // 技师沙欣
+    NPC_SHADOW_LORD_XIRAXIS     = 19666,                    // 暗影领主西拉希斯
 
-    QUEST_ID_HARD_WORK_PAYS_OFF = 10218
+    QUEST_ID_HARD_WORK_PAYS_OFF = 10218                     // 任务 ID：一分耕耘，一分收获
 };
 
+// 护送开场与各阶段对话时序表
 static const DialogueEntry aIntroDialogue[] =
 {
     {SPELL_ETHEREAL_TELEPORT,   0,                       1000},
@@ -91,6 +99,7 @@ static const DialogueEntry aIntroDialogue[] =
     {0, 0, 0},
 };
 
+// 技师沙欣护送 AI
 struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
 {
     npc_shaheenAI(Creature* pCreature) : npc_escortAI(pCreature),
@@ -101,12 +110,12 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
         SetRangedMode(true, 35.f, TYPE_FULL_CASTER);
     }
 
-    ObjectGuid m_xiraxisGuid;
-    uint32 m_uiSummonCount;
+    ObjectGuid m_xiraxisGuid;                           // 暗影领主西拉希斯 GUID
+    uint32 m_uiSummonCount;                             // 当前存活的伏兵数量
 
     void Reset() override { }
 
-    void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
+    void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override // 接收 AI 事件（开启护送）
     {
         if (eventType == AI_EVENT_START_ESCORT && pInvoker->GetTypeId() == TYPEID_PLAYER)
         {
@@ -115,7 +124,7 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override     // 召唤随从或首领回调
     {
         switch (pSummoned->GetEntry())
         {
@@ -134,13 +143,13 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId) override
+    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId) override // 召唤物移动到达点位回调
     {
         if (pSummoned->GetEntry() == NPC_SHADOW_LORD_XIRAXIS && uiMotionType == POINT_MOTION_TYPE && uiPointId == 1)
             StartNextDialogueText(SAY_FINAL_STOP_1);
     }
 
-    void SummonedCreatureJustDied(Creature* pSummoned) override
+    void SummonedCreatureJustDied(Creature* pSummoned) override // 召唤物死亡回调
     {
         switch (pSummoned->GetEntry())
         {
@@ -159,14 +168,14 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override     // 路径点到达回调（生成各波怪物）
     {
         switch (uiPointId)
         {
             case 8:
                 SetEscortPaused(true);
                 DoBroadcastText(SAY_FIRST_STOP, m_creature);
-                // summon first wave
+                // summon first wave (召唤第一波伏兵)
                 m_creature->SummonCreature(NPC_ETHEREAL_THEURGIST, -375.86f, -129.16f, -0.95f, 4.82f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
                 m_creature->SummonCreature(NPC_ETHEREAL_THEURGIST, -370.67f, -199.79f, -0.95f, 1.52f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
                 m_creature->SummonCreature(NPC_ETHEREAL_SPELLBINDER, -371.12f, -129.07f, -0.95f, 4.82f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
@@ -181,14 +190,14 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
             case 18:
                 SetEscortPaused(true);
                 DoBroadcastText(SAY_SECOND_STOP, m_creature);
-                // summon second wave
+                // summon second wave (召唤第二波伏兵)
                 m_creature->SummonCreature(NPC_ETHEREAL_SORCERER, -278.17f, -195.50f, 0.68f, 1.22f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
                 m_creature->SummonCreature(NPC_ETHEREAL_SORCERER, -234.51f, -197.03f, -0.95f, 1.92f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
                 m_creature->SummonCreature(NPC_ETHEREAL_CRYPT_RAIDER, -282.28f, -194.44f, 0.44f, 1.22f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
                 m_creature->SummonCreature(NPC_ETHEREAL_CRYPT_RAIDER, -231.15f, -194.53f, -0.95f, 1.52f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
                 break;
             case 25:
-                // summon third wave
+                // summon third wave (召唤第三波伏兵)
                 m_creature->SummonCreature(NPC_NEXUS_TERROR, -37.30f, -222.44f, -0.33f, 3.01f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 240000);
                 m_creature->SummonCreature(NPC_NEXUS_TERROR, -15.76f, -225.36f,  0.79f, 2.93f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 240000);
                 break;
@@ -215,7 +224,7 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void JustDidDialogueStep(int32 iEntry) override
+    void JustDidDialogueStep(int32 iEntry) override     // 对话步骤达成回调
     {
         switch (iEntry)
         {
@@ -251,7 +260,7 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    Creature* GetSpeakerByEntry(uint32 uiEntry) override
+    Creature* GetSpeakerByEntry(uint32 uiEntry) override // 根据条目获取当前发话者
     {
         switch (uiEntry)
         {
@@ -262,18 +271,20 @@ struct npc_shaheenAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override   // 护送与对话更新
     {
         DialogueUpdate(uiDiff);
         ScriptedAI::UpdateAI(uiDiff);
     }
 };
 
+// 获取技师沙欣 AI 实例
 UnitAI* GetAI_npc_shaheen(Creature* pCreature)
 {
     return new npc_shaheenAI(pCreature);
 }
 
+// 接受任务回调：开始护送沙欣
 bool QuestAccept_npc_shaheen(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ID_HARD_WORK_PAYS_OFF)
@@ -285,6 +296,7 @@ bool QuestAccept_npc_shaheen(Player* pPlayer, Creature* pCreature, const Quest* 
     return false;
 }
 
+// 注册法力陵墓脚本
 void AddSC_mana_tombs()
 {
     Script* pNewScript = new Script;

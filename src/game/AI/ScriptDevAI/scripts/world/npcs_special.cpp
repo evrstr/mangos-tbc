@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Npcs_Special
 SD%Complete: 100
-SDComment: To be used for special NPCs that are located globally.
+SDComment: To be used for special NPCs that are located globally. (世界特殊通用 NPC 脚本：急救考核、旅店老板、清道夫、图腾召唤物等)
 SDCategory: NPCs
 EndScriptData
 */
@@ -104,6 +104,7 @@ SpawnAssociation m_aSpawnAssociations[] =
     {22126, 22122, SPAWNTYPE_ALARMBOT}                      // Air Force Trip Wire - Rooftop (Cenarion Expedition)
 };
 
+// 军团/阵营空军轰炸巡逻机 AI (npc_air_force_botsAI)：沿指定航线飞行并执行对地轰炸
 struct npc_air_force_botsAI : public ScriptedAI
 {
     npc_air_force_botsAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -269,6 +270,7 @@ enum
     FACTION_CHICKEN         = 31
 };
 
+// 咯咯叫的小鸡任务 AI (npc_chicken_cluckAI)：玩家对小鸡连续使用 /chicken 表情后触发任务
 struct npc_chicken_cluckAI : public ScriptedAI
 {
     npc_chicken_cluckAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -396,6 +398,7 @@ const uint32 HordeSoldierId[3] =
 ## npc_doctor (handles both Gustaf Vanhowzen and Gregory Victor)
 ######*/
 
+// 急救大师创伤救治考核医生 AI (npc_doctorAI)：落锤镇/塞拉摩急救演习协调者
 struct npc_doctorAI : public ScriptedAI
 {
     npc_doctorAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -445,6 +448,7 @@ struct npc_doctorAI : public ScriptedAI
 ## npc_injured_patient (handles all the patients, no matter Horde or Alliance)
 #####*/
 
+// 急救考核伤员 AI (npc_injured_patientAI)：管理重伤倒计时与绷带包扎判定
 struct npc_injured_patientAI : public ScriptedAI
 {
     npc_injured_patientAI(Creature* pCreature) : ScriptedAI(pCreature), isSaved(false) {Reset();}
@@ -813,6 +817,7 @@ enum
     SAY_SHAYA_GOODBYE       = -1000263,
 };
 
+// 牧师职业法袍任务护送 AI (npc_garments_of_questsAI)
 struct npc_garments_of_questsAI : public npc_escortAI
 {
     npc_garments_of_questsAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -1000,6 +1005,7 @@ enum GuardianOfB
     SAY_AGGRO                   = 2077
 };
 
+// 任务护卫召唤物 AI (npc_guardianAI)
 struct npc_guardianAI : public ScriptedAI
 {
     npc_guardianAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -1046,6 +1052,7 @@ enum
 #define GOSSIP_ITEM_TRICK_OR_TREAT  "Trick or Treat!"
 #define GOSSIP_ITEM_WHAT_TO_DO      "What can I do at an Inn?"
 
+// 旅店老板问候回调：设置炉石归宿地与浏览商品
 bool GossipHello_npc_innkeeper(Player* pPlayer, Creature* pCreature)
 {
     pPlayer->PrepareGossipMenu(pCreature, pPlayer->GetDefaultGossipMenuForSource(pCreature));
@@ -1108,6 +1115,7 @@ enum
     NPC_BLOOD_KNIGHT            = 17768,        // blood elf side
 };
 
+// 圣骑士救赎任务复活目标 AI (npc_redemption_targetAI)
 struct npc_redemption_targetAI : public ScriptedAI
 {
     npc_redemption_targetAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -1298,6 +1306,7 @@ enum BursterActions
     BURSTER_CHASE_SEQUENCE,
 };
 
+// 潜地裂地蠕虫 AI (npc_burster_wormAI)
 struct npc_burster_wormAI : public CombatAI
 {
     npc_burster_wormAI(Creature* creature) : CombatAI(creature, BURSTER_ACTION_MAX),
@@ -1598,6 +1607,7 @@ enum
     SAY_CLEANER_AGGRO   = -1001253
 };
 
+// 猎人史诗弓任务“清道夫” AI (npc_the_cleanerAI)：检测多玩家参与或非猎人插手恶魔战斗时强制清场
 struct npc_the_cleanerAI : public ScriptedAI
 {
     npc_the_cleanerAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -1676,6 +1686,7 @@ enum FireElementalActions
     ELEMENTAL_ACTION_MAX,
 };
 
+// 萨满火元素图腾召唤物 AI (npc_shaman_fire_elementalAI)
 struct npc_shaman_fire_elementalAI : public npc_shaman_elementalAI
 {
     npc_shaman_fire_elementalAI(Creature* creature) : npc_shaman_elementalAI(creature, ELEMENTAL_ACTION_MAX)
@@ -1715,6 +1726,7 @@ struct npc_shaman_fire_elementalAI : public npc_shaman_elementalAI
     }
 };
 
+// 萨满土元素图腾召唤物 AI (npc_shaman_earth_elementalAI)
 struct npc_shaman_earth_elementalAI : public npc_shaman_elementalAI
 {
     npc_shaman_earth_elementalAI(Creature* creature) : npc_shaman_elementalAI(creature, 1)
@@ -1750,6 +1762,7 @@ enum
     SPELL_RANDOM_AGGRO = 34701,
 };
 
+// 猎人毒蛇陷阱蛇群 AI (npc_snakesAI)
 struct npc_snakesAI : public ScriptedAI
 {
     npc_snakesAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
@@ -1806,6 +1819,7 @@ enum RayActions
     RAY_ACTION_MAX,
 };
 
+// 虚空鳐幼崽战斗 AI (npc_nether_rayAI)
 struct npc_nether_rayAI : public CombatAI
 {
     npc_nether_rayAI(Creature* creature) : CombatAI(creature, RAY_ACTION_MAX)
@@ -1874,6 +1888,7 @@ enum
     MOJO_WHISPS_COUNT       = 8
 };
 
+// 莫乔 AI (npc_mojoAI)：祖阿曼亲吻青蛙获取的小宠物，被玩家 /kiss 时有特殊互动
 struct npc_mojoAI : public ScriptedAI
 {
     npc_mojoAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
@@ -2055,6 +2070,7 @@ enum PhoenixActions
     PHOENIX_ATTACK_DELAY,
 };
 
+// 风暴要塞凤凰/凤凰蛋 AI (mob_phoenix_tkAI)：死亡时化为凤凰蛋并在倒计时结束后重生
 struct mob_phoenix_tkAI : public CombatAI
 {
     mob_phoenix_tkAI(Creature* creature) : CombatAI(creature, PHOENIX_ACTION_MAX)
@@ -2338,6 +2354,7 @@ enum GossipNPCEvents : uint32
     GOSSIP_EVENT_DARK_PORTAL,
 };
 
+// 节日与城镇环境 NPC 交互 AI (GossipNPCAI)
 struct GossipNPCAI : public ScriptedAI
 {
     GossipNPCAI(Creature* creature) : ScriptedAI(creature), m_chosenEvent(GOSSIP_EVENT_DARK_PORTAL), m_team(TEAM_NONE) {}
@@ -2903,6 +2920,7 @@ bool GossipSelect_npc_paymaster(Player* player, Creature* creature, uint32 /*sen
     return true;
 }
 
+// 注册世界特殊 NPC 脚本
 void AddSC_npcs_special()
 {
     Script* pNewScript = new Script;

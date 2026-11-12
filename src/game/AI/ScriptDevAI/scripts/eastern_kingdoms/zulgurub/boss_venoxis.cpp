@@ -21,38 +21,42 @@ SDComment:
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 高阶祭司温诺希斯（High Priest Venoxis）毒蛇祭司首领战 AI（闪电链、神圣之火与巨毒毒云转阶段）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_TRANSFORM           = -1309000,
-    SAY_DEATH               = -1309001,
+    SAY_TRANSFORM           = -1309000,                     // 变形 台词广播 ID
+    SAY_DEATH               = -1309001,                     // 死亡 台词广播 ID
 
     // troll spells
-    SPELL_HOLY_FIRE         = 23860,
-    SPELL_HOLY_WRATH        = 23979,
-    SPELL_HOLY_NOVA         = 23858,
-    SPELL_DISPELL           = 23859,
-    SPELL_RENEW             = 23895,
+    SPELL_HOLY_FIRE         = 23860,                        // 神圣火焰 法术 ID
+    SPELL_HOLY_WRATH        = 23979,                        // 神圣wrath 法术 ID
+    SPELL_HOLY_NOVA         = 23858,                        // 神圣新星 法术 ID
+    SPELL_DISPELL           = 23859,                        // dispell 法术 ID
+    SPELL_RENEW             = 23895,                        // renew 法术 ID
 
     // serpent spells
-    SPELL_VENOMSPIT         = 23862,
-    SPELL_POISON_CLOUD      = 23861,
-    SPELL_PARASITIC_SERPENT = 23867,
+    SPELL_VENOMSPIT         = 23862,                        // venomspit 法术 ID
+    SPELL_POISON_CLOUD      = 23861,                        // 毒药cloud 法术 ID
+    SPELL_PARASITIC_SERPENT = 23867,                        // parasiticserpent 法术 ID
 
     // common spells
-    SPELL_SNAKE_FORM            = 23849,
-    SPELL_FRENZY                = 23537,
-    SPELL_VIRULENT_POISON_PROC  = 22413,
-    SPELL_TRASH                 = 3391,
+    SPELL_SNAKE_FORM            = 23849,                    // snakeform 法术 ID
+    SPELL_FRENZY                = 23537,                    // 狂乱 法术 ID
+    SPELL_VIRULENT_POISON_PROC  = 22413,                    // virulent毒药proc 法术 ID
+    SPELL_TRASH                 = 3391,                     // trash 法术 ID
 
-    SPELL_LIST_PHASE_1 = 1450701,
-    SPELL_LIST_PHASE_2 = 1450702,
-    SPELL_LIST_PHASE_3 = 1450703,
+    SPELL_LIST_PHASE_1 = 1450701,                           // list阶段1 法术 ID
+    SPELL_LIST_PHASE_2 = 1450702,                           // list阶段2 法术 ID
+    SPELL_LIST_PHASE_3 = 1450703,                           // list阶段3 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum VenoxisActions
 {
     VENOXIS_PHASE_2,
@@ -61,6 +65,7 @@ enum VenoxisActions
     VENOXIS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（venoxis）
 struct boss_venoxisAI : public CombatAI
 {
     boss_venoxisAI(Creature* creature) : CombatAI(creature, VENOXIS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -72,6 +77,7 @@ struct boss_venoxisAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -122,6 +128,7 @@ struct boss_venoxisAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_venoxis
 void AddSC_boss_venoxis()
 {
     Script* pNewScript = new Script;

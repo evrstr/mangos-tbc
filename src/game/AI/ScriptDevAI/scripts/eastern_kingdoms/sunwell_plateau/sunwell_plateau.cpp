@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Sunwell_Plateau
 EndScriptData */
 
+// 太阳之井高地（Sunwell Plateau）副本状态机与奥术日蚀结界大门控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "Maps/MapPersistentStateMgr.h"
@@ -57,6 +59,7 @@ instance_sunwell_plateau::instance_sunwell_plateau(Map* pMap) : ScriptedInstance
     Initialize();
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SunwellActions
 {
     ACTION_SPAWN_MURU,
@@ -103,7 +106,7 @@ void instance_sunwell_plateau::OnPlayerEnter(Player* /*pPlayer*/)
         // Spawn Felmyst if not already dead and Brutallus is complete
         if (m_auiEncounter[TYPE_BRUTALLUS] == DONE && m_auiEncounter[TYPE_FELMYST] != DONE)
         {
-            // Summon Felmyst in reload case if not already summoned
+            // Summon Felmyst in reload case if not already summoned (召唤 Felmyst in reload case if not already summoned)
             if (!GetSingleCreatureFromStorage(NPC_FELMYST, true))
                 SpawnFelmyst();
         }
@@ -115,7 +118,7 @@ void instance_sunwell_plateau::OnPlayerEnter(Player* /*pPlayer*/)
                 SpawnMuru();
         }
 
-        // Spawn KJ after M'uru
+        // Spawn KJ after M'uru (生成KJafter穆鲁)
         if (m_auiEncounter[TYPE_MURU] == DONE && m_auiEncounter[TYPE_KILJAEDEN] != DONE)
         {
             if (!GetSingleCreatureFromStorage(NPC_ANVEENA, true))
@@ -386,7 +389,7 @@ void instance_sunwell_plateau::SetData(uint32 type, uint32 data)
             m_auiEncounter[type] = data;
             if (data == IN_PROGRESS && GetData(TYPE_EREDAR_TWINS) != DONE)
                 BanPlayersIfNoGm("Player engaged muru without killing eredar twins and Gamemaster being present in instance.");
-            // combat door
+            // combat door (战斗门)
             if (data != IN_PROGRESS) // closing done delayed on start
                 DoUseOpenableObject(GO_MURU_ENTER_GATE, true);
             else
@@ -657,7 +660,7 @@ void instance_sunwell_plateau::FailKiljaeden()
 {
     m_uiDeceiversKilled = 0;
 
-    // Respawn Orbs
+    // Respawn Orbs (刷新Orbs)
     std::vector<uint32> gos = { GO_ORB_BLUE_FLIGHT_1, GO_ORB_BLUE_FLIGHT_2, GO_ORB_BLUE_FLIGHT_3, GO_ORB_BLUE_FLIGHT_4 };
     for (uint32 entry : gos)
     {
@@ -684,7 +687,7 @@ void instance_sunwell_plateau::FailKiljaeden()
     if (Creature* kalec = GetSingleCreatureFromStorage(NPC_KALECGOS))
         kalec->ForcedDespawn();
 
-    // Respawn deceivers
+    // Respawn deceivers (刷新deceivers)
     RespawnDbGuids(m_kiljaedenRespawnDbGuids, 30);
     m_kiljaedenRespawnDbGuids.clear();
 }
@@ -884,6 +887,7 @@ bool AreaTrigger_at_sunwell_plateau(Player* player, AreaTriggerEntry const* at)
     return false;
 }
 
+// 注册并载入脚本模块：instance_sunwell_plateau
 void AddSC_instance_sunwell_plateau()
 {
     Script* pNewScript = new Script;

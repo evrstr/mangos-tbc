@@ -31,6 +31,7 @@ INSTANTIATE_SINGLETON_1(NamreebAnticheat::AntispamMgr);
 
 namespace
 {
+// 将字符串中的所有 from 子串替换为 to
 void ReplaceAll(std::string &str, const std::string& from, const std::string& to)
 {
     size_t startPos = 0;
@@ -41,6 +42,7 @@ void ReplaceAll(std::string &str, const std::string& from, const std::string& to
     }
 }
 
+// 将宽字符串中的所有 from 子串替换为 to（用于 Unicode 字符归一替换）
 void ReplaceAllW(std::wstring &str, const std::wstring& from, const std::wstring& to)
 {
     size_t startPos = 0;
@@ -54,12 +56,14 @@ void ReplaceAllW(std::wstring &str, const std::wstring& from, const std::wstring
 
 namespace NamreebAnticheat
 {
+// 线程安全对外接口：按掩码对字符串进行反垃圾规范化
 std::string AntispamMgr::NormalizeString(const std::string &string, uint32 mask) const
 {
     std::lock_guard<std::mutex> guard(_mutex);
     return NormalizeStringInternal(string, mask);
 }
 
+// 按规范化掩码依次清洗聊天消息：去除颜色/超链接、同形词替换、去控制符/标点/空格/数字、Unicode 映射、转大写与去连续重复字符
 std::string AntispamMgr::NormalizeStringInternal(const std::string &string, uint32 mask) const
 {
     auto newMsg = string;
@@ -137,14 +141,17 @@ std::string AntispamMgr::NormalizeStringInternal(const std::string &string, uint
     return newMsg;
 }
 
+// 构造反垃圾管理器并启动后台分析工作线程
 AntispamMgr::AntispamMgr() : _shutdownRequested(false), _worker(&AntispamMgr::WorkerLoop, this) {}
 
+// 析构时通知后台线程退出并等待汇合
 AntispamMgr::~AntispamMgr()
 {
     _shutdownRequested = true;
     _worker.join();
 }
 
+// 后台工作线程主循环：按配置周期处理待分析队列并过期清理临时会话缓存
 void AntispamMgr::WorkerLoop()
 {
     while (!_shutdownRequested)
@@ -160,6 +167,7 @@ void AntispamMgr::WorkerLoop()
             std::unordered_set<std::shared_ptr<Antispam> > workQueue;
 
             // lock the mutex only long enough to move the work queue to a local container and expire old blacklist history
+            // 仅在交换队列与清理过期缓存时加锁，避免阻塞主线程消息入队
             {
                 std::lock_guard<std::mutex> guard(_mutex);
                 workQueue = std::move(_workQueue);
@@ -186,7 +194,7 @@ void AntispamMgr::WorkerLoop()
         auto stop = std::chrono::high_resolution_clock::now();
         auto runTime = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
-        // if we completed sooner than expected, sleep for the remaining time
+        // if we completed sooner than expected, sleep for the remaining time (若本轮提前完成则分段休眠剩余时间，响应快速退出)
         while (duration > runTime && !_shutdownRequested)
         {
             stop = std::chrono::high_resolution_clock::now();
@@ -196,6 +204,7 @@ void AntispamMgr::WorkerLoop()
     }
 }
 
+// 从登录库加载黑名单词条、ASCII 同形词替换表及 Unicode 字符替换表
 void AntispamMgr::LoadFromDB()
 {
     std::lock_guard<std::mutex> guard(_mutex);
@@ -272,6 +281,7 @@ void AntispamMgr::LoadFromDB()
     sLog.outString(">> %lu unicode character replacements loaded", uint64(_unicodeReplace.size()));
 }
 
+// 动态向内存与登录库追加黑名单词条（自动转大写并计算规范化形式）
 void AntispamMgr::BlacklistAdd(const std::string &string_)
 {
     std::lock_guard<std::mutex> guard(_mutex);
@@ -280,13 +290,13 @@ void AntispamMgr::BlacklistAdd(const std::string &string_)
     if (string_.empty())
         return;
 
-    // convert to upper case, since all comparisons are done upper case
+    // convert to upper case, since all comparisons are done upper case (统一转为大写存储和比对)
     std::string entry;
     std::transform(string_.begin(), string_.end(), std::back_inserter(entry), ::toupper);
 
     auto const normEntry = NormalizeStringInternal(entry, sAnticheatConfig.GetSpamNormalizationMask());
 
-    // if already in the blacklist, do not add again
+    // if already in the blacklist, do not add again (已存在则去重跳过)
     for (auto const &b : _blacklist)
         if (b.first == entry)
             return;
@@ -305,6 +315,7 @@ void AntispamMgr::BlacklistAdd(const std::string &string_)
     _blacklist.emplace_back(entry, normEntry);
 }
 
+// 在原始文本和规范化文本上分别检索黑名单命中次数并记录详情日志
 uint32 AntispamMgr::CheckBlacklist(const std::string &string, std::string &log) const
 {
     std::lock_guard<std::mutex> guard(_mutex);
@@ -318,6 +329,7 @@ uint32 AntispamMgr::CheckBlacklist(const std::string &string, std::string &log) 
     uint32 result = 0;
 
     // for each entry, search the given string for multiple occurrences of both the original and normalized form of the entry
+    // 同时对黑名单原词与规范化词执行全串多次匹配统计
     for (auto const& entry : _blacklist)
     {
         // search the original string for the original blacklist entry
@@ -343,25 +355,28 @@ uint32 AntispamMgr::CheckBlacklist(const std::string &string, std::string &log) 
 
     logstr << "\n";
 
-    // if there were results found, save the log
+    // if there were results found, save the log (存在命中项时输出命中日志)
     if (!!result)
         log = logstr.str();
 
     return result;
 }
 
+// 将指定会话加入下一轮后台分析队列
 void AntispamMgr::ScheduleAnalysis(std::shared_ptr<Antispam> session)
 {
     std::lock_guard<std::mutex> guard(_mutex);
     _workQueue.insert(session);
 }
 
+// 玩家下线时缓存其反垃圾会话统计
 void AntispamMgr::CacheSession(std::shared_ptr<Antispam> session)
 {
     std::lock_guard<std::mutex> guard(_mutex);
     _temporaryCache[session->GetAccount()] = std::make_pair(WorldTimer::getMSTime(), session);
 }
 
+// 为上线账号获取反垃圾会话（优先从重连缓存恢复，否则新建实例）
 std::shared_ptr<Antispam> AntispamMgr::GetSession(uint32 accountId)
 {
     std::lock_guard<std::mutex> guard(_mutex);
@@ -378,6 +393,7 @@ std::shared_ptr<Antispam> AntispamMgr::GetSession(uint32 accountId)
     return ret;
 }
 
+// 仅查看指定账号是否仍在临时缓存中（不移除缓存）
 std::shared_ptr<Antispam> AntispamMgr::CheckCache(uint32 accountId)
 {
     std::lock_guard<std::mutex> guard(_mutex);
@@ -390,6 +406,7 @@ std::shared_ptr<Antispam> AntispamMgr::CheckCache(uint32 accountId)
     return i->second.second;
 }
 
+// 检查账号是否已被反垃圾系统永久禁言
 bool AntispamMgr::IsSilenced(uint32 accountId) const
 {
     if (auto const session = sWorld.FindSession(accountId))
@@ -399,12 +416,14 @@ bool AntispamMgr::IsSilenced(uint32 accountId) const
     return !!(sAccountMgr.GetFlags(accountId) & ACCOUNT_FLAG_SILENCED);
 }
 
+// 检查在线会话是否带有 ACCOUNT_FLAG_SILENCED 禁言标志
 bool AntispamMgr::IsSilenced(const WorldSession *session) const
 {
     // ACCOUNT FLAGS
     return !!(session->GetAccountFlags() & ACCOUNT_FLAG_SILENCED);
 }
 
+// 永久禁言指定账号（同步更新内存会话标志与登录库 account.flags）
 void AntispamMgr::Silence(uint32 accountId) const
 {
     // ACCOUNT FLAGS
@@ -413,12 +432,13 @@ void AntispamMgr::Silence(uint32 accountId) const
 
     LoginDatabase.BeginTransaction();
 
-    // remove any permanent mute that may be present
+    // remove any permanent mute that may be present (在账号标志位中追加禁言标记)
     LoginDatabase.PExecute("UPDATE account SET flags = flags | 0x%x WHERE id = %u", ACCOUNT_FLAG_SILENCED, accountId);
 
     LoginDatabase.CommitTransaction();
 }
 
+// 解除指定账号的反垃圾禁言标志
 void AntispamMgr::Unsilence(uint32 accountId) const
 {
     // ACCOUNT FLAGS

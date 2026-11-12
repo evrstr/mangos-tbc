@@ -17,14 +17,16 @@
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 万圣节“恶作剧糖果”光环脚本：周期性触发胃部不适 (42966: Upset Tummy)
 struct TrickyTreat : public AuraScript
 {
     void OnPeriodicDummy(Aura* aura) const override
     {
-        aura->GetTarget()->CastSpell(nullptr, 42966, TRIGGERED_OLD_TRIGGERED); // Upset Tummy
+        aura->GetTarget()->CastSpell(nullptr, 42966, TRIGGERED_OLD_TRIGGERED); // Upset Tummy (胃部不适)
     }
 };
 
+// 注册万圣节脚本
 void AddSC_hallows_end()
 {
     RegisterSpellScript<TrickyTreat>("spell_tricky_treat");

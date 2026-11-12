@@ -34,37 +34,38 @@ namespace VMAP
 }
 
 
+// 动态游戏对象 (GameObject) 的 VMAP 碰撞模型包装类，绑定变换矩阵与共享 WorldModel 几何体
 class GameObjectModel
 {
-        bool collision_enabled;
-        G3D::AABox iBound;
-        G3D::Matrix3 iInvRot;
-        G3D::Vector3 iPos;
+        bool collision_enabled;                                         // 当前是否启用碰撞检测（如门开启后关闭碰撞）
+        G3D::AABox iBound;                                              // 世界坐标系下的轴对齐包围盒
+        G3D::Matrix3 iInvRot;                                           // 逆旋转矩阵（世界坐标转模型局部坐标）
+        G3D::Vector3 iPos;                                              // 世界坐标位置
         //G3D::Vector3 iRot;
-        float iInvScale;
-        float iScale;
-        VMAP::WorldModel* iModel;
+        float iInvScale;                                                // 缩放倒数
+        float iScale;                                                   // 模型缩放倍数
+        VMAP::WorldModel* iModel;                                       // 指向 VMapManager2 管理的共享几何模型
 
         GameObjectModel() : collision_enabled(false), iInvScale(0), iScale(0), iModel(nullptr) {}
-        bool initialize(const GameObject* const pGo, const GameObjectDisplayInfoEntry* pDisplayInfo);
+        bool initialize(const GameObject* const pGo, const GameObjectDisplayInfoEntry* pDisplayInfo); // 依据 GO 与显示信息加载模型并初始化空间变换
 
     public:
-        std::string name;
+        std::string name;                                               // 模型文件名
 
-        const G3D::AABox& getBounds() const { return iBound; }
+        const G3D::AABox& getBounds() const { return iBound; }          // 获取世界空间包围盒
 
-        ~GameObjectModel();
+        ~GameObjectModel();                                             // 析构时通过 VMapFactory 归还共享模型引用
 
-        const G3D::Vector3& getPosition() const { return iPos;}
+        const G3D::Vector3& getPosition() const { return iPos;}         // 获取世界坐标
 
-        /** Enables\disables collision. */
+        /** Enables\disables collision. (启用或禁用该动态对象的碰撞判定) */
         void disable() { collision_enabled = false;}
         void enable(bool enabled) { collision_enabled = enabled;}
 
-        bool intersectRay(const G3D::Ray& ray, float& MaxDist, bool StopAtFirstHit, bool ignoreM2Model) const;
+        bool intersectRay(const G3D::Ray& ray, float& MaxDist, bool StopAtFirstHit, bool ignoreM2Model) const; // 世界射线转局部坐标后与模型求交
 
-        static GameObjectModel* construct(const GameObject* const pGo);
+        static GameObjectModel* construct(const GameObject* const pGo); // 工厂方法：按 GO 的 DisplayId 创建并初始化碰撞模型
 
-        bool Relocate(GameObject const& go);
+        bool Relocate(GameObject const& go);                            // 坐标/朝向变化时重新计算包围盒与逆旋转矩阵
 };
 #endif

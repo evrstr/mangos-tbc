@@ -41,6 +41,7 @@
 
 /**
  * A class to represent the mail send factory to multiple (often all existing) characters.
+ * 群发邮件管理器：支持按种族掩码、SQL 查询或指定列表分帧向大量角色投递邮件（停服不持久化）
  *
  * Note: implementation not persistence for server shutdowns
  */

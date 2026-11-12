@@ -22,23 +22,27 @@
 #include "Utilities/LinkedReference/Reference.h"
 #include "Maps/Map.h"
 
+// 地图引用类，建立 Player 与所属 Map 之间的双向引用链接
 class MapReference : public Reference<Map, Player>
 {
     protected:
         void targetObjectBuildLink() override
         {
             // called from link()
+            // 由 link() 调用，将引用插入地图的玩家链表并增加计数
             getTarget()->m_mapRefManager.insertFirst(this);
             getTarget()->m_mapRefManager.incSize();
         }
         void targetObjectDestroyLink() override
         {
             // called from unlink()
+            // 由 unlink() 调用，若引用有效则减少地图玩家计数
             if (isValid()) getTarget()->m_mapRefManager.decSize();
         }
         void sourceObjectDestroyLink() override
         {
             // called from invalidate()
+            // 由 invalidate() 调用，源对象销毁时减少地图玩家计数
             getTarget()->m_mapRefManager.decSize();
         }
     public:

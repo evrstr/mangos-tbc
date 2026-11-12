@@ -27,6 +27,7 @@
 #include "MotionGenerators/Path.h"
 #include "MotionGenerators/WaypointMovementGenerator.h"
 
+// 处理客户端查询飞行点状态请求（CMSG_TAXINODE_STATUS_QUERY）
 void WorldSession::HandleTaxiNodeStatusQueryOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_TAXINODE_STATUS_QUERY");
@@ -37,9 +38,10 @@ void WorldSession::HandleTaxiNodeStatusQueryOpcode(WorldPacket& recv_data)
     SendTaxiStatus(guid);
 }
 
+// 查询玩家当前交互的飞行管理员对应飞行点是否已解锁，并下发 SMSG_TAXINODE_STATUS
 void WorldSession::SendTaxiStatus(ObjectGuid guid) const
 {
-    // cheating checks
+    // cheating checks (防作弊检查：确认目标生物存在)
     Creature* unit = GetPlayer()->GetMap()->GetCreature(guid);
     if (!unit)
     {
@@ -49,7 +51,7 @@ void WorldSession::SendTaxiStatus(ObjectGuid guid) const
 
     uint32 curloc = sObjectMgr.GetNearestTaxiNode(unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetMapId(), GetPlayer()->GetTeam());
 
-    // not found nearest
+    // not found nearest (未找到最近飞行点则忽略)
     if (curloc == 0)
         return;
 
@@ -63,6 +65,7 @@ void WorldSession::SendTaxiStatus(ObjectGuid guid) const
     DEBUG_LOG("WORLD: Sent SMSG_TAXINODE_STATUS");
 }
 
+// 处理客户端请求可飞往的飞行点列表（CMSG_TAXIQUERYAVAILABLENODES）：若为未学习站点则先学习，否则打开飞行地图
 void WorldSession::HandleTaxiQueryAvailableNodes(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_TAXIQUERYAVAILABLENODES");
@@ -70,7 +73,7 @@ void WorldSession::HandleTaxiQueryAvailableNodes(WorldPacket& recv_data)
     ObjectGuid guid;
     recv_data >> guid;
 
-    // cheating checks
+    // cheating checks (交互距离与飞行管理员 NPC 标志校验)
     Creature* unit = GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_FLIGHTMASTER);
     if (!unit)
     {
@@ -78,17 +81,18 @@ void WorldSession::HandleTaxiQueryAvailableNodes(WorldPacket& recv_data)
         return;
     }
 
-    // unknown taxi node case
+    // unknown taxi node case (若该飞行点尚未解锁，先触发学习并提示)
     if (SendLearnNewTaxiNode(unit))
         return;
 
-    // known taxi node case
+    // known taxi node case (已解锁则下发飞行网络界面)
     SendTaxiMenu(unit);
 }
 
+// 发送已知飞行点掩码及当前起点，打开飞行管理员航线选择面板
 void WorldSession::SendTaxiMenu(Creature* unit) const
 {
-    // find current node
+    // find current node (查找飞行管理员对应的当前节点 ID)
     uint32 curloc = sObjectMgr.GetNearestTaxiNode(unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetMapId(), GetPlayer()->GetTeam());
 
     if (curloc == 0)
@@ -106,13 +110,14 @@ void WorldSession::SendTaxiMenu(Creature* unit) const
     DEBUG_LOG("WORLD: Sent SMSG_SHOWTAXINODES");
 }
 
+// 尝试为玩家解锁飞行管理员所在的飞行点，成功解锁则返回 true
 bool WorldSession::SendLearnNewTaxiNode(Creature* unit) const
 {
-    // find current node
+    // find current node (查找当前位置最近的阵营飞行点)
     uint32 curloc = sObjectMgr.GetNearestTaxiNode(unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetMapId(), GetPlayer()->GetTeam());
 
     if (curloc == 0)
-        return true;                                        // `true` send to avoid WorldSession::SendTaxiMenu call with one more curlock seartch with same false result.
+        return true;                                        // `true` send to avoid WorldSession::SendTaxiMenu call with one more curlock seartch with same false result. (返回 true 以避免上层再调用 SendTaxiMenu 重复搜索一次)
 
     if (GetPlayer()->m_taxi.SetTaximaskNode(curloc))
     {
@@ -129,6 +134,7 @@ bool WorldSession::SendLearnNewTaxiNode(Creature* unit) const
     return false;
 }
 
+// 下发激活飞行路线请求的响应结果（成功或错误码）
 void WorldSession::SendActivateTaxiReply(ActivateTaxiReply reply) const
 {
     WorldPacket data(SMSG_ACTIVATETAXIREPLY, 4);
@@ -138,6 +144,7 @@ void WorldSession::SendActivateTaxiReply(ActivateTaxiReply reply) const
     DEBUG_LOG("WORLD: Sent SMSG_ACTIVATETAXIREPLY");
 }
 
+// 处理多段联程飞行请求（CMSG_ACTIVATETAXIEXPRESS）
 void WorldSession::HandleActivateTaxiExpressOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_ACTIVATETAXIEXPRESS");
@@ -163,7 +170,7 @@ void WorldSession::HandleActivateTaxiExpressOpcode(WorldPacket& recv_data)
         if (!_player->m_taxi.IsTaximaskNodeKnown(node) && !_player->isTaxiCheater())
         {
             SendActivateTaxiReply(ERR_TAXINOTVISITED);
-            recv_data.rpos(recv_data.wpos()); // prevent additional spam at rejected packet
+            recv_data.rpos(recv_data.wpos()); // prevent additional spam at rejected packet (丢弃包内剩余字节，防止拒绝后的多余警告)
             return;
         }
 
@@ -178,19 +185,21 @@ void WorldSession::HandleActivateTaxiExpressOpcode(WorldPacket& recv_data)
     GetPlayer()->ActivateTaxiPathTo(nodes, npc);
 }
 
+// 处理客户端样条移动完成确认包（CMSG_MOVE_SPLINE_DONE）
 void WorldSession::HandleMoveSplineDoneOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_MOVE_SPLINE_DONE");
 
-    MovementInfo movementInfo;                              // used only for proper packet read
-    uint32 movementCounter;                                 // spline counter
+    MovementInfo movementInfo;                              // used only for proper packet read (仅用于按协议顺序读取数据包)
+    uint32 movementCounter;                                 // spline counter (样条计数器)
 
     recv_data >> movementInfo;
     recv_data >> movementCounter;
 
-    // TODO: Add checking for correct point end for correct spline
+    // TODO: Add checking for correct point end for correct spline (待办：校验样条终点与对应计数器是否合法)
 }
 
+// 处理客户端单段点对点飞行请求（CMSG_ACTIVATETAXI）
 void WorldSession::HandleActivateTaxiOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_ACTIVATETAXI");

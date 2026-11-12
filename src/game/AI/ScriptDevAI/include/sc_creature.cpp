@@ -24,14 +24,14 @@ ScriptedAI::ScriptedAI(Creature* creature, uint32 combatActions) : CreatureAI(cr
 {
 }
 
-/// This function shows if combat movement is enabled, overwrite for more info
+/// This function shows if combat movement is enabled, overwrite for more info (打印战斗移动状态调试信息)
 void ScriptedAI::GetAIInformation(ChatHandler& reader)
 {
     reader.PSendSysMessage("ScriptedAI, combat movement is %s", reader.GetOnOffStr(IsCombatMovement()));
 }
 
 /**
- * This function only calls Aggro, which is to be used for scripting purposes
+ * This function only calls Aggro, which is to be used for scripting purposes (进入战斗处理：调用基类并触发 Aggro 脚本回调)
  */
 void ScriptedAI::EnterCombat(Unit* enemy)
 {
@@ -40,12 +40,14 @@ void ScriptedAI::EnterCombat(Unit* enemy)
         Aggro(enemy);
 }
 
+// 开始追击目标
 void ScriptedAI::DoStartMovement(Unit* victim)
 {
     if (victim)
         m_creature->GetMotionMaster()->MoveChase(victim, m_attackDistance, m_attackAngle, m_moveFurther);
 }
 
+// 停止移动并在原地注视目标
 void ScriptedAI::DoStartNoMovement(Unit* victim)
 {
     if (!victim)
@@ -55,12 +57,14 @@ void ScriptedAI::DoStartNoMovement(Unit* victim)
     m_creature->StopMoving();
 }
 
+// 停止攻击当前目标
 void ScriptedAI::DoStopAttack()
 {
     if (m_creature->GetVictim())
         m_creature->AttackStop();
 }
 
+// 播放声音音效给周围玩家
 void ScriptedAI::DoPlaySoundToSet(WorldObject* source, uint32 soundId)
 {
     if (!source)
@@ -75,6 +79,7 @@ void ScriptedAI::DoPlaySoundToSet(WorldObject* source, uint32 soundId)
     source->PlayDirectSound(soundId);
 }
 
+// 智能法术选择：根据派系、机制、目标类型、法力与射程从可用法术列表中筛选
 SpellEntry const* ScriptedAI::SelectSpell(Unit* target, int32 school, int32 mechanic, SelectTarget selectTargets, uint32 powerCostMin, uint32 powerCostMax, float rangeMin, float rangeMax, SelectEffect selectEffects)
 {
     // No target so we can't cast
@@ -159,6 +164,7 @@ SpellEntry const* ScriptedAI::SelectSpell(Unit* target, int32 school, int32 mech
     return spellInfos[urand(0, spellCount - 1)];
 }
 
+// 检查当前是否满足施法条件（目标有效性、沉默状态、法力消耗与施法射程）
 bool ScriptedAI::CanCast(Unit* target, SpellEntry const* spellInfo, bool triggered)
 {
     // No target so we can't cast
@@ -186,6 +192,7 @@ bool ScriptedAI::CanCast(Unit* target, SpellEntry const* spellInfo, bool trigger
     return true;
 }
 
+// 预计算并填充全局法术摘要表（目标类型与效果标志位）
 void FillSpellSummary()
 {
     SpellSummary = new TSpellSummary[GetSpellStore()->GetMaxEntry()];
@@ -269,6 +276,7 @@ void FillSpellSummary()
     }
 }
 
+// 传送玩家至指定坐标并保留战斗与仇恨状态
 void ScriptedAI::DoTeleportPlayer(Unit* unit, float x, float y, float z, float ori)
 {
     if (!unit)
@@ -283,6 +291,7 @@ void ScriptedAI::DoTeleportPlayer(Unit* unit, float x, float y, float z, float o
     ((Player*)unit)->TeleportTo(unit->GetMapId(), x, y, z, ori, TELE_TO_NOT_LEAVE_COMBAT);
 }
 
+// 在范围内搜索缺失指定增益光环的友方生物
 CreatureList ScriptedAI::DoFindFriendlyMissingBuff(float range, uint32 spellId, bool inCombat)
 {
     CreatureList creatureList;
@@ -304,6 +313,7 @@ CreatureList ScriptedAI::DoFindFriendlyMissingBuff(float range, uint32 spellId, 
     return creatureList;
 }
 
+// 检索距离自身大于指定最小射程的玩家
 Player* ScriptedAI::GetPlayerAtMinimumRange(float minimumRange) const
 {
     Player* player = nullptr;
@@ -316,6 +326,7 @@ Player* ScriptedAI::GetPlayerAtMinimumRange(float minimumRange) const
     return player;
 }
 
+// 设置虚拟装备槽武器模型与双持能力
 void ScriptedAI::SetEquipmentSlots(bool loadDefault, int32 mainHand, int32 offHand, int32 ranged)
 {
     if (loadDefault)
@@ -349,6 +360,7 @@ void ScriptedAI::SetEquipmentSlots(bool loadDefault, int32 mainHand, int32 offHa
     }
 }
 
+// 输出无移动 AI 信息
 void Scripted_NoMovementAI::GetAIInformation(ChatHandler& reader)
 {
     reader.PSendSysMessage("Subclass of Scripted_NoMovementAI");

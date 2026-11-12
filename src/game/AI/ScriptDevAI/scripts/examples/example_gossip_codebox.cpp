@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Example_Gossip_Codebox
 SD%Complete: 100
-SDComment: Show a codebox in gossip option
+SDComment: Show a codebox in gossip option (在对话选项中弹出输入框示例)
 SDCategory: Script Examples
 EndScriptData */
 
@@ -26,19 +26,21 @@ EndScriptData */
 
 enum
 {
-    SPELL_POLYMORPH         = 12826,
-    SPELL_MARK_OF_THE_WILD  = 26990,
+    SPELL_POLYMORPH         = 12826,                        // 变形术 (回答错误惩罚)
+    SPELL_MARK_OF_THE_WILD  = 26990,                        // 野性印记 (回答正确奖励)
 
-    SAY_NOT_INTERESTED      = -1999922,
-    SAY_WRONG               = -1999923,
-    SAY_CORRECT             = -1999924
+    SAY_NOT_INTERESTED      = -1999922,                     // 台词：不感兴趣
+    SAY_WRONG               = -1999923,                     // 台词：回答错误
+    SAY_CORRECT             = -1999924                      // 台词：回答正确
 };
 
 // Should actually be handled in SD2-database!
+// 对话选项文本定义（常规情况应在数据库中配置）
 #define GOSSIP_ITEM_1       "A quiz: what's your name?"
 #define GOSSIP_ITEM_2       "I'm not interested"
 
 // This function is called when the player opens the gossip menubool
+// 玩家打开对话菜单时的回调函数
 bool GossipHello_example_gossip_codebox(Player* pPlayer, Creature* pCreature)
 {
     pPlayer->ADD_GOSSIP_ITEM_EXTENDED(0, GOSSIP_ITEM_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1, "", 0, true);
@@ -50,6 +52,7 @@ bool GossipHello_example_gossip_codebox(Player* pPlayer, Creature* pCreature)
 }
 
 // This function is called when the player clicks an option on the gossip menubool
+// 玩家点击普通对话选项时的回调函数
 bool GossipSelect_example_gossip_codebox(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 2)
@@ -61,6 +64,7 @@ bool GossipSelect_example_gossip_codebox(Player* pPlayer, Creature* pCreature, u
     return true;
 }
 
+// 玩家在对话框输入文本并提交时的回调函数
 bool GossipSelectWithCode_example_gossip_codebox(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction, const char* sCode)
 {
     if (uiSender == GOSSIP_SENDER_MAIN)
@@ -87,6 +91,7 @@ bool GossipSelectWithCode_example_gossip_codebox(Player* pPlayer, Creature* pCre
     return false;
 }
 
+// 注册对话框输入示例脚本
 void AddSC_example_gossip_codebox()
 {
     Script* pNewScript = new Script;

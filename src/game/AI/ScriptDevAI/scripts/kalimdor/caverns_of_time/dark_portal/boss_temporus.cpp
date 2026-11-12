@@ -22,30 +22,36 @@ Patch_2.2.0: Increased recast time for Temporus' Hasten spell on Heroic. GetSubs
 SDCategory: Caverns of Time, The Dark Portal
 EndScriptData */
 
+/**
+ * 开启黑暗之门：坦普卢斯 (Temporus) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "dark_portal.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_AGGRO               = 16822,
-    SAY_BANISH              = 16824,
-    SAY_SLAY1               = 16825,
-    SAY_SLAY2               = 16826,
-    SAY_DEATH               = 16823,
+    SAY_AGGRO               = 16822,                        // 剧情台词/喊话文本 ID
+    SAY_BANISH              = 16824,                        // 剧情台词/喊话文本 ID
+    SAY_SLAY1               = 16825,                        // 剧情台词/喊话文本 ID
+    SAY_SLAY2               = 16826,                        // 剧情台词/喊话文本 ID
+    SAY_DEATH               = 16823,                        // 剧情台词/喊话文本 ID
 
-    SPELL_HASTEN            = 31458,
-    SPELL_MORTAL_WOUND      = 31464,
-    SPELL_WING_BUFFET       = 31475,
-    SPELL_WING_BUFFET_H     = 38593,
+    SPELL_HASTEN            = 31458,                        // 技能法术 ID
+    SPELL_MORTAL_WOUND      = 31464,                        // 技能法术 ID
+    SPELL_WING_BUFFET       = 31475,                        // 技能法术：龙翼打击
+    SPELL_WING_BUFFET_H     = 38593,                        // 技能法术：龙翼打击
     SPELL_REFLECTION        = 38592
 };
 
-enum TemporusActions // order based on priority
+enum TemporusActions // order based on priority (说明)
 {
     TEMPORUS_ACTION_MAX
 };
 
+// boss_temporusAI 首领战斗 AI
 struct boss_temporusAI : public CombatAI
 {
     boss_temporusAI(Creature* creature) : CombatAI(creature, TEMPORUS_ACTION_MAX),
@@ -69,7 +75,7 @@ struct boss_temporusAI : public CombatAI
 
     void MoveInLineOfSight(Unit* who) override
     {
-        // Despawn Time Keeper
+        // Despawn Time Keeper (使时间管理者消失)
         if (who->GetTypeId() == TYPEID_UNIT && who->GetEntry() == NPC_TIME_KEEPER)
         {
             if (m_creature->IsWithinDistInMap(who, 20.0f))
@@ -83,7 +89,7 @@ struct boss_temporusAI : public CombatAI
     }
 };
 
-void AddSC_boss_temporus()
+void AddSC_boss_temporus() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_temporus";

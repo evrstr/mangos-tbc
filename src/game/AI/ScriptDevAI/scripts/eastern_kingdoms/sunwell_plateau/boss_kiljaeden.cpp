@@ -21,149 +21,152 @@ SDComment: Sinister Reflection needs AI support.
 SDCategory: Sunwell Plateau
 EndScriptData */
 
+// 欺诈者基尔加丹（Kil'jaeden）6号最终首领战 AI（千魂之暗灭团大招、邪恶镜像、暗影之刺与安薇娜蓝龙宝珠引导）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_EMERGE                  = -1580069,
-    SAY_SLAY_1                  = 25549,
-    SAY_SLAY_2                  = 25550,
-    SAY_REFLECTION_1            = -1580072,
-    SAY_REFLECTION_2            = -1580073,
-    SAY_DARKNESS_1              = -1580074,
-    SAY_DARKNESS_2              = -1580075,
-    SAY_DARKNESS_3              = -1580076,
-    SAY_PHASE_3                 = -1580077,
-    SAY_PHASE_4                 = -1580078,
-    SAY_PHASE_5                 = -1580079,
-    SAY_KALECGOS_INTRO          = -1580080,
-    SAY_KALECGOS_AWAKE_1        = -1580081,
-    SAY_ANVEENA_IMPRISONED      = -1580082,
-    SAY_KALECGOS_AWAKE_2        = -1580083,
-    SAY_ANVEENA_LOST            = -1580084,
-    SAY_KALECGOS_AWAKE_4        = -1580085,
-    SAY_ANVEENA_AWAKE           = -1580086,
-    SAY_KALECGOS_AWAKE_5        = -1580087,
-    SAY_ANVEENA_SACRIFICE       = -1580088,
-    SAY_KALECGOS_GOODBYE        = -1580089,
-    SAY_KALECGOS_ENCOURAGE      = -1580090,
-    SAY_KALECGOS_ORB_1          = -1580091,
-    SAY_KALECGOS_ORB_2          = -1580092,
-    SAY_KALECGOS_ORB_3          = -1580093,
-    SAY_KALECGOS_ORB_4          = -1580094,
+    SAY_EMERGE                  = -1580069,                 // 现身 台词广播 ID
+    SAY_SLAY_1                  = 25549,                    // 击杀1 台词广播 ID
+    SAY_SLAY_2                  = 25550,                    // 击杀2 台词广播 ID
+    SAY_REFLECTION_1            = -1580072,                 // 倒影镜像1 台词广播 ID
+    SAY_REFLECTION_2            = -1580073,                 // 倒影镜像2 台词广播 ID
+    SAY_DARKNESS_1              = -1580074,                 // 黑暗1 台词广播 ID
+    SAY_DARKNESS_2              = -1580075,                 // 黑暗2 台词广播 ID
+    SAY_DARKNESS_3              = -1580076,                 // 黑暗3 台词广播 ID
+    SAY_PHASE_3                 = -1580077,                 // 阶段3 台词广播 ID
+    SAY_PHASE_4                 = -1580078,                 // 阶段4 台词广播 ID
+    SAY_PHASE_5                 = -1580079,                 // 阶段5 台词广播 ID
+    SAY_KALECGOS_INTRO          = -1580080,                 // 卡雷苟斯开场 台词广播 ID
+    SAY_KALECGOS_AWAKE_1        = -1580081,                 // 卡雷苟斯awake1 台词广播 ID
+    SAY_ANVEENA_IMPRISONED      = -1580082,                 // anveenaimprisoned 台词广播 ID
+    SAY_KALECGOS_AWAKE_2        = -1580083,                 // 卡雷苟斯awake2 台词广播 ID
+    SAY_ANVEENA_LOST            = -1580084,                 // anveenalost 台词广播 ID
+    SAY_KALECGOS_AWAKE_4        = -1580085,                 // 卡雷苟斯awake4 台词广播 ID
+    SAY_ANVEENA_AWAKE           = -1580086,                 // anveenaawake 台词广播 ID
+    SAY_KALECGOS_AWAKE_5        = -1580087,                 // 卡雷苟斯awake5 台词广播 ID
+    SAY_ANVEENA_SACRIFICE       = -1580088,                 // anveenasacrifice 台词广播 ID
+    SAY_KALECGOS_GOODBYE        = -1580089,                 // 卡雷苟斯goodbye 台词广播 ID
+    SAY_KALECGOS_ENCOURAGE      = -1580090,                 // 卡雷苟斯encourage 台词广播 ID
+    SAY_KALECGOS_ORB_1          = -1580091,                 // 卡雷苟斯orb1 台词广播 ID
+    SAY_KALECGOS_ORB_2          = -1580092,                 // 卡雷苟斯orb2 台词广播 ID
+    SAY_KALECGOS_ORB_3          = -1580093,                 // 卡雷苟斯orb3 台词广播 ID
+    SAY_KALECGOS_ORB_4          = -1580094,                 // 卡雷苟斯orb4 台词广播 ID
 
-    SAY_GENERIC_BERSERK         = -1000004,
+    SAY_GENERIC_BERSERK         = -1000004,                 // generic狂暴 台词广播 ID
 
-    // outro
-    SAY_OUTRO_1                 = -1580095,         // Velen
-    SAY_OUTRO_2                 = -1580096,
-    SAY_OUTRO_3                 = -1580097,
-    SAY_OUTRO_4                 = -1580098,
-    SAY_OUTRO_5                 = -1580099,         // Liadrin
-    SAY_OUTRO_6                 = -1580100,         // Velen
-    SAY_OUTRO_7                 = -1580101,         // Liadrin
-    SAY_OUTRO_8                 = -1580102,         // Velen
-    SAY_OUTRO_9                 = -1580103,
-    SAY_OUTRO_10                = -1580104,         // Liadrin
-    SAY_OUTRO_11                = -1580105,         // Velen
-    SAY_OUTRO_12                = -1580106,
+    // outro (尾声剧情)
+    SAY_OUTRO_1                 = -1580095,         // Velen (维伦)
+    SAY_OUTRO_2                 = -1580096,                 // 尾声2 台词广播 ID
+    SAY_OUTRO_3                 = -1580097,                 // 尾声3 台词广播 ID
+    SAY_OUTRO_4                 = -1580098,                 // 尾声4 台词广播 ID
+    SAY_OUTRO_5                 = -1580099,         // Liadrin (莉亚德琳)
+    SAY_OUTRO_6                 = -1580100,         // Velen (维伦)
+    SAY_OUTRO_7                 = -1580101,         // Liadrin (莉亚德琳)
+    SAY_OUTRO_8                 = -1580102,         // Velen (维伦)
+    SAY_OUTRO_9                 = -1580103,                 // 尾声9 台词广播 ID
+    SAY_OUTRO_10                = -1580104,         // Liadrin (莉亚德琳)
+    SAY_OUTRO_11                = -1580105,         // Velen (维伦)
+    SAY_OUTRO_12                = -1580106,                 // 尾声12 台词广播 ID
 
-    // generic spells
-    SPELL_BIRTH                 = 26586,            // Kiljaeden spawn animation
-    SPELL_KNOCKBACK             = 47113,
-    SPELL_SWAT                  = 46548,
-    SPELL_ENRAGE                = 26662,
+    // generic spells (通用法术)
+    SPELL_BIRTH                 = 26586,            // Kiljaeden spawn animation (基尔加丹登场动画)
+    SPELL_KNOCKBACK             = 47113,                    // 击退 法术 ID
+    SPELL_SWAT                  = 46548,                    // 拍击 法术 ID
+    SPELL_ENRAGE                = 26662,                    // 狂暴 法术 ID
 
-    // transition spells
-    SPELL_DESTROY_DRAKES        = 46707,
-    SPELL_SINISTER_REFLECTION   = 45892,
-    SPELL_SINISTER_REFLECTION_SUMMON = 45891,
-    SPELL_SHADOW_SPIKE          = 46680,
-    SPELL_WING_SWEEP_1          = 46625,
-    SPELL_WING_SWEEP_2          = 46626,
-    SPELL_WING_SWEEP_3          = 46627,
+    // transition spells (阶段转换技能法术)
+    SPELL_DESTROY_DRAKES        = 46707,                    // 摧毁drakes 法术 ID
+    SPELL_SINISTER_REFLECTION   = 45892,                    // sinister倒影镜像 法术 ID
+    SPELL_SINISTER_REFLECTION_SUMMON = 45891,               // sinister倒影镜像召唤 法术 ID
+    SPELL_SHADOW_SPIKE          = 46680,                    // 暗影spike 法术 ID
+    SPELL_WING_SWEEP_1          = 46625,                    // 翼击横扫1 法术 ID
+    SPELL_WING_SWEEP_2          = 46626,                    // 翼击横扫2 法术 ID
+    SPELL_WING_SWEEP_3          = 46627,                    // 翼击横扫3 法术 ID
 
-    // phase 1
-    SPELL_SOUL_FLAY             = 45442,
-    SPELL_LEGION_LIGHTING       = 45664,
-    SPELL_FIRE_BLOOM            = 45641,
+    // phase 1 (第 1 阶段)
+    SPELL_SOUL_FLAY             = 45442,                    // 灵魂鞭笞 法术 ID
+    SPELL_LEGION_LIGHTING       = 45664,                    // 军团闪电 法术 ID
+    SPELL_FIRE_BLOOM            = 45641,                    // 火焰bloom 法术 ID
 
-    // phase 2
-    SPELL_FLAME_DART_MAIN       = 45737,
-    SPELL_FLAME_DART_1          = 45740,
-    SPELL_FLAME_DART_2          = 45741,
-    SPELL_DARKNESS_OF_SOULS     = 46605,
+    // phase 2 (第 2 阶段)
+    SPELL_FLAME_DART_MAIN       = 45737,                    // 烈焰dartmain 法术 ID
+    SPELL_FLAME_DART_1          = 45740,                    // 烈焰dart1 法术 ID
+    SPELL_FLAME_DART_2          = 45741,                    // 烈焰dart2 法术 ID
+    SPELL_DARKNESS_OF_SOULS     = 46605,                    // 黑暗ofsouls 法术 ID
 
-    // phase 3
+    // phase 3 (第 3 阶段)
     SPELL_ARMAGEDDON            = 45921,        // used from 50% hp - summons 25735 on target location
 
-    // Npc spells
+    // Npc spells (NPCspells)
     SPELL_SHADOW_BOLT_AURA      = 45679,        // periodic aura on shield orbs
     // SPELL_RING_BLUE_FLAME       = 45825,        // cast by the orb targets when activated
-    SPELL_ANVEENA_PRISON        = 46367,
-    SPELL_SACRIFICE_ANVEENA     = 46474,
+    SPELL_ANVEENA_PRISON        = 46367,                    // anveenaprison 法术 ID
+    SPELL_SACRIFICE_ANVEENA     = 46474,                    // sacrificeanveena 法术 ID
     SPELL_ARCANE_BOLT           = 45670,        // used by Kalec
     SPELL_SINISTER_REFL_CLASS   = 45893,        // increase the size of the clones
     SPELL_SINISTER_REFL_CLONE   = 45785,        // clone the player
     SPELL_VENGEANCE_BLUE_FLIGHT = 45839,        // possess the dragon
     SPELL_POSSESS_DRAKE_IMMUNE  = 45838,        // immunity while the player possesses the dragon
-    SPELL_SHIELD_OF_THE_BLUE_2  = 47314,
+    SPELL_SHIELD_OF_THE_BLUE_2  = 47314,                    // 护盾oftheblue2 法术 ID
 
     // Npcs
-    NPC_SHIELD_ORB              = 25502,
+    NPC_SHIELD_ORB              = 25502,                    // 护盾orb Entry ID
     // NPC_SINISTER_REFLECTION     = 25708,
     NPC_ARMAGEDDON              = 25735,        // npc handled by eventAI
     // NPC_BLUE_ORB_TARGET         = 25640,        // dummy npc near gameobjects 187869, 188114, 188115, 188116
 
     // phases
-    PHASE_INFERNO               = 1,
-    PHASE_DARKNESS              = 2,
-    PHASE_ARMAGEDDON            = 3,
-    PHASE_SACRIFICE             = 4,
-    PHASE_TRANSITION            = 5,
+    PHASE_INFERNO               = 1,                        // inferno 阶段 ID
+    PHASE_DARKNESS              = 2,                        // 黑暗 阶段 ID
+    PHASE_ARMAGEDDON            = 3,                        // armageddon 阶段 ID
+    PHASE_SACRIFICE             = 4,                        // sacrifice 阶段 ID
+    PHASE_TRANSITION            = 5,                        // transition 阶段 ID
 
     // dummy members, used in the phase switch event
-    EVENT_SWITCH_PHASE_2        = 6,
-    EVENT_SWITCH_PHASE_3        = 7,
-    EVENT_SWITCH_PHASE_4        = 8,
-    EVENT_DRAGON_ORB            = 9,
-    EVENT_LAST_PHASE_AGGRO      = 10,
+    EVENT_SWITCH_PHASE_2        = 6,                        // switch阶段2 事件标识 ID
+    EVENT_SWITCH_PHASE_3        = 7,                        // switch阶段3 事件标识 ID
+    EVENT_SWITCH_PHASE_4        = 8,                        // switch阶段4 事件标识 ID
+    EVENT_DRAGON_ORB            = 9,                        // 巨龙orb 事件标识 ID
+    EVENT_LAST_PHASE_AGGRO      = 10,                       // last阶段开战 事件标识 ID
 
-    // outro
-    SPELL_TELEPORT_VISUAL       = 12980,
+    // outro (尾声剧情)
+    SPELL_TELEPORT_VISUAL       = 12980,                    // 传送视觉特效 法术 ID
     SPELL_KALEC_TELEPORT        = 46473,            // teleports and transforms Kalec in human form
-    SPELL_ARCANE_PORTAL         = 42047,
-    SPELL_CALL_ENTROPIUS        = 46818,
-    SPELL_ENTROPIUS_BODY        = 46819,
-    SPELL_BLAZE_TO_LIGHT        = 46821,
-    SPELL_SUNWELL_IGNITION      = 46822,
+    SPELL_ARCANE_PORTAL         = 42047,                    // 奥术传送门 法术 ID
+    SPELL_CALL_ENTROPIUS        = 46818,                    // 呼唤熵魔 法术 ID
+    SPELL_ENTROPIUS_BODY        = 46819,                    // 熵魔body 法术 ID
+    SPELL_BLAZE_TO_LIGHT        = 46821,                    // 烈焰tolight 法术 ID
+    SPELL_SUNWELL_IGNITION      = 46822,                    // sunwellignition 法术 ID
     SPELL_PORTAL_FROM_SHATTRATH = 46801,            // Riftwalker after reached point 1, summon NPC_RIFTWALKER and cast on him this spell.
 
-    NPC_INERT_PORTAL            = 26254,
-    NPC_CORE_ENTROPIUS          = 26262,
+    NPC_INERT_PORTAL            = 26254,                    // inert传送门 Entry ID
+    NPC_CORE_ENTROPIUS          = 26262,                    // core熵魔 Entry ID
     NPC_SOLDIER                 = 26259,            // summoned in 2 waves before Velen. Should move into 2 circle formations
-    NPC_RIFTWALKER              = 26289,
-    NPC_SHATTRATH_PORTAL        = 26251,
+    NPC_RIFTWALKER              = 26289,                    // riftwalker Entry ID
+    NPC_SHATTRATH_PORTAL        = 26251,                    // shattrath传送门 Entry ID
 
-    POINT_SUMMON_SOLDIERS_LEFT  = 1,
-    POINT_START_LEFT_MOVEMENT   = 2,
-    POINT_SUMMON_SOLDIERS_RIGHT = 3,
-    POINT_START_RIGHT_MOVEMENT  = 4,
-    POINT_START_RIGHT_KNEEL     = 5,
-    POINT_START_CORE_MOVEMENT   = 6,
-    POINT_MOVE_LIADRIN          = 7,
-    POINT_EVENT_EXIT            = 8,
-    POINT_GROUPS_STOP_KNEEL     = 9,
-    POINT_GROUPS_MOVE           = 10,
-    POINT_VELEN_DESPAWN         = 11,
-    POINT_GROUPS_DESPAWN        = 12,
+    POINT_SUMMON_SOLDIERS_LEFT  = 1,                        // 召唤soldiersleft 路径点 ID
+    POINT_START_LEFT_MOVEMENT   = 2,                        // 开始leftmovement 路径点 ID
+    POINT_SUMMON_SOLDIERS_RIGHT = 3,                        // 召唤soldiersright 路径点 ID
+    POINT_START_RIGHT_MOVEMENT  = 4,                        // 开始rightmovement 路径点 ID
+    POINT_START_RIGHT_KNEEL     = 5,                        // 开始rightkneel 路径点 ID
+    POINT_START_CORE_MOVEMENT   = 6,                        // 开始coremovement 路径点 ID
+    POINT_MOVE_LIADRIN          = 7,                        // moveliadrin 路径点 ID
+    POINT_EVENT_EXIT            = 8,                        // 事件exit 路径点 ID
+    POINT_GROUPS_STOP_KNEEL     = 9,                        // groupsstopkneel 路径点 ID
+    POINT_GROUPS_MOVE           = 10,                       // groupsmove 路径点 ID
+    POINT_VELEN_DESPAWN         = 11,                       // velen消除 路径点 ID
+    POINT_GROUPS_DESPAWN        = 12,                       // groups消除 路径点 ID
 
-    SOUND_1                     = 10824,
-    SOUND_2                     = 9843,
+    SOUND_1                     = 10824,                    // 1 音效 ID
+    SOUND_2                     = 9843,                     // 2 音效 ID
 };
 
 // Encounter phase dialogue
@@ -175,14 +178,14 @@ static const DialogueEntry aPhaseDialogue[] =
     {SAY_KALECGOS_AWAKE_1,      NPC_KALECGOS,   6000},
     {SAY_ANVEENA_IMPRISONED,    NPC_ANVEENA,    5000},
     {SAY_PHASE_3,               NPC_KILJAEDEN,  6000},
-    {SAY_KALECGOS_ORB_1,        NPC_KALECGOS,   0},         // phase 2 transition end
+    {SAY_KALECGOS_ORB_1,        NPC_KALECGOS,   0},         // phase 2 transition end (第 2 阶段)
     {PHASE_ARMAGEDDON,          0,              2000},
     {SPELL_WING_SWEEP_2,        0,              1000},
     {EVENT_SWITCH_PHASE_3,      0,              15000},
     {SAY_KALECGOS_AWAKE_2,      NPC_KALECGOS,   6500},
     {SAY_ANVEENA_LOST,          NPC_ANVEENA,    7000},
     {SAY_PHASE_4,               NPC_KILJAEDEN,  6000},
-    {EVENT_DRAGON_ORB,          0,              0},         // phase 3 transition end
+    {EVENT_DRAGON_ORB,          0,              0},         // phase 3 transition end (第 3 阶段)
     {PHASE_SACRIFICE,           0,              2000},
     {SPELL_WING_SWEEP_2,        0,              1000},
     {EVENT_SWITCH_PHASE_4,      0,              6000},
@@ -194,7 +197,7 @@ static const DialogueEntry aPhaseDialogue[] =
     {SPELL_SACRIFICE_ANVEENA,   0,              6000},
     {EVENT_LAST_PHASE_AGGRO,    0,              5500},
     {SAY_KALECGOS_ORB_4,        NPC_KALECGOS,   5000},
-    {SAY_KALECGOS_ENCOURAGE,    NPC_KALECGOS,   0},         // phase 4 transition end
+    {SAY_KALECGOS_ENCOURAGE,    NPC_KALECGOS,   0},         // phase 4 transition end (第 4 阶段)
     {0, 0, 0},
 };
 
@@ -244,6 +247,7 @@ static const DialogueEntry aOutroDialogue[] =
 ## npc_kiljaeden_controller
 ######*/
 
+// 随从/NPC AI：controller（kiljaeden_controller）
 struct npc_kiljaeden_controllerAI : public ScriptedAI, private DialogueHelper
 {
     npc_kiljaeden_controllerAI(Creature* creature) : ScriptedAI(creature),
@@ -255,11 +259,12 @@ struct npc_kiljaeden_controllerAI : public ScriptedAI, private DialogueHelper
 
     instance_sunwell_plateau* m_instance;
 
-    ObjectGuid m_EntropiusGuid;
-    ObjectGuid m_PortalGuid;
-    ObjectGuid m_firstRiftwalkerGuid;
-    ObjectGuid m_secondRiftwalkerGuid;
+    ObjectGuid m_EntropiusGuid;                             // Entropius 实体 GUID
+    ObjectGuid m_PortalGuid;                                // Portal 实体 GUID
+    ObjectGuid m_firstRiftwalkerGuid;                       // firstRiftwalker 实体 GUID
+    ObjectGuid m_secondRiftwalkerGuid;                      // secondRiftwalker 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         SetCombatMovement(false);
@@ -476,6 +481,7 @@ struct npc_kiljaeden_controllerAI : public ScriptedAI, private DialogueHelper
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         // Start outro dialogue when Kil'jaeden is killed
@@ -502,6 +508,7 @@ struct npc_kiljaeden_controllerAI : public ScriptedAI, private DialogueHelper
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         DialogueUpdate(diff);
@@ -512,6 +519,7 @@ struct npc_kiljaeden_controllerAI : public ScriptedAI, private DialogueHelper
 ## boss_kiljaeden
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KiljaedenActions
 {
     KILJAEDEN_ENRAGE,
@@ -530,6 +538,7 @@ enum KiljaedenActions
     KILJAEDEN_KALEC_YELL_DELAY,
 };
 
+// 首领战 AI：标识 ID（kiljaeden）
 struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
 {
     boss_kiljaedenAI(Creature* creature) : CombatAI(creature, KILJAEDEN_ACTION_MAX),
@@ -571,6 +580,7 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
     GuidVector m_freeShieldOrbs;
     std::vector<uint32> m_randomOrbs = { GO_ORB_BLUE_FLIGHT_1, GO_ORB_BLUE_FLIGHT_2, GO_ORB_BLUE_FLIGHT_3, GO_ORB_BLUE_FLIGHT_4 };
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {        
         CombatAI::Reset();
@@ -610,6 +620,7 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
         ResetCombatAction(KILJAEDEN_LEGION_LIGHTNING, urand(2000, 5000));
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         DespawnGuids(m_freeShieldOrbs);
@@ -640,6 +651,7 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
         return i;
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_KALECGOS)
@@ -666,6 +678,7 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SHIELD_ORB)
@@ -921,6 +934,7 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         DialogueUpdate(diff);
@@ -932,6 +946,7 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
 ## npc_shield_orb
 ######*/
 
+// 随从/NPC AI：orb（shield_orb）
 struct npc_shield_orbAI : public ScriptedAI
 {
     npc_shield_orbAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -942,6 +957,7 @@ struct npc_shield_orbAI : public ScriptedAI
 
     instance_sunwell_plateau* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 };
 
@@ -949,6 +965,7 @@ struct npc_shield_orbAI : public ScriptedAI
 ## npc_power_blue_flight
 ######*/
 
+// 随从/NPC AI：blueflight（power_blue_flight）
 struct npc_power_blue_flightAI : public ScriptedAI
 {
     npc_power_blue_flightAI(Creature* creature) : ScriptedAI(creature)
@@ -959,8 +976,9 @@ struct npc_power_blue_flightAI : public ScriptedAI
         Reset();
     }
 
-    bool m_bHasPossessed;
+    bool m_bHasPossessed;                                   // HasPossessed 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
     void UpdateAI(const uint32 /*diff*/) override
@@ -982,33 +1000,35 @@ struct npc_power_blue_flightAI : public ScriptedAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SinisterReflectionSpells
 {
     // generic
-    SPELL_DUAL_WEILD_PASSIVE = 42459,
-    // hunter
+    SPELL_DUAL_WEILD_PASSIVE = 42459,                       // dualweildpassive 法术 ID
+    // hunter (猎人)
     SPELL_WING_CLIP = 40652, // 47168 root used as prenerf
-    // shaman
-    SPELL_EARTH_SHOCK = 47071,
-    // warrior
-    SPELL_WHIRLWIND = 17207,
-    // rogue
-    SPELL_HEMORRHAGE = 45897,
-    // druid
-    SPELL_MOONFIRE = 47072,
-    // warlock
-    SPELL_SHADOW_BOLT = 47076,
-    SPELL_CURSE_OF_AGONY = 46190,
-    // priest
-    SPELL_HOLY_SMITE = 47077,
-    SPELL_RENEW = 47079,
-    // paladin
-    SPELL_HOLY_SHOCK = 38921,
-    SPELL_HAMMER_OF_JUSTICE = 37369,
-    // mage
-    SPELL_FIREBALL = 47074,
+    // shaman (萨满祭司)
+    SPELL_EARTH_SHOCK = 47071,                              // 大地震击 法术 ID
+    // warrior (战士)
+    SPELL_WHIRLWIND = 17207,                                // 旋风斩 法术 ID
+    // rogue (潜行者)
+    SPELL_HEMORRHAGE = 45897,                               // hemorrhage 法术 ID
+    // druid (德鲁伊)
+    SPELL_MOONFIRE = 47072,                                 // moonfire 法术 ID
+    // warlock (术士)
+    SPELL_SHADOW_BOLT = 47076,                              // 暗影箭 法术 ID
+    SPELL_CURSE_OF_AGONY = 46190,                           // 诅咒ofagony 法术 ID
+    // priest (牧师)
+    SPELL_HOLY_SMITE = 47077,                               // 神圣重拳先生 法术 ID
+    SPELL_RENEW = 47079,                                    // renew 法术 ID
+    // paladin (圣骑士)
+    SPELL_HOLY_SHOCK = 38921,                               // 神圣震击 法术 ID
+    SPELL_HAMMER_OF_JUSTICE = 37369,                        // hammerofjustice 法术 ID
+    // mage (法师)
+    SPELL_FIREBALL = 47074,                                 // fireball 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SinisterReflectionActions
 {
     SINISTER_WING_CLIP,
@@ -1027,6 +1047,7 @@ enum SinisterReflectionActions
     SINISTER_ATTACK_DELAY,
 };
 
+// 随从/NPC AI：倒影镜像（sinister_reflection）
 struct npc_sinister_reflectionAI : public CombatAI
 {
     npc_sinister_reflectionAI(Creature* creature) : CombatAI(creature, SINISTER_ACTION_MAX)
@@ -1155,12 +1176,14 @@ struct npc_sinister_reflectionAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：of熵魔（core_of_entropius）
 struct npc_core_of_entropiusAI : public CombatAI
 {
     npc_core_of_entropiusAI(Creature* creature) : CombatAI(creature, 0), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData())) {}
 
     instance_sunwell_plateau* m_instance;
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType == PATH_MOTION_TYPE && pointId == 2)
@@ -1204,6 +1227,7 @@ struct DarknessOfSouls : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SinisterReflection）
 struct SinisterReflection : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -1212,7 +1236,7 @@ struct SinisterReflection : public SpellScript
         if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
             return;
 
-        // Summon 4 clones of the same player
+        // Summon 4 clones of the same player (召唤 clones of the same player)
         for (uint8 i = 0; i < 4; ++i)
             unitTarget->CastSpell(nullptr, SPELL_SINISTER_REFLECTION_SUMMON, TRIGGERED_OLD_TRIGGERED);
 
@@ -1220,6 +1244,7 @@ struct SinisterReflection : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SinisterReflectionClone）
 struct SinisterReflectionClone : public SpellScript, public AuraScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -1246,6 +1271,7 @@ struct SinisterReflectionClone : public SpellScript, public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（CopyOffhandWeapon）
 struct CopyOffhandWeapon : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -1309,6 +1335,7 @@ struct ShadowSpike : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（ArmageddonAnimation）
 struct ArmageddonAnimation : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -1317,6 +1344,7 @@ struct ArmageddonAnimation : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（PowerOfTheBlueFlight）
 struct PowerOfTheBlueFlight : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -1347,6 +1375,7 @@ struct VengeanceOfTheBlueFlight : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（BreathHaste）
 struct BreathHaste : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -1355,6 +1384,7 @@ struct BreathHaste : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（ShieldOfTheBlue）
 struct ShieldOfTheBlue : public SpellScript, public AuraScript
 {
     void OnCast(Spell* spell) const override
@@ -1374,6 +1404,7 @@ struct ShieldOfTheBlue : public SpellScript, public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（FlameDart）
 struct FlameDart : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -1392,6 +1423,7 @@ struct FlameDartMain : public FlameDart
     }
 };
 
+// 注册并载入脚本模块：boss_kiljaeden
 void AddSC_boss_kiljaeden()
 {
     Script* pNewScript = new Script;

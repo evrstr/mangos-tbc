@@ -46,6 +46,9 @@ typedef std::unordered_map<WorldObject* /*passenger*/, TransportInfo* /*passenge
  * A class to provide basic support for each transporter. This includes
  * - Storing a list of passengers
  * - Providing helper for calculating between local and global coordinates
+ * 载具基础支持类，为可搭载乘客的运输体提供通用功能：
+ * - 维护乘客列表
+ * - 提供局部坐标与世界全局坐标之间的转换辅助函数
  */
 
 class TransportBase
@@ -60,33 +63,37 @@ class TransportBase
 
         WorldObject* GetOwner() const { return m_owner; }
 
-        // Helper functions to calculate positions
+        // Helper functions to calculate positions (位置与旋转坐标计算辅助函数)
         void RotateLocalPosition(float lx, float ly, float& rx, float& ry) const;
         void NormalizeRotatedPosition(float rx, float ry, float& lx, float& ly) const;
 
         void CalculatePassengerPosition(float& x, float& y, float& z, float* o = nullptr) const;
 
         /// This method transforms supplied global coordinates into local offsets
+        /// 将给定的世界全局坐标转换为相对于载具的局部偏移坐标
         void CalculatePassengerOffset(float& x, float& y, float& z, float* o = nullptr) const;
 
     protected:
-        // Helper functions to add/ remove a passenger from the list
+        // Helper functions to add/ remove a passenger from the list (添加/移除乘客的辅助函数)
         void BoardPassenger(WorldObject* passenger, float lx, float ly, float lz, float lo);
         void UnBoardPassenger(WorldObject* passenger);
 
-        WorldObject* m_owner;                               ///< The transporting unit
-        PassengerMap m_passengers;                          ///< List of passengers and their transport-information
+        WorldObject* m_owner;                               ///< The transporting unit (承载乘客的运输实体)
+        PassengerMap m_passengers;                          ///< List of passengers and their transport-information (乘客及其乘载信息映射表)
 
-        // Helpers to speedup position calculations
+        // Helpers to speedup position calculations (缓存上次位置与三角函数值以加速坐标变换)
         Position m_lastPosition;
         float m_sinO, m_cosO;
-        uint32 m_updatePositionsTimer;                      ///< Timer that is used to trigger updates for global coordinate calculations
+        uint32 m_updatePositionsTimer;                      ///< Timer that is used to trigger updates for global coordinate calculations (触发批量全局坐标更新的计时器)
 };
 
 /**
  * A class to provide basic information for each transported passenger. This includes
  * - local positions
  * - Accessors to get the transporter
+ * 单个被运输乘客的信息类：
+ * - 存储乘客在载具上的局部坐标
+ * - 提供获取所属载具及坐标转换的访问接口
  */
 
 class TransportInfo
@@ -94,14 +101,14 @@ class TransportInfo
     public:
         explicit TransportInfo(WorldObject* owner, TransportBase* transport, float lx, float ly, float lz, float lo);
 
-        // Set local positions
+        // Set local positions (设置局部坐标)
         void SetLocalPosition(float lx, float ly, float lz, float lo);
 
-        // Accessors
+        // Accessors (载具访问器)
         WorldObject* GetTransport() const { return m_transport->GetOwner(); }
         ObjectGuid GetTransportGuid() const { return m_transport->GetOwner()->GetObjectGuid(); }
 
-        // Get local position
+        // Get local position (获取局部坐标)
         float GetLocalOrientation() const { return m_localPosition.o; }
         float GetLocalPositionX() const { return m_localPosition.x; }
         float GetLocalPositionY() const { return m_localPosition.y; }

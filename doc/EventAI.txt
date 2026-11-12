@@ -1,696 +1,902 @@
 ===========================================================================
 MaNGOS EventAI (Creature_AI) Documentation: (Last Updated: June 25, 2018)
+MaNGOS EventAI (Creature_AI) 文档：（最后更新：2018年6月25日）
 ===========================================================================
 
 EventAI allows users to create new creature scripts entirely within the database.
+EventAI 允许用户完全在数据库中创建新的生物（Creature）脚本。
 
 For the AI to be used, you must first make sure to set AIname for each creature that should use this AI.
+要启用该 AI，必须先为需要使用 EventAI 的每个生物设置 AIName 字段：
 UPDATE creature_template SET AIName = 'EventAI' WHERE entry IN (...);
 
 Note: Edit in Spaces, not Tabs
+注意：请使用空格（Spaces）而非制表符（Tabs）进行编辑。
 
 =========================================
-Basic Structure of EventAI
+Basic Structure of EventAI / EventAI 基本结构
 =========================================
 
 EventAI follows a basic IF (Event) then DO (Action) format.
 Below is the list of current fields of the creature_ai_scripts table.
+EventAI 遵循基本的“IF（事件触发）then DO（执行动作）”格式。
+以下为 creature_ai_scripts 表的当前字段列表。
 
 Field_Name                      Description
 -------------------------------------------
 id                              This value is merely an incrementing counter of the current Event number. Required for sql queries. (ACID Standards: CreatureID+Additional 2 digit Incriment Starting with 01)
+                                当前事件编号的自增计数 ID，用于 SQL 查询。（ACID 标准：CreatureID 后接从 01 开始的两位递增数字）
 creature_id                     Creature ID which should trigger this event (This is entry value from `creature_template` table).
+                                应触发此事件的生物 ID（对应 `creature_template` 表的 entry 值）。
 
 event_type                      The type of event you want to script. (see "Event Types" below for different values)
+                                要编写的事件类型。（具体数值见下文“Event Types / 事件类型”）
 event_inverse_phase_mask        Mask with phases this event should NOT trigger in* (See footnote for more details on using any other value then 0)
+                                反向阶段掩码：指定此事件**不应**在哪些阶段触发*（使用非 0 值时详见下方脚注说明）
 event_chance                    Percentage chance of triggering the event (1 - 100)
+                                事件触发的百分比几率（1 - 100）
 event_flags                     Event Flags (Used to select Repeatable or Dungeon Heroic Mode)... See "Event Flags" Below For Defined Values
-event_param1                    Variables for the event (depends on event_type)
-event_param2                    Variables for the event (depends on event_type)
-event_param3                    Variables for the event (depends on event_type)
-event_param4                    Variables for the event (depends on event_type)
-event_param5                    Variables for the event (depends on event_type)
-event_param6                    Variables for the event (depends on event_type)
+                                事件标志（用于设置可重复或地下城英雄模式等）……定义值见下文“Event Flags / 事件标志”
+event_param1                    Variables for the event (depends on event_type) / 事件参数 1（含义取决于 event_type）
+event_param2                    Variables for the event (depends on event_type) / 事件参数 2（含义取决于 event_type）
+event_param3                    Variables for the event (depends on event_type) / 事件参数 3（含义取决于 event_type）
+event_param4                    Variables for the event (depends on event_type) / 事件参数 4（含义取决于 event_type）
+event_param5                    Variables for the event (depends on event_type) / 事件参数 5（含义取决于 event_type）
+event_param6                    Variables for the event (depends on event_type) / 事件参数 6（含义取决于 event_type）
 
-action1_type                    Action #1 to take when the Event occurs (see "Action types" below)
-action1_param1                  Variables used by Action1 (depends on action_type)
-action1_param2                  Variables used by Action1 (depends on action_type)
-action1_param3                  Variables used by Action1 (depends on action_type)
+action1_type                    Action #1 to take when the Event occurs (see "Action types" below) / 事件发生时执行的动作 #1（见下文“Action Types / 动作类型”）
+action1_param1                  Variables used by Action1 (depends on action_type) / 动作 1 参数 1（含义取决于 action_type）
+action1_param2                  Variables used by Action1 (depends on action_type) / 动作 1 参数 2（含义取决于 action_type）
+action1_param3                  Variables used by Action1 (depends on action_type) / 动作 1 参数 3（含义取决于 action_type）
 
-action2_type                    Action #2 to take when the Event occurs (see "Action types" below)
-action2_param1                  Variables used by Action1 (depends on action_type)
-action2_param2                  Variables used by Action1 (depends on action_type)
-action2_param3                  Variables used by Action1 (depends on action_type)
+action2_type                    Action #2 to take when the Event occurs (see "Action types" below) / 事件发生时执行的动作 #2（见下文“Action Types / 动作类型”）
+action2_param1                  Variables used by Action1 (depends on action_type) / 动作 2 参数 1（含义取决于 action_type）
+action2_param2                  Variables used by Action1 (depends on action_type) / 动作 2 参数 2（含义取决于 action_type）
+action2_param3                  Variables used by Action1 (depends on action_type) / 动作 2 参数 3（含义取决于 action_type）
 
-action3_type                    Action #3 to take when the Event occurs (see "Action types" below)
-action3_param1                  Variables used by Action1 (depends on action_type)
-action3_param2                  Variables used by Action1 (depends on action_type)
-action3_param3                  Variables used by Action1 (depends on action_type)
+action3_type                    Action #3 to take when the Event occurs (see "Action types" below) / 事件发生时执行的动作 #3（见下文“Action Types / 动作类型”）
+action3_param1                  Variables used by Action1 (depends on action_type) / 动作 3 参数 1（含义取决于 action_type）
+action3_param2                  Variables used by Action1 (depends on action_type) / 动作 3 参数 2（含义取决于 action_type）
+action3_param3                  Variables used by Action1 (depends on action_type) / 动作 3 参数 3（含义取决于 action_type）
 
 All params are signed 32-bit values (+/- 2147483647). Time values are always in milliseconds.
 In case of a percentage value, use value/100 (ie. param = 500 then that means 500%, -50 = -50%)
+所有参数均为有符号 32 位整数（+/- 2147483647）。时间值单位始终为毫秒（ms）。
+涉及百分比值时以 100 为基准（例如 param = 500 表示 500%，-50 表示 -50%）。
 
 [*] Phase mask is a bitmask of phases which shouldn't trigger this event. (ie. Phase mask of value 12 (binary 1100) results in triggering this event in phases 0, 1 and all others with exception for phases 2 and 3 (counting from 1 as Phase 0 = 1).
 [*] Phase 0 is default so this will occur in all phases unless specified. (1101 = Triggers in Phase 1, 1011 = Triggers in Phase 2, 0111 = Triggers in Phase 3, 0011 = Triggers in Phase 2 and 3).
 [*] Take Desired Binary Configuration and convert into Decimal and this is your event_inverse_phase_mask to use in your script.
+[*] 阶段掩码（Phase mask）是一个位掩码，表示**不应**触发该事件的阶段。（例如：值为 12（二进制 1100）表示该事件在阶段 0、1 及除阶段 2、3 以外的所有阶段触发；从低位起阶段 0 = 1）。
+[*] 阶段 0 为默认阶段，未指定时将在所有阶段触发。（二进制 1101 = 仅在阶段 1 触发，1011 = 仅在阶段 2 触发，0111 = 仅在阶段 3 触发，0011 = 仅在阶段 2 和 3 触发）。
+[*] 将所需的二进制配置转换为十进制，即可得到脚本中应填入的 event_inverse_phase_mask。
 
 =========================================
-Event Types
+Event Types / 事件类型总览
 =========================================
 
 This is the list of available Event Types EventAI is able to handle.
 Each event type has its own specific interpretation of the params that accompany it.
 Params are always read in the ascending order (from Param1 to Param3).
+以下是 EventAI 可处理的可用事件类型列表。
+每种事件类型对其附带参数都有各自特定的解释，参数始终按升序读取（Param1 至 Param3 及后续）。
 
 NOTE: Events will not repeat until the creature exits combat or unless EFLAG_REPEATABLE value is set in Event Flags.
 Some events such as EVENT_T_AGGRO, EVENT_T_DEATH, EVENT_T_SPAWNED, and EVENT_T_EVADE cannot repeat even if EFLAG_REPEATABLE value is set.
+注意：除非生物退出战斗或事件标志中设置了 EFLAG_REPEATABLE，否则事件不会重复触发。
+部分事件（如 EVENT_T_AGGRO、EVENT_T_DEATH、EVENT_T_SPAWNED、EVENT_T_EVADE）即使设置了 EFLAG_REPEATABLE 也不会重复触发。
 
 #   Internal Name                       Event (Param1, Param2, Param3, Param4, Param5, Param6)          Description
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 0   EVENT_T_TIMER_IN_COMBAT             InitialMin, InitialMax, RepeatMin, RepeatMax                            Expires at first between (Param1) and (Param2) and then will repeat between every (Param3) and (Param4),  EXPIRES ONLY IN COMBAT.
+    [中文] 战斗内计时器：首次在 (Param1)~(Param2) 之间触发，之后每隔 (Param3)~(Param4) 重复触发，仅在战斗中生效。
 1   EVENT_T_TIMER_OOC                   InitialMin, InitialMax, RepeatMin, RepeatMax                            Expires at first between (Param1) and (Param2) and then will repeat between every (Param3) and (Param4),  EXPIRES ONLY OUT OF COMBAT BUT NOT DURING EVADE.
+    [中文] 脱战计时器：首次在 (Param1)~(Param2) 之间触发，之后每隔 (Param3)~(Param4) 重复触发，仅在脱战（且非 Evade 返回）时生效。
 2   EVENT_T_HP                          HPMax%, HPMin%, RepeatMin, RepeatMax                                    Expires when the NPC's HP% is between (Param1) and (Param2). Will repeat between every (Param3) and (Param4) If Event Conditions Are Still Met.
+    [中文] 自身生命值百分比：当 NPC 生命值百分比处于 (Param1) 与 (Param2) 之间时触发；若条件仍满足，每隔 (Param3)~(Param4) 重复检查。
 3   EVENT_T_MANA                        ManaMax%, ManaMin%, RepeatMin, RepeatMax                                Expires when the NPC's Mana% is between (Param1) and (Param2). Will repeat between every (Param3) and (Param4) If Event Conditions Are Still Met.
+    [中文] 自身法力值百分比：当 NPC 法力值百分比处于 (Param1) 与 (Param2) 之间时触发；若条件仍满足，每隔 (Param3)~(Param4) 重复检查。
 4   EVENT_T_AGGRO                       NONE                                                                    Expires ONLY upon the NPC's INITIAL Aggro at the Start of Combat (Does NOT Repeat) and Only Resets on Spawn or Evade.
+    [中文] 进入战斗/初始仇恨：仅在 NPC 首次进入战斗产生仇恨时触发（不重复），仅在刷新或脱战返回时重置。
 5   EVENT_T_KILL                        RepeatMin, RepeatMax, PlayerOnly, unused                                Expires upon Killing a Player. Will Repeat Check between (Param1) and (Param2). This Event Will Not Trigger Again Until Repeat Timer Expires. Param3 restricts trigger to players only.
+    [中文] 击杀目标：击杀目标时触发；在 (Param1)~(Param2) 冷却后可再次触发。Param3=1 限制仅击杀玩家时触发。
 6   EVENT_T_DEATH                       ConditionId, unused, unused, unused                                     Expires on the NPC's Death. (This Triggers At The Moment The NPC Dies) Optionally if ConditionId is provided the event will only trigger if the condition returns true
+    [中文] 死亡：NPC 死亡瞬间触发。若提供了 ConditionId，则仅当条件为真时触发。
 7   EVENT_T_EVADE                       NONE                                                                    Expires at the moment the Creature EnterEvadeMode() and Exits Combat.
+    [中文] 脱战/重置：生物调用 EnterEvadeMode() 并退出战斗时触发。
 8   EVENT_T_SPELLHIT                    SpellID, Schoolmask*, RepeatMin, RepeatMax                              Expires upon Spell Hit of the NPC. When (param1) is set, it is the specific Spell ID used as the trigger. With (param2) specified, the expiration is limited to specific spell schools (-1 for all) and Spell ID value is ignored. Will repeat Event Conditions Check between every (Param3) and (Param4). Only A Spell ID or Spell School may be Specified but NOT both.
+    [中文] 受到法术命中：NPC 被法术命中时触发。Param1 指定具体法术 ID；Param2 指定法术学派掩码（-1 表示全部且忽略 SpellID）。两者只能指定其一。每隔 (Param3)~(Param4) 可再次触发。
 9   EVENT_T_RANGE                       MinDist, MaxDist, RepeatMin, RepeatMax                                  Expires when the Highest Threat Target Distance is Greater than (Param1) and Less than (Param2). Will repeat between every (Param3) and (Param4) if Event Conditions Are Still Met.
+    [中文] 距离范围：当最高仇恨目标的距离大于 (Param1) 且小于 (Param2) 时触发；条件仍满足时每隔 (Param3)~(Param4) 重复触发。
 10  EVENT_T_OOC_LOS                     NoHostile, MaxRange, RepeatMin, RepeatMax, PlayerOnly, ConditionId      Expires when a unit moves within distance (MaxAllowedRange) of the NPC. If (Param1) is 0 it will expire only when unit is hostile, If (Param1) is 1 it will expire only when unit is friendly. This depends generally on faction relations. Will repeat every (Param3) and (Param4). Does NOT expire when the NPC is in combat.
+    [中文] 脱战视野接近：脱战状态下有单位进入 NPC 周围 (Param2) 距离时触发。Param1=0 仅敌对，Param1=1 仅友方；Param5 限制仅玩家；Param6 为条件 ID。每隔 (Param3)~(Param4) 重复。
 11  EVENT_T_SPAWNED                     Condition, CondValue1, unused, unused                                   Expires on initial spawn and respawn of the NPC if Condition is met (Useful for setting Ranged Movement/Summoning Pets/Applying Buffs).
+    [中文] 刷新生成：NPC 首次生成及重生时若满足地图/区域条件则触发（常用于设置远程移动、召唤宠物或施加 Buff）。
 12  EVENT_T_TARGET_HP                   HPMax%, HPMin%, RepeatMin, RepeatMax                                    Expires when current target's HP% is between (Param1) and (Param2). Will repeat every (Param3) and (Param4)If Event Conditions Are Still Met.
+    [中文] 当前目标生命值百分比：当当前目标生命值百分比处于 (Param1)~(Param2) 之间时触发；条件仍满足时每隔 (Param3)~(Param4) 重复。
 13  EVENT_T_TARGET_CASTING              RepeatMin, RepeatatMax, unused, unused                                  Expires when the current target is casting a spell. Will repeat every (Param1) and (Param2) If Event Conditions Are Still Met.
+    [中文] 当前目标正在施法：当当前目标正在施法时触发；每隔 (Param1)~(Param2) 重复检查。
 14  EVENT_T_FRIENDLY_HP                 HPDeficit, Radius, RepeatMin, RepeatMax, IsPercent                      Expires when a friendly unit in (Radius) has at least (Param1) HP points missing. Will repeat every (Param3) and (Param4) If Event Conditions Are Still Met. If Param5=1 deficit is percentage of hp.
+    [中文] 友方损失生命值：当 (Radius) 范围内的友方单位损失至少 (Param1) 点生命值（Param5=1 时为百分比）时触发；每隔 (Param3)~(Param4) 重复。
 15  EVENT_T_FRIENDLY_IS_CC              DispelType, Radius, RepeatMin, RepeatMax                                Expires when a friendly unit is crowd controlled within the given Radius (Param2). Will repeat every (Param3) and (Param4).
+    [中文] 友方受控：当 (Radius) 范围内的友方单位处于群体控制状态时触发；每隔 (Param3)~(Param4) 重复。
 16  EVENT_T_FRIENDLY_MISSING_BUFF       SpellId, Radius, RepeatMin, RepeatMax, Flags                            Expires when a friendly unit is missing aura(s) given by a spell (Param1) within Radius (Param2). Will repeat every (Param3) and (Param4) If Event Conditions Are Still Met.
+    [中文] 友方缺少增益：当 (Radius) 范围内的友方单位缺少法术 (Param1) 的光环时触发；每隔 (Param3)~(Param4) 重复。
 17  EVENT_T_SUMMONED_UNIT               CreatureId, RepeatMin, RepeatMax, unused                                Expires after creature with entry = (Param1) is spawned (Param1 = 0 means all spawns). Will repeat every (Param2) and (Param3).
+    [中文] 召唤单位生成：当 entry=(Param1) 的召唤生物生成后触发（0 表示所有召唤生物）；每隔 (Param2)~(Param3) 重复。
 18  EVENT_T_TARGET_MANA                 ManaMax%, ManaMin%, RepeatMin, RepeatMax                                Expires when current target's Mana% is between (Param1) and (Param2). Will repeat every (Param3) and (Param4) If Event Conditions Are Still Met.
+    [中文] 当前目标法力值百分比：当当前目标法力值百分比处于 (Param1)~(Param2) 之间时触发；每隔 (Param3)~(Param4) 重复。
 21  EVENT_T_REACHED_HOME                NONE                                                                    Expires when a creature reaches it's home (spawn) location after evade. This is commonly used for NPC's who Stealth once reaching their Spawn Location
+    [中文] 返回重生点：生物脱战并回到出生点（home）位置时触发（常用于回到原位后重新潜行等）。
 22  EVENT_T_RECEIVE_EMOTE               EmoteId, ConditionId                                                    Expires when a creature receives an emote with emote text id ("enum TextEmotes" from SharedDefines.h in Mangos Source) in (Param1). Conditions are taken from table conditions.
+    [中文] 收到表情：生物收到来自玩家的指定文本表情（Param1，SharedDefines.h 的 enum TextEmotes）且满足条件 (Param2) 时触发。
 23  EVENT_T_AURA                        SpellID, AmmountInStack, RepeatMin, RepeatMax                           Expires when a creature has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4) If Event Conditions Are Still Met.
+    [中文] 自身拥有光环：当生物自身法术 (Param1) 的光环层数 >= (Param2) 时触发；每隔 (Param3)~(Param4) 重复。
 24  EVENT_T_TARGET_AURA                 SpellID, AmmountInStack, RepeatMin, RepeatMax                           Expires when a target unit has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4) If Event Conditions Are Still Met.
+    [中文] 目标拥有光环：当目标单位法术 (Param1) 的光环层数 >= (Param2) 时触发；每隔 (Param3)~(Param4) 重复。
 25  EVENT_T_SUMMONED_JUST_DIED          CreatureId, RepeatMin, RepeatMax, unused                                Expires after creature with entry = (Param1) is die (Param1 = 0 means all spawns). Will repeat every (Param2) and (Param3).
+    [中文] 召唤单位死亡：当 entry=(Param1) 的召唤生物死亡后触发（0 表示全部）；每隔 (Param2)~(Param3) 重复。
 26  EVENT_T_SUMMONED_JUST_DESPAWN       CreatureId, RepeatMin, RepeatMax, unused                                Expires before creature with entry = (Param1) is despawn (Param1 = 0 means all spawns). Will repeat every (Param2) and (Param3).
+    [中文] 召唤单位即将消失：当 entry=(Param1) 的召唤生物消失前触发（0 表示全部）；每隔 (Param2)~(Param3) 重复。
 27  EVENT_T_MISSING_AURA                SpellID, AmmountInStack, RepeatMin, RepeatMax                           Expires when a creature not has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4).
+    [中文] 自身缺少光环：当生物自身法术 (Param1) 的光环层数不足 (Param2) 时触发；每隔 (Param3)~(Param4) 重复。
 28  EVENT_T_TARGET_MISSING_AURA         SpellID, AmmountInStack, RepeatMin, RepeatMax                           Expires when a target unit not has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4).
+    [中文] 目标缺少光环：当目标单位法术 (Param1) 的光环层数不足 (Param2) 时触发；每隔 (Param3)~(Param4) 重复。
 29  EVENT_T_TIMER_GENERIC               InitialMin, InitialMax, RepeatMin, RepeatMax                            Expires at first between (Param1) and (Param2) and then will repeat between every (Param3) and (Param4).
+    [中文] 通用计时器（战斗内外均有效）：首次在 (Param1)~(Param2) 之间触发，之后每隔 (Param3)~(Param4) 重复触发。
 30  EVENT_T_RECEIVE_AI_EVENT            AIEventType, Sender-Entry, unused, unused                               Expires when the creature receives an AIEvent of type (Param1), sent by creature (Param2 != 0). If (Param2 = 0) then sent by any creature
+    [中文] 接收 AI 事件：当生物收到类型为 (Param1) 的 AIEvent 时触发（Param2 != 0 时限定发送者 entry，0 表示任意生物）。
 31  EVENT_T_ENERGY                      EnergyMax%, EnergyMin%, RepeatMin, RepeatMax                            Expires when the NPC's Energy% is between (Param1) and (Param2). Will repeat between every (Param3) and (Param4) If Event Conditions Are Still Met.
+    [中文] 自身能量百分比：当 NPC 能量百分比处于 (Param1)~(Param2) 之间时触发；每隔 (Param3)~(Param4) 重复。
 32  EVENT_T_SELECT_ATTACKING_TARGET     MinRange, MaxRange, RepeatMin, RepeatMax                                Deprecated use TARGET_T_NEAREST_AOE_TARGET - Expires when the NPC has a target in threat table further than Param1 and closer than Param2. First time happens after and will repeat after Param3 and Param4.
+    [中文] 选择攻击目标（已弃用，请改用 TARGET_T_NEAREST_AOE_TARGET）：仇恨列表中存在距离在 Param1 与 Param2 之间的目标时触发。
 33  EVENT_T_FACING_TARGET               BackOrFront, unused, RepeatMin, RepeatMax                               Expires when the NPC is in back (Param1=0) or in front (Param1=1) of its current target. Will repeat after Param3 and Param4.
+    [中文] 朝向目标判断：当 NPC 位于当前目标背后（Param1=0）或正面（Param1=1）时触发；每隔 (Param3)~(Param4) 重复。
 34  EVENT_T_SPELLHIT_TARGET             SpellID, Schoolmask, RepeatMin, RepeatMax                               Expires upon Spell Hit of the NPC. When (param1) is set, it is the specific Spell ID used as the trigger. With (param2) specified, the expiration is limited to specific spell schools (-1 for all) and Spell ID value is ignored. Will repeat Event Conditions Check between every (Param3) and (Param4). Only A Spell ID or Spell School may be Specified but NOT both.
+    [中文] 自身法术命中目标：当 NPC 施放的法术命中目标时触发（Param1 指定法术 ID，Param2 指定学派掩码，不可同时指定）；每隔 (Param3)~(Param4) 重复。
 35  EVENT_T_DEATH_PREVENTED             NONE                                                                    Expires when Death prevention kicks in
+    [中文] 死亡保护触发：当“防死亡”机制生效时触发。
 36  EVENT_T_TARGET_NOT_REACHABLE        NONE                                                                    Expires when target is not reachable
+    [中文] 目标不可达：当主仇恨目标无法被追击寻路到达时触发。
 37  EVENT_T_SPELL_CAST                  SpellID                                                                 Expires when spell list casts spell Id successfully
+    [中文] 法术列表施法成功：当法术列表成功施放指定 SpellID 时触发。
 43  EVENT_T_ACTION_SET                  SetId, StepIndex, TimeMs						Expires when action set is engaged, on specific index and time
+    [中文] 动作集步骤触发：当动作集 SetId 启动后，到达指定步骤索引 StepIndex 及时间 TimeMs 时触发。
 44  EVENT_T_MOVEMENT_INFORM             MovementType, PointId, PathId						Expires when AI is informed about movement
+    [中文] 移动通知：当 AI 收到移动到达通知（指定 MovementType、PointId、PathId）时触发。
 
 =========================================
-Action Types
+Action Types / 动作类型总览
 =========================================
 
 This is a list of action types that EventAI is able to handle.
 Each event type has it's own specific interpretation of it's params, just like Events.
 For all ACTION_T_RANDOM Actions, When a Particular Param is selected for the Event... The SAME Param # is selected for all 3 actions when Event is triggered.
+以下是 EventAI 可处理的动作类型列表。
+与事件一样，每种动作类型对其参数都有特定解释。
+对于所有 ACTION_T_RANDOM 系列动作，当事件触发并随机选中某一个参数槽位时，同一次事件中的 3 个动作会使用**相同的**参数序号（以实现语音和文字等联动）。
 
 #   Internal Name                           Action (Param1, Param2, Param3)     Description
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 0   ACTION_T_NONE                           No Action                           Does nothing.
+    [中文] 无动作：不执行任何操作。
 1   ACTION_T_TEXT                           -TextId1, -TextId2, -TextId3        Displays the specified -TextId. When -TextId2 and -TextId3 are specified, the selection will be Randomized between 1,2 or 3. Text ID's are defined, along with other options for the text, in creature_ai_texts table. Below is detailed Text Information. All text ID values for EventAI MUST be negative.
+    [中文] 说话文本（已弃用，请用 54）：显示 creature_ai_texts 表中的负值 -TextId；提供多个时随机选取。
 2   ACTION_T_SET_FACTION                    FactionId, Flags                    Changes faction for a creature. When param1 is zero, creature will revert to it's default faction. Flags will determine when faction is restored to default (evade, respawn etc)
+    [中文] 设置阵营：更改生物阵营；Param1=0 恢复默认阵营；Flags 控制何时还原（脱战、重生等）。
 3   ACTION_T_MORPH_TO_ENTRY_OR_MODEL        CreatureEntry, ModelId              Sets either model from creature_template.entry (Param1) OR explicit modelId (Param2) for the NPC. If (Param1) AND (Param2) are both 0, NPC will demorph and revert to the default model (as specified in creature_template).
+    [中文] 变形：使用生物模板 entry (Param1) 或指定模型 ID (Param2) 变形；全为 0 则恢复默认外观。
 4   ACTION_T_SOUND                          SoundId                             NPC Plays a specified Sound ID.
+    [中文] 播放音效：NPC 播放指定 SoundId。
 5   ACTION_T_EMOTE                          EmoteId                             NPC Does a specified Emote ID.
+    [中文] 执行表情动作：NPC 做出指定 EmoteId 的动作。
 6   UNUSED                                  UNUSED                              UNUSED
 7   UNUSED                                  UNUSED                              UNUSED
 8   UNUSED                                  UNUSED                              UNUSED
 9   ACTION_T_RANDOM_SOUND                   SoundId1*, SoundId2*, SoundId3*     NPC Plays a Random Sound ID (Random Selects Param1, Param2 or Param3)
+    [中文] 随机播放音效：从 Param1~3 中随机播放一个音效。
 10  ACTION_T_RANDOM_EMOTE                   EmoteId1*, EmoteId2*, EmoteId3*     NPC Emotes a Random Emote ID (Random Selects Param1, Param2 or Param3)
+    [中文] 随机执行表情：从 Param1~3 中随机做出一个动作表情。
 11  ACTION_T_CAST                           SpellId, Target, CastFlags          Casts spell (Param1) on a target (Param2) using cast flags (Param3) --> Specified Below
+    [中文] 施放法术：按指定 CastFlags (Param3) 向目标 (Param2) 施放法术 (Param1)。
 12  ACTION_T_SPAWN                          CreatureID, Target, Duration        Summons a Creature ID (Param1) for (Param3) duration after Evade (In MS) and orders it to attack (Param2) target (specified below). Spawns on top of NPC who summons it.
+    [中文] 召唤生物：在自身位置召唤 CreatureID (Param1)，令其攻击目标 (Param2)，脱战后持续 (Param3) 毫秒。
 13  ACTION_T_THREAT_SINGLE                  Threat, Target, IsDirect            Modifies a threat by (Param1) on a target (Param2). If Param3 is 0, its percent modification, else direct value.
+    [中文] 修改单体仇恨：调整目标 (Param2) 的仇恨值 (Param1)；Param3=0 为百分比调整，否则为固定数值增减。
 14  ACTION_T_THREAT_ALL_PCT                 Threat%                             Modifies a threat by (Param1) on all targets in the threat list (using -100% here will result in full aggro dump).
+    [中文] 修改全员仇恨百分比：按百分比调整仇恨列表所有目标的仇恨（-100 表示全员清仇恨）。
 15  ACTION_T_QUEST_EVENT                    QuestID, Target, RewardGroup        Calls AreaExploredOrEventHappens with (Param1) for a target in (Param2). Param3 decides if award entire group (1 = yes, 0 = no).
+    [中文] 完成任务事件：为目标 (Param2) 触发任务 (Param1) 的探索/事件完成；Param3 决定是否全队奖励。
 16  ACTION_T_QUEST_CASTCREATUREGO           CreatureID, SpellId, Target         Sends CastCreatureOrGo for a creature specified by CreatureId (Param1) with provided spell id (Param2) for a target in (Param3).
+    [中文] 任务施法计数（已弃用，请用 33）：为目标 (Param3) 触发对生物 (Param1) 施放法术 (Param2) 的任务进度。
 17  ACTION_T_SET_UNIT_FIELD                 Field_Number, Value, Target         Sets a unit field (Param1) to provided value (Param2) on a target in (Param3).
+    [中文] 设置单位字段（已弃用）：将目标 (Param3) 的字段 (Param1) 设为 (Param2)。
 18  ACTION_T_SET_UNIT_FLAG                  Flags, Target                       Sets flag (flags can be used together to modify multiple flags at once) on a target (Param2).
+    [中文] 添加单位标志：为目标 (Param2) 添加指定的 UnitFlags (Param1)。
 19  ACTION_T_REMOVE_UNIT_FLAG               Flags, Target                       Removes flag on a target (Param2).
+    [中文] 移除单位标志：从目标 (Param2) 移除指定的 UnitFlags (Param1)。
 20  ACTION_T_AUTO_ATTACK                    AllowAutoAttack                     Stop melee attack when (Param1) is zero, otherwise continue attacking / allow melee attack.
+    [中文] 开关自动近战攻击：Param1=0 停止近战，非 0 允许/恢复近战。
 21  ACTION_T_COMBAT_MOVEMENT                AllowCombatMovement                 Stop combat based movement when (Param1) is zero, otherwise continue/allow combat based movement (targeted movement generator).
+    [中文] 开关战斗追击移动：Param1=0 停止追击目标，非 0 允许追击。
 22  ACTION_T_SET_PHASE                      Phase                               Sets the current phase to (Param1).
+    [中文] 设置阶段：将当前阶段设为 (Param1)（0~31）。
 23  ACTION_T_INC_PHASE                      Value                               Increments the phase by (Param1). May be negative to decrement, but should not be zero.
+    [中文] 增减阶段：将当前阶段增加 (Param1)（可为负数以递减，但不可为 0）。
 24  ACTION_T_EVADE                          No Params                           Forces the creature to evade, wiping all threat and dropping combat. Param1 - combat drop only
+    [中文] 强制脱战：清空仇恨并退出战斗；Param1=1 时仅脱离战斗而不返回出生点。
 25  ACTION_T_FLEE_FOR_ASSIST                No Params                           Causes the creature to flee for assistence (often at low health).
+    [中文] 逃跑求援：使生物在低血量等情况下逃跑寻求附近友军协助。
 26  ACTION_T_QUEST_EVENT_ALL                QuestId, UseThreatList              Calls GroupEventHappens with (Param1). Only used if it's _expected_ event should call quest completion for all players in a current party. Can be used for the creature's threat list, for complex scripted events.
+    [中文] 全员任务事件：为仇恨列表或小队中的所有玩家完成任务 (Param1)。
 27  ACTION_T_CASTCREATUREGO_ALL             QuestId, SpellId                    Calls CastedCreatureOrGo for all players on the threat list with quest id specified in (Param1) and spell id in (Param2).
+    [中文] 全员任务施法计数（已弃用）：为仇恨列表所有玩家触发任务 (Param1)/法术 (Param2) 进度。
 28  ACTION_T_REMOVEAURASFROMSPELL           Target, Spellid                     Removes all auras on a target (Param1) caused by a spell (Param2).
+    [中文] 移除指定法术光环：移除目标 (Param1) 身上由法术 (Param2) 产生的所有光环。
 29  ACTION_T_RANGED_MOVEMENT                Distance, Angle                     Changes the movement generator to a ranged type. (note: default melee type can still be set by using 0 as angle and 0 as distance).
+    [中文] 远程移动模式：切换为远程追击移动生成器，保持距离 (Param1) 与角度 (Param2)；全 0 恢复近战。
 30  ACTION_T_RANDOM_PHASE                   PhaseId1*, PhaseId2*, PhaseId3*     Sets a phase to a specified id(s)
+    [中文] 随机设置阶段：从 Param1~3 中随机选择一个阶段 ID 切换。
 31  ACTION_T_RANDOM_PHASE_RANGE             PhaseMin, PhaseMax                  Sets a phase to a random id (Phase = PhaseMin + rnd % PhaseMin-PhaseMax). PhaseMax must be greater than PhaseMin.
+    [中文] 范围随机阶段：在 [PhaseMin, PhaseMax] 范围内随机切换阶段。
 32  ACTION_T_SUMMON_ID                      CreatureID, Target, SummonID        Summons a creature (Param1) to attack target (Param2) at location specified by EventAI_Summons (Param3).
+    [中文] 定点召唤生物：在 creature_ai_summons 表 (Param3) 指定位置召唤生物 (Param1) 并攻击目标 (Param2)。
 33  ACTION_T_KILLED_MONSTER                 CreatureID, Target                  Calls KilledMonster (Param1) for a target (Param2).
+    [中文] 给予击杀任务计数：为目标 (Param2) 触发击杀生物 (Param1) 的任务计数。
 34  ACTION_T_SET_INST_DATA                  Field, Data                         Calls ScriptedInstance::SetData with field (Param1) and data (Param2).
+    [中文] 设置副本数据：调用副本脚本的 SetData(Field, Data)。
 35  ACTION_T_SET_INST_DATA64                Field, Target                       Calls ScriptedInstance::SetData64 with field (Param1) and target's GUID (Param2).
+    [中文] 设置副本 64 位 GUID 数据：调用副本脚本的 SetData64(Field, TargetGUID)。
 36  ACTION_T_UPDATE_TEMPLATE                TemplateId, Team                    Changes a creature's template to (Param1) with team = Alliance or Horde when (Param2) is either false or true respectively.
+    [中文] 更换生物模板：临时将生物模板切换为 (Param1)，Param2 指定阵营（0 联盟 / 1 部落）。
 37  ACTION_T_DIE                            No Params                           Kills the creature
+    [中文] 立即死亡：杀死当前生物。
 38  ACTION_T_ZONE_COMBAT_PULSE              No Params                           Puts all players within an instance into combat with the creature. Only works when a creature is already in combat. Doesn't work outside instances.
+    [中文] 副本战斗脉冲：将副本内所有玩家拉入与该生物的战斗状态（仅副本内战斗中有效）。
 39  ACTION_T_CALL_FOR_HELP                  Radius                              Call any friendly out-of-combat creatures in a radius (Param1) to attack current creature's target.
+    [中文] 呼叫支援：呼唤半径 (Param1) 内脱战的友方生物前来攻击当前目标。
 40  ACTION_T_SET_SHEATH                     Sheath                              Sets sheath state for a creature (0 = no weapon, 1 = melee weapon, 2 = ranged weapon).
+    [中文] 设置武器显示状态：0=空手，1=近战武器，2=远程武器。
 41  ACTION_T_FORCE_DESPAWN                  Delay                               Despawns the creature, if delay = 0 immediate otherwise will despawn after delay time set in Param1 (in ms).
+    [中文] 强制消失：使生物消失（Delay=0 立即消失，否则延迟 Param1 毫秒）。
 42  ACTION_T_SET_DEATH_PREVENTION           State                               0-off/1-on
+    [中文] 设置防死亡状态：0=关闭，1=开启。
 43  ACTION_T_MOUNT_TO_ENTRY_OR_MODEL        CreatureEntry, ModelId              Set mount model from creature_template.entry (Param1) OR explicit modelId (Param2). If (Param1) AND (Param2) are both 0, unmount.
+    [中文] 骑乘坐骑：使用生物模板 (Param1) 或模型 ID (Param2) 上马；全 0 则下马。
 44  ACTION_T_CHANCED_TEXT                   Chance, -TextId1, -TextId2          Deprecated use 54 - Displays by Chance (1..100) the specified -TextId. When -TextId2 is specified, the selection will be randomized. Text types are defined, along with other options for the text, in a table below. Param2 and Param3 needs to be negative.
+    [中文] 概率说话文本（已弃用，请用 54）：按概率 (Chance) 随机显示指定的负值文本 ID。
 45  ACTION_T_THROW_AI_EVENT                 EventType, Radius, Target           Throws an AIEvent of type (Param1) to nearby friendly Npcs in range of (Param2), Invoker of event is Target
+    [中文] 抛出 AI 事件：向半径 (Param2) 内的友方 NPC 发送类型 (Param1) 的 AIEvent，触发者为 (Param3)。
 46  ACTION_T_SET_THROW_MASK                 EventTypeMask                       Marks for which AIEvents the npc will throw AIEvents on its own.
+    [中文] 设置自动抛出事件掩码：设置 NPC 自动向外发送哪些 AIEvent。
 47  ACTION_T_SET_STAND_STATE                StandState                          Set the unit stand state (Param1) of the current creature.
+    [中文] 设置站立姿态：设置生物的 StandState (Param1)。
 48  ACTION_T_CHANGE_MOVEMENT                MovementType, WanderDistance        Change the unit movement type (Param1). If the movement type is Random Movement (1), the WanderDistance (Param2) must be provided. If the movement type is Waypoint Movement (2), Param2 is PathId. Param3 0x1 is asDefault, 0x2 forces waypoint, path or linear path movement to use waypoint_path table PathId
+    [中文] 更改移动方式：设置移动类型 (Param1：0待机/1随机/2路径点)，Param2 为漫步半径或路径 ID，Param3 为附加标志。
 49  ACTION_T_REUSE
+    [中文] 保留重用槽位（当前未实现）。
 50  ACTION_T_SET_REACT_STATE                ReactState                          Change react state of the creature
+    [中文] 设置反应状态：0=被动，1=防御，2=主动攻击。
 51  ACTION_T_PAUSE_WAYPOINTS                DoPause                             Pause waypoints of creature
+    [中文] 暂停路径点移动：0=恢复，1=暂停。
 52  ACTION_T_INTERRUPT_SPELL                SpellType - CurrentSpellTypes       Interrupt spell in given slot for creature
+    [中文] 打断施法：打断指定槽位 (CurrentSpellTypes) 的施法。
 53  ACTION_T_START_RELAY_SCRIPT             RelayIDorTemplate, Target           Launches dbscripts_on_relay script, either static one, or when param1 is < 0 then random one chosen from dbscript_random_templates
+    [中文] 启动中继脚本：执行 dbscripts_on_relay 脚本（>0 为静态 ID，<0 为随机模板），以 Target 为脚本源。
 54  ACTION_T_TEXT_NEW                       TextId, Target, TemplateId          Displays text, either static one or when param3 != 0, then random one chosen from dbscript_random_templates
+    [中文] 新版说话文本：向目标 (Param2) 显示文本 (Param1)，若 Param3 != 0 则从 dbscript_random_templates 随机选取。
 55  ACTION_T_ATTACK_START                   Target                              Attacks targeted creature
+    [中文] 开始攻击：令生物开始攻击指定目标 (Param1)。
 56  ACTION_T_DESPAWN_GUARDIANS              EntryId                             Despawns guardian with specified entry, or if 0 despawns all guardians
+    [中文] 遣散/消失守护者：使指定 entry 的召唤守护者消失（0 表示全部）。
 57  ACTION_T_SET_RANGED_MODE                RangeModeType,chaseDistance         Enables RangeModeType AI (0 off, 1 = caster, 2 = hunter), distance to chase at
+    [中文] 设置远程模式：启用远程 AI 模式（RangeModeType）及追击保持距离。
 58  ACTION_T_SET_WALK                       WalkSetting                         Enables Walk (0 off, 1 on) or enables chase walk (2 off, 3 on)
+    [中文] 设置行走/奔跑：设置默认移动或追击移动的走/跑状态。
 59  ACTION_T_SET_FACING                     Target, Reset                       Set 0, Reset 1
+    [中文] 设置朝向：0=朝向目标 (Param1)，1=重置朝向。
 60  ACTION_T_SET_SPELL_SET                  SetId                               Set for possess
+    [中文] 设置法术列表：切换生物的法术列表 SetId（也用于附身技能）。
 61  ACTION_T_SET_IMMOBILIZED_STATE          Apply, CombatOnly                   CombatOnly is autoremoved on combat stop (death, evade, despawn)
+    [中文] 设置定身状态：Apply=1 定身 / 0 解除；CombatOnly=1 时脱战自动解除。
 62  ACTION_T_SET_DESPAWN_AGGREGATION        Mask, Entry1, Entry2                Enable aggregation of guids for despawn on event (death, evade). To be used mostly on spawn.
+    [中文] 设置聚合消失：将召唤物 GUID 聚合以便在死亡或脱战时联动消失。
 63  ACTION_T_SET_IMMUNITY_SET               SetId                               Immunity Set ID - creature_immunities
+    [中文] 设置免疫集：应用 creature_immunities 表中的免疫集 ID。
 64  ACTION_T_SET_FOLLOW_MOVEMENT            State                               0 Off, 1 On
+    [中文] 设置跟随移动：0=关闭，1=开启。
 65  ACTION_T_RETREAT                                                            Npc retreats no nearest ally
+    [中文] 撤退：NPC 向最近的友方单位撤退。
 66  ACTION_T_START_ACTION_SET               SetId, StepIndex, Repeat            Engages action set that persists through combat
+    [中文] 启动动作集：启动可在战斗中持续运行的动作序列 SetId。
 
 * = Use -1 where the param is expected to do nothing. Random constant is generated for each event, so if you have a random yell and a random sound, they will be linked up with each other (ie. param2 with param2).
+* = 当某参数槽位不需要执行任何操作时请填 -1。每次事件会生成统一的随机数，因此若同时使用随机喊话和随机音效，它们的参数槽位会一一对应（如 param2 配对 param2）。
 
 ==============================================
 Event Types: Expanded and Detailed Information
+事件类型：扩展与详细说明
 ==============================================
 
 Note:
 COMBAT ONLY - Means that this event will only trigger durring combat.
 OUT OF COMBAT ONLY - Means that this event will only trigger while out of combat.
 BOTH - This event can trigger both in and out of combat.
+说明：
+COMBAT ONLY（仅战斗中）—— 表示该事件仅在战斗期间触发。
+OUT OF COMBAT ONLY（仅脱战时）—— 表示该事件仅在非战斗状态触发。
+BOTH（战斗内外均可）—— 表示该事件在战斗中与脱战后均可触发。
 
 Events that do not have lables on them are events that are directly involved with the in and out of combat state.
+未标注以上标签的事件，通常直接与进入/退出战斗状态本身相关。
 
 ------------------
-0 = EVENT_T_TIMER_IN_COMBAT:
+0 = EVENT_T_TIMER_IN_COMBAT: (战斗内计时器)
 ------------------
-Parameter 1: InitialMin - Minumum Time used to calculate Random Initial Expire
-Parameter 2: InitialMax - Maximum Time used to calculate Random Initial Expire
-Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: InitialMin - Minumum Time used to calculate Random Initial Expire (首次触发的最小随机延迟时间，毫秒)
+Parameter 2: InitialMax - Maximum Time used to calculate Random Initial Expire (首次触发的最大随机延迟时间，毫秒)
+Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Expire (重复触发的最小随机间隔时间，毫秒)
+Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Expire (重复触发的最大随机间隔时间，毫秒)
 
 COMBAT ONLY - Expires first between (Param1) and (Param2) and then between every (Param3) and (Param4) from then on.
 This is commonly used for spells that repeat cast during combat (Simulates Spell Cooldown).
+[仅战斗中] 首次在 (Param1)~(Param2) 之间触发，此后每隔 (Param3)~(Param4) 重复触发。常用于战斗中周期性施放的法术（模拟技能冷却）。
 
 ----------------------
-1 = EVENT_T_TIMER_OOC:
+1 = EVENT_T_TIMER_OOC: (脱战计时器)
 ----------------------
-Parameter 1: InitialMin	- Minimum Time used to calculate Random Initial Event Expire
-Parameter 2: InitialMax	- Maximum Time used to calculate Random Initial Event Expire
-Parameter 3: RepeatMin	- Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax	- Maximum Time used to calculate Random Repeat Event Expire
+Parameter 1: InitialMin	- Minimum Time used to calculate Random Initial Event Expire (首次触发的最小随机延迟时间，毫秒)
+Parameter 2: InitialMax	- Maximum Time used to calculate Random Initial Event Expire (首次触发的最大随机延迟时间，毫秒)
+Parameter 3: RepeatMin	- Minimum Time used to calculate Random Repeat Event Expire (重复触发的最小随机间隔时间，毫秒)
+Parameter 4: RepeatMax	- Maximum Time used to calculate Random Repeat Event Expire (重复触发的最大随机间隔时间，毫秒)
 
 OUT OF COMBAT ONLY (Not while evading) - Expires first between (Param1) and (Param2) and then between every (Param3) and (Param4) from then on.
 This is commonly used for events that occur and repeat outside of combat like random NPC Say or Random Emotes.
+[仅脱战时（Evade 期间除外）] 首次在 (Param1)~(Param2) 之间触发，此后每隔 (Param3)~(Param4) 重复触发。常用于脱战状态下的随机对话或随机表情。
 
 ---------------
-2 = EVENT_T_HP:
+2 = EVENT_T_HP: (自身生命值百分比)
 ---------------
-Parameter 1: HPMax%    - Maximum HP% That will trigger this Event to Expire
-Parameter 2: HPMin%    - Minimum HP% That will trigger this Event to Expire
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire
+Parameter 1: HPMax%    - Maximum HP% That will trigger this Event to Expire (触发事件的生命值百分比上限)
+Parameter 2: HPMin%    - Minimum HP% That will trigger this Event to Expire (触发事件的生命值百分比下限)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复检查的最小间隔时间，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复检查的最大间隔时间，毫秒)
 
 COMBAT ONLY - Expires when HP is between (Param1) and (Param2). Will repeat every (Param3) and (Param4).
 This is commonly used for events that occur at a specific HP% Range (Such as Heal/Enrage Spells or NPC's that Flee).
 NOTE: For Repeat Events the Repeat Timer ONLY Re-Check's Event Conditions to see If HP% Is Between Max and Min. If it is then Event will Expire again.
+[仅战斗中] 当自身生命值百分比处于 (Param1) 与 (Param2) 之间时触发，每隔 (Param3)~(Param4) 重复。常用于特定血量区间事件（如治疗、狂暴或逃跑）。
+注：对于可重复事件，重复计时器仅重新检查生命值是否仍处于 [Min, Max] 区间内，若仍满足则再次触发。
 
 -----------------
-3 = EVENT_T_MANA:
+3 = EVENT_T_MANA: (自身法力值百分比)
 -----------------
-Parameter 1: ManaMax%  - Maximum Mana% That will trigger this Event to Expire
-Parameter 2: ManaMin%  - Minimum Mana% That will trigger this Event to Expire
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire
+Parameter 1: ManaMax%  - Maximum Mana% That will trigger this Event to Expire (触发事件的法力值百分比上限)
+Parameter 2: ManaMin%  - Minimum Mana% That will trigger this Event to Expire (触发事件的法力值百分比下限)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复检查的最小间隔时间，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复检查的最大间隔时间，毫秒)
 
 COMBAT ONLY - Expires once Mana% is between (Param1) and (Param2). Will repeat every (Param3) and (Param4).
 This is commonly used for events where an NPC low on Mana will do something (Such as stop casting spells and switch to melee).
+[仅战斗中] 当法力值百分比处于 (Param1) 与 (Param2) 之间时触发，每隔 (Param3)~(Param4) 重复。常用于 NPC 低蓝时切换行为（如停止施法改用近战）。
 
 ------------------
-4 = EVENT_T_AGGRO:
+4 = EVENT_T_AGGRO: (进入战斗/初始仇恨)
 ------------------
 COMBAT ONLY - This Event Expires upon Initial Aggro (This Event does not occur again until NPC either Evades/Respawns and then Enters Combat Again).
+[仅战斗中] 在首次获得仇恨进入战斗时触发（在 NPC 脱战或重生并再次进入战斗前不会再次触发）。
 
 -----------------
-5 = EVENT_T_KILL:
+5 = EVENT_T_KILL: (击杀单位)
 -----------------
-Parameter 1: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 2: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire
-Parameter 3: PlayerOnly - Setting it to 1 will cause event only to trigger if the triggerer is a player.
+Parameter 1: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复冷却的最小间隔时间，毫秒)
+Parameter 2: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复冷却的最大间隔时间，毫秒)
+Parameter 3: PlayerOnly - Setting it to 1 will cause event only to trigger if the triggerer is a player. (设为 1 时仅当被击杀者为玩家时触发)
 
 COMBAT ONLY - Expires upon killing a unit. Will repeat every (Param1) and (Param2).
 This Event Expires upon killing a player. It is commonly used for NPC's who yell or do something after killing a unit. Normally using a short repeating timer is advisable.
 NOTE: For Repeat Events the Repeat Timer ONLY Re-Check's Event Conditions to see If another Kill has occured. So After Repeat Min/Max Kill Event can occur again.
+[仅战斗中] 在击杀一个单位时触发，经过 (Param1)~(Param2) 冷却后可再次触发。常用于 NPC 击杀目标后喊话或执行特殊动作，通常建议设置较短的重复间隔。
 
 ------------------
-6 = EVENT_T_DEATH:
+6 = EVENT_T_DEATH: (死亡)
 ------------------
-Parameter 1: ConditionId - condition from Conditions table - executed on either controlling player or killer
+Parameter 1: ConditionId - condition from Conditions table - executed on either controlling player or killer (来自 conditions 表的条件 ID，对控制者或击杀者校验)
 
 BOTH - This Event Expires upon Death of the Scripted NPC. This is normally only used in combat though.
 This is commonly used for NPC's who have a Yell or Spell Cast when they Die.
+[战斗内外均可] 当受脚本控制的 NPC 死亡时触发（通常发生在战斗中），常用于死亡遗言喊话或临终施法。
 
 ------------------
-7 = EVENT_T_EVADE:
+7 = EVENT_T_EVADE: (脱战重置)
 ------------------
 COMBAT ONLY - This Event Expires when the Scripted NPC Evades Combat (EnterEvadeMode).
 This is commonly used for NPC's who use phases, allows you to reset their phase to 0 on evade to prevent possible strange behavior on Re-Aggro.
+[仅战斗中] 当 NPC 脱离战斗（EnterEvadeMode）时触发。常用于分阶段战斗的 NPC 在脱战时将阶段重置为 0，防止再次开怪时出现异常。
 
 ---------------------
-8 = EVENT_T_SPELLHIT:
+8 = EVENT_T_SPELLHIT: (受到法术命中)
 ---------------------
 Parameter 1: SpellID   - The Spell ID that will trigger the Event to occur (NOTE: If you use Spell School as the trigger ALWAYS set this value to 0)
+                         触发事件的法术 ID（注：若按法术学派触发，此项务必设为 0）
 Parameter 2: School    - Spell School to trigger the Event (NOTE: If you use a SpellID then ALWAYS set this value to -1) - *See Below for Spell School Bitmask Values*
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire
+                         触发事件的法术学派掩码（注：若按 SpellID 触发，此项务必设为 -1）—— 掩码值见下方说明
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 BOTH - Expires on Spellhit. If (param1) is set it will only expire on that SPECIFIC Spell OR If (param2) is set it will only expire on Spells of that School. Will repeat every (Param3) and (Param4).
 This Event is commonly used for NPC's who can do special things when you cast a spell (Or specific spell) on them.
 NOTE: For Repeat Events the Repeat Timer ONLY Re-Check's Event Conditions to see If another Spellhit has occured. So After Repeat Min/Max expires Spellhit Event can occur again.
+[战斗内外均可] 受到法术命中时触发。设置 Param1 仅响应特定法术，设置 Param2 仅响应特定学派法术；每隔 (Param3)~(Param4) 可再次触发。
 
-(Name ==> School ==> School Bitmask Values)
+(Name ==> School ==> School Bitmask Values / 名称 ==> 学派编号 ==> 学派位掩码值)
 -------------------------------------------
-SPELL_SCHOOL_NORMAL = 0 ==> 1
-SPELL_SCHOOL_HOLY   = 1 ==> 2
-SPELL_SCHOOL_FIRE   = 2 ==> 4
-SPELL_SCHOOL_NATURE = 3 ==> 8
-SPELL_SCHOOL_FROST  = 4 ==> 16
-SPELL_SCHOOL_SHADOW = 5 ==> 32
-SPELL_SCHOOL_ARCANE = 6 ==> 64
+SPELL_SCHOOL_NORMAL = 0 ==> 1   (物理)
+SPELL_SCHOOL_HOLY   = 1 ==> 2   (神圣)
+SPELL_SCHOOL_FIRE   = 2 ==> 4   (火焰)
+SPELL_SCHOOL_NATURE = 3 ==> 8   (自然)
+SPELL_SCHOOL_FROST  = 4 ==> 16  (冰霜)
+SPELL_SCHOOL_SHADOW = 5 ==> 32  (暗影)
+SPELL_SCHOOL_ARCANE = 6 ==> 64  (奥术)
 Use These Bitmask Values For Schoolmask (Param2) or Any Combinations Of These School Bitmasks for Multiple Schools.
+请使用上述位掩码值或其组合（按位求和）填入 Schoolmask (Param2) 以匹配单个或多个学派。
 
 ------------------
-9 = EVENT_T_RANGE:
+9 = EVENT_T_RANGE: (距离范围)
 ------------------
-Parameter 1: MinDist   - This Distance is the Minimum Distance between the NPC and its target to allow this Event to Expire
-Parameter 2: MaxDist   - This Distance is the Maximum Distance between the NPC and its target to allow this Event to Expire
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire
+Parameter 1: MinDist   - This Distance is the Minimum Distance between the NPC and its target to allow this Event to Expire (允许触发的最小距离，码)
+Parameter 2: MaxDist   - This Distance is the Maximum Distance between the NPC and its target to allow this Event to Expire (允许触发的最大距离，码)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires when the highest threat target distance is greater than (Param1) and less than (Param2). Will repeat every (Param3) and (Param4).
 This Event is commonly used for NPC's who have Ranged Combat and will Throw/Shoot between a certain distance.
+[仅战斗中] 当最高仇恨目标与 NPC 的距离大于 (Param1) 且小于 (Param2) 时触发，每隔 (Param3)~(Param4) 重复。常用于远程攻击型 NPC 在特定距离内投掷或射击。
 
 ---------------------
-10 = EVENT_T_OOC_LOS:
+10 = EVENT_T_OOC_LOS: (脱战视野接近)
 ---------------------
 Parameter 1: NoHostile       - This will expire if Unit are hostile. If Param1=1 it will only expire if Unit are not Hostile(generally determined by faction)
-Parameter 2: MaxAllowedRange - Expires when a Unit moves within this distance to creature
-Parameter 3: RepeatMin       - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax       - Maximum Time used to calculate Random Repeat Expire
-Parameter 5: PlayerOnly      - Expires only when a Player moves within distance
+                               设为 0 时仅对敌对单位触发；设为 1 时仅对非敌对单位触发（通常由阵营关系决定）
+Parameter 2: MaxAllowedRange - Expires when a Unit moves within this distance to creature (当单位进入此距离范围内时触发)
+Parameter 3: RepeatMin       - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax       - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
+Parameter 5: PlayerOnly      - Expires only when a Player moves within distance (设为 1 时仅玩家进入范围触发)
 Parameter 6: ConditionId     - Expires only when condition is fulfilled. Only use when other options are not usable since it is a bit more impactful performance wise!!!
+                               仅当满足 conditions 表中的条件时触发。由于性能开销较大，仅在无其他替代方案时使用！
 
 OUT OF COMBAT ONLY
 This Event is commonly used for NPC's who do something or say something to you when you walk past them Out of Combat.
+[仅脱战时] 常用于玩家脱战路过 NPC 附近时，NPC 对其说话或触发某些行为。
 
 ---------------------
-11 = EVENT_T_SPAWNED:
+11 = EVENT_T_SPAWNED: (刷新生成)
 ---------------------
 Expires at initial spawn and at creature respawn.
 This Event is commonly used for setting ranged movement type or Summoning a Pet on Spawn
+在生物初次生成及每次重生时触发，常用于设置远程移动模式或在生成时召唤宠物。
 Parameter 1: 0: works always, 1: works on map in Parameter 2, 2: works on zone/subzone in Parameter 2
+             0：始终生效；1：仅在 Parameter 2 指定的地图生效；2：仅在 Parameter 2 指定的区域/子区域生效
 Parameter 2: depends on Parameter 1: for 1 it is map ID, for 2 it is area ID to check
+             取决于 Parameter 1：为 1 时填地图 ID（map ID），为 2 时填区域 ID（area ID）
 
 BOTH - Expires in or out of combat when the NPC Spawns
 This Event is commonly used for NPC's who cast a spell or do something special when they spawn. This event is not repeatable so it is a one time event on Spawn.
+[战斗内外均可] 生物生成时触发。此事件不可重复，每次生成仅触发一次。
 
 -----------------------
-12 = EVENT_T_TARGET_HP:
+12 = EVENT_T_TARGET_HP: (当前目标生命值百分比)
 -----------------------
-Parameter 1: HPMax%    - Maximum HP% That this Event will Expire
-Parameter 2: HPMin%    - Minimum HP% That this Event will Expire
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: HPMax%    - Maximum HP% That this Event will Expire (目标生命值百分比上限)
+Parameter 2: HPMin%    - Minimum HP% That this Event will Expire (目标生命值百分比下限)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires when Current NPC's Target's HP is between (Param1) and (Param2). Will repeat every (Param3) and (Param4).
 This Event is commonly used for NPC's who have a special ability (Like Execute) that only casts when a Player HP is low.
+[仅战斗中] 当 NPC 当前目标的生命值百分比处于 (Param1) 与 (Param2) 之间时触发，每隔 (Param3)~(Param4) 重复。常用于“斩杀”类低血量技能。
 
 ----------------------------
-13 = EVENT_T_TARGET_CASTING:
+13 = EVENT_T_TARGET_CASTING: (当前目标正在施法)
 ----------------------------
-Parameter 1: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 2: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 2: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires when the current target is casting a spell. Will repeat every (Param1) and (Param2).
 This event is commonly used for NPC's who will cast a counter spell when their target starts to cast a spell.
+[仅战斗中] 当当前目标正在施法时触发，每隔 (Param1)~(Param2) 重复。常用于施放打断/法术反制技能。
 
 -------------------------
-14 = EVENT_T_FRIENDLY_HP:
+14 = EVENT_T_FRIENDLY_HP: (友方损失生命值)
 -------------------------
 Parameter 1: HPDeficit - This is the Amount of HP Missing from Full HP to trigger this event (You would need to calculate the amount of HP the event happens and subtract that from Full HP Value to get this number)
+                         触发事件所需的已损失生命值（满血减去触发阈值后的差值）
 Parameter 2: Radius    - This is the Range in Yards the NPC will scan for nearby Friendlies (Faction is Friendly To) for the missing amount of HP in Param1.
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
-Parameter 5: IsPercent - Deficit is handled as percentage
+                         扫描附近友方单位（阵营友好）的半径范围（码）
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
+Parameter 5: IsPercent - Deficit is handled as percentage (设为 1 时，Param1 按损失生命值百分比计算)
 
 COMBAT ONLY - Expires when a friendly unit in radius(param2) has at least (param1) hp missing. Will repeat every (Param3) and (Param4).
 This is commonly used when an NPC in Combat will heal a nearby Friendly NPC in Combat with a Heal/Renew Spell.
+[仅战斗中] 当半径 (Param2) 内的友方单位至少损失了 (Param1) 点（或百分比）生命值时触发。常用于治疗附近受伤的友方 NPC。
 
 ----------------------------
-15 = EVENT_T_FRIENDLY_IS_CC:
+15 = EVENT_T_FRIENDLY_IS_CC: (友方受控)
 ----------------------------
-Parameter 1: DispelType - Dispel Type to trigger the event - *See Below for Dispel Bitmask Values*
-Parameter 2: Radius     - This is the Range in Yards the NPC will scan for nearby Friendlies being Crowd Controlled
-Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: DispelType - Dispel Type to trigger the event - *See Below for Dispel Bitmask Values* (触发事件的驱散类型)
+Parameter 2: Radius     - This is the Range in Yards the NPC will scan for nearby Friendlies being Crowd Controlled (扫描受控友方单位的半径，码)
+Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires when a friendly unit is Crowd controlled within the given radius (param2). Will repeat every (Param3) and (Param4).
 This is commonly used for NPC's who can come to the resule of other Friendly NPC's if being Crowd Controlled
+[仅战斗中] 当半径 (Param2) 内有友方单位处于群体控制状态时触发，每隔 (Param3)~(Param4) 重复。常用于解控或援助被控友军。
 
 -----------------------------------
-16 = EVENT_T_FRIENDLY_MISSING_BUFF:
+16 = EVENT_T_FRIENDLY_MISSING_BUFF: (友方缺少增益光环)
 -----------------------------------
-Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for (If it is missing this Aura)
-Parameter 2: Radius    - This is the Range in Yards the NPC will scan for nearby Friendlies (Faction is Friendly To) for the missing Aura.
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for (If it is missing this Aura) (要检查是否缺失的法术 ID)
+Parameter 2: Radius    - This is the Range in Yards the NPC will scan for nearby Friendlies (Faction is Friendly To) for the missing Aura. (扫描友方单位的半径，码)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 Parameter 5: Flags - 0 - Only in combat. 0x1 - Anytime. 0x2 - Only out of combat. 0x4 - Only spawn group
+                     标志位：0=仅战斗中；0x1=任何时候；0x2=仅脱战时；0x4=仅限同一刷新组（spawn group）
 
-BOTH - Expires when a friendly unit is missing aura's given by spell (param1) within radius (param2). Will repeat every (Param3) and (Param4).
+BOTH - Expires when a friendly unit is missing aura(s) given by spell (param1) within radius (param2). Will repeat every (Param3) and (Param4).
 This is commonly used for NPC's who watch friendly units for a debuff to end so they can recast it on them again.
+[战斗内外均可] 当半径 (Param2) 内的友方单位缺少法术 (Param1) 提供的光环时触发，每隔 (Param3)~(Param4) 重复。
 
 ---------------------------
-17 = EVENT_T_SUMMONED_UNIT:
+17 = EVENT_T_SUMMONED_UNIT: (召唤单位生成)
 ---------------------------
-Parameter 1: CreatureId - The CreatureID that the NPC is watching to spawn to trigger this event
-Parameter 2: RepeatMin  - Minimum Time used to calculate Random Repeat Expire
-Parameter 3: RepeatMax  - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: CreatureId - The CreatureID that the NPC is watching to spawn to trigger this event (监视生成的召唤生物 entry，0 表示任意召唤生物)
+Parameter 2: RepeatMin  - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 3: RepeatMax  - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 BOTH - Expires after creature with entry(Param1) is spawned or for all spawns if param1 = 0. Will repeat every (Param2) and (Param3) .
 This is commonly used for NPC's who will do something special once another NPC is summoned. Usually used is Complex Scripts or Special Events.
+[战斗内外均可] 当 entry 为 (Param1) 的召唤生物生成后触发（0 表示所有召唤生物），每隔 (Param2)~(Param3) 重复。
 
 ---------------------------
-18 = EVENT_T_TARGET_MANA:
+18 = EVENT_T_TARGET_MANA: (当前目标法力值百分比)
 ---------------------------
-Parameter 1: ManaMax%  - Maximum Mana% That will trigger this Event to Expire
-Parameter 2: ManaMin%  - Minimum Mana% That will trigger this Event to Expire
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: ManaMax%  - Maximum Mana% That will trigger this Event to Expire (目标法力值百分比上限)
+Parameter 2: ManaMin%  - Minimum Mana% That will trigger this Event to Expire (目标法力值百分比下限)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires once Mana% of current target is between (Param1) and (Param2). Will repeat every (Param3) and (Param4).
+[仅战斗中] 当当前目标的法力值百分比处于 (Param1) 与 (Param2) 之间时触发，每隔 (Param3)~(Param4) 重复。
 
 ---------------------------
-21 = EVENT_T_REACHED_HOME:
+21 = EVENT_T_REACHED_HOME: (返回重生点)
 ---------------------------
 OUT OF COMBAT ONLY - Expires only when creature has returned to it's home location after Evade.
 Most commonly used to cast spells that can not be casted in EVENT_T_EVADE and other effects that does not fit in while still running back to spawn/home location.
+[仅脱战时] 当生物脱战并完全跑回其出生点（home）位置时触发。常用于施放无法在 EVENT_T_EVADE 中施放的法术，或执行必须回到原点才适合触发的效果。
 
 ---------------------------
-22 = EVENT_T_RECEIVE_EMOTE:
+22 = EVENT_T_RECEIVE_EMOTE: (收到玩家表情)
 ---------------------------
-Parameter 1: EmoteId    - Valid text emote ID from Mangos source (SharedDefines.h - enum TextEmotes)
-Parameter 2: ConditionId- Condition from table conditions
+Parameter 1: EmoteId    - Valid text emote ID from Mangos source (SharedDefines.h - enum TextEmotes) (MaNGOS 源码 SharedDefines.h 中 enum TextEmotes 的文本表情 ID)
+Parameter 2: ConditionId- Condition from table conditions (conditions 表中的条件 ID)
 
 BOTH - Expires only when creature receive emote from player. Valid text emote id's are in Mangos source (SharedDefines.h - enum TextEmotes)
 Event does not require any conditions to process, however many are expected to have condition.
+[战斗内外均可] 当生物收到玩家发送的指定文本表情时触发。不强制要求条件，但通常配合条件使用。
 
 ---------------------------
-23 = EVENT_T_AURA         :
+23 = EVENT_T_AURA         : (自身拥有光环)
 ---------------------------
-Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for
-Parameter 2: Amount    - This is the amount of SpellID's auras at creature required for event expire.
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for (检查的法术 ID)
+Parameter 2: Amount    - This is the amount of SpellID's auras at creature required for event expire. (触发所需的光环叠加层数)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 BOTH - Expires when a creature has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4) If Event Conditions Are Still Met.
+[战斗内外均可] 当生物自身法术 (Param1) 的光环层数 >= (Param2) 时触发，每隔 (Param3)~(Param4) 重复检查。
 
 ---------------------------
-24 = EVENT_T_TARGET_AURA:
+24 = EVENT_T_TARGET_AURA: (目标拥有光环)
 ---------------------------
-Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for
-Parameter 2: Amount    - This is the amount of SpellID's auras at target unit required for event expire.
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for (检查的法术 ID)
+Parameter 2: Amount    - This is the amount of SpellID's auras at target unit required for event expire. (目标身上所需的光环叠加层数)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires when a target unit has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4) If Event Conditions Are Still Met.
+[仅战斗中] 当目标单位法术 (Param1) 的光环层数 >= (Param2) 时触发，每隔 (Param3)~(Param4) 重复检查。
 
 --------------------------------
-25 = EVENT_T_SUMMONED_JUST_DIED:
+25 = EVENT_T_SUMMONED_JUST_DIED: (召唤单位死亡)
 --------------------------------
-Parameter 1: CreatureId - The CreatureID that the NPC is watching die to trigger this event
-Parameter 2: RepeatMin  - Minimum Time used to calculate Random Repeat Expire
-Parameter 3: RepeatMax  - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: CreatureId - The CreatureID that the NPC is watching die to trigger this event (监视死亡的召唤生物 entry，0 表示全部)
+Parameter 2: RepeatMin  - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 3: RepeatMax  - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 BOTH - Expires after creature with entry(Param1) is die or for all spawns if param1 = 0. Will repeat every (Param2) and (Param3) .
 This is commonly used for NPC's who will do something special once another NPC is die. Usually used is Complex Scripts or Special Events.
+[战斗内外均可] 当 entry 为 (Param1) 的召唤生物死亡后触发（0 表示全部），每隔 (Param2)~(Param3) 重复。
 
 -----------------------------------
-26 = EVENT_T_SUMMONED_JUST_DESPAWN:
+26 = EVENT_T_SUMMONED_JUST_DESPAWN: (召唤单位即将消失)
 -----------------------------------
-Parameter 1: CreatureId - The CreatureID that the NPC is watching despawn to trigger this event
-Parameter 2: RepeatMin  - Minimum Time used to calculate Random Repeat Expire
-Parameter 3: RepeatMax  - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: CreatureId - The CreatureID that the NPC is watching despawn to trigger this event (监视消失的召唤生物 entry，0 表示全部)
+Parameter 2: RepeatMin  - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 3: RepeatMax  - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 BOTH - Expires before creature with entry(Param1) is despawned or for all spawns if param1 = 0. Will repeat every (Param2) and (Param3) .
 This is commonly used for NPC's who will do something special once another NPC is despawn. Usually used is Complex Scripts or Special Events.
 NOTE: Called before despawn happens, so summoned creature is still in world at expire moment.
+[战斗内外均可] 在 entry 为 (Param1) 的召唤生物消失前触发（0 表示全部），每隔 (Param2)~(Param3) 重复。
+注：在消失实际发生前调用，因此触发瞬间该召唤生物仍在世界中。
 
 --------------------------
-27 = EVENT_T_MISSING_BUFF:
+27 = EVENT_T_MISSING_BUFF: (自身缺少光环，对应 EVENT_T_MISSING_AURA)
 --------------------------
-Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for to be missing
-Parameter 2: Amount    - This is the amount or less of SpellID's auras at creature required for event expire.
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for to be missing (检查是否缺失的法术 ID)
+Parameter 2: Amount    - This is the amount or less of SpellID's auras at creature required for event expire. (触发事件时允许的光环上限阈值：少于该层数即触发)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 BOTH - Expires when a creature not has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4).
+[战斗内外均可] 当生物自身法术 (Param1) 的光环层数少于 (Param2) 时触发，每隔 (Param3)~(Param4) 重复。
 
 ---------------------------------
-28 = EVENT_T_TARGET_MISSING_AURA:
+28 = EVENT_T_TARGET_MISSING_AURA: (目标缺少光环)
 ---------------------------------
-Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for to be missing
-Parameter 2: Amount    - This is the amount or less of SpellID's auras at creature required for event expire.
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: SpellId   - This is the SpellID That the Aura Check will look for to be missing (检查是否缺失的法术 ID)
+Parameter 2: Amount    - This is the amount or less of SpellID's auras at creature required for event expire. (目标身上光环层数少于该值时触发)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires when a target unit not has spell (Param1) auras applied in a stack greater or equal to value provided in (Param2). Will repeat every (Param3) and (Param4).
+[仅战斗中] 当目标单位法术 (Param1) 的光环层数少于 (Param2) 时触发，每隔 (Param3)~(Param4) 重复。
 
 ---------------------------
-29 = EVENT_T_TIMER_GENERIC:
+29 = EVENT_T_TIMER_GENERIC: (通用计时器)
 ---------------------------
-Parameter 1: InitialMin - Minumum Time used to calculate Random Initial Expire
-Parameter 2: InitialMax - Maximum Time used to calculate Random Initial Expire
-Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Expire
-Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Expire
+Parameter 1: InitialMin - Minumum Time used to calculate Random Initial Expire (首次触发最小随机延迟，毫秒)
+Parameter 2: InitialMax - Maximum Time used to calculate Random Initial Expire (首次触发最大随机延迟，毫秒)
+Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Expire (重复触发最小随机间隔，毫秒)
+Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大随机间隔，毫秒)
 
 BOTH - Expires first between (Param1) and (Param2) and then between every (Param3) and (Param4) from then on.
+[战斗内外均可] 首次在 (Param1)~(Param2) 之间触发，之后每隔 (Param3)~(Param4) 重复触发（不区分是否在战斗中）。
 
 ------------------------------
-30 = EVENT_T_RECEIVE_AI_EVENT:
+30 = EVENT_T_RECEIVE_AI_EVENT: (接收 AI 事件)
 ------------------------------
 Parameter 1: AIEventType  - Only expire when an AIEvent of this type is received. Supported types see CreatureAI.h enum AIEventType
+                            仅当接收到此类型的 AIEvent 时触发（支持的类型见 CreatureAI.h 的 enum AIEventType）
 Parameter 2: Sender-Entry - If != 0 then only expire when the AIEvent is received from a creature of this entry
+                            若不为 0，则仅当发送者为该 entry 的生物时触发（0 表示任意发送者）
 
 BOTH - Expires when the creature receives an AIEvent of type (Param1), sent by creature (Param2 != 0). If (Param2 = 0) then sent by any creature.
 Note: This is the only EVENT where the target-type TARGET_T_EVENT_SENDER (10) is defined
+[战斗内外均可] 当收到来自指定生物（或任意生物）的 AIEvent 时触发。
+注：这是唯一可以使用目标类型 TARGET_T_EVENT_SENDER (10) 的事件。
 
 -----------------
-31 = EVENT_T_ENERGY:
+31 = EVENT_T_ENERGY: (自身能量百分比)
 -----------------
-Parameter 1: EnergyMax% - Maximum Energy% That will trigger this Event to Expire
-Parameter 2: EnergyMin% - Minimum Energy% That will trigger this Event to Expire
-Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Event Expire
+Parameter 1: EnergyMax% - Maximum Energy% That will trigger this Event to Expire (触发事件的能量百分比上限)
+Parameter 2: EnergyMin% - Minimum Energy% That will trigger this Event to Expire (触发事件的能量百分比下限)
+Parameter 3: RepeatMin  - Minimum Time used to calculate Random Repeat Event Expire (重复触发最小间隔，毫秒)
+Parameter 4: RepeatMax  - Maximum Time used to calculate Random Repeat Event Expire (重复触发最大间隔，毫秒)
 
 COMBAT ONLY - Expires once Energy% is between (Param1) and (Param2). Will repeat every (Param3) and (Param4).
 This is commonly used for events where an NPC low on Energy will do something (Such as stop casting spells and switch to melee).
+[仅战斗中] 当能量百分比处于 (Param1) 与 (Param2) 之间时触发，每隔 (Param3)~(Param4) 重复。
 
 -------------------------------------
-32 = EVENT_T_SELECT_ATTACKING_TARGET:
+32 = EVENT_T_SELECT_ATTACKING_TARGET: (选择攻击目标 - 已弃用)
 -------------------------------------
-Parameter 1: MinDist   - This Distance is the Minimum Distance between the NPC and any hostile target to allow this Event to Expire
-Parameter 2: MaxDist   - This Distance is the Maximum Distance between the NPC and any hostile target to allow this Event to Expire
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire
+Parameter 1: MinDist   - This Distance is the Minimum Distance between the NPC and any hostile target to allow this Event to Expire (最小距离)
+Parameter 2: MaxDist   - This Distance is the Maximum Distance between the NPC and any hostile target to allow this Event to Expire (最大距离)
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复最大间隔，毫秒)
 
 COMBAT ONLY - Expires when a random hostile target is found in a distance greater than (Param1) and less than (Param2). Will repeat every (Param3) and (Param4).
 Note: This event will fill TARGET_T_EVENT_SPECIFIC with the target found
 Deprecated - Issue with timers expiring when cast did not succeed is solved now and no need for this event
+[仅战斗中] 当在 (Param1)~(Param2) 距离内找到随机敌对目标时触发，并填充 TARGET_T_EVENT_SPECIFIC。已弃用（施法失败时计时器重置问题现已解决，不再需要此事件）。
 
 ---------------------------
-33 = EVENT_T_FACING_TARGET:
+33 = EVENT_T_FACING_TARGET: (朝向目标判断)
 ---------------------------
 Parameter 1: BackOrFront - Define is the NPC must be in back (Parameter 1=0) or in front (Parameter 1=1) or its current target.
-Parameter 2: Unused
-Parameter 3: RepeatMin   - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax   - Maximum Time used to calculate Random Repeat Event Expire
+                           定义 NPC 必须位于当前目标的背后（Param1=0）或正面（Param1=1）
+Parameter 2: Unused        (未使用)
+Parameter 3: RepeatMin   - Minimum Time used to calculate Random Repeat Event Expire (重复最小间隔，毫秒)
+Parameter 4: RepeatMax   - Maximum Time used to calculate Random Repeat Event Expire (重复最大间隔，毫秒)
 
 COMBAT ONLY - Expires when the NPC is facing the back (or front) of its current target. Will repeat every (Param3) and (Param4).
 This is commonly used for events where a NPC needs to use abilities available only when facing its target's back/front (Such as rogues' backstab ability).
+[仅战斗中] 当 NPC 位于目标背后或正面时触发，每隔 (Param3)~(Param4) 重复。常用于仅能在目标背后施放的技能（如潜行者的背刺）。
 
 ---------------------
-34 = EVENT_T_SPELLHIT_TARGET:
+34 = EVENT_T_SPELLHIT_TARGET: (自身法术命中目标)
 ---------------------
 Parameter 1: SpellID - The Spell ID that will trigger the Event to occur (NOTE: If you use Spell School as the trigger ALWAYS set this value to 0)
+                       触发事件的法术 ID（注：若按学派触发，务必设为 0）
 Parameter 2: School - Spell School to trigger the Event (NOTE: If you use a SpellID then ALWAYS set this value to -1) - *See Below for Spell School Bitmask Values*
-Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire
-Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire
+                      触发事件的法术学派掩码（注：若按 SpellID 触发，务必设为 -1）—— 掩码值见下方
+Parameter 3: RepeatMin - Minimum Time used to calculate Random Repeat Event Expire (重复最小间隔，毫秒)
+Parameter 4: RepeatMax - Maximum Time used to calculate Random Repeat Event Expire (重复最大间隔，毫秒)
 
 BOTH - Expires on SpellhitTarget. If (param1) is set it will only expire on that SPECIFIC Spell OR If (param2) is set it will only expire on Spells of that School. Will repeat every (Param3) and (Param4).
 This Event is commonly used for NPC's who can do special things when you cast a spell (Or specific spell) on them.
 NOTE: For Repeat Events the Repeat Timer ONLY Re-Check's Event Conditions to see If another Spellhit has occured. So After Repeat Min/Max expires Spellhit Event can occur again.
+[战斗内外均可] 当 NPC 施放的法术命中目标时触发。Param1 指定法术 ID，Param2 指定学派掩码；每隔 (Param3)~(Param4) 重复。
 
 -----------------------------
-35 = EVENT_T_DEATH_PREVENTED:
+35 = EVENT_T_DEATH_PREVENTED: (死亡保护触发)
 -----------------------------
 Expires when death prevention kicks in. It expires once, and then death prevention has to be reset for it to happen again.
+当死亡保护（防死亡）生效时触发。每次仅触发一次，须重置死亡保护状态后才能再次触发。
 
 ---------------------------------
-36 = EVENT_T_TARGET_NOT_REACHABLE
+36 = EVENT_T_TARGET_NOT_REACHABLE (目标不可达)
 ---------------------------------
 Expires when main aggro target is not reachable by ChaseMovementGenerator - example of usage is teleporting player to creature
+当追击移动生成器（ChaseMovementGenerator）无法到达主仇恨目标时触发——常见用途是将玩家传送到生物身边。
 
 -----------------------
-37 = EVENT_T_SPELL_CAST
+37 = EVENT_T_SPELL_CAST (法术列表施法成功)
 -----------------------
-Parameter 1: SpellID
+Parameter 1: SpellID (法术 ID)
 Expires when spellId is successfully cast by spell lists
+当法术列表（spell list）成功施放指定 SpellID 时触发。
 
 -----------------------
-43 = EVENT_T_ACTION_SET
+43 = EVENT_T_ACTION_SET (动作集步骤触发)
 -----------------------
-Parameter 1: SetId
-Parameter 2: StepIndex
-Parameter 3: TimeMs
+Parameter 1: SetId     (动作集 ID)
+Parameter 2: StepIndex (步骤索引)
+Parameter 3: TimeMs    (该步骤上的时间点，毫秒)
 Expires set id is engaged through action ACTION_T_START_ACTION_SET (66), set arrives on step index and time ms on that step
 Intended to be used for script sequences that persist through combat akin to core DialogueHelper
+当通过 ACTION_T_START_ACTION_SET (66) 启动指定动作集后，执行到对应的 StepIndex 及 TimeMs 时触发。
+设计用于类似内核 DialogueHelper 的、可跨战斗持续执行的脚本序列。
 
-(Name ==> School ==> School Bitmask Values)
+(Name ==> School ==> School Bitmask Values / 名称 ==> 学派编号 ==> 学派位掩码值)
 -------------------------------------------
-SPELL_SCHOOL_NORMAL = 0 ==> 1
-SPELL_SCHOOL_HOLY   = 1 ==> 2
-SPELL_SCHOOL_FIRE   = 2 ==> 4
-SPELL_SCHOOL_NATURE = 3 ==> 8
-SPELL_SCHOOL_FROST  = 4 ==> 16
-SPELL_SCHOOL_SHADOW = 5 ==> 32
-SPELL_SCHOOL_ARCANE = 6 ==> 64
+SPELL_SCHOOL_NORMAL = 0 ==> 1   (物理)
+SPELL_SCHOOL_HOLY   = 1 ==> 2   (神圣)
+SPELL_SCHOOL_FIRE   = 2 ==> 4   (火焰)
+SPELL_SCHOOL_NATURE = 3 ==> 8   (自然)
+SPELL_SCHOOL_FROST  = 4 ==> 16  (冰霜)
+SPELL_SCHOOL_SHADOW = 5 ==> 32  (暗影)
+SPELL_SCHOOL_ARCANE = 6 ==> 64  (奥术)
 Use These Bitmask Values For Schoolmask (Param2) or Any Combinations Of These School Bitmasks for Multiple Schools.
+请使用上述位掩码值或其组合填入 Schoolmask (Param2) 以匹配多个法术学派。
 
 ----------------------------
-44 = EVENT_T_MOVEMENT_INFORM
+44 = EVENT_T_MOVEMENT_INFORM (移动通知)
 ----------------------------
-Parameter 1: MovementType
-Parameter 2: PointId
-Parameter 3: PathId
+Parameter 1: MovementType (移动类型)
+Parameter 2: PointId      (路径点/目标点 ID)
+Parameter 3: PathId       (路径 ID)
 Expires when AI is informed about movement. If waypoint/path/linear path movement is used, PathId is also checked against Path used. Use 0 when referencing creature_movement.
+当 AI 收到移动完成通知时触发。若使用 waypoint/path/linear 路径移动，还会校验 PathId 是否与所用路径一致；引用 creature_movement 表时 PathId 填 0。
 
 =========================================
-Action Types
+Action Types / 动作类型详细说明
 =========================================
 
 ------------------
-1 = ACTION_T_TEXT: - DEPRECATED - use ACTION_T_TEXT_NEW instead
+1 = ACTION_T_TEXT: - DEPRECATED - use ACTION_T_TEXT_NEW instead (说话文本 - 已弃用，请改用 ACTION_T_TEXT_NEW)
 ------------------
 Parameter 1: The entry of the text that the NPC should use from eventai_texts table. Optionally a entry from other tables can be used (such as custom_texts).
              Entry are required to be negative and exist in a *_texts-table. The type text to be displayed are defined in the texts-table itself (Say, Yell, Whisper, Emote Text, Boss Whisper, Boss Emote)
              Other options are also to be defined in the texts-table, such as a sound to be heard with the text and the language used in output (common, dwarvish, etc).
              In case this entry has a localized version of the text, the localized text will be displayed in client that support this locale.
+             NPC 要使用的来自 eventai_texts 表（或 custom_texts 等表）的文本 entry。
+             entry 必须为负数且存在于 *_texts 表中。显示类型（说话、喊话、密语、表情文字、Boss 密语、Boss 表情）、配套音效及语言（通用语、矮人语等）均在文本表中定义。若存在对应本地化文本，客户端将显示对应语言版本。
 
 Parameter 2: Optional. TextId can be defined in addition. The same apply to this as explained above, however eventAI will randomize between the two.
+             可选。额外定义第二个 TextId，规则同上，EventAI 将在两者之间随机选取。
 Parameter 3: Optional, if Parameter 2 exist. In this case, eventAI will randomize between three.
+             可选（仅当 Parameter 2 存在时生效），EventAI 将在三者之间随机选取。
 
 Read at bottom for documentation of creature_ai_texts-table.
+关于 creature_ai_texts 表的详细字段说明请见文档底部。
 
 -------------------------
-2 = ACTION_T_SET_FACTION:
+2 = ACTION_T_SET_FACTION: (设置阵营)
 -------------------------
 Parameter 1: FactionId from Faction.dbc OR 0. Changes faction for creature. If 0, creature will revert to it's default faction if previously changed.
+             来自 Faction.dbc 的阵营 ID，或填 0。更改生物阵营；若为 0，生物将恢复到其默认阵营。
 Parameter 2: When Parameter 1 is not 0, flags can be used to restore default faction at certain events. Current supported, from enum TemporaryFactionFlags:
-                TEMPFACTION_NONE                    = 0x00,  // A persistent faction change and will require manual change to default/another faction when changed once
-                TEMPFACTION_RESTORE_RESPAWN         = 0x01,  // Default faction will be restored at respawn
-                TEMPFACTION_RESTORE_COMBAT_STOP     = 0x02,  // ... at CombatStop() (happens at creature death, at evade or custom scripte among others)
-                TEMPFACTION_RESTORE_REACH_HOME      = 0x04,  // ... at reaching home in home movement (evade), if not already done at CombatStop()
+             当 Parameter 1 不为 0 时，可使用标志位控制何时恢复默认阵营（来自 enum TemporaryFactionFlags）：
+                TEMPFACTION_NONE                    = 0x00,  // A persistent faction change and will require manual change to default/another faction when changed once / 持久变更阵营，需手动改回
+                TEMPFACTION_RESTORE_RESPAWN         = 0x01,  // Default faction will be restored at respawn / 重生时恢复默认阵营
+                TEMPFACTION_RESTORE_COMBAT_STOP     = 0x02,  // ... at CombatStop() (happens at creature death, at evade or custom scripte among others) / 退出战斗时恢复（死亡、脱战等）
+                TEMPFACTION_RESTORE_REACH_HOME      = 0x04,  // ... at reaching home in home movement (evade), if not already done at CombatStop() / 脱战回到出生点时恢复
 
 -------------------------------------
-3 = ACTION_T_MORPH_TO_ENTRY_OR_MODEL:
+3 = ACTION_T_MORPH_TO_ENTRY_OR_MODEL: (变形为指定生物或模型)
 -------------------------------------
-Parameter 1: Creature entry from creature_template. Action will then change to the model this creature are using.
-Parameter 2: If parameter 1 is 0, then this modelId will be used (in case parameter 1 exist, parameter 2 will not be used)
+Parameter 1: Creature entry from creature_template. Action will then change to the model this creature are using. (creature_template 中的生物 entry，将变更为该生物使用的模型)
+Parameter 2: If parameter 1 is 0, then this modelId will be used (in case parameter 1 exist, parameter 2 will not be used) (若 Param1 为 0，则使用此 modelId；若 Param1 非 0 则忽略此项)
 
 If both parameter 1 and 2 is 0, the creature will DeMorph, and use it's default model.
+若 Parameter 1 和 2 均为 0，生物将解除变形并恢复默认模型。
 
 -------------------
-4 = ACTION_T_SOUND:
+4 = ACTION_T_SOUND: (播放音效)
 -------------------
-Parameter 1: The Sound ID to be played. (Sound IDs are contained in the DBC files.)
+Parameter 1: The Sound ID to be played. (Sound IDs are contained in the DBC files.) (要播放的音效 ID，定义在 DBC 文件中)
 
 The creature will play the specified sound.
 This is commonly used for Bosses who Yell and then also have a Voice for the same thing.
+生物将播放指定的音效。常用于 Boss 在喊话的同时播放配套语音。
 
 -------------------
-5 = ACTION_T_EMOTE:
+5 = ACTION_T_EMOTE: (执行视觉动作表情)
 -------------------
 Parameter 1: The Emote ID that the creature should perform. (Emote IDs are also contained in the DBC but they can be found in the mangos source as well).
+             生物要执行的表情 ID（可在 DBC 或 MaNGOS 源码中找到）。
 
 The creature will perform a visual emote. Unlike a text emote, a visual emote is one where the creature will actually move or perform a gesture.
 This is commonly used for NPC's who may perform a special action (Salute, Roar, ect...). Not all player emotes work for creature models.
+生物将做出视觉动作表情（而非聊天框文字表情），即实际做出肢体动作（如敬礼、咆哮等）。并非所有玩家动作都适用于生物模型。
 
 ------------------------
-6 = ACTION_T_RANDOM_SAY:
+6 = ACTION_T_RANDOM_SAY: (未使用)
 ------------------------
-UNUSED       Can be reused to create new action type
+UNUSED       Can be reused to create new action type (未使用，可复用为新动作类型)
 
 -------------------------
-7 = ACTION_T_RANDOM_YELL:
+7 = ACTION_T_RANDOM_YELL: (未使用)
 -------------------------
-UNUSED       Can be reused to create new action type
+UNUSED       Can be reused to create new action type (未使用，可复用为新动作类型)
 
 ------------------------------
-8 = ACTION_T_RANDOM_TEXTEMOTE:
+8 = ACTION_T_RANDOM_TEXTEMOTE: (未使用)
 ------------------------------
-UNUSED       Can be reused to create new action type
+UNUSED       Can be reused to create new action type (未使用，可复用为新动作类型)
 
 --------------------------
-9 = ACTION_T_RANDOM_SOUND:
+9 = ACTION_T_RANDOM_SOUND: (随机播放音效)
 --------------------------
-Parameter 1: The Sound ID to be played as Random Choice #1.
-Parameter 2: The Sound ID to be played as Random Choice #2.
-Parameter 3: The Sound ID to be played as Random Choice #3.
+Parameter 1: The Sound ID to be played as Random Choice #1. (随机选项 #1 的音效 ID)
+Parameter 2: The Sound ID to be played as Random Choice #2. (随机选项 #2 的音效 ID)
+Parameter 3: The Sound ID to be played as Random Choice #3. (随机选项 #3 的音效 ID)
 
 Similar to the ACTION_T_SOUND action, it will choose at random a sound to play.
+与 ACTION_T_SOUND 类似，但会从三个选项中随机挑选一个音效播放。
 
 ---------------------------
-10 = ACTION_T_RANDOM_EMOTE:
+10 = ACTION_T_RANDOM_EMOTE: (随机执行动作表情)
 ---------------------------
-Parameter 1: The Emote ID to be played as Random Choice #1.
-Parameter 2: The Emote ID to be played as Random Choice #2.
-Parameter 3: The Emote ID to be played as Random Choice #3.
+Parameter 1: The Emote ID to be played as Random Choice #1. (随机选项 #1 的表情 ID)
+Parameter 2: The Emote ID to be played as Random Choice #2. (随机选项 #2 的表情 ID)
+Parameter 3: The Emote ID to be played as Random Choice #3. (随机选项 #3 的表情 ID)
 
 Similar to the ACTION_T_EMOTE action, it will choose at random an Emote to Visually Perform.
+与 ACTION_T_EMOTE 类似，但会从三个选项中随机挑选一个表情执行。
 
 -------------------
-11 = ACTION_T_CAST:
+11 = ACTION_T_CAST: (施放法术)
 -------------------
-Parameter 1: SpellId   - The Spell ID to use for the NPC to cast. The value used in this field needs to be a valid Spell ID.
-Parameter 2: Target    - The Target Type defining who the creature should cast the spell at. The value in this field needs to be a valid Target Type as specified in the reference tables below.
-Parameter 3: CastFlags - See Table Below for Cast Flag Bitmask Values. If you are unsure what to set this value at leave it at 0.
+Parameter 1: SpellId   - The Spell ID to use for the NPC to cast. The value used in this field needs to be a valid Spell ID. (要施放的有效法术 ID)
+Parameter 2: Target    - The Target Type defining who the creature should cast the spell at. The value in this field needs to be a valid Target Type as specified in the reference tables below. (目标类型，见下文 Target Types)
+Parameter 3: CastFlags - See Table Below for Cast Flag Bitmask Values. If you are unsure what to set this value at leave it at 0. (施法标志位掩码，见下文 Cast Flags；不确定时填 0)
 
 The creature will cast a spell specified by a spell ID on a target specified by the target type.
 If the spell is normal cast, random target types will select only targets within LOS and in spell range
 This is commonly used for NPC's who cast spells.
+生物将向指定目标类型施放指定法术。对于普通施法，随机目标类型仅会选择视野内（LOS）且在法术射程内的目标。
 
 ---------------------
-12 = ACTION_T_SPAWN:
+12 = ACTION_T_SPAWN: (召唤生物)
 ---------------------
-Parameter 1: CreatureID - The Creature Template ID to be Summoned. The value here needs to be a valid Creature Template ID.
-Parameter 2: Target     - The Target Type defining who the Summoned creature will attack once spawned. The value in this field needs to be a valid Target Type as specified in the reference tables below.
-Parameter 3: Duration   - The duration until the summoned creature should be unsummoned AFTER Combat ends. The value in this field is in milliseconds or 0.
+Parameter 1: CreatureID - The Creature Template ID to be Summoned. The value here needs to be a valid Creature Template ID. (要召唤的生物模板 ID)
+Parameter 2: Target     - The Target Type defining who the Summoned creature will attack once spawned. The value in this field needs to be a valid Target Type as specified in the reference tables below. (召唤出的生物生成后要攻击的目标类型)
+Parameter 3: Duration   - The duration until the summoned creature should be unsummoned AFTER Combat ends. The value in this field is in milliseconds or 0. (战斗结束后召唤生物保留的持续时间，单位毫秒；0 表示直到死亡才消失)
 
 The NPC will Summon another cast flag 0 will work for you treature at the same spot as itself that will attack the specified target.
 NOTE: Almost all Creature Summons have proper Summon Spells that should be used when possible. This Action is a powerful last resort option only to be used if nothing else works.
@@ -699,86 +905,104 @@ NOTE: If Duration is set at 0, then the summoned creature will not despawn until
 This is used as a manual way to force an NPC to Summon.
 
 NOTE: THIS ONLY WORKS IN COMBAT
+NPC 将在自身同一位置召唤另一生物并令其攻击指定目标。
+注：绝大多数召唤应优先使用正确的召唤法术，仅在别无他法时使用此动作；Target Type 填 0 表示生成后不攻击任何目标；Duration=0 表示不自动消失直至死亡。
+注意：此动作仅在战斗中有效。
 
 --------------------------------
-13 = ACTION_T_THREAT_SINGLE:
+13 = ACTION_T_THREAT_SINGLE: (修改单体仇恨)
 --------------------------------
-Parameter 1: Threat - Threat value that should be used for modification.
-Parameter 2: Target - The Target Type defining on whom the threat change should occur. The value in this field needs to be a valid target type as specified in the reference tables below.
-Parameter 3: IsDirect - If set to 0, threat value is used as percentage. When set to 1, the value is directly added to given target.
+Parameter 1: Threat - Threat value that should be used for modification. (要增减的仇恨值)
+Parameter 2: Target - The Target Type defining on whom the threat change should occur. The value in this field needs to be a valid target type as specified in the reference tables below. (要修改仇恨的目标类型)
+Parameter 3: IsDirect - If set to 0, threat value is used as percentage. When set to 1, the value is directly added to given target. (0=按百分比修改，1=直接增减固定数值)
 
 This action will modify the threat of a target in the creature's threat list by the specified amount.
 This is commonly used to allow an NPC to adjust the Threat to a single player, either for spells which reduce by percentage or static amounts on spawn.
+按指定数值或百分比调整生物仇恨列表中单个目标的仇恨。
 
 -----------------------------
-14 = ACTION_T_THREAT_ALL_PCT:
+14 = ACTION_T_THREAT_ALL_PCT: (修改全员仇恨百分比)
 -----------------------------
 Parameter 1: Threat% - The percent that should be used in modifying everyone's threat in the creature's threat list. The value here can range from -100 to +100.
+                       调整仇恨列表中所有目标仇恨的百分比，取值范围 -100 到 +100。
 
 This action will modify the threat for everyone in the creature's threat list by the specified percent.
 NOTE: Using -100 will cause the creature to reset everyone's threat to 0 so that everyone has the same amount of threat. It will NOT remove anyone from the threat list.
 This is commonly used to allow an NPC to drop threat for all players to zero.
+按百分比调整仇恨列表中所有目标的仇恨。注：设为 -100 会将所有人的仇恨归零（但不会将玩家移出仇恨列表）。
 
 --------------------------
-15 = ACTION_T_QUEST_EVENT:
+15 = ACTION_T_QUEST_EVENT: (完成任务事件)
 --------------------------
 Parameter 1: QuestID     - The Quest Template ID. The value here must be a valid quest template ID. Furthermore, the quest should have SpecialFlags | 2 as it would need to be completed by an external event which is the activation of this action.
+                           任务模板 ID（该任务需具备 SpecialFlags | 2 以支持外部事件完成）。
 Parameter 2: Target      - The Target Type defining whom the quest should be completed for. The value in this field needs to be a valid target type as specified in the reference tables below.
+                           获得任务完成状态的目标类型（须指向玩家）。
 Parameter 3: RewardGroup - Used to decide if entire group should be rewarded (1 = entire group, 0 = single target)
+                           是否奖励整个小队（1=全队，0=仅单个目标）。
 
 This action will satisfy the external completion requirement for the quest for the specified target defined by the target type.
 NOTE: This action can only be used with player targets so it must be ensured that the target type will point to a player.
 This is commonly used for Quests where only ONE player will gain credit for the quest.
+为指定玩家目标满足外部任务事件完成条件（通常用于仅单个玩家获得任务进度的场景）。
 
 -----------------------------
-16 = ACTION_T_CASTCREATUREGO: - DEPRECATED - use ACTION_T_KILLED_MONSTER instead
+16 = ACTION_T_CASTCREATUREGO: - DEPRECATED - use ACTION_T_KILLED_MONSTER instead (任务施法计数 - 已弃用，请改用 ACTION_T_KILLED_MONSTER)
 -----------------------------
-Parameter 1: CreatureID - The Creature Template ID to be Summoned. The value here needs to be a valid Creature Template ID.
-Parameter 2: SpellID    - The Spell ID to use to simulate the cast. The value used in this field needs to be a valid Spell ID.
-Parameter 3: Target     - The Target Type defining whom the quest credit should be given to. The value in this field needs to be a valid target type as specified in the reference tables below.
+Parameter 1: CreatureID - The Creature Template ID to be Summoned. The value here needs to be a valid Creature Template ID. (生物模板 ID)
+Parameter 2: SpellID    - The Spell ID to use to simulate the cast. The value used in this field needs to be a valid Spell ID. (模拟施放的法术 ID)
+Parameter 3: Target     - The Target Type defining whom the quest credit should be given to. The value in this field needs to be a valid target type as specified in the reference tables below. (获得任务进度的目标类型)
 
 This action will call CastedCreatureOrGO() function for the player. It can be used to give quest credit for casting a spell on the creature.
 This is commonly used for NPC's who have a special requirement to have a Spell cast on them to complete a quest.
+为玩家调用 CastedCreatureOrGO()，用于给予“对生物施放某法术”的任务进度。
 
 -----------------------------
-17 = ACTION_T_SET_UNIT_FIELD: - DEPRECATED - use specific field action instead - not portable across versions
+17 = ACTION_T_SET_UNIT_FIELD: - DEPRECATED - use specific field action instead - not portable across versions (设置单位字段 - 已弃用，跨版本不兼容，请改用专用字段动作)
 -----------------------------
 Parameter 1: Field_Number - The index of the Field Number to be changed. Use (http://wiki.udbforums.org/index.php/Character_data) for a list of indeces and what they control. Creatures only contain the OBJECT_FIELD_* and UNIT_FIELD_* fields. They do not contain the PLAYER_FIELD_* fields.
-Parameter 2: Value        - The new value to be put in the field.
-Parameter 3: Target       - The Target Type defining for whom the unit field should be changed. The value in this field needs to be a valid target type as specified in the reference tables below.
+                            要修改的字段索引编号（生物仅包含 OBJECT_FIELD_* 与 UNIT_FIELD_*）。
+Parameter 2: Value        - The new value to be put in the field. (要写入的新值)
+Parameter 3: Target       - The Target Type defining for whom the unit field should be changed. The value in this field needs to be a valid target type as specified in the reference tables below. (要修改的目标类型)
 
 When activated, this action can change the target's unit field values. More information on the field value indeces can be found at (http://wiki.udbforums.org/index.php/Character_data)
 
 ----------------------------
-18 = ACTION_T_SET_UNIT_FLAG:
+18 = ACTION_T_SET_UNIT_FLAG: (添加单位标志)
 ----------------------------
-Parameter 1: Flags  - The flag(s) to be set. Multiple flags can be set by using bitwise-OR on them (adding them together).
-Parameter 2: Target - The Target Type defining for whom the flags should be changed. The value in this field needs to be a valid Target Type as specified in the reference tables below.
+Parameter 1: Flags  - The flag(s) to be set. Multiple flags can be set by using bitwise-OR on them (adding them together). (要添加的标志位，多个标志可按位相加)
+Parameter 2: Target - The Target Type defining for whom the flags should be changed. The value in this field needs to be a valid Target Type as specified in the reference tables below. (目标类型)
 
 When activated, this action changes the target's flags by adding (turning on) more flags. For example, this action can make the creature unattackable/unselectable if the right flags are used.
+为目标开启指定单位标志（例如设为不可攻击、不可选中等）。
 
 -------------------------------
-19 = ACTION_T_REMOVE_UNIT_FLAG:
+19 = ACTION_T_REMOVE_UNIT_FLAG: (移除单位标志)
 -------------------------------
-Parameter 1: Flags  - The flag(s) to be removed. Multiple flags can be set by using bitwise-OR on them (adding them together).
-Parameter 2: Target - The target type defining for whom the flags should be changed. The value in this field needs to be a valid Target Type as specified in the reference tables below.
+Parameter 1: Flags  - The flag(s) to be removed. Multiple flags can be set by using bitwise-OR on them (adding them together). (要移除的标志位，多个标志可按位相加)
+Parameter 2: Target - The target type defining for whom the flags should be changed. The value in this field needs to be a valid Target Type as specified in the reference tables below. (目标类型)
 
 When activated, this action changes the target's flags by removing (turning off) flags. For example, this action can make the creature normal after it was unattackable/unselectable if the right flags are used.
+从目标关闭指定单位标志（例如解除不可攻击/不可选中状态）。
 
 --------------------------
-20 = ACTION_T_AUTO_ATTACK:
+20 = ACTION_T_AUTO_ATTACK: (开关自动近战攻击)
 --------------------------
 Parameter 1: AllowAutoAttack - If zero, then the creature will stop its melee attacks. If non-zero, then the creature will either continue its melee attacks (the action would then have no effect) or it will start its melee attacks on the target with the top threat if its melee attacks were previously stopped.
+                               若为 0，生物停止近战攻击；若非 0，则允许/恢复对最高仇恨目标的近战攻击。
 
 This action controls whether or not the creature should stop or start the auto melee attack.
 NOTE: The ACID Dev Team has conformed to using either 0 or 1 for the Param values (0 = Stop Melee, 1 = Start Melee).
 This is commonly used in combination with EVENT_T_RANGE and ACTION_T_COMBAT_MOVEMENT for Ranged Combat for Mages and Spell Casters.
+控制生物是否进行自动近战攻击（标准用法：0=停止近战，1=开启近战），常与 EVENT_T_RANGE 和 ACTION_T_COMBAT_MOVEMENT 配合用于法系或远程怪。
 
 ------------------------------
-21 = ACTION_T_COMBAT_MOVEMENT:
+21 = ACTION_T_COMBAT_MOVEMENT: (开关战斗追击移动)
 ------------------------------
-Parameter 1: If zero, then the creature will stop moving towards its victim (if its victim gets out of melee range) and will be stationary. If non-zero, then the creature will either continue to follow its victim (the action would have no effect) or it will start to follow the target with the top threat if its movement was disabled before.
+Parameter 1: If zero, then the creature will stop moving towards its victim (if its victim gets out of melee range) and will be stationary. If non-zero, then the creature will either continue to follow its victim (the action would then have no effect) or it will start to follow the target with the top threat if its movement was disabled before.
+             若为 0，生物将原地站桩停止向目标移动；若非 0，则恢复向最高仇恨目标移动追击。
 Parameter 2: If non-zero, then stop melee combat state (if param1=0) or start melee combat state (if param1!=0) and creature in combat with selected target. - DEPRECATED - use action 20 instead
+             （已弃用，请改用动作 20）若非 0，同步停止/开启近战战斗状态。
 
 This action controls whether or not the creature will always move towards its target.
 NOTE: The ACID Dev Team has conformed to using either 0 or 1 for the Param values. (0 = Stop Movement, 1 = Start Movement)
@@ -786,537 +1010,671 @@ This is commonly used with EVENT_T_RANGE and ACTION_T_AUTO_ATTACK for NPC's who 
 Parameter 2 specialy used for ranged combat proper client side visual show ranged weapon in proper state.
 
 ------------------------
-22 = ACTION_T_SET_PHASE:
+22 = ACTION_T_SET_PHASE: (设置当前阶段)
 ------------------------
 Parameter 1: The new phase to set the creature in. This number must be an integer between 0 and 31. Numbers outside of that range will result in an error.
+             要设置的新阶段编号，必须为 0 到 31 之间的整数，超出范围会报错。
 
 When activated, this action sets the creature's event to the specified value.
 NOTE: The creature's current Phase is NOT reset at creature evade. You must manually set the phase back to 0 at EVENT_T_RESET.
 NOTE: The value used for the Param is the actual Phase Number (Not The Event_Inverse_Phase_Mask)
 This is commonly used for complex scripts with several phases and you need to switch to a different phase.
+将生物切换至指定阶段。注：脱战时不会自动重置阶段，需在脱战事件中手动设回 0；此处填写实际阶段号（非反向掩码）。
 
 ------------------------
-23 = ACTION_T_INC_PHASE:
+23 = ACTION_T_INC_PHASE: (增减阶段)
 ------------------------
 Parameter 1: Value - The number of phases to increase or decrease. Use negative values to decrease the current phase.
+             要增加或减少的阶段数（负数表示减少）。
 
 When activated, this action will increase (or decrease) the current creature's phase.
 NOTE: After increasing or decreasing the phase by this action, the current phase must NOT be lower than 0 or exceed 31.
 This can be used instead of ACTION_T_SET_PHASE to change phases in scripts. Just a user friendly option for changing phases.
+在当前阶段基础上增减指定数值（增减后的结果必须在 0~31 之间）。
 
 --------------------
-24 = ACTION_T_EVADE:
+24 = ACTION_T_EVADE: (强制脱战)
 --------------------
 When activated, the creature will immediately exit out of combat, clear its threat list, and move back to its spawn point. Basically, this action will reset the whole encounter.
 Parameter 1: CombatOnly - of true (1) only cancels combat and does not move home. Warning: only use this if sniff verifies to drop combat. Many cases do not.
+触发后生物立即脱离战斗、清空仇恨列表并返回出生点（即重置整场战斗）。
+Param1 (CombatOnly)：若为 1，仅脱离战斗而不返回出生点（警告：仅在抓包确认确实如此时使用）。
 
 -------------------
-25 = ACTION_T_FLEE:
+25 = ACTION_T_FLEE: (逃跑求援)
 -------------------
 When activated, the creature will flee from combat for assistance from nearby NPC's if possible.
 NOTE: All Param Values Are 0 for this Action.
+触发后生物将逃离战斗并尝试向附近 NPC 求援（所有参数均填 0）。
 
 ------------------------------
-26 = ACTION_T_QUEST_EVENT_ALL:
+26 = ACTION_T_QUEST_EVENT_ALL: (全员任务事件)
 ------------------------------
-Parameter 1: QuestId       - The quest ID to finish for everyone.
+Parameter 1: QuestId       - The quest ID to finish for everyone. (要为众人完成的任务 ID)
 Parameter 2: UseThreatList - Bool. If set to 1 (true), it will complete the QuestId for all the players in the threat list. If set to 0 (false), it will use the action invoker.
+                             布尔值：1=为仇恨列表中的所有玩家完成任务；0=仅使用动作触发者。
 
 This action does the same thing as the ACTION_T_QUEST_EVENT does but it does it for all players in the creature's threat list.
 NOTE: If a player is not in the NPC's threat list for whatever reason, he/she won't get the quest completed.
 
 ---------------------------------
-27 = ACTION_T_CASTCREATUREGO_ALL: - DEPRECATED - use ACTION_T_KILLED_MONSTER instead
+27 = ACTION_T_CASTCREATUREGO_ALL: - DEPRECATED - use ACTION_T_KILLED_MONSTER instead (全员任务施法计数 - 已弃用，请改用 ACTION_T_KILLED_MONSTER)
 ---------------------------------
-Parameter 1: QuestId - The quest template ID.
-Parameter 2: SpellId - The spell ID used to simulate the cast.
+Parameter 1: QuestId - The quest template ID. (任务模板 ID)
+Parameter 2: SpellId - The spell ID used to simulate the cast. (模拟施放的法术 ID)
 
 This action does the same thing as the ACTION_T_CASTCREATUREGO does but it does it for all players in the creature's threat list.
 NOTE: If a player is not in its threat list for whatever reason, he/she won't receive the cast emulation.
 
 -----------------------------------
-28 = ACTION_T_REMOVEAURASFROMSPELL:
+28 = ACTION_T_REMOVEAURASFROMSPELL: (移除指定法术光环)
 -----------------------------------
-Parameter 1: Target  - The target type defining for whom the unit field should be changed. The value in this field needs to be a valid target type as specified in the reference tables below.
-Parameter 2: SpellId - The spell ID whose auras will be removed.
+Parameter 1: Target  - The target type defining for whom the unit field should be changed. The value in this field needs to be a valid target type as specified in the reference tables below. (目标类型)
+Parameter 2: SpellId - The spell ID whose auras will be removed. (要移除的光环所属法术 ID)
 
 This action will remove all auras from a specific spell from the target.
 This is commonly used for NPC's who have an OOC Aura that is removed at combat start or a similar idea (Like Stealth or Shape Shift)
+移除目标身上由指定法术施加的所有光环（常用于在开怪时移除脱战潜行或变形光环）。
 
 ------------------------------
-29 = ACTION_T_RANGED_MOVEMENT:
+29 = ACTION_T_RANGED_MOVEMENT: (远程移动模式)
 ------------------------------
-Parameter 1: Distance - The distance the mob should keep between it and its target.
-Parameter 2: Angle    - The angle the mob should use.
+Parameter 1: Distance - The distance the mob should keep between it and its target. (怪物与目标之间保持的距离)
+Parameter 2: Angle    - The angle the mob should use. (怪物保持的角度)
 
 This action changes the movement type generator to ranged type using the specified values for angle and distance.
 NOTE: Specifying zero angle and distance will make it just melee instead.
 This is commonly used for NPC's who always attack at range and you can specify the distance they will maintain from the target.
+将移动生成器切换为远程模式，按指定的距离和角度与目标周旋（角度和距离均填 0 可切回普通近战）。
 
 ---------------------------
-30 = ACTION_T_RANDOM_PHASE:
+30 = ACTION_T_RANDOM_PHASE: (随机设置阶段)
 ---------------------------
-Parameter 1: PhaseId1 - A possible random phase choice.
-Parameter 2: PhaseId2 - A possible random phase choice.
-Parameter 3: PhaseId3 - A possible random phase choice.
+Parameter 1: PhaseId1 - A possible random phase choice. (随机阶段选项 1)
+Parameter 2: PhaseId2 - A possible random phase choice. (随机阶段选项 2)
+Parameter 3: PhaseId3 - A possible random phase choice. (随机阶段选项 3)
 
 Randomly sets the phase to one from the three parameter choices.
 NOTE: Use -1 to specify that if this param is picked to do nothing. Random is constant between actions within an event. So if you have a random Yell and a random Sound they will match up (ex: param2 with param2)
 NOTE 2: PLEASE NOTE THAT EACH OF THE PARAM VALUES ARE ACTUAL PHASE NUMBERS NOT THE INVERSE PHASE MASK VALUE.
 This is commonly used for Spellcasting NPC's who on Aggro may select at random a school of spells to use for the fight. Use this if you have up to 3 phases used, otherwise use Action 31 for more then 3 phases.
+从最多 3 个阶段选项中随机切换一个（-1 表示选中时无操作；填写实际阶段号而非反向掩码）。
 
 ---------------------------------
-31 = ACTION_T_RANDOM_PHASE_RANGE:
+31 = ACTION_T_RANDOM_PHASE_RANGE: (范围随机阶段)
 ---------------------------------
-Parameter 1: PhaseMin - The minimum of the phase range.
-Parameter 2: PhaseMax - The maximum of the phase range. The number here must be greater than PhaseMin.
+Parameter 1: PhaseMin - The minimum of the phase range. (阶段范围最小值)
+Parameter 2: PhaseMax - The maximum of the phase range. The number here must be greater than PhaseMin. (阶段范围最大值，必须大于 PhaseMin)
 
 Randomly sets the phase between a range of phases controlled by the parameters. Sets the phase to a random id (Phase = PhaseMin + rnd % PhaseMin-PhaseMax).
 NOTE: PhaseMax must be greater than PhaseMin.
 NOTE 2: PLEASE NOTE THAT EACH OF THE PARAM VALUES ARE ACTUAL PHASE NUMBERS NOT THE INVERSE PHASE MASK VALUE.
 This is commonly used for Spellcasting NPC's who on Aggro may select at random a school of spells to use for the fight. Use this if you have MORE then 3 phases used, otherwise use Action 30.
+在 [PhaseMin, PhaseMax] 范围内随机选择一个阶段编号切换（超过 3 个随机阶段时使用此动作）。
 
 ---------------------
-32 = ACTION_T_SUMMON_ID:
+32 = ACTION_T_SUMMON_ID: (定点召唤生物)
 ---------------------
-Parameter 1: CreatureID - The creature template ID to be summoned. The value here needs to be a valid creature template ID.
-Parameter 2: Target     - The target type defining who the summoned creature will attack. The value in this field needs to be a valid target type as specified in the reference tables below. NOTE: Using target type 0 will cause the summoned creature to not attack anyone.
-Parameter 3: SummonID   - The summon ID from the creature_ai_summons table controlling the position (and spawntime) where the summoned mob should be spawned at.
+Parameter 1: CreatureID - The creature template ID to be summoned. The value here needs to be a valid creature template ID. (要召唤的生物模板 ID)
+Parameter 2: Target     - The target type defining who the summoned creature will attack. The value in this field needs to be a valid target type as specified in the reference tables below. NOTE: Using target type 0 will cause the summoned creature to not attack anyone. (召唤物生成后攻击的目标类型，0 表示不攻击)
+Parameter 3: SummonID   - The summon ID from the creature_ai_summons table controlling the position (and spawntime) where the summoned mob should be spawned at. (creature_ai_summons 表中的 summon ID，控制生成坐标与存活时间)
 
 Summons creature (param1) to attack target (param2) at location specified by creature_ai_summons (param3).
 NOTE: Param3 Value is the ID Value used for the entry used in creature_ai_summons for this action. You MUST have an creature_ai_summons entry to use this action.
 This is commonly used for NPC's who need to Summon a creature at a specific location. (Normally used for complex events)
+在 creature_ai_summons 指定的位置召唤生物。
 
 -----------------------------
-33 = ACTION_T_KILLED_MONSTER:
+33 = ACTION_T_KILLED_MONSTER: (给予击杀任务计数)
 -----------------------------
-Parameter 1: CreatureID - The creature template ID. The value here must be a valid creature template ID.
-Parameter 2: Target     - The target type defining whom the quest kill count should be given to. The value in this field needs to be a valid target type as specified in the reference tables below.
+Parameter 1: CreatureID - The creature template ID. The value here must be a valid creature template ID. (生物模板 ID)
+Parameter 2: Target     - The target type defining whom the quest kill count should be given to. The value in this field needs to be a valid target type as specified in the reference tables below. (获得击杀计数的目标类型)
 
 When activated, this action will call KilledMonster() function for the player. It can be used to give creature credit for killing a creature. In general if the quest is set to be accompished on different creatures (e.g. "Credit" templates).
 NOTE: It can be ANY creature including certain quest specific triggers
 This is commonly used for giving the player Quest Credits for NPC kills (Many NPC's may use the same CreatureID for the Kill Credit)
+为玩家调用 KilledMonster()，授予特定生物 ID 的任务击杀计数（常用于任务 Credit 模板）。
 
 ----------------------------
-34 = ACTION_T_SET_INST_DATA:
+34 = ACTION_T_SET_INST_DATA: (设置副本脚本数据)
 ----------------------------
-Parameter 1: Field - The field to change in the instance script. Again, this field needs to be a valid field that has been already defined in the instance's script.
-Parameter 2: Data  - The value to put at that field index.
+Parameter 1: Field - The field to change in the instance script. Again, this field needs to be a valid field that has been already defined in the instance's script. (副本脚本中已定义的字段索引)
+Parameter 2: Data  - The value to put at that field index. (写入该字段索引的值)
 
 Sets data for the instance. Note that this will only work when the creature is inside an instantiable zone that has a valid script (ScriptedInstance) assigned.
 This is commonly used to link an EventAI script with a existing Script Library C++ Script. You make make things happen like opening doors on specific events that happen.
+设置副本实例数据（仅当生物位于已分配有效 ScriptedInstance 脚本的副本区域内才生效），常用于将 EventAI 与 C++ 副本脚本联动（如触发开门）。
 
 Field Values:
 These are located in there SD2 Instance File (Example: blackrock_depths.h) And Are Clearly Defined For Specific Events Scripted In The Instance.
+字段编号定义在对应的 SD2 副本头文件中（例如 blackrock_depths.h）。
 
-Data Values:
-NOT_STARTED   = 0
-IN_PROGRESS   = 1
-FAIL          = 2
-DONE          = 3
-SPECIAL       = 4
+Data Values: (常用数据值)
+NOT_STARTED   = 0 (未开始)
+IN_PROGRESS   = 1 (进行中)
+FAIL          = 2 (失败)
+DONE          = 3 (已完成)
+SPECIAL       = 4 (特殊状态)
 
 ------------------------------
-35 = ACTION_T_SET_INST_DATA64:
+35 = ACTION_T_SET_INST_DATA64: (设置副本 64 位 GUID 数据)
 ------------------------------
-Parameter 1: Field  - The field to change in the instance script. Again, this field needs to be a valid field that has been already defined in the instance's script.
-Parameter 2: Target - The target type to use to get the GUID that will be stored at the field index. The value in this field needs to be a valid target type as specified in the reference tables below.
+Parameter 1: Field  - The field to change in the instance script. Again, this field needs to be a valid field that has been already defined in the instance's script. (副本脚本中已定义的字段索引)
+Parameter 2: Target - The target type to use to get the GUID that will be stored at the field index. The value in this field needs to be a valid target type as specified in the reference tables below. (用于获取 GUID 的目标类型)
 
 Sets GUID (64 bits) data for the instance based on the target. Note that this will only work when the creature is inside an instantiable zone that has a valid script (ScriptedInstance) assigned.
 Calls ScriptedInstance::SetData64 with field (param1) and data (param2) target's GUID.
+将目标的 64 位 GUID 写入副本脚本的 SetData64(Field, TargetGUID)。
 
 ------------------------------
-36 = ACTION_T_UPDATE_TEMPLATE:
+36 = ACTION_T_UPDATE_TEMPLATE: (更换生物模板)
 ------------------------------
-Parameter 1: TemplateId - The creature template ID. The value here must be a valid creature template ID
+Parameter 1: TemplateId - The creature template ID. The value here must be a valid creature template ID (新的有效生物模板 ID)
 
 This function temporarily changes creature entry to new entry, display is changed, loot is changed, but AI is not changed. At respawn creature will be reverted to original entry.
 Changes the creature to a new creature template of (param1).
+临时将生物更换为新的生物模板 entry：外观模型与掉落随之改变，但 AI 保持不变；生物重生后会恢复为原始 entry。
 
 ------------------
-37 = ACTION_T_DIE:
+37 = ACTION_T_DIE: (立即死亡)
 ------------------
 Kills the creature
 This is commonly used if you need to Instakill the creature for one reason or another.
+立即杀死当前生物（常用于剧情需要瞬间消灭生物的场景）。
 
 --------------------------------
-38 = ACTION_T_ZONE_COMBAT_PULSE:
+38 = ACTION_T_ZONE_COMBAT_PULSE: (副本区域战斗脉冲)
 --------------------------------
 Places all players within the instance into combat with the creature. Only works in combat and only works inside of instances.
+将副本内的所有玩家拉入与该生物的战斗状态（仅在战斗中且在副本内有效）。
 
 ----------------------------
-39 = ACTION_T_CALL_FOR_HELP:
+39 = ACTION_T_CALL_FOR_HELP: (呼叫支援)
 ----------------------------
-Parameter 1: Radius - All friendly (not only same faction) creatures will go to help
+Parameter 1: Radius - All friendly (not only same faction) creatures will go to help (半径内的所有友方生物——不仅限于同阵营——都会前来支援)
 
 Call any friendly creatures (if its not in combat/etc) in radius attack creature target.
 Mostly used when call to help more wide that normal aggro radius or auto-used call for assistance, and need apply at some event.
+呼唤半径内未进入战斗的友方生物攻击当前目标（适用于需要比默认仇恨范围更广的求援）。
 
 -------------------------
-40   ACTION_T_SET_SHEATH:
+40   ACTION_T_SET_SHEATH: (设置武器收拔状态)
 -------------------------
 Parameter 1: Set Sheath State
-0 = SHEATH_STATE_UNARMED               Set No Weapon Displayed (Not Usually Used By Creatures)
-1 = SHEATH_STATE_MELEE                 Set Melee Weapon Displayed
-2 = SHEATH_STATE_RANGED                Set Ranged Weapon Displayed
+0 = SHEATH_STATE_UNARMED               Set No Weapon Displayed (Not Usually Used By Creatures) / 不显示武器（生物较少使用）
+1 = SHEATH_STATE_MELEE                 Set Melee Weapon Displayed / 显示近战武器
+2 = SHEATH_STATE_RANGED                Set Ranged Weapon Displayed / 显示远程武器
 
 Set Sheath State For NPC.
 Note: SHEATH_STATE_RANGED case work in combat state only if combat not start as melee commands.
 This possible setup by set at event AI start (single used EVENT_T_TIMER_OOC or set ACTION_T_COMBAT_MOVEMENT 0 for creature that prefered ranged attack)
+设置 NPC 的武器显示状态。注：远程武器显示在战斗中仅当未以近战方式开战时生效。
 
 ----------------------------
-41   ACTION_T_FORCE_DESPAWN:
+41   ACTION_T_FORCE_DESPAWN: (强制消失)
 ----------------------------
 Despawns The NPC with optional delay time (Works In or Out of Combat)
 Parameter 1: Delay - Sets delay time until Despawn occurs after triggering the action. Time is in (ms).
+使 NPC 消失（战斗内外均有效）。Param1 为延迟消失时间（毫秒，0 表示立即消失）。
 
 -----------------------------------------
-42   ACTION_T_SET_DEATH_PREVENTION:
+42   ACTION_T_SET_DEATH_PREVENTION: (设置防死亡开关)
 -----------------------------------------
 Parameter 1: State for death prevention
-0 = Turns off death prevention
-1 = Turns on death prevention and resets triggering of death prevented
+0 = Turns off death prevention (关闭防死亡保护)
+1 = Turns on death prevention and resets triggering of death prevented (开启防死亡保护，并重置 EVENT_T_DEATH_PREVENTED 的触发状态)
 
 -----------------------------------------
-43 ACTION_T_MOUNT_TO_ENTRY_OR_MODEL:
+43 ACTION_T_MOUNT_TO_ENTRY_OR_MODEL: (骑乘坐骑)
 -----------------------------------------
-Parameter 1, Optional: Set mount model from creature_template.entry
-Parameter 2, Optional: Set mount model by explicit modelId
+Parameter 1, Optional: Set mount model from creature_template.entry (可选：使用 creature_template.entry 的模型作为坐骑)
+Parameter 2, Optional: Set mount model by explicit modelId (可选：直接指定坐骑 modelId)
 
-If (Param1) AND (Param2) are both 0, unmount.
+If (Param1) AND (Param2) are both 0, unmount. (若 Param1 和 Param2 均为 0，则下马)
 
 ---------------------------
-44 = ACTION_T_CHANCED_TEXT:
+44 = ACTION_T_CHANCED_TEXT: (按概率说话文本 - 已弃用，请改用 54)
 ---------------------------
-Parameter 1: Chance with which a text will be displayed (must be between 1 and 99)
+Parameter 1: Chance with which a text will be displayed (must be between 1 and 99) (显示文本的概率，1~99)
 
 Parameter 2: The entry of the text that the NPC should use from eventai_texts table. Optionally a entry from other tables can be used (such as custom_texts).
              Entry are required to be negative and exist in a *_texts-table. The type text to be displayed are defined in the texts-table itself (Say, Yell, Whisper, Emote Text, Boss Whisper, Boss Emote)
              Other options are also to be defined in the texts-table, such as a sound to be heard with the text and the language used in output (common, dwarvish, etc).
              In case this entry has a localized version of the text, the localized text will be displayed in client that support this locale.
+             （*_texts 表中的负值文本 entry）
 
 Parameter 3: Optional TextId can be defined in addition. The same apply to this as explained above, however eventAI will randomize between the two.
+             （可选第二个文本 ID，存在时将在两者间随机选取）
 
 Also remark that the chance also depends on the chance of the event. And remark that a chance of 100 is useless and in this case ACTION_T_TEXT should be used.
+注意：实际触发几率还受事件本身 event_chance 的影响；100% 几率应直接使用 ACTION_T_TEXT（或 ACTION_T_TEXT_NEW）。
 
 Read at bottom for documentation of creature_ai_texts-table.
 
 -----------------------------
-45 = ACTION_T_THROW_AI_EVENT:
+45 = ACTION_T_THROW_AI_EVENT: (抛出 AI 事件)
 -----------------------------
 
 Parameter 1: EventType - What AIEvent to throw, supported types see CreatureAI.h enum AIEventType
+                         要抛出的 AIEvent 类型，支持的类型见 CreatureAI.h 中的 enum AIEventType
 
-Currently supported are:
-    AI_EVENT_JUST_DIED          = 0,                        // Sender = Killed Npc, Invoker = Killer
-    AI_EVENT_CRITICAL_HEALTH    = 1,                        // Sender = Hurt Npc, Invoker = DamageDealer - Expected to be sent by 10% health
-    AI_EVENT_LOST_HEALTH        = 2,                        // Sender = Hurt Npc, Invoker = DamageDealer - Expected to be sent by 50% health
-    AI_EVENT_LOST_SOME_HEALTH   = 3,                        // Sender = Hurt Npc, Invoker = DamageDealer - Expected to be sent by 90% health
-    AI_EVENT_GOT_FULL_HEALTH    = 4,                        // Sender = Healed Npc, Invoker = Healer
-    AI_EVENT_CUSTOM_EVENTAI_A   = 5,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists)
-    AI_EVENT_CUSTOM_EVENTAI_B   = 6,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists)
-    AI_EVENT_GOT_CCED           = 7,                        // Sender = CCed Npc, Invoker = Caster that CCed
-    AI_EVENT_CUSTOM_EVENTAI_C   = 8,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists)
-    AI_EVENT_CUSTOM_EVENTAI_D   = 9,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists)
-    AI_EVENT_CUSTOM_EVENTAI_E   = 10,                       // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists)
-    AI_EVENT_CUSTOM_EVENTAI_F   = 11,                       // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists)
+Currently supported are: (当前支持的类型：)
+    AI_EVENT_JUST_DIED          = 0,                        // Sender = Killed Npc, Invoker = Killer / 发送者=死亡 NPC，触发者=击杀者
+    AI_EVENT_CRITICAL_HEALTH    = 1,                        // Sender = Hurt Npc, Invoker = DamageDealer - Expected to be sent by 10% health / 危急血量（约 10%）
+    AI_EVENT_LOST_HEALTH        = 2,                        // Sender = Hurt Npc, Invoker = DamageDealer - Expected to be sent by 50% health / 血量下降（约 50%）
+    AI_EVENT_LOST_SOME_HEALTH   = 3,                        // Sender = Hurt Npc, Invoker = DamageDealer - Expected to be sent by 90% health / 轻微掉血（约 90%）
+    AI_EVENT_GOT_FULL_HEALTH    = 4,                        // Sender = Healed Npc, Invoker = Healer / 恢复满血
+    AI_EVENT_CUSTOM_EVENTAI_A   = 5,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists) / 自定义事件 A
+    AI_EVENT_CUSTOM_EVENTAI_B   = 6,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists) / 自定义事件 B
+    AI_EVENT_GOT_CCED           = 7,                        // Sender = CCed Npc, Invoker = Caster that CCed / 受到群体控制
+    AI_EVENT_CUSTOM_EVENTAI_C   = 8,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists) / 自定义事件 C
+    AI_EVENT_CUSTOM_EVENTAI_D   = 9,                        // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists) / 自定义事件 D
+    AI_EVENT_CUSTOM_EVENTAI_E   = 10,                       // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists) / 自定义事件 E
+    AI_EVENT_CUSTOM_EVENTAI_F   = 11,                       // Sender = Npc that throws custom event, Invoker = TARGET_T_ACTION_INVOKER (if exists) / 自定义事件 F
 
-Parameter 2: Radius    - Throw the AIEvent to nearby friendly creatures within this range
-Parameter 3: Target    - The thrown AIEvent uses selected target as Invoker
+Parameter 2: Radius    - Throw the AIEvent to nearby friendly creatures within this range (向此半径范围内的附近友方生物广播该 AIEvent)
+Parameter 3: Target    - The thrown AIEvent uses selected target as Invoker (将所选目标作为此 AIEvent 的触发者 Invoker)
 Each event, be it C++ or DB has 3 parties, Sender, Receiver and Invoker. Sender is EAI creature owner, Receiver is creatures found in radius, and Invoker is the one who triggered the event. Invoker can be specified
 regardless of Sender/Receiver and this enables relaying target.
+每个事件（无论 C++ 还是数据库）都包含三方：Sender（发送者，即当前 EAI 生物）、Receiver（接收者，即半径内找到的生物）和 Invoker（触发者，可独立指定以实现目标中继传递）。
 
 -----------------------------
-46 = ACTION_T_SET_THROW_MASK:
+46 = ACTION_T_SET_THROW_MASK: (设置自动抛出事件掩码)
 -----------------------------
 Parameter 1: EventTypeMask - Which AIEvents to throw, supported types see CreatureAI.h enum AIEventType (mask-value is 2^type)
+                             指定自动抛出的 AIEvent 掩码（掩码值为 2^type）
 
 This action sets which AIEvents a npc will throw automatically.
 Currently supported are:
-    AI_EVENT_JUST_DIED         |  MaskValue: 0x01  |  Sender = Killed Npc, Invoker = Killer      |  Sent when npc dies
-    AI_EVENT_CRITICAL_HEALTH   |  MaskValue: 0x02  |  Sender = Hurt Npc, Invoker = DamageDealer  |  Sent when damaged below 10% health
-    AI_EVENT_LOST_HEALTH       |  MaskValue: 0x04  |  Sender = Hurt Npc, Invoker = DamageDealer  |  Sent when damaged below 50% health
-    AI_EVENT_LOST_SOME_HEALTH  |  MaskValue: 0x08  |  Sender = Hurt Npc, Invoker = DamageDealer  |  Sent when damaged below 90% health
-    AI_EVENT_GOT_FULL_HEALTH   |  MaskValue: 0x10  |  Sender = Healed Npc, Invoker = Healer      |  Sent when healed to full health
+    AI_EVENT_JUST_DIED         |  MaskValue: 0x01  |  Sender = Killed Npc, Invoker = Killer      |  Sent when npc dies (NPC 死亡时发送)
+    AI_EVENT_CRITICAL_HEALTH   |  MaskValue: 0x02  |  Sender = Hurt Npc, Invoker = DamageDealer  |  Sent when damaged below 10% health (血量降至 10% 以下时发送)
+    AI_EVENT_LOST_HEALTH       |  MaskValue: 0x04  |  Sender = Hurt Npc, Invoker = DamageDealer  |  Sent when damaged below 50% health (血量降至 50% 以下时发送)
+    AI_EVENT_LOST_SOME_HEALTH  |  MaskValue: 0x08  |  Sender = Hurt Npc, Invoker = DamageDealer  |  Sent when damaged below 90% health (血量降至 90% 以下时发送)
+    AI_EVENT_GOT_FULL_HEALTH   |  MaskValue: 0x10  |  Sender = Healed Npc, Invoker = Healer      |  Sent when healed to full health (被治疗至满血时发送)
 
 So if you want an npc to throw AIEvents automatically on death and on critical health, you would set its EventTypeMask to 0x03
+例如，若希望 NPC 在死亡和危急血量时自动发送事件，则将 EventTypeMask 设为 0x03（0x01 | 0x02）。
 
 ------------------------------
-47 = ACTION_T_SET_STAND_STATE:
+47 = ACTION_T_SET_STAND_STATE: (设置站立姿态)
 ------------------------------
 Parameter 1: StandState - Stand state id to be used by the creature as defined in Unit.h file in the core.
+             源码 Unit.h 中定义的站立姿态 ID。
 
 ------------------------------
-48 = ACTION_T_CHANGE_MOVEMENT:
+48 = ACTION_T_CHANGE_MOVEMENT: (更改移动模式)
 ------------------------------
-Parameter 1: MovementType   - Movement type id to be used by the creature. Can be 0 = Idle, 1 = Random, 2 = Waypoint.
-Parameter 2: WanderDistance - Wander distance to be used in case the movement type is 1 (Random).
-Parameter 3: AsDefault - sets given movement type as default. Only usable to turn off GuardianAI follow movement for now.
+Parameter 1: MovementType   - Movement type id to be used by the creature. Can be 0 = Idle, 1 = Random, 2 = Waypoint. (0=待机，1=随机漫步，2=路径点)
+Parameter 2: WanderDistance - Wander distance to be used in case the movement type is 1 (Random). (当移动类型为 1 时为漫步距离；当类型为 2 时为 PathId)
+Parameter 3: AsDefault - sets given movement type as default. Only usable to turn off GuardianAI follow movement for now. (设为默认移动方式；目前主要用于关闭 GuardianAI 的跟随移动)
 
 -------------------------------
-49 = ACTION_T_REUSE:
+49 = ACTION_T_REUSE: (保留重用槽位)
 -------------------------------
 
 ------------------------------
-50 = ACTION_T_SET_REACT_STATE:
+50 = ACTION_T_SET_REACT_STATE: (设置反应状态)
 ------------------------------
 Parameter 1: ReactState - Define the react state of the creature. 0 = Passive, 1 = Defensive, 2 = Aggresive. Default behavior is Aggresive.
+             0=被动（不主动攻击），1=防御（被攻击后反击），2=主动攻击（默认）。
 
 ------------------------------
-51 = ACTION_T_PAUSE_WAYPOINTS:
+51 = ACTION_T_PAUSE_WAYPOINTS: (暂停路径点移动)
 ------------------------------
 Parameter 1: DoPause - Pause or unpause waypoints for creature. 0 - Unpause, 1 - Pause. Identical in behaviour to DBScript command.
+             0=恢复路径点，1=暂停路径点（行为与 DBScript 命令相同）。
 
 ------------------------------
-52 = ACTION_T_INTERRUPT_SPELL:
+52 = ACTION_T_INTERRUPT_SPELL: (打断指定槽位施法)
 ------------------------------
-Parameter 1: SpellType - Interrupt spell in SpellType slot. SpellType is based on CurrentSpellTypes in code.
-CURRENT_MELEE_SPELL             = 0
-CURRENT_GENERIC_SPELL           = 1
-CURRENT_AUTOREPEAT_SPELL        = 2
-CURRENT_CHANNELED_SPELL         = 3
+Parameter 1: SpellType - Interrupt spell in SpellType slot. SpellType is based on CurrentSpellTypes in code. (基于代码中 CurrentSpellTypes 的法术槽位)
+CURRENT_MELEE_SPELL             = 0 (近战技能槽)
+CURRENT_GENERIC_SPELL           = 1 (通用施法槽)
+CURRENT_AUTOREPEAT_SPELL        = 2 (自动重复施法槽)
+CURRENT_CHANNELED_SPELL         = 3 (引导法术槽)
 Melee spells, generic spells and autorepeat spells have their interruptability based on interrupt flags, albeit this flag is wrongly missing for some spells.
 Main purpose of this command is to research and find channeled spells, which do not interrupt as a result of not having found an interrupt flag.
+近战、通用与自动重复法术的可打断性通常由法术打断标志决定；本命令主要用于处理缺失打断标志的引导法术等情况。
 
 ---------------------------------
-53 = ACTION_T_START_RELAY_SCRIPT:
+53 = ACTION_T_START_RELAY_SCRIPT: (启动中继脚本)
 ---------------------------------
 Parameter 1: dbscripts_on_relay ID if > 0, if < 0 dbscript_random_template relay template
-Parameter 2: Target which will determine the source of the script
+             >0 时为 dbscripts_on_relay 表 ID；<0 时为 dbscript_random_template 随机中继模板 ID（取负值）
+Parameter 2: Target which will determine the source of the script (决定中继脚本源对象的目标类型)
 Launches a dbscripts_on_relay (either static or random one) with selected target as source and creature as target
+以所选目标作为源、当前生物作为目标，启动一条 dbscripts_on_relay 脚本。
 
 -----------------------
-54 = ACTION_T_TEXT_NEW:
+54 = ACTION_T_TEXT_NEW: (新版说话文本)
 -----------------------
-Parameter 1: Text ID that the creature should say
-Parameter 2: Target at which the creature will speak
-Parameter 3: dbscript_random_template text template
+Parameter 1: Text ID that the creature should say (生物要说的文本 ID)
+Parameter 2: Target at which the creature will speak (生物说话面向/针对的目标类型)
+Parameter 3: dbscript_random_template text template (dbscript_random_template 文本随机模板 ID)
 Says a text at given target, deprecates TEXT and CHANCED_TEXT actions, due to superior capabilities. Is a mirror of dbscripts capabilities.
 The text IDs are checked against creature_ai_texts for both Parameter 1 and random template in Parameter 3
 NOTE: if Parameter 3 is set, it always takes precedence over Parameter 1, random template has a higher priority. (as such, only one of them needs to be set)
+向指定目标说话，能力更强且镜像 dbscripts 机制，取代旧的 TEXT 和 CHANCED_TEXT。文本 ID 均对照 creature_ai_texts 校验；若设置 Parameter 3，其优先级高于 Parameter 1（两者只需填其一）。
 
 ---------------------------
-55 = ACTION_T_ATTACK_START:
+55 = ACTION_T_ATTACK_START: (开始攻击指定目标)
 ---------------------------
-Parameter 1: Target at which the creature will attack
+Parameter 1: Target at which the creature will attack (要攻击的目标类型)
 Attacks targeted creature. This has particular use when we want to attack specific target received through ACTION_T_THROW_AI_EVENT for example. Can also be used to attack summoner at spawn for example.
+开始攻击目标生物（常用于攻击通过 AIEvent 传递的目标，或在生成时攻击召唤者）。
 
 --------------------------------
-56 = ACTION_T_DESPAWN_GUARDIANS:
+56 = ACTION_T_DESPAWN_GUARDIANS: (使守护者消失)
 --------------------------------
-Parameter 1: Entry ID of guardian to be despawned (can also be 0)
+Parameter 1: Entry ID of guardian to be despawned (can also be 0) (要消失的守护者生物 entry，0 表示全部)
 If a given entry is valid and found, despawns guardian with given entry. If parameter 1 is 0, despawns all guardians (which is the more common script action).
+若提供有效 entry 则仅使该 entry 的守护者消失；若为 0 则使所有召唤守护者消失（更常见）。
 
 --------------------------------
-57 = ACTION_T_SET_RANGED_MODE:
+57 = ACTION_T_SET_RANGED_MODE: (设置远程战斗模式)
 --------------------------------
-Parameter 1: Type of Ranged Mode - enum RangeModeType
-Parameter 2: Distance at which creature will chase during ranged mode
+Parameter 1: Type of Ranged Mode - enum RangeModeType (远程模式类型：enum RangeModeType)
+Parameter 2: Distance at which creature will chase during ranged mode (远程模式下追击保持的距离)
 Meant to enter a state which simulates Casters, be it normal mana casters or ranged bow/thrown attackers. Take note of: EFLAG_RANGED_MODE_ONLY, EFLAG_MELEE_MODE_ONLY, EFLAG_COMBAT_ACTION, CAST_MAIN_SPELL and CAST_DISTANCE_YOURSELF
+用于模拟施法者或弓箭/投掷远程怪行为。请结合 EFLAG_RANGED_MODE_ONLY、EFLAG_MELEE_MODE_ONLY、EFLAG_COMBAT_ACTION、CAST_MAIN_SPELL 与 CAST_DISTANCE_YOURSELF 使用。
 
-RangeModeType -
-TYPE_NONE - Basic melee mode and setting it also forcibly turns off ranged mode.
+RangeModeType - (远程模式类型说明)
+TYPE_NONE - Basic melee mode and setting it also forcibly turns off ranged mode. (基础近战模式，设置此项会强制关闭远程模式)
 TYPE_FULL_CASTER - Creature will use spells and not melee, until going OOM, interrupted or silenced. When one of those conditions is valid, creature will come into melee mode and attack until enough mana for spells.
+                   完全施法者模式：只施法不近战，直到空蓝、被打断或被沉默时才上前近战，待法力恢复后切回远程。
 TYPE_PROXIMITY - Creature will use spells and not melee until target comes within 8 yards, OOM, interrupted or silenced.
+                 近身切换模式：在目标进入 8 码内、空蓝、被打断或被沉默前均使用法术/远程攻击。
 TYPE_NO_MELEE_MODE - Creature will never melee. If OOM, interrupted or silenced, it will stand there and do nothing.
+                     纯远程无近战模式：永不近战；空蓝、被打断或沉默时将原地待命。
 
 --------------------------------
-58 = ACTION_T_SET_WALK:
+58 = ACTION_T_SET_WALK: (设置行走/奔跑状态)
 --------------------------------
-Parameter1: Type of walking.
-RUN_DEFAULT  - sets running by default (default)
-WALK_DEFAULT - sets walking by default
-RUN_CHASE    - sets running during chasing (default)
-WALK_CHASE   - sets walking during chasing
+Parameter1: Type of walking. (行走设置类型)
+RUN_DEFAULT  - sets running by default (default) (默认移动设为奔跑 [默认值])
+WALK_DEFAULT - sets walking by default (默认移动设为行走)
+RUN_CHASE    - sets running during chasing (default) (追击移动设为奔跑 [默认值])
+WALK_CHASE   - sets walking during chasing (追击移动设为行走)
 
 --------------------------------
-59 - ACTION_T_SET_FACING
+59 - ACTION_T_SET_FACING (设置朝向)
 --------------------------------
-Parameter 1: Target type
-Parameter 2: Reset boolean, 0 sets and 1 resets
+Parameter 1: Target type (目标类型)
+Parameter 2: Reset boolean, 0 sets and 1 resets (重置布尔值：0=朝向目标，1=重置朝向)
 
 Sets facing, i.e. orientation to target, or resets it to last waypoint hit, or to respawn position.
+使生物朝向指定目标，或重置为最近到达的路径点/出生点朝向。
 
 --------------------------------
-60 - ACTION_T_SET_SPELL_SET
+60 - ACTION_T_SET_SPELL_SET (设置法术列表)
 --------------------------------
-Parameter 1: creature_spell_list Id
+Parameter 1: creature_spell_list Id (creature_spell_list 表的法术列表 ID)
 
 --------------------------------
-61 - ACTION_T_SET_IMMOBILIZED_STATE
+61 - ACTION_T_SET_IMMOBILIZED_STATE (设置定身状态)
 --------------------------------
-Parameter 1: apply
-Parameter 2: combatOnly - autoremoved on combat stop
+Parameter 1: apply (1=定身，0=解除)
+Parameter 2: combatOnly - autoremoved on combat stop (设为 1 时在退出战斗后自动解除)
 
 --------------------------------
-62 - ACTION_T_SET_DESPAWN_AGGREGATION
+62 - ACTION_T_SET_DESPAWN_AGGREGATION (设置聚合消失)
 --------------------------------
 Parameter 1: Mask - 0x1 - enabled, 0x2 - despawn on evade, 0x4 - despawn on death
+             掩码：0x1=启用，0x2=脱战时联动消失，0x4=死亡时联动消失
 Parameter 2 and 3: Creature Entry - in case only specific entries should be despawned, else all despawn, can be appended over multiple action calls
+                   指定仅联动消失的生物 entry（不填则全部消失，可通过多次调用累加）
 
 ------------------------------
-63 - ACTION_T_SET_IMMUNITY_SET
+63 - ACTION_T_SET_IMMUNITY_SET (设置免疫集)
 ------------------------------
-Parameter 1: Set ID - creature_immunities
+Parameter 1: Set ID - creature_immunities (creature_immunities 表中的免疫集 ID)
 
 ---------------------------------
-64 - ACTION_T_SET_FOLLOW_MOVEMENT
+64 - ACTION_T_SET_FOLLOW_MOVEMENT (设置跟随移动)
 ---------------------------------
-Parameter 1: State - 0 off, 1 on
+Parameter 1: State - 0 off, 1 on (0=关闭，1=开启)
 
 ---------------------------------
-65 - ACTION_T_RETREAT
+65 - ACTION_T_RETREAT (撤退)
 ---------------------------------
+(NPC 向最近的友方单位撤退)
 
 ------------------------------
-64 - ACTION_T_START_ACTION_SET
+64 - ACTION_T_START_ACTION_SET (启动动作集；注：汇总表中编号为 66)
 ------------------------------
-Parameter 1: SetId (index of set id for EVENT_T_ACTION_SET)
-Parameter 2: StepIndex (index on which to initialize, by default 0)
-Parameter 3: Flags (repeat at the end of action set 0x1, ooc only 0x2)
+Parameter 1: SetId (index of set id for EVENT_T_ACTION_SET) (对应 EVENT_T_ACTION_SET 的动作集 SetId)
+Parameter 2: StepIndex (index on which to initialize, by default 0) (初始化的步骤索引，默认 0)
+Parameter 3: Flags (repeat at the end of action set 0x1, ooc only 0x2) (标志位：0x1=结束时循环，0x2=仅脱战执行)
 Engages action set that executes actions on a timer that persists through combat.
+启动一个可跨战斗持续按计时器顺序执行的动作序列。
 
 =========================================
-Target Types
+Target Types / 目标类型
 =========================================
 Below is the list of current Target types that EventAI can handle.
 Target types are used by certain actions and may effect actions differently
+以下是 EventAI 可处理的当前目标类型列表。目标类型由部分动作使用，不同动作对其影响可能不同。
 #   Internal Name                               Description
 --------------------------------------------------------------
 0   TARGET_T_SELF                               Self Cast
+    [中文] 自身（对自己施放/执行）
 1   TARGET_T_HOSTILE                            Current Target (ie: Highest Aggro)
+    [中文] 当前敌对目标（即最高仇恨目标）
 2   TARGET_T_HOSTILE_SECOND_AGGRO               Second Highest Aggro (Generaly used for Cleaves and some special attacks)
+    [中文] 第二仇恨目标（常用于顺劈或特殊攻击）
 3   TARGET_T_HOSTILE_LAST_AGGRO                 Dead Last on Aggro (no idea what this could be used for)
+    [中文] 仇恨最低目标（仇恨列表最后一名）
 4   TARGET_T_HOSTILE_RANDOM                     Random Target on The Threat List
+    [中文] 仇恨列表中的随机目标
 5   TARGET_T_HOSTILE_RANDOM_NOT_TOP             Any Random Target Except Top Threat
+    [中文] 除最高仇恨目标外的任意随机目标
 6   TARGET_T_ACTION_INVOKER                     Unit Who Caused This Event to Occur (only works for EVENT_T_AGGRO, EVENT_T_KILL, EVENT_T_DEATH, EVENT_T_SPELLHIT, EVENT_T_OOC_LOS, EVENT_T_FRIENDLY_HP, EVENT_T_FRIENDLY_IS_CC, EVENT_T_FRIENDLY_MISSING_BUFF, EVENT_T_RECEIVE_EMOTE, EVENT_T_RECEIVE_AI_EVENT)
+    [中文] 触发该事件的单位（仅适用于上述特定事件，如仇恨、击杀、死亡、受法术命中、脱战视野、友方事件、收到表情、收到 AI 事件等）
 7   TARGET_T_ACTION_INVOKER_OWNER               Unit who is responsible for Event to occur (only works for EVENT_T_AGGRO, EVENT_T_KILL, EVENT_T_DEATH, EVENT_T_SPELLHIT, EVENT_T_OOC_LOS, EVENT_T_FRIENDLY_HP, EVENT_T_FRIENDLY_IS_CC, EVENT_T_FRIENDLY_MISSING_BUFF, EVENT_T_RECEIVE_EMOTE, EVENT_T_RECEIVE_AI_EVENT)
+    [中文] 对事件负有责任的单位（如触发者的主人，仅适用于同上特定事件）
 8   TARGET_T_HOSTILE_RANDOM_PLAYER              TARGET_T_HOSTILE_RANDOM + CAST_PLAYER_ONLY
+    [中文] 仇恨列表中的随机玩家（等同于 TARGET_T_HOSTILE_RANDOM + CAST_PLAYER_ONLY）
 9   TARGET_T_HOSTILE_RANDOM_NOT_TOP_PLAYER      TARGET_T_HOSTILE_RANDOM_NOT_TOP + CAST_PLAYER_ONLY
+    [中文] 仇恨列表中除第一名外的随机玩家（等同于 TARGET_T_HOSTILE_RANDOM_NOT_TOP + CAST_PLAYER_ONLY）
 10  TARGET_T_EVENT_SENDER                       Creature who sent a received AIEvent - only triggered by EVENT_T_RECEIVE_AI_EVENT
+    [中文] 发送所接收 AIEvent 的生物（仅在 EVENT_T_RECEIVE_AI_EVENT 中可用）
 11  TARGET_T_SPAWNER                            Spawner of given Unit if it has one
+    [中文] 当前单位的召唤者/生成者（若存在）
 12  TARGET_T_EVENT_SPECIFIC                     Filled by Event - EVENT_T_SELECT_ATTACKING_TARGET fills target selected
+    [中文] 由事件填充的特定目标（例如 EVENT_T_SELECT_ATTACKING_TARGET 选中的目标）
 13  TARGET_T_PLAYER_INVOKER                     Player who initiated hostile contact with this npc
+    [中文] 率先与该 NPC 发生敌对接触的玩家
 14  TARGET_T_PLAYER_TAPPED                      Player who currently holds the kill credit for the npc
+    [中文] 当前拥有该 NPC 击杀归属权的玩家
 15  TARGET_T_NONE                               Fills nullptr. For most spells thats the valid input. This translates to no target in SMSG_SPELL_START. TARGET_SELF spells are such example.
+    [中文] 空目标（nullptr）。对于大多数不需要目标或 TARGET_SELF 类法术这是有效输入，在 SMSG_SPELL_START 中表现为无目标。
 16  TARGET_T_HOSTILE_RANDOM_MANA                Random target with mana
+    [中文] 仇恨列表中拥有法力值的随机敌对目标
 17  TARGET_T_NEAREST_AOE_TARGET                 Selects nearest target and checks if its valid for AOE. To be only used with spells which are only used in proximity to caster like Arcane Explosion or Frost Nova.
+    [中文] 选择最近的适合 AOE 的目标（仅用于奥术爆炸、冰霜新星等贴身范围法术）
 18  TARGET_T_HOSTILE_FARTHEST_AWAY              Selects farthest away target
+    [中文] 选择距离最远的敌对目标
 
 =========================================
-Cast Flags
+Cast Flags / 施法标志
 =========================================
 Below is the list of current Cast Flags that EventAI's spell casting can handle.
 Cast flags are handled bitwise. Bit 0 is Interrupt Previous, bit 1 is triggered, etc.
 So for example the number "3" (11 in Binary, selecting first 2 options) would mean that this cast has both CAST_INTURRUPT_PREVIOUS and CAST_TRIGGERED.
 Another example: the number "5" (101 in Binary, selecting first and third options) would mean that this cast has CAST_INTURRUPT_PREVIOUS and CAST_FORCE_CAST.
+以下是 EventAI 施法动作支持的施法标志（Cast Flags）列表，按位掩码处理。
+例如 3（1+2）同时启用 CAST_INTURRUPT_PREVIOUS 与 CAST_TRIGGERED；5（1+4）同时启用 CAST_INTURRUPT_PREVIOUS 与 CAST_FORCE_CAST。
 
 #   Decimal     Internal Name                       Description
 --------------------------------------------------------------
 1   1           CAST_INTURRUPT_PREVIOUS             Interrupts any previous spell casting (basicaly makes sure that this spell goes off)
+    [中文] 打断之前的施法（确保当前法术能够顺利施放）
 2   2           CAST_TRIGGERED                      Forces the spell to be instant cast and require no mana/reagents.
+    [中文] 触发式施法（强制瞬发，且不消耗法力值和施法材料）
 3   4           CAST_FORCE_CAST                     Forces spell to cast even if the target is possibly out of range or the creature is possibly out of mana
+    [中文] 强制施法（即使目标超出射程或生物法力不足也强制施放）
 4   8           CAST_NO_MELEE_IF_OOM                Prevents creature from entering melee if out of mana or out of range
+    [中文] 缺蓝或超距时不进入近战（防止生物因没蓝或够不到而上前平砍）
 5   16          CAST_FORCE_TARGET_SELF              Forces the target to cast this spell on itself
+    [中文] 强制目标对自己施放该法术
 6   32          CAST_AURA_NOT_PRESENT               Only casts the spell on the target if the target does not have the aura from that spell on itself already.
+    [中文] 仅当目标身上尚未存在该法术光环时才施放
 7   64          CAST_IGNORE_UNSELECTABLE_TARGET     Deprecated - Can target UNIT_FLAG_NOT_SELECTABLE
+    [中文] 已弃用 —— 允许以带有 UNIT_FLAG_NOT_SELECTABLE 的单位为目标
 8   128         CAST_SWITCH_CASTER_TARGET           Switches target and caster for spell cast - enables casting by spawner on AI owner for example
+    [中文] 互换施法者与目标（例如让召唤者对 AI 拥有者施法）
 9   256         CAST_MAIN_SPELL                     Marks main spell for ranged mode. When this spell is interrupted or goes OOM, the AI owner goes into melee mode. Connected to ACTION_T_SET_RANGED_MODE
+    [中文] 标记为远程模式主法术：当该法术被打断或空蓝时，AI 将切入近战模式（配合 ACTION_T_SET_RANGED_MODE 使用）
 10  512         CAST_PLAYER_ONLY                    To be used in connection with targets. Restricts targeting to player only
+    [中文] 仅限玩家目标（与目标类型配合使用，限定只选玩家）
 11  1024        CAST_DISTANCE_YOURSELF              Marks spell which stuns or immobilizes, so that creature distances itself from target, when main aggro target is hit (GetVictim()). Connected to ACTION_T_SET_RANGED_MODE.
+    [中文] 拉开距离标记：用于昏迷或定身类法术，当主仇恨目标被命中时生物会与目标拉开距离（配合 ACTION_T_SET_RANGED_MODE 使用）
 12  2048        CAST_TARGET_CASTING                 Selects only targets that are casting
+    [中文] 仅选择正在施法的目标
 13  4096        CAST_ONLY_XYZ                       Targets only coords of target and not unit
+    [中文] 仅以目标坐标（XYZ）而非目标单位自身作为施法目标
 
 NOTE: You can add the numbers in the decimal column to combine flags.
 For example if you wanted to use CAST_NO_MELEE_IF_OOM(8) and CAST_TRIGGERED(2) you would simply use 10 in the cast flags field (8 + 2 = 10).
+注：可将 Decimal 列的数值相加来组合多个标志位（例如 8 + 2 = 10）。
 
 =========================================
-Event Flags
+Event Flags / 事件标志
 =========================================
 Below is the list of current Event Flags that EventAI can handle. Event flags are handled bitwise.
+以下是 EventAI 支持的事件标志（Event Flags）列表，按位掩码处理。
 
 #   Decimal     Internal Name                   Description
 ------------------------------------------------------------
 1   1           EFLAG_REPEATABLE                Event repeats (Does not repeat if this flag is not set)
+    [中文] 可重复触发（未设置此标志时事件只触发一次）
 2   2           EFLAG_NORMAL                    Event occurs in Normal instance difficulty (will not occur in Normal if not set)
+    [中文] 普通难度生效（未设置则在普通难度副本中不触发）
 3   4           EFLAG_HEROIC                    Event occurs in Heroic instance difficulty (will not occur in Heroic if not set)
+    [中文] 英雄难度生效（未设置则在英雄难度副本中不触发）
 4   8           EFLAG_RESERVED_4                Used in cmangos wotlk for difficulty 2
+    [中文] 保留标志 4（在 CMaNGOS WLK 中用于难度 2）
 5   16          EFLAG_RESERVED_5                Used in cmangos wotlk for difficulty 3
+    [中文] 保留标志 5（在 CMaNGOS WLK 中用于难度 3）
 6   32          EFLAG_RANDOM_ACTION             At event occur execute one random action from event actions instead all actions.
+    [中文] 随机执行动作：事件触发时从动作列表中随机执行一个动作，而非全部执行
 7   64          EFLAG_RESERVED_7
+    [中文] 保留标志 7
 8   128         EFLAG_DEBUG_ONLY                Prevents events from occuring on Release builds. Useful for testing new features.
+    [中文] 仅调试版生效：防止在 Release 构建中触发，适合测试新特性
 9   256         EFLAG_RANGED_MODE_ONLY          Event only occurs in ranged mode - to be used in connection with ACTION_T_SET_RANGED_MODE
+    [中文] 仅远程模式生效（配合 ACTION_T_SET_RANGED_MODE 使用）
 10  512         EFLAG_MELEE_MODE_ONLY           Event only occurs in melee mode - to be used in connection with ACTION_T_SET_RANGED_MODE
+    [中文] 仅近战模式生效（配合 ACTION_T_SET_RANGED_MODE 使用）
 11  1024        EFLAG_COMBAT_ACTION             Event timer only resets when action1 succeeds. At the moment only Action 11 - Cast can fail.
+    [中文] 战斗动作校验：仅当 action1 执行成功时才重置事件计时器（目前只有动作 11 施法可能失败）
 
 NOTE: You can add the numbers in the decimal column to combine flags.
+注：可将 Decimal 列的数值相加来组合多个标志位。
 
 =========================================
-Basic Structure of creature_ai_texts
+Basic Structure of creature_ai_texts / creature_ai_texts 表基本结构
 =========================================
 Below is a the list of current fields within the texts tables.
+以下为文本表（creature_ai_texts）当前字段列表。
 
 Field_Name            Description
 -----------------------------------------------------------
 entry                 This value is mearly an NEGATIVE identifier of the current text number. Required for sql queries. Valid range are -1 to -999999
+                      当前文本编号的**负值**标识符，用于 SQL 查询。有效范围为 -1 至 -999999。
 content_default       This is the actual text presented in the default language (English).
+                      默认语言（英文）显示的实际文本内容。
 
-content_loc1          This is the actual text presented in the Localization #1 Clients (Korean)
-content_loc2          This is the actual text presented in the Localization #2 Clients (French)
-content_loc3          This is the actual text presented in the Localization #3 Clients (German)
-content_loc4          This is the actual text presented in the Localization #4 Clients (Chinese)
-content_loc5          This is the actual text presented in the Localization #5 Clients (Taiwanese)
-content_loc6          This is the actual text presented in the Localization #6 Clients (Spanish)
-content_loc7          This is the actual text presented in the Localization #7 Clients (Spanish Mexico)
-content_loc8          This is the actual text presented in the Localization #8 Clients (Russian)
+content_loc1          This is the actual text presented in the Localization #1 Clients (Korean) / 本地化 #1 客户端文本（韩语）
+content_loc2          This is the actual text presented in the Localization #2 Clients (French) / 本地化 #2 客户端文本（法语）
+content_loc3          This is the actual text presented in the Localization #3 Clients (German) / 本地化 #3 客户端文本（德语）
+content_loc4          This is the actual text presented in the Localization #4 Clients (Chinese) / 本地化 #4 客户端文本（简体中文）
+content_loc5          This is the actual text presented in the Localization #5 Clients (Taiwanese) / 本地化 #5 客户端文本（繁体中文）
+content_loc6          This is the actual text presented in the Localization #6 Clients (Spanish) / 本地化 #6 客户端文本（西班牙语）
+content_loc7          This is the actual text presented in the Localization #7 Clients (Spanish Mexico) / 本地化 #7 客户端文本（墨西哥西班牙语）
+content_loc8          This is the actual text presented in the Localization #8 Clients (Russian) / 本地化 #8 客户端文本（俄语）
 
 sound                 This value is the Sound ID that corresponds to the actual text used.
+                      与该文本配套播放的音效 ID。
 type                  Variables used to define type of text (Say/Yell/TextEmote/Whisper).
+                      定义文本显示类型（说/喊话/文字表情/密语等）。
 language              This value is the Language that the text is native in.
+                      文本所属的游戏内种族语言编号。
 emote                 Value from enum Emote. Only source of text will play this emote (not target, if target are defined in DoScriptText)
+                      来自 enum Emote 的表情动作值。仅说话源头会播放此动作（即使 DoScriptText 指定了目标）。
 comment               This is a comment regarding the text entry
+                      关于该文本条目的备注说明。
 
 Note: Fields `content_loc1` to `content_loc8` are NULL values by default and are normally handled by seperate localization projects.
+注：`content_loc1` 至 `content_loc8` 默认为 NULL，通常由独立的本地化项目维护。
 
 =========================================
-Text Types (type)
+Text Types (type) / 文本类型 (type)
 =========================================
 Below is the list of current Text types that texts tables can handle. These were previously seperate Actions in ACID.
+以下是文本表支持的文本类型列表（早期在 ACID 中曾是独立动作）。
 
 #    Internal Name                 Description
 -----------------------------------------------------------
 0    CHAT_TYPE_SAY                 This type sets the text to be displayed as a Say (Speech Bubble).
+     [中文] 说（普通白色聊天气泡）。
 1    CHAT_TYPE_YELL                This type sets the text to be displayed as a Yell (Red Speech Bubble) and usually has a matching Sound ID.
+     [中文] 喊话（红色聊天气泡，通常配有对应语音 Sound ID）。
 2    CHAT_TYPE_TEXT_EMOTE          This type sets the text to be displayed as a text emote in orange in the chat log.
+     [中文] 文字表情（聊天记录中以橙色显示）。
 3    CHAT_TYPE_BOSS_EMOTE          This type sets the text to be displayed as a text emote in orange in the chat log (Used only for specific Bosses).
+     [中文] 首领表情/团队警报（聊天记录橙色显示，仅用于特定 Boss）。
 4    CHAT_TYPE_WHISPER             This type sets the text to be displayed as a whisper to the player in the chat log.
+     [中文] 密语（在聊天记录中密语给指定玩家）。
 5    CHAT_TYPE_BOSS_WHISPER        This type sets the text to be displayed as a whisper to the player in the chat log (Used only for specific Bosses).
+     [中文] 首领密语（在聊天记录中密语给玩家，仅用于特定 Boss）。
 6    CHAT_TYPE_ZONE_YELL           Same as CHAT_TYPE_YELL but will display to all players in current zone.
+     [中文] 全区域喊话（同 CHAT_TYPE_YELL，但当前大区内所有玩家均可见）。
 7    CHAT_TYPE_ZONE_EMOTE          Same as CHAT_TYPE_TEXT_EMOTE but will display to all players in current zone.
+     [中文] 全区域文字表情（同 CHAT_TYPE_TEXT_EMOTE，但当前大区内所有玩家均可见）。
 
 =========================================
-Language Types (language)
+Language Types (language) / 语言类型 (language)
 =========================================
 Below is the list of current Language types that are allowed.
 This is the Race Language that the text is native to (So it will display properly)
+以下是允许的语言类型列表，代表文本所属的种族语言（确保客户端正确显示/翻译）。
 
 #    Internal Name                Description
 -----------------------------------------------------------
 0    UNIVERSAL                    Text in this language is understood by ALL Races.
+     [中文] 通用语（全阵营所有种族均可理解）。
 1    ORCISH                       Text in this language is understood ONLY by Horde Races.
+     [中文] 兽人语（仅部落种族可理解）。
 2    DARNASSIAN                   Text in this language is understood ONLY by the Night Elf Race.
+     [中文] 达纳苏斯语（仅暗夜精灵可理解）。
 3    TAURAHE                      Text in this language is understood ONLY by the Tauren Race.
+     [中文] 牛头人语（仅牛头人可理解）。
 6    DWARVISH                     Text in this language is understood ONLY by the Dwarf Race.
+     [中文] 矮人语（仅矮人可理解）。
 7    COMMON                       Text in this language is understood ONLY by Alliance Races.
+     [中文] 通用语/联盟语（仅联盟种族可理解）。
 8    DEMONIC                      Text in this language is understood ONLY by the Demon Race (Not Implimented).
+     [中文] 恶魔语（仅恶魔种族可理解，未实现）。
 9    TITAN                        This language was used by Sargeras to speak with other Titians (Not Implemented).
+     [中文] 泰坦语（萨格拉斯与其他泰坦交谈所用，未实现）。
 10   THALASSIAN                   Text in this language is understood ONLY by the Blood Elf Race.
+     [中文] 萨拉斯语（仅血精灵可理解）。
 11   DRACONIC                     Text in this language is understood ONLY by the Dragon Race.
+     [中文] 龙语（仅龙族可理解）。
 12   KALIMAG                      Text will display as Kalimag (not readable by players, language of all elementals)
+     [中文] 卡利马格语（玩家无法读懂，所有元素生物的语言）。
 13   GNOMISH                      Text in this language is understood ONLY by the Gnome Race.
+     [中文] 侏儒语（仅侏儒可理解）。
 14   TROLL                        Text in this language is understood ONLY by the Troll Race.
+     [中文] 巨魔语（仅巨魔可理解）。
 33   GUTTERSPEAK                  Text in this language is understood ONLY by the Undead Race.
+     [中文] 亡灵语（仅亡灵/被遗忘者可理解）。
 35   DRAENEI                      Text in this language is understood ONLY by the Draenai Race.
+     [中文] 德莱尼语（仅德莱尼可理解）。
 36   ZOMBIE                       (not currently used?)
+     [中文] 僵尸语（当前未使用？）。
 37   GNOMISH BINARY               Binary language used by Alliance when drinking Binary Brew
+     [中文] 侏儒二进制语（联盟玩家饮用二进制啤酒后使用）。
 38   GOBLIN BINARY                Binary language used by Horce when drinking Binary Brew
+     [中文] 地精二进制语（部落玩家饮用二进制啤酒后使用）。

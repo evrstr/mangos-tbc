@@ -21,44 +21,49 @@ SDComment: Swarmers need movement added for RP before they attack
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟：狩猎者阿亚米斯 (Ayamiss the Hunter) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "MotionGenerators/WaypointManager.h"
 #include <G3D/Vector3.h>
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_GENERIC_FRENZY    = -1000002,
+    EMOTE_GENERIC_FRENZY    = -1000002,                     // 剧情台词/喊话文本 ID
 
-    SPELL_STINGER_SPRAY     = 25749,
-    SPELL_POISON_STINGER    = 25748,                // only used in phase1
-    SPELL_SUMMON_SWARMER    = 25708,
-    SPELL_PARALYZE          = 25725,
-    SPELL_LASH              = 25852,
-    SPELL_FRENZY            = 8269,
-    SPELL_THRASH            = 3391,
+    SPELL_STINGER_SPRAY     = 25749,                        // 技能法术 ID
+    SPELL_POISON_STINGER    = 25748,                // only used in phase1 (说明)
+    SPELL_SUMMON_SWARMER    = 25708,                        // 技能法术 ID
+    SPELL_PARALYZE          = 25725,                        // 技能法术 ID
+    SPELL_LASH              = 25852,                        // 技能法术 ID
+    SPELL_FRENZY            = 8269,                         // 技能法术 ID
+    SPELL_THRASH            = 3391,                         // 技能法术 ID
 
-    SPELL_FEED              = 25721,                // cast by the Larva when reaches the player on the altar
+    SPELL_FEED              = 25721,                // cast by the Larva when reaches the player on the altar (说明)
 
-    SPELL_SWARMER_TELEPORT_1 = 25709,
-    SPELL_SWARMER_TELEPORT_2 = 25825,
-    SPELL_SWARMER_TELEPORT_3 = 25826,
-    SPELL_SWARMER_TELEPORT_4 = 25827,
-    SPELL_SWARMER_TELEPORT_5 = 25828,
+    SPELL_SWARMER_TELEPORT_1 = 25709,                       // 技能法术 ID
+    SPELL_SWARMER_TELEPORT_2 = 25825,                       // 技能法术 ID
+    SPELL_SWARMER_TELEPORT_3 = 25826,                       // 技能法术 ID
+    SPELL_SWARMER_TELEPORT_4 = 25827,                       // 技能法术 ID
+    SPELL_SWARMER_TELEPORT_5 = 25828,                       // 技能法术 ID
 
-    SPELL_SUMMON_LARVA_1     = 26538,
-    SPELL_SUMMON_LARVA_2     = 26539,
+    SPELL_SUMMON_LARVA_1     = 26538,                       // 技能法术 ID
+    SPELL_SUMMON_LARVA_2     = 26539,                       // 技能法术 ID
 
-    NPC_LARVA               = 15555,
-    NPC_SWARMER             = 15546,
-    NPC_HORNET              = 15934,
+    NPC_LARVA               = 15555,                        // NPC 条目 ID
+    NPC_SWARMER             = 15546,                        // NPC 条目 ID
+    NPC_HORNET              = 15934,                        // NPC 条目 ID
 
     PHASE_AIR               = 0,
     PHASE_GROUND            = 1,
 
-    POINT_AIR               = 2,
-    POINT_GROUND            = 3,
+    POINT_AIR               = 2,                            // 路径点 ID
+    POINT_GROUND            = 3,                            // 路径点 ID
 };
 
 struct SummonLocation
@@ -66,13 +71,14 @@ struct SummonLocation
     float m_fX, m_fY, m_fZ;
 };
 
-// Spawn locations
+// Spawn locations (刷新)
 static const SummonLocation aAyamissSpawnLocs[] =
 {
-    { -9647.352f, 1578.062f, 55.32f},           // anchor point for swarmers
-    { -9717.18f, 1517.72f, 27.4677f},           // teleport location - need to be hardcoded because the player is teleported after the larva is summoned
+    { -9647.352f, 1578.062f, 55.32f},           // anchor point for swarmers (说明)
+    { -9717.18f, 1517.72f, 27.4677f},           // teleport location - need to be hardcoded because the player is teleported after the larva is summoned (说明)
 };
 
+// AyamissActions 战斗行为动作枚举
 enum AyamissActions
 {
     AYAMISS_FLY_UP,
@@ -85,9 +91,10 @@ enum AyamissActions
     AYAMISS_SUMMON_SWARMER,
     AYAMISS_LASH,
     AYAMISS_THRASH,
-    AYAMISS_ACTION_MAX,
+    AYAMISS_ACTION_MAX,                                     // 战斗行为动作
 };
 
+// boss_ayamissAI 首领战斗 AI
 struct boss_ayamissAI : public CombatAI
 {
     boss_ayamissAI(Creature* creature) :
@@ -113,7 +120,7 @@ struct boss_ayamissAI : public CombatAI
     GuidList m_swarmersGuidList;
     GuidVector m_spawns;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         m_phase = PHASE_AIR;
@@ -125,15 +132,15 @@ struct boss_ayamissAI : public CombatAI
         DespawnGuids(m_spawns);
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         m_creature->SetImmobilizedState(false);
         CombatAI::EnterEvadeMode();
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
-        // store the swarmers for a future attack
+        // store the swarmers for a future attack (说明)
         if (summoned->GetEntry() == NPC_SWARMER)
         {
             m_swarmersGuidList.push_back(summoned->GetObjectGuid());
@@ -149,7 +156,7 @@ struct boss_ayamissAI : public CombatAI
             }
             summoned->CastSpell(nullptr, spellId, TRIGGERED_OLD_TRIGGERED);
         }
-        // move the larva to paralyze target position
+        // move the larva to paralyze target position (说明)
         else if (summoned->GetEntry() == NPC_LARVA)
         {
             summoned->SetCorpseDelay(5);
@@ -168,7 +175,7 @@ struct boss_ayamissAI : public CombatAI
         m_spawns.push_back(summoned->GetObjectGuid());
     }
 
-    void MovementInform(uint32 motionType, uint32 pointId) override
+    void MovementInform(uint32 motionType, uint32 pointId) override    // 移动节点到达通知
     {
         if (motionType != POINT_MOTION_TYPE)
         {
@@ -195,7 +202,7 @@ struct boss_ayamissAI : public CombatAI
         m_creature->GetMotionMaster()->MovePath(1, PATH_FROM_ENTRY, FORCED_MOVEMENT_NONE, true);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -251,7 +258,7 @@ struct boss_ayamissAI : public CombatAI
                     m_paralyzeTarget = target->GetObjectGuid();
                     ResetCombatAction(action, 15000);
 
-                    // Summon a larva
+                    // Summon a larva (召唤)
                     uint32 spellId = urand(0, 1) ? SPELL_SUMMON_LARVA_1 : SPELL_SUMMON_LARVA_2;
                     m_creature->CastSpell(nullptr, spellId, TRIGGERED_OLD_TRIGGERED);
                 }
@@ -306,6 +313,7 @@ struct boss_ayamissAI : public CombatAI
     }
 };
 
+// npc_hive_zara_larvaAI NPC 脚本 AI
 struct npc_hive_zara_larvaAI : public ScriptedAI
 {
     npc_hive_zara_larvaAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_ruins_of_ahnqiraj*>(m_creature->GetInstanceData()))
@@ -317,7 +325,7 @@ struct npc_hive_zara_larvaAI : public ScriptedAI
 
     instance_ruins_of_ahnqiraj* m_instance;
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
     void MoveInLineOfSight(Unit* who) override
     {
@@ -352,7 +360,7 @@ struct npc_hive_zara_larvaAI : public ScriptedAI
     }
 };
 
-void AddSC_boss_ayamiss()
+void AddSC_boss_ayamiss() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_ayamiss";

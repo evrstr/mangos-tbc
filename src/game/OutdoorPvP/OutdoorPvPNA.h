@@ -23,19 +23,20 @@
 #include "OutdoorPvP.h"
 #include "World/WorldStateDefines.h"
 
+// 纳格兰哈兰（Halaa）野外 PvP 常量定义
 enum
 {
     MAX_NA_GUARDS                           = 15,
-    MAX_NA_ROOSTS                           = 4,            // roosts for each type and team
+    MAX_NA_ROOSTS                           = 4,            // roosts for each type and team (双足飞龙/轰炸台位置数量，共 4 个方向)
     MAX_FIRE_BOMBS                          = 10,
 
-    // spells
+    // spells (哈兰之力增益与哈兰勋章牌子法术)
     SPELL_STRENGTH_HALAANI                  = 33795,
     SPELL_NAGRAND_TOKEN_ALLIANCE            = 33005,
     SPELL_NAGRAND_TOKEN_HORDE               = 33004,
 
     // npcs
-    // quest credit
+    // quest credit (任务击杀计数生物)
     NPC_HALAA_COMBATANT                     = 24867,
 
     GRAVEYARD_ID_HALAA                      = 993,
@@ -43,10 +44,10 @@ enum
 
     ITEM_ID_FIRE_BOMB                       = 24538,
 
-    // gameobjects
+    // gameobjects (哈兰占领点战旗)
     GO_HALAA_BANNER                         = 182210,
 
-    // spawned when horde is in control - alliance is attacking
+    // spawned when horde is in control - alliance is attacking (部落控制哈兰时刷新，供联盟空袭使用)
     GO_WYVERN_ROOST_ALLIANCE_SOUTH          = 182267,
     GO_WYVERN_ROOST_ALLIANCE_WEST           = 182280,
     GO_WYVERN_ROOST_ALLIANCE_NORTH          = 182281,
@@ -62,7 +63,7 @@ enum
     GO_DESTROYED_ROOST_ALLIANCE_NORTH       = 182276,
     GO_DESTROYED_ROOST_ALLIANCE_EAST        = 182277,
 
-    // spawned when alliance is in control - horde is attacking
+    // spawned when alliance is in control - horde is attacking (联盟控制哈兰时刷新，供部落空袭使用)
     GO_WYVERN_ROOST_HORDE_SOUTH             = 182301,
     GO_WYVERN_ROOST_HORDE_WEST              = 182302,
     GO_WYVERN_ROOST_HORDE_NORTH             = 182303,
@@ -79,7 +80,7 @@ enum
     GO_DESTROYED_ROOST_HORDE_EAST           = 182300,
 
     // npcs
-    // alliance
+    // alliance (哈兰联盟方商人、军需官与守卫)
     NPC_RESEARCHER_KARTOS                   = 18817,
     NPC_QUARTERMASTER_DAVIAN                = 18822,
     NPC_MERCHANT_ALDRAAN                    = 21485,
@@ -87,7 +88,7 @@ enum
     NPC_AMMUNITIONER_BANRO                  = 21488,
     NPC_ALLIANCE_HANAANI_GUARD              = 18256,
 
-    // horde
+    // horde (哈兰部落方商人、军需官与守卫)
     NPC_RESEARCHER_AMERELDINE               = 18816,
     NPC_QUARTERMASTER_NORELIQE              = 18821,
     NPC_MERCHANT_COREIEL                    = 21474,
@@ -95,7 +96,7 @@ enum
     NPC_AMMUNITIONER_TASALDAN               = 21483,
     NPC_HORDE_HALAANI_GUARD                 = 18192,
 
-    // events
+    // events (哈兰占领与争夺事件 ID)
     EVENT_HALAA_BANNER_WIN_ALLIANCE         = 11504,
     EVENT_HALAA_BANNER_WIN_HORDE            = 11503,
     EVENT_HALAA_BANNER_CONTEST_ALLIANCE     = 11559,
@@ -106,6 +107,7 @@ enum
     ZONE_HALAA                              = 3628,
 };
 
+// 哈兰阵亡守卫重生坐标结构
 struct HalaaSoldiersSpawns
 {
     float x, y, z, o;
@@ -123,6 +125,7 @@ static const uint32 nagrandRoostStatesHorde[MAX_NA_ROOSTS]              = {WORLD
 static const uint32 nagrandRoostStatesAllianceNeutral[MAX_NA_ROOSTS]    = {WORLD_STATE_NA_WYVERN_SOUTH_NEUTRAL_A,   WORLD_STATE_NA_WYVERN_NORTH_NEUTRAL_A,  WORLD_STATE_NA_WYVERN_EAST_NEUTRAL_A,   WORLD_STATE_NA_WYVERN_WEST_NEUTRAL_A};
 static const uint32 nagrandRoostStatesHordeNeutral[MAX_NA_ROOSTS]       = {WORLD_STATE_NA_WYVERN_SOUTH_NEUTRAL_H,   WORLD_STATE_NA_WYVERN_NORTH_NEUTRAL_H,  WORLD_STATE_NA_WYVERN_EAST_NEUTRAL_H,   WORLD_STATE_NA_WYVERN_WEST_NEUTRAL_H};
 
+// 纳格兰哈兰野外 PvP 控制器：管理哈兰占领点解锁/锁定、守卫数量与复活、双足飞龙轰炸点及阵营商人切换
 class OutdoorPvPNA : public OutdoorPvP
 {
     public:
@@ -145,22 +148,22 @@ class OutdoorPvPNA : public OutdoorPvP
         void Update(uint32 diff) override;
 
     private:
-        // world states handling
+        // world states handling (同步更新区域与双足飞龙点世界状态)
         void UpdateWorldState(uint32 value);
         void UpdateWyvernsWorldState(uint32 value);
 
-        // process capture events
+        // process capture events (处理哈兰控制权占领或争夺事件)
         void ProcessCaptureEvent(GameObject* go, Team team);
 
-        // set specific team vendors and objects after capture
+        // set specific team vendors and objects after capture (占领变更后刷新/清理阵营商人与可交互对象)
         void DespawnVendors(const WorldObject* objRef);
         void HandleFactionObjects(const WorldObject* objRef);
 
-        // handle a specific game objects
+        // handle a specific game objects (锁定或解锁哈兰战旗占领点)
         void LockHalaa(const WorldObject* objRef);
         void UnlockHalaa(const WorldObject* objRef);
 
-        // handle soldier respawn on timer
+        // handle soldier respawn on timer (定时复活阵亡的哈兰守卫)
         void RespawnSoldier();
 
         Team m_zoneOwner;

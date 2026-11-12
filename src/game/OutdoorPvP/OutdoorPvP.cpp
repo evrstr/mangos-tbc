@@ -25,6 +25,7 @@
 
 /**
    Function that adds a player to the players of the affected outdoor pvp zones
+   (设置野外 PvP 关联墓地的占领阵营，同时同步给世界与对应地图线程)
 
    @param   player to add
    @param   whether zone is main outdoor pvp zone or a affected zone
@@ -35,6 +36,7 @@ void OutdoorPvP::SetGraveYardLinkTeam(uint32 id, uint32 locKey, Team team, uint3
     sMapMgr.DoForAllMapsWithMapId(mapId, [=](Map* map) { map->GetMessager().AddMessage([=](Map* map) {map->GetGraveyardManager().SetGraveYardLinkTeam(id, locKey, team); }); });
 }
 
+// 记录进入野外 PvP 区域或关联副本的玩家
 void OutdoorPvP::HandlePlayerEnterZone(Player* player, bool isMainZone)
 {
     m_zonePlayers[player->GetObjectGuid()] = isMainZone;
@@ -42,6 +44,7 @@ void OutdoorPvP::HandlePlayerEnterZone(Player* player, bool isMainZone)
 
 /**
    Function that removes a player from the players of the affected outdoor pvp zones
+   (将离开野外 PvP 区域或关联副本的玩家从列表移除，并在需要时清理世界状态 UI)
 
    @param   player to remove
    @param   whether zone is main outdoor pvp zone or a affected zone
@@ -50,7 +53,7 @@ void OutdoorPvP::HandlePlayerLeaveZone(Player* player, bool isMainZone)
 {
     if (m_zonePlayers.erase(player->GetObjectGuid()))
     {
-        // remove the world state information from the player
+        // remove the world state information from the player (仅在主区域离开且非登出时移除世界状态 UI)
         if (isMainZone && !player->GetSession()->PlayerLogout())
             SendRemoveWorldStates(player);
 
@@ -60,6 +63,7 @@ void OutdoorPvP::HandlePlayerLeaveZone(Player* player, bool isMainZone)
 
 /**
    Function that updates the world state for all the players of the outdoor pvp zone
+   (向主区域内的所有在线玩家发送世界状态数值更新)
 
    @param   world state to update
    @param   new world state value
@@ -68,7 +72,7 @@ void OutdoorPvP::SendUpdateWorldState(uint32 field, uint32 value)
 {
     for (GuidZoneMap::const_iterator itr = m_zonePlayers.begin(); itr != m_zonePlayers.end(); ++itr)
     {
-        // only send world state update to main zone
+        // only send world state update to main zone (仅向位于主战区的玩家发送状态更新，跳过关联副本中的玩家)
         if (!itr->second)
             continue;
 
@@ -77,9 +81,10 @@ void OutdoorPvP::SendUpdateWorldState(uint32 field, uint32 value)
     }
 }
 
+// 游戏对象创建时初始化占领点滑块进度与锁定状态
 void OutdoorPvP::HandleGameObjectCreate(GameObject* go)
 {
-    // set initial data and activate capture points
+    // set initial data and activate capture points (读取持久化滑块状态或初始化为中立中点)
     if (go->GetGOInfo()->type == GAMEOBJECT_TYPE_CAPTURE_POINT)
     {
         CapturePointSliderMap const* capturePoints = sOutdoorPvPMgr.GetCapturePointSliderMap();
@@ -91,9 +96,10 @@ void OutdoorPvP::HandleGameObjectCreate(GameObject* go)
     }
 }
 
+// 游戏对象移除/网格卸载时保存占领点滑块进度
 void OutdoorPvP::HandleGameObjectRemove(GameObject* go)
 {
-    // save capture point slider value (negative value if locked)
+    // save capture point slider value (negative value if locked) (保存占领点滑块进度及锁定状态，便于网格重载后恢复)
     if (go->GetGOInfo()->type == GAMEOBJECT_TYPE_CAPTURE_POINT)
     {
         CapturePointSlider value(go->GetCapturePointSliderValue(), go->GetLootState() != GO_ACTIVATED);
@@ -103,6 +109,7 @@ void OutdoorPvP::HandleGameObjectRemove(GameObject* go)
 
 /**
    Function that handles player kills in the main outdoor pvp zones
+   (处理主战区内的玩家击杀：若击杀者在队伍中则向有效距离内的队友分发区域击杀判定)
 
    @param   player who killed another player
    @param   victim who was killed
@@ -118,7 +125,7 @@ void OutdoorPvP::HandlePlayerKill(Player* killer, Player* victim)
             if (!groupMember)
                 continue;
 
-            // skip if too far away
+            // skip if too far away (超出小队奖励距离则跳过)
             if (!groupMember->IsAtGroupRewardDistance(victim))
                 continue;
 
@@ -127,19 +134,20 @@ void OutdoorPvP::HandlePlayerKill(Player* killer, Player* victim)
 
             // creature kills must be notified, even if not inside objective / not outdoor pvp active
             // player kills only count if active and inside objective
+            // (仅当队员处于激活的野外 PvP 占领目标范围内时计入区域击杀)
             if (groupMember->CanUseCapturePoint())
                 HandlePlayerKillInsideArea(groupMember);
         }
     }
     else
     {
-        // creature kills must be notified, even if not inside objective / not outdoor pvp active
+        // creature kills must be notified, even if not inside objective / not outdoor pvp active (单人击杀校验目标激活状态与有效等级差)
         if (killer && killer->CanUseCapturePoint() && !victim->IsTrivialForTarget(killer))
             HandlePlayerKillInsideArea(killer);
     }
 }
 
-// apply a team buff for the main and affected zones
+// apply a team buff for the main and affected zones (为主战区及关联副本内指定阵营的所有玩家施加或移除增益光环，投递到对应地图线程执行)
 void OutdoorPvP::BuffTeam(Team team, uint32 spellId, bool remove /*= false*/)
 {
     for (GuidZoneMap::const_iterator itr = m_zonePlayers.begin(); itr != m_zonePlayers.end(); ++itr)
@@ -169,6 +177,7 @@ void OutdoorPvP::BuffTeam(Team team, uint32 spellId, bool remove /*= false*/)
     }
 }
 
+// 根据占领阵营返回对应的旗帜 ArtKit
 uint32 OutdoorPvP::GetBannerArtKit(Team team, uint32 artKitAlliance /*= CAPTURE_ARTKIT_ALLIANCE*/, uint32 artKitHorde /*= CAPTURE_ARTKIT_HORDE*/, uint32 artKitNeutral /*= CAPTURE_ARTKIT_NEUTRAL*/) const
 {
     switch (team)
@@ -182,12 +191,14 @@ uint32 OutdoorPvP::GetBannerArtKit(Team team, uint32 artKitAlliance /*= CAPTURE_
     }
 }
 
+// 通过参考对象定位目标旗帜并更新其 ArtKit 与动画
 void OutdoorPvP::SetBannerVisual(const WorldObject* objRef, ObjectGuid goGuid, uint32 artKit, uint32 animId)
 {
     if (GameObject* go = objRef->GetMap()->GetGameObject(goGuid))
         SetBannerVisual(go, artKit, animId);
 }
 
+// 播放旗帜自定义动画并刷新 ArtKit 外观
 void OutdoorPvP::SetBannerVisual(GameObject* go, uint32 artKit, uint32 animId)
 {
     go->SendGameObjectCustomAnim(go->GetObjectGuid(), animId);
@@ -195,6 +206,7 @@ void OutdoorPvP::SetBannerVisual(GameObject* go, uint32 artKit, uint32 animId)
     go->Refresh();
 }
 
+// 刷新或强制消失指定的游戏对象
 void OutdoorPvP::RespawnGO(const WorldObject* objRef, ObjectGuid goGuid, bool respawn)
 {
     if (GameObject* go = objRef->GetMap()->GetGameObject(goGuid))

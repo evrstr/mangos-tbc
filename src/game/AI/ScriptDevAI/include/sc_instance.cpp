@@ -6,11 +6,11 @@
 #include "Maps/MapPersistentStateMgr.h"
 
 /**
-   Function that uses a door or a button
+   Function that uses a door or a button (操作门或机关按钮)
 
-   @param   guid The ObjectGuid of the Door/ Button that will be used
-   @param   uiWithRestoreTime (in seconds) if == 0 autoCloseTime will be used (if not 0 by default in *_template)
-   @param   bUseAlternativeState Use to alternative state
+   @param   guid The ObjectGuid of the Door/ Button that will be used (门/按钮的 ObjectGuid)
+   @param   uiWithRestoreTime (in seconds) if == 0 autoCloseTime will be used (if not 0 by default in *_template) (自动恢复时间，为 0 则使用默认关门时间)
+   @param   bUseAlternativeState Use to alternative state (是否使用替代状态)
  */
 void ScriptedInstance::DoUseDoorOrButton(ObjectGuid guid, uint32 withRestoreTime, bool useAlternativeState)
 {
@@ -31,7 +31,7 @@ void ScriptedInstance::DoUseDoorOrButton(ObjectGuid guid, uint32 withRestoreTime
     }
 }
 
-/// Function that uses a door or button that is stored in m_goEntryGuidStore
+/// Function that uses a door or button that is stored in m_goEntryGuidStore (按 Entry 操作存储在映射表中的门或按钮)
 void ScriptedInstance::DoUseDoorOrButton(uint32 entry, uint32 withRestoreTime /*= 0*/, bool useAlternativeState /*= false*/)
 {
     EntryGuidMap::iterator find = m_goEntryGuidStore.find(entry);
@@ -42,6 +42,7 @@ void ScriptedInstance::DoUseDoorOrButton(uint32 entry, uint32 withRestoreTime /*
         debug_log("SD2: Script call DoUseDoorOrButton(by Entry), but no gameobject of entry %u was created yet, or it was not stored by script for map %u.", entry, instance->GetId());
 }
 
+// 操作可开关对象（显式指定打开/关闭）
 void ScriptedInstance::DoUseOpenableObject(uint32 entry, bool open, uint32 withRestoreTime, bool useAlternativeState)
 {
     if (GameObject* go = GetSingleGameObjectFromStorage(entry))
@@ -49,7 +50,7 @@ void ScriptedInstance::DoUseOpenableObject(uint32 entry, bool open, uint32 withR
 }
 
 /**
-   Function that respawns a despawned GameObject with given time
+   Function that respawns a despawned GameObject with given time (按 GUID 重新刷新已消失的游戏对象)
 
    @param   guid The ObjectGuid of the GO that will be respawned
    @param   uiTimeToDespawn (in seconds) Despawn the GO after this time, default is a minute
@@ -75,7 +76,7 @@ void ScriptedInstance::DoRespawnGameObject(ObjectGuid guid, uint32 timeToDespawn
     }
 }
 
-/// Function that uses a door or button that is stored in m_goEntryGuidStore
+/// Function that uses a door or button that is stored in m_goEntryGuidStore (按 Entry 切换缓存游戏对象标志)
 void ScriptedInstance::DoToggleGameObjectFlags(uint32 entry, uint32 GOflags, bool apply)
 {
     EntryGuidMap::iterator find = m_goEntryGuidStore.find(entry);
@@ -87,7 +88,7 @@ void ScriptedInstance::DoToggleGameObjectFlags(uint32 entry, uint32 GOflags, boo
 }
 
 /**
-   Function that toggles the GO-flags of a GameObject
+   Function that toggles the GO-flags of a GameObject (按 GUID 切换游戏对象标志)
 
    @param   guid The ObjectGuid of the GO that will be respawned
    @param   uiGOflags Which GO-flags to toggle
@@ -107,7 +108,7 @@ void ScriptedInstance::DoToggleGameObjectFlags(ObjectGuid guid, uint32 GOflags, 
     }
 }
 
-/// Function that respawns a despawned GO that is stored in m_goEntryGuidStore
+/// Function that respawns a despawned GO that is stored in m_goEntryGuidStore (按 Entry 重新刷新已消失的游戏对象)
 void ScriptedInstance::DoRespawnGameObject(uint32 entry, uint32 timeToDespawn)
 {
     EntryGuidMap::iterator find = m_goEntryGuidStore.find(entry);
@@ -119,7 +120,7 @@ void ScriptedInstance::DoRespawnGameObject(uint32 entry, uint32 timeToDespawn)
 }
 
 /**
-   Helper function to update a world state for all players in the map
+   Helper function to update a world state for all players in the map (向地图内所有玩家同步世界状态)
 
    @param   uiStateId The WorldState that will be set for all players in the map
    @param   uiStateData The Value to which the State will be set to
@@ -140,7 +141,7 @@ void ScriptedInstance::DoUpdateWorldState(uint32 stateId, uint32 stateData)
         debug_log("SD2: DoUpdateWorldState attempt send data but no players in map.");
 }
 
-/// Get the first found Player* (with requested properties) in the map. Can return nullptr.
+/// Get the first found Player* (with requested properties) in the map. Can return nullptr. (获取地图内满足条件的首个玩家指针)
 Player* ScriptedInstance::GetPlayerInMap(bool onlyAlive /*=false*/, bool canBeGamemaster /*=true*/) const
 {
     Map::PlayerList const& players = instance->GetPlayers();
@@ -155,6 +156,7 @@ Player* ScriptedInstance::GetPlayerInMap(bool onlyAlive /*=false*/, bool canBeGa
     return nullptr;
 }
 
+// 安全防护：若无 GM 在场则封禁异常玩家
 void ScriptedInstance::BanPlayersIfNoGm(const std::string& reason)
 {
     bool found = false;
@@ -183,6 +185,7 @@ void ScriptedInstance::BanPlayersIfNoGm(const std::string& reason)
     }
 }
 
+// 批量让指定 GUID 列表中的生物或游戏对象消失
 void ScriptedInstance::DespawnGuids(GuidVector& spawns)
 {
     for (ObjectGuid& guid : spawns)
@@ -204,6 +207,7 @@ void ScriptedInstance::DespawnGuids(GuidVector& spawns)
     spawns.clear();
 }
 
+// 按数据库 GUID 重新刷新生物列表并设置刷新时间
 void ScriptedInstance::RespawnDbGuids(std::vector<uint32>& spawns, uint32 respawnDelay)
 {
     time_t respawnTime = time(nullptr) + respawnDelay;
@@ -225,7 +229,7 @@ void ScriptedInstance::RespawnDbGuids(std::vector<uint32>& spawns, uint32 respaw
     }
 }
 
-/// Returns a pointer to a loaded GameObject that was stored in m_goEntryGuidStore. Can return nullptr
+/// Returns a pointer to a loaded GameObject that was stored in m_goEntryGuidStore. Can return nullptr (从缓存映射表中获取指定 Entry 游戏对象指针)
 GameObject* ScriptedInstance::GetSingleGameObjectFromStorage(uint32 entry, bool skipDebugLog /*=false*/) const
 {
     auto iter = m_goEntryGuidStore.find(entry);
@@ -239,7 +243,7 @@ GameObject* ScriptedInstance::GetSingleGameObjectFromStorage(uint32 entry, bool 
     return nullptr;
 }
 
-/// Returns a pointer to a loaded Creature that was stored in m_goEntryGuidStore. Can return nullptr
+/// Returns a pointer to a loaded Creature that was stored in m_goEntryGuidStore. Can return nullptr (从缓存映射表中获取指定 Entry 生物指针)
 Creature* ScriptedInstance::GetSingleCreatureFromStorage(uint32 entry, bool skipDebugLog /*=false*/) const
 {
     auto iter = m_npcEntryGuidStore.find(entry);
@@ -253,6 +257,7 @@ Creature* ScriptedInstance::GetSingleCreatureFromStorage(uint32 entry, bool skip
     return nullptr;
 }
 
+// 从缓存集合中获取匹配指定 Entry 的所有生物 GUID
 void ScriptedInstance::GetCreatureGuidVectorFromStorage(uint32 entry, GuidVector& entryGuidVector, bool /*skipDebugLog*/) const
 {
     auto iter = m_npcEntryGuidCollection.find(entry);
@@ -260,6 +265,7 @@ void ScriptedInstance::GetCreatureGuidVectorFromStorage(uint32 entry, GuidVector
         entryGuidVector = (*iter).second;
 }
 
+// 从缓存集合中获取匹配指定 Entry 的所有游戏对象 GUID
 void ScriptedInstance::GetGameObjectGuidVectorFromStorage(uint32 entry, GuidVector& entryGuidVector, bool /*skipDebugLog*/) const
 {
     auto iter = m_goEntryGuidCollection.find(entry);
@@ -268,7 +274,7 @@ void ScriptedInstance::GetGameObjectGuidVectorFromStorage(uint32 entry, GuidVect
 }
 
 /**
-   Constructor for DialogueHelper
+   Constructor for DialogueHelper (单边剧情对话构造函数)
 
    @param   pDialogueArray The static const array of DialogueEntry holding the information about the dialogue. This array MUST be terminated by {0,0,0}
  */
@@ -284,7 +290,7 @@ DialogueHelper::DialogueHelper(DialogueEntry const* dialogueArray) :
 {}
 
 /**
-   Constructor for DialogueHelper (Two Sides)
+   Constructor for DialogueHelper (Two Sides) (双边剧情对话构造函数)
 
    @param   pDialogueTwoSideArray The static const array of DialogueEntryTwoSide holding the information about the dialogue. This array MUST be terminated by {0,0,0,0,0}
  */
@@ -300,7 +306,7 @@ DialogueHelper::DialogueHelper(DialogueEntryTwoSide const* dialogueTwoSideArray)
 {}
 
 /**
-   Function to start a (part of a) dialogue
+   Function to start a (part of a) dialogue (启动以指定文本 Entry 起始的剧情对话)
 
    @param   iTextEntry The TextEntry of the dialogue that will be started (must be always the entry of first side)
  */
@@ -343,7 +349,7 @@ void DialogueHelper::StartNextDialogueText(int32 textEntry)
     DoNextDialogueStep();
 }
 
-/// Internal helper function to do the actual say of a DialogueEntry
+/// Internal helper function to do the actual say of a DialogueEntry (执行当前对话步骤并在完成后递增索引)
 void DialogueHelper::DoNextDialogueStep()
 {
     // Last Dialogue Entry done?
@@ -411,7 +417,7 @@ void DialogueHelper::DoNextDialogueStep()
         ++m_currentEntryTwoSide;
 }
 
-/// Call this function within any DialogueUpdate method. This is required for saying next steps in a dialogue
+/// Call this function within any DialogueUpdate method. This is required for saying next steps in a dialogue (在 Update 循环中推进对话延迟计时)
 void DialogueHelper::DialogueUpdate(uint32 diff)
 {
     if (m_timer)

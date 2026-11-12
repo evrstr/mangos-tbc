@@ -43,6 +43,7 @@
 
 extern DatabaseType LoginDatabase;
 
+/// 账号标志位枚举
 enum AccountFlags
 {
     ACCOUNT_FLAG_GM         = 0x00000001,
@@ -50,6 +51,7 @@ enum AccountFlags
     ACCOUNT_FLAG_PROPASS    = 0x00800000,
 };
 
+/// 二次安全校验标志位
 enum SecurityFlags
 {
     SECURITY_FLAG_NONE          = 0x00,
@@ -58,7 +60,7 @@ enum SecurityFlags
     SECURITY_FLAG_AUTHENTICATOR = 0x04
 };
 
-// GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some paltform
+// GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some paltform | 按 1 字节对齐网络协议结构体（兼容 GCC 与 MSVC）
 #if defined( __GNUC__ )
 #pragma pack(1)
 #else
@@ -67,6 +69,7 @@ enum SecurityFlags
 
 # define AUTH_LOGON_MAX_NAME 16
 
+/// 客户端登录挑战请求包体（CMD_AUTH_LOGON_CHALLENGE）
 struct sAuthLogonChallengeBody
 {
     uint8   gamename[4];
@@ -83,12 +86,14 @@ struct sAuthLogonChallengeBody
     uint8   userName[AUTH_LOGON_MAX_NAME + 1];
 };
 
+/// 登录挑战包头
 struct sAuthLogonChallengeHeader
 {
     uint8   error;
     uint16  size;
 };
 
+/// 经典旧世图形 PIN 码校验数据
 struct sAuthLogonPinData_C
 {
     uint8 salt[16];
@@ -112,14 +117,15 @@ typedef struct
 } sAuthLogonChallenge_S;
 */
 
+/// 客户端登录证明包（包含临时公钥 A、证明摘要 M1 与版本 CRC 校验值）
 struct sAuthLogonProof_C
 {
     uint8   A[32];
     uint8   M1[20];
     uint8   crc_hash[20];
     uint8   number_of_keys;
-    uint8   securityFlags;                                  // 0x00-0x04
-    sAuthLogonPinData_C pinData;                                        // PINData for PIN authentication (classic only). Conditional read if PIN was requested
+    uint8   securityFlags;                                  // 0x00-0x04 | 安全验证标志位
+    sAuthLogonPinData_C pinData;                                        // PINData for PIN authentication (classic only). Conditional read if PIN was requested | 经典版图形 PIN 码数据（仅在服务端请求 PIN 时按条件读取）
     static size_t getSize(bool withPin)
     {
         return sizeof(sAuthLogonProof_C) - (withPin ? 0 : sizeof(sAuthLogonPinData_C));
@@ -134,16 +140,18 @@ typedef struct
     uint16  unk4[20];
 }  sAuthLogonProofKey_C;
 */
+/// 服务端登录证明响应包（TBC 2.4.3 及以上版本）
 typedef struct AUTH_LOGON_PROOF_S
 {
     uint8   cmd;
     uint8   error;
     uint8   M2[20];
-    uint32  accountFlags;                                   // see enum AccountFlags
-    uint32  surveyId;                                       // SurveyId
-    uint16  unkFlags;                                       // some flags (AccountMsgAvailable = 0x01)
+    uint32  accountFlags;                                   // see enum AccountFlags | 见 AccountFlags 枚举
+    uint32  surveyId;                                       // SurveyId | 调查问卷 ID
+    uint16  unkFlags;                                       // some flags (AccountMsgAvailable = 0x01) | 附加标志位
 } sAuthLogonProof_S;
 
+/// 服务端登录证明响应包（1.12.x 经典版客户端）
 typedef struct AUTH_LOGON_PROOF_S_BUILD_6005
 {
     uint8   cmd;
@@ -154,6 +162,7 @@ typedef struct AUTH_LOGON_PROOF_S_BUILD_6005
     // uint16  unk3;
 } sAuthLogonProof_S_BUILD_6005;
 
+/// 客户端重连证明包
 typedef struct AUTH_RECONNECT_PROOF_C
 {
     uint8   R1[16];
@@ -162,13 +171,14 @@ typedef struct AUTH_RECONNECT_PROOF_C
     uint8   number_of_keys;
 } sAuthReconnectProof_C;
 
+/// 补丁传输初始化包结构（未启用）
 typedef struct XFER_INIT
 {
-    uint8 cmd;                                              // XFER_INITIATE
-    uint8 fileNameLen;                                      // strlen(fileName);
-    uint8 fileName[5];                                      // fileName[fileNameLen]
-    uint64 file_size;                                       // file size (bytes)
-    uint8 md5[MD5_DIGEST_LENGTH];                           // MD5
+    uint8 cmd;                                              // XFER_INITIATE | 传输初始化指令
+    uint8 fileNameLen;                                      // strlen(fileName); | 文件名长度
+    uint8 fileName[5];                                      // fileName[fileNameLen] | 文件名
+    uint64 file_size;                                       // file size (bytes) | 文件总字节数
+    uint8 md5[MD5_DIGEST_LENGTH];                           // MD5 | 文件 MD5 摘要
 } XFER_INIT;
 
 // GCC have alternative #pragma pack() syntax and old gcc version not support pack(pop), also any gcc version not support it at some paltform
@@ -194,7 +204,7 @@ const char logonProofUnknownAccountVanilla[2] = { CMD_AUTH_LOGON_PROOF, AUTH_LOG
 const char logonProofVersionInvalid[2] = { CMD_AUTH_LOGON_PROOF, AUTH_LOGON_FAILED_VERSION_INVALID };
 const char logonProofUnknownAccountPinInvalid[4] = { CMD_AUTH_LOGON_PROOF, AUTH_LOGON_FAILED_UNKNOWN_ACCOUNT, 3, 0 };
 
-/// Constructor - set the N and g values for SRP6
+/// Constructor - set the N and g values for SRP6 | 构造函数：初始化会话状态与超时计时器
 AuthSocket::AuthSocket(boost::asio::io_context& context)
     : AsyncSocket<AuthSocket>(context), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER), m_timeoutTimer(context)
 {
@@ -205,11 +215,11 @@ void AuthSocket::ArmTimeoutTimer()
     m_timeoutTimer.expires_after(std::chrono::seconds(30));
     m_timeoutTimer.async_wait([&] (const boost::system::error_code& error)
     {
-        // Timer was not cancelled, take necessary action.
+        // Timer was not cancelled, take necessary action. | 若计时器未被取消则执行超时断连
         if (error == boost::asio::error::operation_aborted)
             return;
 
-        // Close socket if timer runs out
+        // Close socket if timer runs out | 超时未完成认证交互时关闭连接
         if (!IsClosed())
             Close();
     });
@@ -222,10 +232,10 @@ bool AuthSocket::OnOpen()
     return true;
 }
 
-/// Read the packet from the client
+/// Read the packet from the client | 从客户端读取操作码并按当前连接状态分派处理函数
 bool AuthSocket::ProcessIncomingData()
 {
-    // benchmarking has demonstrated that this lookup method is faster than std::map
+    // benchmarking has demonstrated that this lookup method is faster than std::map | 基准测试表明线性表查询小操作码表比 std::map 更快
     const static AuthHandler table[] =
     {
         { CMD_AUTH_LOGON_CHALLENGE,     STATUS_CHALLENGE,   &AuthSocket::_HandleLogonChallenge      },
@@ -250,13 +260,13 @@ bool AuthSocket::ProcessIncomingData()
         }
 
         int i;
-        // Circle through known commands and call the correct command handler
+        // Circle through known commands and call the correct command handler | 遍历已知操作码表并调用对应处理函数
         for (i = 0; i < tableLength; ++i)
         {
             if (table[i].cmd != *cmd)
                 continue;
 
-            // unauthorized
+            // unauthorized | 检查当前状态是否允许执行该操作码
             DEBUG_LOG("[Auth] Status %u, table status %u", self->_status, table[i].status);
 
             if (table[i].status != self->_status)
@@ -276,7 +286,7 @@ bool AuthSocket::ProcessIncomingData()
             break;
         }
 
-        // did we iterate over the entire command table, finding nothing? if so, punt!
+        // did we iterate over the entire command table, finding nothing? if so, punt! | 若未匹配到任何已知操作码则丢弃处理
         if (i == tableLength)
         {
             DEBUG_LOG("[Auth] Got unknown packet %u", *cmd);
@@ -286,6 +296,7 @@ bool AuthSocket::ProcessIncomingData()
         // if we reach here, it means that a valid opcode was found and the handler completed successfully;
         // re-arm the timeout: a client that goes on to send a command out of order or with an unknown opcode (which
         // are otherwise ignored without closing the socket) still gets disconnected eventually
+        // 合法操作码分派完成后重置超时计时器，确保乱序或未知指令客户端最终会被超时断开
         self->ArmTimeoutTimer();
     });
 
@@ -331,7 +342,7 @@ void AuthSocket::SendProof(Sha1Hash sha)
     }
 }
 
-/// Logon Challenge command handler
+/// Logon Challenge command handler | 处理登录挑战请求（CMD_AUTH_LOGON_CHALLENGE）
 bool AuthSocket::_HandleLogonChallenge()
 {
     DEBUG_LOG("Entering _HandleLogonChallenge");
@@ -361,11 +372,11 @@ bool AuthSocket::_HandleLogonChallenge()
 
         DEBUG_LOG("[AuthChallenge] got header, body is %#04x bytes", remaining);
 
-        ///- Session is closed unless overriden
+        ///- Session is closed unless overriden | 默认将状态置为关闭，后续校验通过后再切换状态
         self->_status = STATUS_CLOSED;
 
         std::shared_ptr<sAuthLogonChallengeBody> body = std::make_shared<sAuthLogonChallengeBody>();
-        ///- Read the remaining of the packet
+        ///- Read the remaining of the packet | 读取剩余挑战包体数据
         self->Read((char*)body.get(), remaining, [self, header, body](const boost::system::error_code& error, std::size_t /*read*/)
         {
             if (error)
@@ -382,8 +393,8 @@ bool AuthSocket::_HandleLogonChallenge()
             DEBUG_LOG("[AuthChallenge] got full packet, %#04x bytes", header->size);
             DEBUG_LOG("[AuthChallenge] name(%d): '%s'", body->userName_len, body->userName);
 
-            // BigEndian code, nop in little endian case
-            // size already converted
+            // BigEndian code, nop in little endian case | 大端平台字节序转换（小端平台为空操作）
+            // size already converted | size 字段已在前面转换
             EndianConvert(*((uint32*)(&body->gamename[0])));
             EndianConvert(body->build);
             EndianConvert(*((uint32*)(&body->platform[0])));
@@ -397,7 +408,7 @@ bool AuthSocket::_HandleLogonChallenge()
             self->_login = (const char*)body->userName;
             self->_build = body->build;
 
-            // Convert uint8[4] to string, restore string order as its byte order is reversed
+            // Convert uint8[4] to string, restore string order as its byte order is reversed | 将 4 字节平台/系统/地区标识反转为可读字符串
             body->os[3] = '\0';
             self->m_os = (char*)body->os;
             std::reverse(self->m_os.begin(), self->m_os.end());
@@ -409,10 +420,10 @@ bool AuthSocket::_HandleLogonChallenge()
             self->m_locale.assign(body->country, (body->country + sizeof(body->country)));
             std::reverse(self->m_locale.begin(), self->m_locale.end());
 
-            ///- Normalize account name
+            ///- Normalize account name | 账号名规范化（客户端已按大写形式发送）
             // utf8ToUpperOnlyLatin(_login); -- client already send account in expected form
 
-            // Escape the user input used in DB to avoid further SQL injection
+            // Escape the user input used in DB to avoid further SQL injection | 转义用于数据库查询的用户输入，防止 SQL 注入
             // Memory will be freed on AuthSocket object destruction
             self->_safelogin = self->_login;
             LoginDatabase.escape_string(self->_safelogin);
@@ -424,6 +435,7 @@ bool AuthSocket::_HandleLogonChallenge()
             *pkt << uint8(0x00);
 
             ///- Get the account details and its ban state in one query (a round trip to the database costs far more than a few extra columns)
+            // 单次 SQL 查询获取账号信息及 IP/账号封禁状态（减少数据库往返次数）
             // No SQL injection (escaped user name, IP address as passed by the socket)
             auto queryResult = LoginDatabase.PQuery("SELECT a.id,a.locked,a.lockedIp,a.gmlevel,a.v,a.s,a.token,"
                 "(SELECT COUNT(*) FROM ip_banned WHERE (expires_at = banned_at OR expires_at > " _UNIXTIME_ ") AND ip = '%s'),"
@@ -431,11 +443,11 @@ bool AuthSocket::_HandleLogonChallenge()
                 "(SELECT COUNT(*) FROM account_banned WHERE account_id = a.id AND active = 1 AND expires_at <> banned_at AND expires_at > " _UNIXTIME_ ") "
                 "FROM account a WHERE a.username = '%s'", self->GetRemoteAddress().c_str(), self->_safelogin.c_str());
 
-            ///- Verify that this IP is not in the ip_banned table
+            ///- Verify that this IP is not in the ip_banned table | 检查客户端 IP 是否在 ip_banned 封禁表中
             bool ipBanned;
             if (queryResult)
                 ipBanned = (*queryResult)[7].GetUInt32() != 0;
-            else    // unknown account: the IP ban must still be reported first
+            else    // unknown account: the IP ban must still be reported first | 未知账号时仍需优先检查并上报 IP 封禁状态
             {
                 std::unique_ptr<QueryResult> ip_banned_result(LoginDatabase.PQuery("SELECT expires_at FROM ip_banned "
                     "WHERE (expires_at = banned_at OR expires_at > " _UNIXTIME_ ") AND ip = '%s'", self->GetRemoteAddress().c_str()));
@@ -453,9 +465,9 @@ bool AuthSocket::_HandleLogonChallenge()
                 {
                     Field* fields = queryResult->Fetch();
 
-                    ///- If the IP is 'locked', check that the player comes indeed from the correct IP address
+                    ///- If the IP is 'locked', check that the player comes indeed from the correct IP address | 若账号开启了 IP 绑定，校验来源 IP 是否一致
                     bool locked = false;
-                    if (fields[1].GetUInt8() == 1)               // if ip is locked
+                    if (fields[1].GetUInt8() == 1)               // if ip is locked | 已启用 IP 锁定
                     {
                         DEBUG_LOG("[AuthChallenge] Account '%s' is locked to IP - '%s'", self->_login.c_str(), fields[2].GetString());
                         DEBUG_LOG("[AuthChallenge] Player address is '%s'", self->GetRemoteAddress().c_str());
@@ -475,7 +487,7 @@ bool AuthSocket::_HandleLogonChallenge()
                     std::string databaseS = fields[5].GetCppString();
                     bool broken = false;
 
-                    // A locked account already got its reply above: never write a second result code
+                    // A locked account already got its reply above: never write a second result code | 已因 IP 锁定写入错误码的账号不再写入第二个结果码
                     if (!locked && (!self->srp.SetVerifier(databaseV.c_str()) || !self->srp.SetSalt(databaseS.c_str())))
                     {
                         *pkt << uint8(AUTH_LOGON_FAILED_FAIL_NOACCESS);
@@ -485,7 +497,7 @@ bool AuthSocket::_HandleLogonChallenge()
 
                     if (!locked && !broken)
                     {
-                        ///- If the account is banned, reject the logon attempt
+                        ///- If the account is banned, reject the logon attempt | 若账号处于永久或临时封禁状态则拒绝登录
                         const bool permanentBan = fields[8].GetUInt32() != 0;
                         if (permanentBan || fields[9].GetUInt32() != 0)
                         {
@@ -517,6 +529,8 @@ bool AuthSocket::_HandleLogonChallenge()
                     // would make two casings of the same unknown name look like two different accounts, and (since a
                     // real account's answer does not vary with casing either) that mismatch would itself tell a fake
                     // challenge apart from a real one.
+                    // 未知账号防枚举机制：为不存在的账号生成确定性（同用户名固定）且永不可匹配的伪造 SRP6 挑战，
+                    // 先统一转为大写以与数据库大小写不敏感查询行为保持一致，避免攻击者通过响应差异枚举有效账号名。
                     std::string foldedLogin = self->_login;
                     std::transform(foldedLogin.begin(), foldedLogin.end(), foldedLogin.begin(),
                         [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
@@ -545,11 +559,11 @@ bool AuthSocket::_HandleLogonChallenge()
     return true;
 }
 
-/// Logon Proof command handler
+/// Logon Proof command handler | 处理登录证明请求（CMD_AUTH_LOGON_PROOF）
 bool AuthSocket::_HandleLogonProof()
 {
     DEBUG_LOG("Entering _HandleLogonProof");
-    ///- Read the packet
+    ///- Read the packet | 读取登录证明数据包
     std::shared_ptr<sAuthLogonProof_C> lp = std::make_shared<sAuthLogonProof_C>();
     auto size = sAuthLogonProof_C::getSize(m_promptPin);
     Read((char*)lp.get(), size, [self = shared_from_this(), lp](const boost::system::error_code& error, std::size_t /*read*/)
@@ -560,13 +574,13 @@ bool AuthSocket::_HandleLogonProof()
             return;
         }
 
-        ///- Session is closed unless overriden
+        ///- Session is closed unless overriden | 默认关闭状态，校验通过后再切换
         self->_status = STATUS_CLOSED;
 
-        /// <ul><li> If the client has no valid version
+        /// <ul><li> If the client has no valid version | 校验客户端 Build 版本是否受支持
         if (!FindBuildInfo(self->_build))
         {
-            // no patch found
+            // no patch found | 未找到匹配版本信息
             std::shared_ptr<ByteBuffer> pkt = std::make_shared<ByteBuffer>();
             *pkt << uint8(CMD_AUTH_LOGON_CHALLENGE);
             *pkt << uint8(0x00);
@@ -578,7 +592,7 @@ bool AuthSocket::_HandleLogonProof()
         }
         /// </ul>
 
-        ///- Continue the SRP6 calculation based on data received from the client
+        ///- Continue the SRP6 calculation based on data received from the client | 基于客户端临时公钥 A 计算 SRP6 会话密钥与证明摘要
         if (!self->srp.CalculateSessionKey(lp->A, 32))
         {
             BASIC_LOG("[AuthChallenge] Session calculation failed for account %s!", self->_login.c_str());
@@ -588,7 +602,7 @@ bool AuthSocket::_HandleLogonProof()
         self->srp.HashSessionKey();
         self->srp.CalculateProof(self->_login);
 
-        ///- Check if SRP6 results match (password is correct), else send an error
+        ///- Check if SRP6 results match (password is correct), else send an error | 校验客户端 M1 是否与服务端一致（注：srp.Proof 返回 0 表示校验成功，非 0 表示失败）
         if (!self->srp.Proof(lp->M1, 20))
         {
             if (self->_build > 6141 && (lp->securityFlags & SECURITY_FLAG_AUTHENTICATOR || !self->_token.empty()))
@@ -630,6 +644,7 @@ bool AuthSocket::_HandleLogonProof()
 
             // m_promptPin is server-side state set during the challenge (token present, build <= 6141): it does not
             // depend on what the client sends in securityFlags
+            // m_promptPin 为挑战阶段在服务端记录的状态（存在 token 且版本 <= 6141），不依赖客户端上报的 securityFlags
             if (self->m_promptPin)
             {
                 int32 serverToken = self->generateToken(self->_token.c_str());
@@ -652,7 +667,7 @@ bool AuthSocket::_HandleLogonProof()
             }
             else
             {
-                // 1.x not react incorrectly at 4-byte message use 3 as real error
+                // 1.x not react incorrectly at 4-byte message use 3 as real error | 1.12.1 等早期客户端对 4 字节错误包处理异常，需发送 2 字节响应
                 self->Write(logonProofUnknownAccountVanilla, sizeof(logonProofUnknownAccountVanilla), [self](const boost::system::error_code& /*error*/, std::size_t /*written*/) {});
             }
 
@@ -665,7 +680,7 @@ bool AuthSocket::_HandleLogonProof()
     return true;
 }
 
-/// Reconnect Challenge command handler
+/// Reconnect Challenge command handler | 处理断线重连挑战请求（CMD_AUTH_RECONNECT_CHALLENGE）
 bool AuthSocket::_HandleReconnectChallenge()
 {
     DEBUG_LOG("Entering _HandleReconnectChallenge");
@@ -726,12 +741,13 @@ bool AuthSocket::_HandleReconnectChallenge()
 
             // One query for everything: same checks as a full logon challenge (ip ban, account ban, IP lock).
             // The remote address comes from the socket, the login is escaped: no SQL injection.
+            // 单次查询校验与完整登录挑战一致的限制条件（IP 封禁、账号封禁、IP 绑定）以及持久化的会话密钥
             auto queryResult = LoginDatabase.PQuery("SELECT a.locked,a.lockedIp,a.sessionkey,"
                 "(SELECT COUNT(*) FROM ip_banned WHERE (expires_at = banned_at OR expires_at > " _UNIXTIME_ ") AND ip = '%s'),"
                 "(SELECT COUNT(*) FROM account_banned WHERE account_id = a.id AND active = 1 AND (expires_at > " _UNIXTIME_ " OR expires_at = banned_at)) "
                 "FROM account a WHERE a.username = '%s'", self->GetRemoteAddress().c_str(), self->_safelogin.c_str());
 
-            // Stop if the account is not found
+            // Stop if the account is not found | 未找到账号则直接断开
             if (!queryResult)
             {
                 sLog.outError("[ERROR] user %s tried to login and we cannot find his session key in the database.", self->_login.c_str());
@@ -743,6 +759,7 @@ bool AuthSocket::_HandleReconnectChallenge()
 
             // The client cannot display an error at this step (it drops the link on a non-zero result byte),
             // so just close: the player then falls back to a full logon, which reports the reason.
+            // 客户端在重连挑战阶段无法展示错误详情，直接断开使客户端回退到完整登录流程以显示具体封禁原因
             if (fields[3].GetUInt32() || fields[4].GetUInt32())
             {
                 BASIC_LOG("[ReconnectChallenge] Banned %s %s tries to reconnect!", fields[3].GetUInt32() ? "ip" : "account",
@@ -760,15 +777,15 @@ bool AuthSocket::_HandleReconnectChallenge()
 
             self->srp.SetStrongSessionKey(fields[2].GetString());
 
-            ///- All good, await client's proof
+            ///- All good, await client's proof | 校验通过，等待客户端发送重连证明
             self->_status = STATUS_RECON_PROOF;
 
-            ///- Sending response
+            ///- Sending response | 下发重连挑战随机数与版本挑战字节
             std::shared_ptr<ByteBuffer> pkt = std::make_shared<ByteBuffer>();
             *pkt << (uint8)CMD_AUTH_RECONNECT_CHALLENGE;
             *pkt << (uint8)0x00;
             self->_reconnectProof.SetRand(16 * 8);
-            pkt->append(self->_reconnectProof.AsByteArray(16));        // 16 bytes random
+            pkt->append(self->_reconnectProof.AsByteArray(16));        // 16 bytes random | 16 字节随机挑战值
             pkt->append(VersionChallenge.data(), VersionChallenge.size());
             self->Write((const char*)pkt->contents(), pkt->size(), [self, pkt](const boost::system::error_code& /*error*/, std::size_t /*written*/) {});
 
@@ -779,11 +796,11 @@ bool AuthSocket::_HandleReconnectChallenge()
     return true;
 }
 
-/// Reconnect Proof command handler
+/// Reconnect Proof command handler | 处理断线重连证明请求（CMD_AUTH_RECONNECT_PROOF）
 bool AuthSocket::_HandleReconnectProof()
 {
     DEBUG_LOG("Entering _HandleReconnectProof");
-    ///- Read the packet
+    ///- Read the packet | 读取重连证明数据
     std::shared_ptr<sAuthReconnectProof_C> lp = std::make_shared<sAuthReconnectProof_C>();
     Read((char*)lp.get(), sizeof(sAuthReconnectProof_C), [self = shared_from_this(), lp](const boost::system::error_code& error, std::size_t /*read*/)
     {
@@ -806,7 +823,7 @@ bool AuthSocket::_HandleReconnectProof()
         Sha1Hash sha;
         sha.Initialize();
         sha.UpdateData(self->_login);
-        // Fixed widths, as the client: R1 and the challenge on 16 bytes, K on 40
+        // Fixed widths, as the client: R1 and the challenge on 16 bytes, K on 40 | 与客户端一致按固定宽度拼接：R1 与挑战值各 16 字节，会话密钥 K 为 40 字节
         sha.UpdateData(t1.AsByteArray(16));
         sha.UpdateData(self->_reconnectProof.AsByteArray(16));
         sha.UpdateData(K.AsByteArray(40));
@@ -822,7 +839,7 @@ bool AuthSocket::_HandleReconnectProof()
                 self->Write((const char*)pkt->contents(), pkt->size(), [self, pkt](const boost::system::error_code& /*error*/, std::size_t /*written*/) {});
                 return;
             }
-            // Sending response
+            // Sending response | 重连校验成功，发送应答并将状态置为已认证
             *pkt << uint8(CMD_AUTH_RECONNECT_PROOF);
             *pkt << uint8(AUTH_LOGON_SUCCESS);
             *pkt << uint16(0x00);                                // 2 bytes zeros
@@ -842,7 +859,7 @@ bool AuthSocket::_HandleReconnectProof()
     return false;
 }
 
-/// %Realm List command handler
+/// %Realm List command handler | 处理服务器列表请求（CMD_REALM_LIST）
 bool AuthSocket::_HandleRealmList()
 {
     DEBUG_LOG("Entering _HandleRealmList");
@@ -1032,13 +1049,14 @@ uint8 AuthSocket::getEligibleRealmCount(uint8 accountSecurityLevel)
     for (const auto& i : sRealmList)
         // must match the skip condition of the loops that actually write the realms below:
         // a higher-security realm is only left out of the list for plain players, not for GMs
+        // 计数过滤条件必须与 LoadRealmlist 写入循环一致：仅向普通玩家隐藏高权限服务器，GM 仍可见
         if (accountSecurityLevel || i.second.allowedSecurityLevel == 0)
             size++;
 
     return size;
 }
 
-/// Resume patch transfer
+/// Resume patch transfer | 恢复补丁传输（未启用）
 bool AuthSocket::_HandleXferResume()
 {
     DEBUG_LOG("Entering _HandleXferResume");
@@ -1048,7 +1066,7 @@ bool AuthSocket::_HandleXferResume()
     return true;
 }
 
-/// Cancel patch transfer
+/// Cancel patch transfer | 取消补丁传输并关闭连接
 bool AuthSocket::_HandleXferCancel()
 {
     DEBUG_LOG("Entering _HandleXferCancel");
@@ -1058,7 +1076,7 @@ bool AuthSocket::_HandleXferCancel()
     return true;
 }
 
-/// Accept patch transfer
+/// Accept patch transfer | 接收补丁传输确认
 bool AuthSocket::_HandleXferAccept()
 {
     DEBUG_LOG("Entering _HandleXferAccept");
@@ -1068,10 +1086,10 @@ bool AuthSocket::_HandleXferAccept()
     return true;
 }
 
-// Verify PIN entry data
+// Verify PIN entry data | 校验经典旧世客户端的随机键盘布局图形 PIN 码
 bool AuthSocket::VerifyPinData(uint32 pin, const sAuthLogonPinData_C& clientData)
 {
-    // remap the grid to match the client's layout
+    // remap the grid to match the client's layout | 根据 m_gridSeed 还原客户端打乱后的数字键盘映射表
     std::vector<uint8> grid { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     std::vector<uint8> remappedGrid(grid.size());
 
@@ -1095,7 +1113,7 @@ bool AuthSocket::VerifyPinData(uint32 pin, const sAuthLogonPinData_C& clientData
         ++remappedIndex;
     }
 
-    // convert the PIN to bytes (for ex. '1234' to {1, 2, 3, 4})
+    // convert the PIN to bytes (for ex. '1234' to {1, 2, 3, 4}) | 将整数 PIN 拆分为逐位数字数组
     std::vector<uint8> pinBytes;
 
     while (pin != 0)
@@ -1106,22 +1124,22 @@ bool AuthSocket::VerifyPinData(uint32 pin, const sAuthLogonPinData_C& clientData
 
     std::reverse(pinBytes.begin(), pinBytes.end());
 
-    // validate PIN length
+    // validate PIN length | 校验 PIN 长度（4~10 位）
     if (pinBytes.size() < 4 || pinBytes.size() > 10)
         return false; // PIN outside of expected range
 
-    // remap the PIN to calculate the expected client input sequence
+    // remap the PIN to calculate the expected client input sequence | 将真实数字映射到客户端按钮索引序列
     for (size_t i = 0; i < pinBytes.size(); ++i)
     {
         auto index = std::find(remappedGrid.begin(), remappedGrid.end(), pinBytes[i]);
         pinBytes[i] = std::distance(remappedGrid.begin(), index);
     }
 
-    // convert PIN bytes to their ASCII values
+    // convert PIN bytes to their ASCII values | 将索引转换为 ASCII 字符编码
     for (size_t i = 0; i < pinBytes.size(); ++i)
         pinBytes[i] += 0x30;
 
-    // validate the PIN, x = H(client_salt | H(server_salt | ascii(pin_bytes)))
+    // validate the PIN, x = H(client_salt | H(server_salt | ascii(pin_bytes))) | 按双重 SHA1 规则校验 PIN 哈希
     Sha1Hash sha;
     sha.UpdateData(m_serverSecuritySalt.AsByteArray());
     sha.UpdateData(pinBytes.data(), pinBytes.size());
@@ -1142,6 +1160,7 @@ bool AuthSocket::VerifyPinData(uint32 pin, const sAuthLogonPinData_C& clientData
 
 // A random secret, generated once per realmd process, used to derive a stable fake salt/verifier pair for an
 // account that does not exist (see BuildLogonChallengeSuccess's caller for unknown accounts).
+// 进程级随机密钥（每个 realmd 进程仅生成一次），用于为不存在的账号派生稳定且不可碰撞的伪造盐值/验证子。
 static const std::vector<uint8>& GetFakeAccountSecret()
 {
     static const std::vector<uint8> secret = []
@@ -1157,6 +1176,7 @@ static const std::vector<uint8>& GetFakeAccountSecret()
 // BigNumber::SetRand(256) forces on a real salt (BN_rand top=0): a single SHA1 digest is only 20 bytes, so stuffed
 // into a 32-byte BigNumber its 12 high-order bytes would always be zero, a fingerprint that tells a fake challenge
 // from a real one.
+// 将带标签的 (secret, login) 哈希扩展为 32 字节伪随机字节，并在模拟盐值时对齐 BigNumber::SetRand(256) 的高位与奇偶位特征，防止通过字节指纹区分真假挑战。
 static std::vector<uint8> ExpandFakeSecret(const std::vector<uint8>& secret, const std::string& login, const char* tag, bool matchSaltShape)
 {
     std::vector<uint8> out;
@@ -1178,14 +1198,15 @@ static std::vector<uint8> ExpandFakeSecret(const std::vector<uint8>& secret, con
     // BigNumber::SetBinary takes little-endian input: byte 31 becomes the number's top byte, byte 0 its bottom one.
     if (matchSaltShape)
     {
-        out[31] |= 0x80;        // full 256-bit width, like every real salt
-        out[0]  |= 0x01;        // always odd, like every real salt
+        out[31] |= 0x80;        // full 256-bit width, like every real salt | 保持完整的 256 位宽度（与真实盐值一致）
+        out[0]  |= 0x01;        // always odd, like every real salt | 保持末位为奇数（与真实盐值一致）
     }
     return out;
 }
 
 // Fills in a CMD_AUTH_LOGON_CHALLENGE success packet from a salt/verifier pair, real or fake, exactly as a real
 // account would get one: a client cannot tell a fake challenge apart from a real one at this step.
+// 使用真实或伪造的 v/s 参数填充登录挑战成功应答包，使客户端在挑战阶段无法区分账号是否存在。
 void AuthSocket::BuildLogonChallengeSuccess(ByteBuffer& pkt, const char* v_hex, const char* s_hex, uint8 secLevel, const std::string& token)
 {
     srp.SetVerifier(v_hex);
@@ -1258,27 +1279,28 @@ void AuthSocket::verifyVersionAndFinalizeAuthentication(std::shared_ptr<sAuthLog
     BASIC_LOG("User '%s' successfully authenticated", _login.c_str());
 
     ///- Update the sessionkey, current ip and login time and reset number of failed logins in the account table for this account
+    // 更新账号的会话密钥、客户端环境信息并清零连续失败次数
     // No SQL injection (escaped user input) and IP address as received by socket
-    // K is 40 bytes: write it as 80 hex characters, AsHexStr drops the leading zero bytes
+    // K is 40 bytes: write it as 80 hex characters, AsHexStr drops the leading zero bytes | K 为 40 字节：不足 80 位十六进制字符时需左补零
     const char* K_hex_raw = srp.GetStrongSessionKey().AsHexStr();
     std::string K_hex_str(K_hex_raw);
     OPENSSL_free((void*)K_hex_raw);
     if (K_hex_str.size() < 80)
         K_hex_str.insert(0, 80 - K_hex_str.size(), '0');
     const char* K_hex = K_hex_str.c_str();
-    // Note: In case of heavy load, this sync query will be a heavy bottleneck
+    // Note: In case of heavy load, this sync query will be a heavy bottleneck | 注意：高并发场景下此同步写库操作可能成为性能瓶颈
     LoginDatabase.DirectPExecute("UPDATE account SET sessionkey = '%s', locale = '%s', failed_logins = 0, os = '%s', platform = '%s' WHERE username = '%s'", K_hex, _safelocale.c_str(), m_os.c_str(), m_platform.c_str(), _safelogin.c_str());
     std::unique_ptr<QueryResult> loginfail(LoginDatabase.PQuery("SELECT id FROM account WHERE username = '%s'", _safelogin.c_str()));
     if (loginfail)
         LoginDatabase.PExecute("INSERT INTO account_logons(accountId,ip,loginTime,loginSource) VALUES('%u','%s'," _NOW_ ",'%u')", loginfail->Fetch()[0].GetUInt32(), GetRemoteAddress().c_str(), LOGIN_TYPE_REALMD);
 
-    ///- Finish SRP6 and send the final result to the client
+    ///- Finish SRP6 and send the final result to the client | 计算服务端 M2 证明并发送给客户端
     Sha1Hash sha;
     srp.Finalize(sha);
 
     SendProof(sha);
 
-    ///- Set _status to authed!
+    ///- Set _status to authed! | 认证完成，允许后续接收服务器列表请求
     _status = STATUS_AUTHED;
 
     ProcessIncomingData();
@@ -1286,6 +1308,7 @@ void AuthSocket::verifyVersionAndFinalizeAuthentication(std::shared_ptr<sAuthLog
 
 // Counts a wrong password, PIN or authenticator code towards WrongPass.MaxCount, and bans the account or the IP
 // once the threshold is reached (shared by all three failure paths of the logon proof).
+// 累加密码/PIN/动态口令错误次数，达到 WrongPass.MaxCount 阈值后按配置自动封禁账号或 IP
 void AuthSocket::RegisterFailedLogin()
 {
     uint32 MaxWrongPassCount = sConfig.GetIntDefault("WrongPass.MaxCount", 0);

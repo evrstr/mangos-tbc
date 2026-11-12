@@ -14,46 +14,53 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+/**
+ * 海加尔峰战役：安纳塞隆 (Anetheron) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "hyjal.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_ENTER       = -1534049,
-    SAY_KILL1       = 18237,
-    SAY_KILL2       = 18238,
-    SAY_KILL3       = 18239,
-    SAY_DEATH       = -1534053,
-    SAY_SWARM1      = -1534054,
-    SAY_SWARM2      = -1534055,
-    SAY_SLEEP1      = -1534056,
-    SAY_SLEEP2      = -1534057,
-    SAY_INFERNO1    = -1534058,
-    SAY_INFERNO2    = -1534059,
+    SAY_ENTER       = -1534049,                             // 剧情台词/喊话文本 ID
+    SAY_KILL1       = 18237,                                // 剧情台词/喊话文本 ID
+    SAY_KILL2       = 18238,                                // 剧情台词/喊话文本 ID
+    SAY_KILL3       = 18239,                                // 剧情台词/喊话文本 ID
+    SAY_DEATH       = -1534053,                             // 剧情台词/喊话文本 ID
+    SAY_SWARM1      = -1534054,                             // 剧情台词/喊话文本 ID
+    SAY_SWARM2      = -1534055,                             // 剧情台词/喊话文本 ID
+    SAY_SLEEP1      = -1534056,                             // 剧情台词/喊话文本 ID
+    SAY_SLEEP2      = -1534057,                             // 剧情台词/喊话文本 ID
+    SAY_INFERNO1    = -1534058,                             // 剧情台词/喊话文本 ID
+    SAY_INFERNO2    = -1534059,                             // 剧情台词/喊话文本 ID
 
-    // abilities
-    SPELL_CARRION_SWARM = 31306,
-    SPELL_SLEEP         = 31298,
-    SPELL_INFERNO       = 31299,
-    SPELL_VAMPIRIC_AURA = 31317,
-    SPELL_ENRAGE        = 26662,
+    // abilities (首领技能列表)
+    SPELL_CARRION_SWARM = 31306,                            // 技能法术 ID
+    SPELL_SLEEP         = 31298,                            // 技能法术 ID
+    SPELL_INFERNO       = 31299,                            // 技能法术 ID
+    SPELL_VAMPIRIC_AURA = 31317,                            // 技能法术 ID
+    SPELL_ENRAGE        = 26662,                            // 技能法术：激怒/狂暴
 
-    SPELL_INFERNAL_STUN = 31302,
-    SPELL_INFERNAL_IMMOLATION = 31304,
+    SPELL_INFERNAL_STUN = 31302,                            // 技能法术 ID
+    SPELL_INFERNAL_IMMOLATION = 31304,                      // 技能法术 ID
 };
 
+// AnetheronActions 战斗行为动作枚举
 enum AnetheronActions
 {
-    ANETHERON_ACTION_CARRION_SWARM,
-    ANETHERON_ACTION_SLEEP,
-    ANETHERON_ACTION_INFERNO,
-    ANETHERON_ACTION_ENRAGE,
-    ANETHERON_ACTION_MAX,
-    ANETHERON_ACTION_INFERNAL_STUN,
+    ANETHERON_ACTION_CARRION_SWARM,                         // 战斗行为动作
+    ANETHERON_ACTION_SLEEP,                                 // 战斗行为动作
+    ANETHERON_ACTION_INFERNO,                               // 战斗行为动作
+    ANETHERON_ACTION_ENRAGE,                                // 战斗行为动作
+    ANETHERON_ACTION_MAX,                                   // 战斗行为动作
+    ANETHERON_ACTION_INFERNAL_STUN,                         // 战斗行为动作
 };
 
+// boss_anetheronAI 首领战斗 AI
 struct boss_anetheronAI : public CombatAI
 {
     boss_anetheronAI(Creature* creature) : CombatAI(creature, ANETHERON_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -64,7 +71,7 @@ struct boss_anetheronAI : public CombatAI
         AddCombatAction(ANETHERON_ACTION_ENRAGE, 600000u);
         AddCustomAction(ANETHERON_ACTION_INFERNAL_STUN, true, [&]()
         {
-            // Last summoned infernal
+            // Last summoned infernal (说明)
             if (Creature* infernal = m_creature->GetMap()->GetCreature(m_infernals[m_infernals.size() - 1]))
             {
                 UnitAI* ai = infernal->AI();
@@ -81,7 +88,7 @@ struct boss_anetheronAI : public CombatAI
 
     GuidVector m_infernals;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
 
@@ -100,7 +107,7 @@ struct boss_anetheronAI : public CombatAI
             case ANETHERON_ACTION_SLEEP: return urand(35000, 48000);
             case ANETHERON_ACTION_INFERNO: return urand(50000, 55000);
             case ANETHERON_ACTION_ENRAGE: return 300000;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅为满足编译器要求，实际不会发生)
         }
     }
 
@@ -128,7 +135,7 @@ struct boss_anetheronAI : public CombatAI
         m_infernals.clear();
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         UnitAI* ai = summoned->AI();
         summoned->SetInCombatWithZone();
@@ -150,7 +157,7 @@ struct boss_anetheronAI : public CombatAI
             ResetCombatAction(ANETHERON_ACTION_INFERNO, GetSubsequentActionTimer(ANETHERON_ACTION_INFERNO));
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -177,7 +184,7 @@ struct boss_anetheronAI : public CombatAI
             }
             case ANETHERON_ACTION_INFERNO:
             {
-                // cooldown done on cooldown added
+                // cooldown done on cooldown added (完成)
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_INFERNO, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_INFERNO) == CAST_OK)
                         DoScriptText(urand(0, 1) ? SAY_INFERNO1 : SAY_INFERNO2, m_creature);
@@ -193,7 +200,7 @@ struct boss_anetheronAI : public CombatAI
     }
 };
 
-// 31298 - Sleep
+// 31298 - Sleep (法术 31298 - Sleep)
 struct AnetheronSleep : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const
@@ -204,7 +211,7 @@ struct AnetheronSleep : public SpellScript
     }
 };
 
-void AddSC_boss_anetheron()
+void AddSC_boss_anetheron() // 注册脚本到系统管理器
 {
     Script* pNewScript;
 

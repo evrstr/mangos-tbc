@@ -22,6 +22,7 @@
 #include "Platform/Define.h"
 #include "Globals/FlagConvertibleEnum.h"
 
+/// 角色/生物性别枚举
 enum Gender
 {
     GENDER_MALE                        = 0,
@@ -31,7 +32,7 @@ enum Gender
 
 #define MAX_GENDER                       3
 
-// Race value is index in ChrRaces.dbc
+// Race value is index in ChrRaces.dbc | 种族枚举（对应 ChrRaces.dbc 索引）
 enum Races
 {
     RACE_HUMAN              = 1,
@@ -66,7 +67,7 @@ constexpr uint32 const RACEMASK_ALL_PLAYABLE = convertEnumToFlag
     RACE_DRAENEI
 );
 
-// for most cases batter use ChrRace data for team check as more safe, but when need full mask of team can be use this defines.
+// for most cases batter use ChrRace data for team check as more safe, but when need full mask of team can be use this defines. | 联盟与部落可选种族位掩码（常规阵营判定建议优先查 ChrRaces.dbc）
 constexpr uint32 const RACEMASK_ALLIANCE = convertEnumToFlag
 (
     RACE_HUMAN, RACE_DWARF, RACE_NIGHTELF,
@@ -78,7 +79,7 @@ constexpr uint32 const RACEMASK_HORDE = convertEnumToFlag
     RACE_TROLL, RACE_BLOODELF
 );
 
-// Class value is index in ChrClasses.dbc
+// Class value is index in ChrClasses.dbc | 职业枚举（对应 ChrClasses.dbc 索引）
 enum Classes
 {
     CLASS_WARRIOR       = 1,
@@ -119,6 +120,7 @@ constexpr uint32 const CLASSMASK_RELIC_USERS = convertEnumToFlag(CLASS_PALADIN, 
 
 #define PLAYER_MAX_BATTLEGROUND_QUEUES 3
 
+/// 阵营声望等级阶位（仇恨 -> 崇拜）
 enum ReputationRank
 {
     REP_HATED       = 0,
@@ -136,6 +138,7 @@ enum ReputationRank
 
 #define MAX_SPILLOVER_FACTIONS 4
 
+/// 货币换算常量（铜 / 银 / 金）
 enum MoneyConstants
 {
     COPPER = 1,
@@ -143,6 +146,7 @@ enum MoneyConstants
     GOLD   = SILVER * 100
 };
 
+/// 角色基础五维属性索引
 enum Stats
 {
     STAT_STRENGTH                      = 0,
@@ -154,14 +158,15 @@ enum Stats
 
 #define MAX_STATS                        5
 
+/// 单位能量条类型枚举（法力、怒气、集中值、能量、宠物快乐度）
 enum Powers : uint32
 {
-    POWER_MANA                          = 0,            // UNIT_FIELD_POWER1
-    POWER_RAGE                          = 1,            // UNIT_FIELD_POWER2
-    POWER_FOCUS                         = 2,            // UNIT_FIELD_POWER3
-    POWER_ENERGY                        = 3,            // UNIT_FIELD_POWER4
-    POWER_HAPPINESS                     = 4,            // UNIT_FIELD_POWER5
-    POWER_HEALTH                        = 0xFFFFFFFE    // (-2 as signed value)
+    POWER_MANA                          = 0,            // UNIT_FIELD_POWER1 | 法力值
+    POWER_RAGE                          = 1,            // UNIT_FIELD_POWER2 | 怒气值
+    POWER_FOCUS                         = 2,            // UNIT_FIELD_POWER3 | 宠物集中值
+    POWER_ENERGY                        = 3,            // UNIT_FIELD_POWER4 | 能量值
+    POWER_HAPPINESS                     = 4,            // UNIT_FIELD_POWER5 | 猎人宠物快乐度
+    POWER_HEALTH                        = 0xFFFFFFFE    // (-2 as signed value) | 生命值特殊标识
 };
 
 #define MAX_POWERS                        5
@@ -170,13 +175,14 @@ enum Powers : uint32
  * The different spell schools that are available, used in both damage calculation
  * and spell casting to decide what should be affected, the SPELL_SCHOOL_NORMAL
  * is the armor, others should be self explanatory.
+ * 法术派系/抗性类型枚举（用于伤害结算与光环抗性判定，NORMAL 对应物理护甲）
  *
  * Note that these are the values to use for changing ie, the armor via a
  * Modifier, and it is the Modifier::m_miscValue that should be set.
  */
 enum SpellSchools
 {
-    SPELL_SCHOOL_NORMAL                 = 0,                //< Physical, Armor
+    SPELL_SCHOOL_NORMAL                 = 0,                //< Physical, Armor | 物理系（护甲）
     SPELL_SCHOOL_HOLY                   = 1,
     SPELL_SCHOOL_FIRE                   = 2,
     SPELL_SCHOOL_NATURE                 = 3,
@@ -188,7 +194,7 @@ enum SpellSchools
 #define MAX_SPELL_SCHOOL                  7
 
 /**
- * A bitmask of the available SpellSchools. Used for convenience
+ * A bitmask of the available SpellSchools. Used for convenience | 法术派系位掩码（含复合多派系组合定义）
  */
 enum SpellSchoolMask : uint32
 {
@@ -246,19 +252,21 @@ inline SpellSchools GetFirstSchoolInMask(SpellSchoolMask mask)
     return SPELL_SCHOOL_NORMAL;
 }
 
+/// 物品稀有度品质枚举（粗糙 -> 传说/神器）
 enum ItemQualities
 {
-    ITEM_QUALITY_POOR                  = 0,                 // GREY
-    ITEM_QUALITY_NORMAL                = 1,                 // WHITE
-    ITEM_QUALITY_UNCOMMON              = 2,                 // GREEN
-    ITEM_QUALITY_RARE                  = 3,                 // BLUE
-    ITEM_QUALITY_EPIC                  = 4,                 // PURPLE
-    ITEM_QUALITY_LEGENDARY             = 5,                 // ORANGE
-    ITEM_QUALITY_ARTIFACT              = 6                  // LIGHT YELLOW
+    ITEM_QUALITY_POOR                  = 0,                 // GREY | 粗糙（灰色）
+    ITEM_QUALITY_NORMAL                = 1,                 // WHITE | 普通（白色）
+    ITEM_QUALITY_UNCOMMON              = 2,                 // GREEN | 优秀（绿色）
+    ITEM_QUALITY_RARE                  = 3,                 // BLUE | 精良（蓝色）
+    ITEM_QUALITY_EPIC                  = 4,                 // PURPLE | 史诗（紫色）
+    ITEM_QUALITY_LEGENDARY             = 5,                 // ORANGE | 传说（橙色）
+    ITEM_QUALITY_ARTIFACT              = 6                  // LIGHT YELLOW | 神器（浅金色）
 };
 
 #define MAX_ITEM_QUALITY                 7
 
+/// 物品品质对应的 ARGB 聊天链接颜色值
 const uint32 ItemQualityColors[MAX_ITEM_QUALITY] =
 {
     0xff9d9d9d,        // GREY
@@ -270,6 +278,7 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] =
     0xffe6cc80         // LIGHT YELLOW
 };
 
+/// 武器收鞘/挂靠状态类型
 enum SheathTypes
 {
     SHEATHETYPE_NONE                   = 0,
@@ -284,6 +293,7 @@ enum SheathTypes
 
 #define MAX_SHEATHETYPE                  8
 
+/// 角色纸娃娃外观槽位索引（用于视野封包与装备展示）
 enum CharacterSlot
 {
     SLOT_HEAD                          = 0,
@@ -308,6 +318,7 @@ enum CharacterSlot
     SLOT_EMPTY                         = 19
 };
 
+/// 游戏内种族语言枚举（含插件通信专用 LANG_ADDON）
 enum Language
 {
     LANG_UNIVERSAL      = 0,
@@ -328,21 +339,22 @@ enum Language
     LANG_ZOMBIE         = 36,
     LANG_GNOMISH_BINARY = 37,
     LANG_GOBLIN_BINARY  = 38,
-    LANG_ADDON          = 0xFFFFFFFF                        // used by addons, in 2.4.0 not exit, replaced by messagetype?
+    LANG_ADDON          = 0xFFFFFFFF                        // used by addons, in 2.4.0 not exit, replaced by messagetype? | 插件通信语言标记
 };
 
 #define LANGUAGES_COUNT   19
 
-// In fact !=0 values is alliance/horde root faction ids
+// In fact !=0 values is alliance/horde root faction ids | 阵营枚举（非零值对应联盟/部落根阵营 Faction ID）
 enum Team
 {
-    TEAM_NONE           = 0,                                // used when team value unknown or not set, 0 is also meaning that can be used !team check
-    TEAM_BOTH_ALLOWED   = 0,                                // used when a check should evaluate true for both teams
-    TEAM_INVALID        = 1,                                // used to invalidate some team depending checks (means not for both teams)
+    TEAM_NONE           = 0,                                // used when team value unknown or not set, 0 is also meaning that can be used !team check | 未指定阵营
+    TEAM_BOTH_ALLOWED   = 0,                                // used when a check should evaluate true for both teams | 双方阵营皆可
+    TEAM_INVALID        = 1,                                // used to invalidate some team depending checks (means not for both teams) | 无效阵营（用于禁用关联）
     HORDE               = 67,
     ALLIANCE            = 469,
 };
 
+/// 战场胜方阵营枚举
 enum BattleGroundWinner
 {
     WINNER_HORDE        = 0,
@@ -350,6 +362,7 @@ enum BattleGroundWinner
     WINNER_NONE         = 2
 };
 
+/// PvP 阵营数组索引（联盟=0、部落=1、中立=2）
 enum PvpTeamIndex
 {
     TEAM_INDEX_ALLIANCE = 0,
@@ -362,7 +375,7 @@ enum PvpTeamIndex
 static inline Team GetTeamIdByTeamIndex(PvpTeamIndex teamIndex) { return teamIndex == TEAM_INDEX_ALLIANCE ? ALLIANCE : HORDE; }
 static inline PvpTeamIndex GetTeamIndexByTeamId(Team team) { return team == ALLIANCE ? TEAM_INDEX_ALLIANCE : TEAM_INDEX_HORDE; }
 
-// Spell mechanics
+// Spell mechanics | 法术控制/效果机制枚举（用于免疫、递减与形态解除判定）
 enum Mechanics
 {
     MECHANIC_NONE             = 0,
@@ -441,7 +454,7 @@ constexpr uint32 const MECHANIC_NOT_REMOVED_BY_SHAPESHIFT = convertEnumToFlag
     MECHANIC_TURN,   MECHANIC_DAZE,        MECHANIC_SAPPED
 );
 
-// Spell dispell type
+// Spell dispell type | 法术驱散类型（魔法/诅咒/疾病/中毒/潜行/隐身/激怒等）
 enum DispelType
 {
     DISPEL_NONE         = 0,
@@ -460,7 +473,7 @@ enum DispelType
 #define DISPEL_ALL_MASK ( (1<<DISPEL_MAGIC) | (1<<DISPEL_CURSE) | (1<<DISPEL_DISEASE) | (1<<DISPEL_POISON) )
 
 
-// To all Immune system,if target has immunes,
+// To all Immune system,if target has immunes, | 法术免疫维度枚举（效果/光环状态/派系/伤害/驱散/机制）
 // some spell that related to ImmuneToDispel or ImmuneToSchool or ImmuneToDamage type can't cast to it,
 // some spell_effects that related to ImmuneToEffect<effect>(only this effect in the spell) can't cast to it,
 // some aura(related to Mechanics or ImmuneToState<aura>) can't apply to it.
@@ -476,15 +489,16 @@ enum SpellImmunity
 
 #define MAX_SPELL_IMMUNITY           6
 
-enum WeaponAttackType                                       //< The different weapon attack-types
+enum WeaponAttackType                                       //< The different weapon attack-types | 武器攻击槽位类型（主手/副手/远程）
 {
-    BASE_ATTACK   = 0,                                      //< Main-hand weapon
-    OFF_ATTACK    = 1,                                      //< Off-hand weapon
-    RANGED_ATTACK = 2                                       //< Ranged weapon, bow/wand etc.
+    BASE_ATTACK   = 0,                                      //< Main-hand weapon | 主手攻击
+    OFF_ATTACK    = 1,                                      //< Off-hand weapon | 副手攻击
+    RANGED_ATTACK = 2                                       //< Ranged weapon, bow/wand etc. | 远程攻击（弓/枪/魔杖）
 };
 
 #define MAX_ATTACK  3
 
+/// 法术命中结果类型（未命中/抵抗/躲闪/招架/格挡/闪避/免疫/吸收/反射）
 enum SpellMissInfo
 {
     SPELL_MISS_NONE                    = 0,
@@ -541,6 +555,7 @@ enum SpellRangeFlags
     SPELL_RANGE_FLAG_RANGED = 0x2,                          // Complement of melee combat range
 };
 
+/// 伤害/治疗效果分类（决定攻击表、打断与战斗状态触发行为）
 enum DamageEffectType
 {
     DIRECT_DAMAGE           = 0,                            //< Used for normal weapon damage (not for class abilities or spells)
@@ -555,6 +570,7 @@ enum DamageEffectType
     SPLIT_DAMAGE            = 9,                            // puts in combat but doesnt do pushback
 };
 
+/// 游戏对象 (GameObject) 类型枚举（门、宝箱、邮箱、拍卖行、旗帜、公会银行等）
 enum GameobjectTypes
 {
     GAMEOBJECT_TYPE_DOOR                   = 0,
@@ -1149,6 +1165,7 @@ enum LockKeyType
     LOCK_KEY_SPELL = 3,
 };
 
+/// 锁具解锁类型（开锁/采药/采矿/拆陷阱/钓鱼等）
 enum LockType
 {
     LOCKTYPE_NONE                  = 0,
@@ -1173,6 +1190,7 @@ enum LockType
     LOCKTYPE_FISHING               = 19
 };
 
+/// 训练师 NPC 类型（职业/坐骑/商业技能/宠物）
 enum TrainerType                                            // this is important type for npcs!
 {
     TRAINER_TYPE_CLASS             = 0,
@@ -1183,7 +1201,7 @@ enum TrainerType                                            // this is important
 
 #define MAX_TRAINER_TYPE 4
 
-// CreatureType.dbc
+// CreatureType.dbc | 生物大类枚举（野兽、龙类、恶魔、元素、巨人、亡灵、人型等）
 enum CreatureType
 {
     CREATURE_TYPE_BEAST            = 1,
@@ -1241,6 +1259,7 @@ enum CreatureFamily
     CREATURE_FAMILY_SEA_LION       = 36
 };
 
+/// 生物稀有度/精英级别（普通、精英、稀有精英、世界首领、稀有）
 enum CreatureEliteType
 {
     CREATURE_ELITE_NORMAL          = 0,
@@ -1251,6 +1270,7 @@ enum CreatureEliteType
     CREATURE_UNKNOWN               = 5                      // found in 2.2.3 for 2 mobs
 };
 
+/// 游戏内节日活动 ID（对应 Holidays.dbc）
 enum HolidayIds
 {
     HOLIDAY_NONE                     = 0,
@@ -1333,6 +1353,7 @@ inline uint8 ClassByQuestSort(int32 QuestSort)
     return 0;
 }
 
+/// 技能线 ID 枚举（武器技能、职业专精、商业专业、语言、骑术及宠物技能）
 enum SkillType
 {
     SKILL_NONE                     = 0,
@@ -1564,6 +1585,7 @@ enum WeatherType
 
 #define MAX_WEATHER_TYPE 4
 
+/// 聊天消息频道/系统事件类型枚举
 enum ChatMsg
 {
     CHAT_MSG_ADDON                  = 0xFFFFFFFF,
@@ -1660,7 +1682,7 @@ enum AiReaction
     AI_REACTION_DESTROY  = 4,                               // used on object destroy (NOT used in client packet handler)
 };
 
-// Diminishing Returns Types
+// Diminishing Returns Types | 控制技能递减 (DR) 生效范围类型
 enum DiminishingReturnsType
 {
     DRTYPE_NONE         = 0,                                // this spell is not diminished, but may have limited it's duration to 10s
@@ -1668,7 +1690,7 @@ enum DiminishingReturnsType
     DRTYPE_ALL          = 2                                 // this spell is diminished in every case
 };
 
-// Diminishing Return Groups
+// Diminishing Return Groups | 控制技能共享递减分组枚举
 enum DiminishingGroup
 {
     // Common Groups
@@ -1699,6 +1721,7 @@ enum DiminishingGroup
     DIMINISHING_LIMITONLY
 };
 
+/// 副本重置触发方式枚举
 enum InstanceResetMethod
 {
     INSTANCE_RESET_ALL,
@@ -1709,6 +1732,7 @@ enum InstanceResetMethod
     INSTANCE_RESET_RESPAWN_DELAY                            // called from reset scheduler for request reset at map unload when map loaded at reset attempt for normal dungeon difficulty
 };
 
+/// 变形姿态交互与行为权限标志位（对应 SpellShapeshiftForm.dbc）
 enum ShapeshiftFlags
 {
     SHAPESHIFT_FLAG_STANCE                          = 0x00000001,   // Form allows various player activities, which normally cause "You can't X while shapeshifted." errors (npc/go interaction, item use, etc)
@@ -1742,6 +1766,7 @@ enum CharLoginFailReasons
     CHAR_LOGIN_FAILED                                      = 0x08,
 };
 
+/// 登录与角色列表/创角/删角/命名校验协议响应状态码
 enum ResponseCodes
 {
     RESPONSE_SUCCESS                                       = 0x00,
@@ -1846,7 +1871,7 @@ enum ResponseCodes
     CHAR_NAME_DECLENSION_DOESNT_MATCH_BASE_NAME            = 0x5A,
 };
 
-/// Ban function modes
+/// Ban function modes | 封禁目标类型（账号/角色/IP）
 enum BanMode
 {
     BAN_ACCOUNT,
@@ -1854,7 +1879,7 @@ enum BanMode
     BAN_IP
 };
 
-/// Ban function return codes
+/// Ban function return codes | 封禁操作返回状态
 enum BanReturn
 {
     BAN_SUCCESS,
@@ -1862,6 +1887,7 @@ enum BanReturn
     BAN_NOTFOUND
 };
 
+/// 邮件操作响应类型
 enum MailResponseType
 {
     MAIL_SEND               = 0,
@@ -1920,6 +1946,7 @@ enum TotemSlot
 
 #define MAX_TOTEM_SLOT  4
 
+/// 交易状态通知枚举
 enum TradeStatus
 {
     TRADE_STATUS_BUSY           = 0,
@@ -2008,6 +2035,7 @@ enum TrackedAuraType
 
 #define EXPECTED_MANGOSD_CLIENT_BUILD        {8606, 0}
 
+/// 资料片版本号及对应等级上限定义（仅支持经典旧世与 TBC 2.4.3 build 8606）
 // max supported expansion level in mangosd
 // NOTE: not set it more that supported by targeted client version with all expansions installed
 // account with expansion > client supported will rejected at connection by client
@@ -2049,6 +2077,7 @@ enum CreatureLootStatus
     CREATURE_LOOT_STATUS_SKINNED        = 4
 };
 
+/// 队伍战利品分配方式枚举（自由拾取/轮流/队长分配/队伍分配/需求优先）
 enum LootMethod
 {
     FREE_FOR_ALL        = 0,
@@ -2060,7 +2089,7 @@ enum LootMethod
     NOT_GROUP_TYPE_LOOT = 5                                 // internal use only
 };
 
-// internal loot type
+// internal loot type | 内部战利品来源类型
 enum LootType
 {
     LOOT_CORPSE         = 1,

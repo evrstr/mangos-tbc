@@ -3,11 +3,17 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_SHATTERED_H
+
+// 破碎大厅副本数据头文件
+/* 遭遇战概述：
+ * 定义破碎大厅各首领与刽子手限时营救任务枚举。
+ */
 #define DEF_SHATTERED_H
 
 #include "World/WorldStateDefines.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER               = 5,
@@ -128,26 +134,36 @@ static SpawnLocation aSoldiersLocs[] =
     {0, 138.241f, -84.198f,   1.907f, 0.055f, NPC_CAPTAIN_ALINA,   NPC_CAPTAIN_BONESHATTER}
 };
 
+// instance_shattered_halls 副本数据管理类
 class instance_shattered_halls : public ScriptedInstance, public TimerManager
 {
     public:
         instance_shattered_halls(Map* map);
 
+        // 初始化副本数据与状态
         void Initialize() override;
 
+        // 玩家进入副本回调
         void OnPlayerEnter(Player* player) override;
 
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* go) override;
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* creature) override;
+        // 副本生物重生处理
         void OnCreatureRespawn(Creature* creature) override;
 
+        // 副本生物死亡处理
         void OnCreatureDeath(Creature* creature) override;
+        // 副本生物脱战脱逃处理
         void OnCreatureEvade(Creature* creature) override;
         void OnCreatureEnterCombat(Creature* creature) override;
 
         void OnCreatureGroupDespawn(CreatureGroup* pGroup, Creature* pCreature) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 type, uint32 data) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 type) const override;
 
         const char* Save() const override { return m_strInstData.c_str(); }

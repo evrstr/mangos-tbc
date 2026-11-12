@@ -21,10 +21,12 @@
 
 #include "Database/SqlDelayThread.h"
 
+// PostgreSQL 异步延迟执行线程类（继承自 SqlDelayThread） | PostgreSQL async delay thread inheriting from SqlDelayThread
 class PGSQLDelayThread : public SqlDelayThread
 {
     public:
         PGSQLDelayThread(Database* db) : SqlDelayThread(db) {}
+        // 停止线程事件循环 | Stop the delay thread loop
         void Stop() { SqlDelayThread::Stop() override; }
 };
 #endif                                                      //__PGSQLDELAYTHREAD_H

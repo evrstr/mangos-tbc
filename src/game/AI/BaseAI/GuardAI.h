@@ -25,20 +25,21 @@
 
 class Creature;
 
+// 城镇/阵营守卫 AI：负责在视野内主动拦截敌对玩家、主动怪或处于战斗状态的敌方单位
 class GuardAI : public CreatureAI
 {
         enum GuardState
         {
-            STATE_NORMAL = 1,
-            STATE_LOOK_AT_VICTIM = 2
+            STATE_NORMAL = 1,                                           // 常规巡逻/警戒状态
+            STATE_LOOK_AT_VICTIM = 2                                    // 注视攻击目标状态
         };
 
     public:
         explicit GuardAI(Creature* creature);
 
-        void MoveInLineOfSight(Unit* who) override;
+        void MoveInLineOfSight(Unit* who) override;                     // 视野检测：主动攻击合法敌对目标或攻击平民的敌对生物
 
-        static int Permissible(const Creature* creature);
+        static int Permissible(const Creature* creature);               // 判定生物是否适用 GuardAI
     protected:
         std::string GetAIName() override { return "GuardAI"; }
 };

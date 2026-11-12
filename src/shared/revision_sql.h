@@ -1,3 +1,4 @@
+/// 各数据库（realmd/logs/characters/mangos）要求的最低 SQL 更新版本标识
 #ifndef __REVISION_SQL_H__
 #define __REVISION_SQL_H__
  #define REVISION_DB_REALMD "required_s2474_01_realmd_joindate_datetime"

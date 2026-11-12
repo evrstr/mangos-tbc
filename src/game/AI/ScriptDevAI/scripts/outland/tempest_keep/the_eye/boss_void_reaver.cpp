@@ -21,10 +21,16 @@ SDComment:
 SDCategory: Tempest Keep, The Eye
 EndScriptData */
 
+// 空灵机甲（风暴要塞二号首领）
+/* 遭遇战概述：
+ * 空灵机甲是庞大的虚空石机甲守卫，核心技能为重击全屏物理打击与向远程随机轰击超高爆发的心灵之雷球。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "the_eye.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                   = 20906,
@@ -41,6 +47,7 @@ enum
     SPELL_BERSERK               = 26662,
 };
 
+// VoidReaverActions 相关枚举
 enum VoidReaverActions
 {
     VOID_REAVER_BERSERK,
@@ -50,6 +57,7 @@ enum VoidReaverActions
     VOID_REAVER_ACTION_MAX,
 };
 
+// boss_void_reaverAI 逻辑实现
 struct boss_void_reaverAI : public CombatAI
 {
     boss_void_reaverAI(Creature* creature) : CombatAI(creature, VOID_REAVER_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -70,6 +78,7 @@ struct boss_void_reaverAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -78,6 +87,7 @@ struct boss_void_reaverAI : public CombatAI
             m_instance->SetData(TYPE_VOIDREAVER, DONE);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
@@ -86,12 +96,14 @@ struct boss_void_reaverAI : public CombatAI
             m_instance->SetData(TYPE_VOIDREAVER, IN_PROGRESS);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_VOIDREAVER, NOT_STARTED);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -155,6 +167,7 @@ struct boss_void_reaverAI : public CombatAI
     }
 };
 
+// ArcaneOrb 法术脚本
 struct ArcaneOrb : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -165,6 +178,7 @@ struct ArcaneOrb : public SpellScript
     }
 };
 
+// 注册 boss_void_reaver 脚本
 void AddSC_boss_void_reaver()
 {
     Script* pNewScript = new Script;

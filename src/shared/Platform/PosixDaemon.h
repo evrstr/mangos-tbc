@@ -19,6 +19,9 @@
 #include "Common.h"
 #include "Log/Log.h"
 
+/// 启动 POSIX 守护进程（fork 到后台并等待就绪信号或超时）
 void startDaemon(uint32_t timeout = 10);
+/// 读取 PidFile 并向运行中的守护进程发送 SIGINT 停止信号
 void stopDaemon();
+/// 子进程初始化完成后通知父进程安全退出（SIGUSR1）
 void detachDaemon();

@@ -19,12 +19,15 @@
 #ifndef MANGOS_CODEBENCH_H
 #define MANGOS_CODEBENCH_H
 
+/// 基于 steady_clock 的作用域计时器：析构时自动向日志输出纳秒/微秒/毫秒/秒级耗时
 struct ChronoTimeTracker
 {
     public:
         ChronoTimeTracker() : m_startTime(std::chrono::steady_clock::now()), m_name("Unnamed Timer") {}
         ChronoTimeTracker(std::string name) : m_startTime(std::chrono::steady_clock::now()), m_name(name) {}
+        /// 析构时计算总耗时并打印到日志
         ~ChronoTimeTracker();
+        /// 获取自构造以来经过的秒数
         std::chrono::seconds elapsedSeconds()
         {
             return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - m_startTime);

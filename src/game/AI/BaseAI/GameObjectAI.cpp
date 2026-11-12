@@ -19,15 +19,18 @@
 #include "Entities/GameObject.h"
 
 
+// 构造游戏对象 AI 并保存所属 GameObject 指针
 GameObjectAI::GameObjectAI(GameObject* go) : m_go(go)
 {
 }
 
 
+// 虚析构函数
 GameObjectAI::~GameObjectAI()
 {
 }
 
+// 玩家或单位交互使用该游戏对象时的默认空实现
 void GameObjectAI::OnUse(Unit*, SpellEntry const*)
 {
 }

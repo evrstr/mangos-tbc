@@ -21,6 +21,10 @@ SDComment: Quest support: 10283, 10284. All friendly NPC's. Thrall escort event 
 SDCategory: Caverns of Time, Old Hillsbrad Foothills
 EndScriptData */
 
+/**
+ * 旧希尔斯布莱德丘陵：萨尔护送与斯卡洛克上尉等 NPC 脚本
+ */
+
 /* ContentData
 npc_erozion
 npc_thrall_old_hillsbrad
@@ -36,13 +40,14 @@ EndContentData */
 ## npc_erozion
 ######*/
 
+// 常量与事件枚举
 enum
 {
     GOSSIP_ENTRANCE = 7769,
     GOSSIP_FINISHED = 8391,
 };
 
-bool GossipHello_npc_erozion(Player* player, Creature* creature)
+bool GossipHello_npc_erozion(Player* player, Creature* creature) // 对话交互问候处理
 {
     if (creature->isQuestGiver())
         player->PrepareQuestMenu(creature->GetObjectGuid());
@@ -64,19 +69,20 @@ bool GossipHello_npc_erozion(Player* player, Creature* creature)
 ## npc_thrall_old_hillsbrad
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    // Thrall texts
-    SAY_TH_RANDOM_LOW_HP1           = 17610,
-    SAY_TH_RANDOM_LOW_HP2           = 17611,
+    // Thrall texts (说明)
+    SAY_TH_RANDOM_LOW_HP1           = 17610,                // 剧情台词/喊话文本 ID
+    SAY_TH_RANDOM_LOW_HP2           = 17611,                // 剧情台词/喊话文本 ID
 
-    SAY_TH_RANDOM_DIE1              = 17612,
-    SAY_TH_RANDOM_DIE2              = 17613,
+    SAY_TH_RANDOM_DIE1              = 17612,                // 剧情台词/喊话文本 ID
+    SAY_TH_RANDOM_DIE2              = 17613,                // 剧情台词/喊话文本 ID
 
-    SAY_TH_RANDOM_KILL1             = 17604,
-    SAY_TH_RANDOM_KILL2             = 17605,
+    SAY_TH_RANDOM_KILL1             = 17604,                // 剧情台词/喊话文本 ID
+    SAY_TH_RANDOM_KILL2             = 17605,                // 剧情台词/喊话文本 ID
 
-    SPELL_SUMMON_EROZION_IMAGE      = 33954, // if thrall dies during escort
+    SPELL_SUMMON_EROZION_IMAGE      = 33954, // if thrall dies during escort (护送)
 
     GOSSIP_START = 7499,
     GOSSIP_SKARLOC_01 = 7830,
@@ -90,13 +96,15 @@ enum
 static const int32 aRandomAggro[] = {17600, 17601, 17602, 17603};
 static const int32 aRandomEvade[] = {17606, 17607, 17608, 17609};
 
+// ThrallActions 战斗行为动作枚举
 enum ThrallActions
 {
     THRALL_LOW_HEALTH,
-    THRALL_ACTION_MAX,
+    THRALL_ACTION_MAX,                                      // 战斗行为动作
 };
 
 
+// npc_thrall_old_hillsbradAI NPC 脚本 AI
 struct npc_thrall_old_hillsbradAI : public npc_escortAI
 {
     npc_thrall_old_hillsbradAI(Creature* creature) : npc_escortAI(creature, THRALL_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -113,7 +121,7 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
     bool m_Mounted;
     bool m_Wave;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {      
         if (m_Mounted)
         {
@@ -123,13 +131,13 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
     }
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
-        // Next Wave spawned
+        // Next Wave spawned (波次)
         if (eventType == AI_EVENT_CUSTOM_A)
         {
-            // We are in combat - new spawned wave should aggro us instantly
+            // We are in combat - new spawned wave should aggro us instantly (说明)
             if (m_creature->IsInCombat())
                 m_creature->AI()->SendAIEventAround(AI_EVENT_CUSTOM_EVENTAI_F, m_creature, 0, 5000);
-            // We are not in combat and not on evade let wave aggro 
+            // We are not in combat and not on evade let wave aggro (说明)
             else if (!m_creature->IsInCombat() && !m_creature->GetCombatManager().IsInEvadeMode())
                 m_creature->AI()->SendAIEventAround(AI_EVENT_CUSTOM_EVENTAI_F, m_creature, 1500, 50);
         }
@@ -153,7 +161,7 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        // fail, and relocation handled in instance script
+        // fail, and relocation handled in instance script (说明)
         if (m_instance)
             m_instance->SetData(TYPE_THRALL_EVENT, FAIL);
 
@@ -169,7 +177,7 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
 
     void JustReachedHome() override
     {
-        // During Escort, everytime Thrall leaves combat he has a 20% chance to say some text before going to next waypoint
+        // During Escort, everytime Thrall leaves combat he has a 20% chance to say some text before going to next waypoint (说明)
         if (HasEscortState(STATE_ESCORT_ESCORTING))
         {
             if (urand(0, 4) == 0)
@@ -188,13 +196,13 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
         if (!m_instance)
             return;
 
-        // We died during Escort and respawned from instance 
+        // We died during Escort and respawned from instance (说明)
         if (m_instance->GetData(TYPE_THRALL_EVENT) == IN_PROGRESS)
         {
             Start(true, nullptr, nullptr, false, false, THRALL_PATH_ID);
             SetEscortPaused(true);
 
-            // check current states before fail and set current waypoint, everything else handled via DB
+            // check current states before fail and set current waypoint, everything else handled via DB (说明)
             if (m_instance->GetData(TYPE_ESCORT_INN) == DONE)
                 SetCurrentWaypoint(81);
             else if (m_instance->GetData(TYPE_ESCORT_BARN) == DONE)
@@ -206,7 +214,7 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
         }
     }
 
-    // Wrapper to restart escort
+    // Wrapper to restart escort (护送)
     void DoRestartEscortMovement()
     {
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
@@ -214,27 +222,27 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
         SetEscortPaused(false);
     }
 
-    void WaypointReached(uint32 uiPoint) override
+    void WaypointReached(uint32 uiPoint) override           // 到达指定路径点回调
     {
         if (!m_instance)
             return;
 
         switch (uiPoint)
         {
-            // We reached Barn - everything else handled via DB
+            // We reached Barn - everything else handled via DB (说明)
             case 48: 
                 m_instance->SetData(TYPE_ESCORT_BARN, DONE);
                 break;
-            // We reached Taretha
+            // We reached Taretha (说明)
             case 80:
                 m_instance->SetData(TYPE_ESCORT_INN, DONE);
                 break;
-            // We are standing before Epoch Hunter - start waves
+            // We are standing before Epoch Hunter - start waves (说明)
             case 86:
                 m_Wave = true;
                 m_instance->SetData(TYPE_EPOCH_WAVE, IN_PROGRESS);
                 break;
-            // Last Waypoint
+            // Last Waypoint (路径点)
             case 87:
                 m_instance->SetData(TYPE_THRALL_EVENT, DONE);
                 End();
@@ -242,7 +250,7 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
         }
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -259,7 +267,7 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI
     }
 };
 
-bool GossipHello_npc_thrall_old_hillsbrad(Player* player, Creature* creature)
+bool GossipHello_npc_thrall_old_hillsbrad(Player* player, Creature* creature) // 对话交互问候处理
 {
     if (creature->isQuestGiver())
     {
@@ -269,13 +277,13 @@ bool GossipHello_npc_thrall_old_hillsbrad(Player* player, Creature* creature)
 
     if (instance_old_hillsbrad* instance = (instance_old_hillsbrad*)creature->GetInstanceData())
     {
-        // Inn Reached
+        // Inn Reached (说明)
         if (instance->GetData(TYPE_ESCORT_INN) == DONE)
         {
             player->PrepareGossipMenu(creature, GOSSIP_INN);
             player->SendPreparedGossip(creature);
         }
-        // Barn Reached
+        // Barn Reached (说明)
         else if (instance->GetData(TYPE_ESCORT_BARN) == DONE)
         {
             player->PrepareGossipMenu(creature, GOSSIP_BARN);
@@ -286,7 +294,7 @@ bool GossipHello_npc_thrall_old_hillsbrad(Player* player, Creature* creature)
             player->PrepareGossipMenu(creature, GOSSIP_SKARLOC_01);
             player->SendPreparedGossip(creature);
         }
-        // Text gets always shown, GossipAction handled via condition
+        // Text gets always shown, GossipAction handled via condition (说明)
         else
         {
             player->PrepareGossipMenu(creature, GOSSIP_START, true);
@@ -304,7 +312,7 @@ bool GossipSelect_npc_thrall_old_hillsbrad(Player* player, Creature* creature, u
     {
         case 100:
         {
-            // Start Event and open Prison Door
+            // Start Event and open Prison Door (开始事件大门)
             if (instance)
             {
                 instance->SetData(TYPE_THRALL_EVENT, IN_PROGRESS);
@@ -313,14 +321,14 @@ bool GossipSelect_npc_thrall_old_hillsbrad(Player* player, Creature* creature, u
             if (npc_thrall_old_hillsbradAI* thrallAI = dynamic_cast<npc_thrall_old_hillsbradAI*>(creature->AI()))
                 thrallAI->Start(true, player, nullptr, false, false, THRALL_PATH_ID);
 
-            // Despawn 2 groups on the Bridge via EAI so they dont despawn if InCombat            
+            // Despawn 2 groups on the Bridge via EAI so they dont despawn if InCombat (说明)
             if (std::vector<Creature*> const* bridgeSpecial = creature->GetMap()->GetCreatures("OHF_THRALL_BRIDGETRASH_DESPAWN"))
             {
                 for (Creature* creature : *bridgeSpecial)
                     creature->AI()->SendAIEvent(AI_EVENT_CUSTOM_EVENTAI_A, creature, creature);
             }
 
-            // Also set Worldstate condition to false so they dont respawn
+            // Also set Worldstate condition to false so they dont respawn (说明)
             creature->GetMap()->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_THRALL_TRASH_RESPAWN, 1);
 
             return true;
@@ -364,6 +372,7 @@ bool GossipSelect_npc_thrall_old_hillsbrad(Player* player, Creature* creature, u
 ## npc_taretha
 ######*/
 
+// 常量与事件枚举
 enum
 {
     GOSSIP_ITEM_EPOCH_1 = 7849,
@@ -371,6 +380,7 @@ enum
 };
 
 
+// npc_tarethaAI NPC 脚本 AI
 struct npc_tarethaAI : public ScriptedAI
 {
     npc_tarethaAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -381,7 +391,7 @@ struct npc_tarethaAI : public ScriptedAI
     ScriptedInstance* m_instance;
 
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
     }
 };
@@ -411,13 +421,13 @@ bool GossipSelect_npc_taretha(Player* player, Creature* creature, uint32 /*sende
                         thrallAI->DoRestartEscortMovement();
                 }
 
-                // Despawn all enemy groups around this area
+                // Despawn all enemy groups around this area (说明)
                 if (std::vector<Creature*> const* epochSpecial = creature->GetMap()->GetCreatures("OHF_EPOCH_EVENT_DESPAWN"))
                 {
                     for (Creature* creature : *epochSpecial)
                         creature->AI()->SendAIEvent(AI_EVENT_CUSTOM_EVENTAI_A, creature, creature);
                 }
-                // Also set Worldstate to prevent respawn
+                // Also set Worldstate to prevent respawn (复活)
                 creature->GetMap()->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_TARREN_MILL_DESPAWN, 1);
             }
             return true;
@@ -426,12 +436,14 @@ bool GossipSelect_npc_taretha(Player* player, Creature* creature, uint32 /*sende
     return false;
 }
 
+// 常量与事件枚举
 enum
 {
     BARTOLO_SAY_1 = 18137,
     BARTOLO_SAY_2 = 18138,
 };
 
+// npc_bartolo_ginsetti NPC 脚本 AI
 struct npc_bartolo_ginsetti : public ScriptedAI
 {
     npc_bartolo_ginsetti(Creature* creature) : ScriptedAI(creature) { Reset(); }
@@ -441,7 +453,7 @@ struct npc_bartolo_ginsetti : public ScriptedAI
     uint32 m_uiSayTwoTimer;
     uint32 m_uiFlexTwoTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiScriptCooldownTimer = 0;
         m_uiSayTwoTimer         = 0;
@@ -459,7 +471,7 @@ struct npc_bartolo_ginsetti : public ScriptedAI
         DoBroadcastText(BARTOLO_SAY_1, m_creature, player);
     }
 
-    void UpdateAI(const uint32 diff) override
+    void UpdateAI(const uint32 diff) override               // AI 核心帧更新处理
     {
         if (m_uiScriptCooldownTimer)
         {
@@ -557,7 +569,7 @@ bool AreaTrigger_at_southshore_inn(Player* player, AreaTriggerEntry const* /*pAt
     return true;
 }
 
-// 33133 - Transform
+// 33133 - Transform (法术 33133 - Transform)
 struct InfiniteTransform : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -567,7 +579,7 @@ struct InfiniteTransform : public SpellScript
             return;
         Creature* oldCreature = (Creature*)unitTarget;
         uint32 transformEntry = 0;
-        // update entry based on current entry
+        // update entry based on current entry (说明)
         switch (oldCreature->GetEntry())
         {
             case 18092:
@@ -584,7 +596,7 @@ struct InfiniteTransform : public SpellScript
                 break;
         }
         oldCreature->UpdateEntry(transformEntry);
-        // init new EventAI
+        // init new EventAI (说明)
         if (oldCreature->GetAIName() == "EventAI")
         {
             CreatureEventAI* eventAI = static_cast<CreatureEventAI*>(oldCreature->AI());
@@ -593,7 +605,7 @@ struct InfiniteTransform : public SpellScript
         }
     }
 };
-// 33937, 34016, 34023, 34024 - Stun Phase 2, 3, 4, 5 Units
+// 33937, 34016, 34023, 34024 - Stun Phase 2, 3, 4, 5 Units (说明)
 struct StunPhaseUnits : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -609,7 +621,7 @@ struct StunPhaseUnits : public SpellScript
 
 };
 
-void AddSC_old_hillsbrad()
+void AddSC_old_hillsbrad() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_erozion";

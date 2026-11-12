@@ -21,49 +21,53 @@ SDComment: Boss apparently only takes assist threat in P2
 SDCategory: Karazhan
 EndScriptData */
 
+// 夜之魇（Nightbane）召唤首领战 AI（地面/空中阶段交替、焦骨碎屑与骨雨）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "MotionGenerators/WaypointManager.h"
 #include <G3D/Vector3.h>
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_AWAKEN                = -1532125,
-    SAY_AGGRO                   = -1532126,
-    SAY_AIR_PHASE               = -1532127,
-    SAY_LAND_PHASE_1            = -1532128,
-    SAY_LAND_PHASE_2            = -1532129,
-    EMOTE_DEEP_BREATH           = -1532130,
+    EMOTE_AWAKEN                = -1532125,                 // 唤醒 表情动作 ID
+    SAY_AGGRO                   = -1532126,                 // 开战 台词广播 ID
+    SAY_AIR_PHASE               = -1532127,                 // air阶段 台词广播 ID
+    SAY_LAND_PHASE_1            = -1532128,                 // land阶段1 台词广播 ID
+    SAY_LAND_PHASE_2            = -1532129,                 // land阶段2 台词广播 ID
+    EMOTE_DEEP_BREATH           = -1532130,                 // 深度吐息 表情动作 ID
 
     // ground phase spells
-    SPELL_BELLOWING_ROAR        = 36922,
+    SPELL_BELLOWING_ROAR        = 36922,                    // bellowingroar 法术 ID
     SPELL_CHARRED_EARTH         = 30129,                    // Also 30209 (Target Charred Earth) triggers this
-    SPELL_CHARRED_EARTH_TARGETING = 30209,
-    SPELL_SMOLDERING_BREATH     = 30210,
-    SPELL_TAIL_SWEEP            = 25653,
-    SPELL_CLEAVE                = 30131,
+    SPELL_CHARRED_EARTH_TARGETING = 30209,                  // charred大地targeting 法术 ID
+    SPELL_SMOLDERING_BREATH     = 30210,                    // smoldering吐息 法术 ID
+    SPELL_TAIL_SWEEP            = 25653,                    // 扫尾横扫 法术 ID
+    SPELL_CLEAVE                = 30131,                    // 顺劈斩 法术 ID
     SPELL_DISTRACTING_ASH_GROUND= 30280, // prenerf 2.1.0
 
     // air phase spells
-    SPELL_DISTRACTING_ASH       = 30130,
+    SPELL_DISTRACTING_ASH       = 30130,                    // distractingash 法术 ID
     SPELL_RAIN_OF_BONES         = 37098,                    // should trigger 30170
-    SPELL_SMOKING_BLAST         = 37057,
-    SPELL_FIREBALL_BARRAGE      = 30282,
+    SPELL_SMOKING_BLAST         = 37057,                    // smoking冲击 法术 ID
+    SPELL_FIREBALL_BARRAGE      = 30282,                    // fireballbarrage 法术 ID
 
-    PHASE_GROUND                = 1,
-    PHASE_AIR                   = 2,
-    PHASE_TRANSITION            = 3,
+    PHASE_GROUND                = 1,                        // ground 阶段 ID
+    PHASE_AIR                   = 2,                        // air 阶段 ID
+    PHASE_TRANSITION            = 3,                        // transition 阶段 ID
 
     // These points are a placeholder for the air phase movement. The dragon should do some circles around the area before landing again
-    POINT_ID_AIR_MID            = 1,
-    POINT_ID_AIR_PHASE          = 2,
-    POINT_ID_GROUND             = 3,
+    POINT_ID_AIR_MID            = 1,                        // IDairmid 路径点 ID
+    POINT_ID_AIR_PHASE          = 2,                        // IDair阶段 路径点 ID
+    POINT_ID_GROUND             = 3,                        // IDground 路径点 ID
 
-    POINT_INTRO_END             = 11,
-    POINT_LANDING_END           = 6,
+    POINT_INTRO_END             = 11,                       // 开场end 路径点 ID
+    POINT_LANDING_END           = 6,                        // landingend 路径点 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum NightbaneActions
 {
     NIGHTBANE_PHASE_RESET,
@@ -81,6 +85,7 @@ enum NightbaneActions
     NIGHTBANE_ATTACK_DELAY,
 };
 
+// 首领战 AI：标识 ID（nightbane）
 struct boss_nightbaneAI : public CombatAI
 {
     boss_nightbaneAI(Creature* creature) : CombatAI(creature, NIGHTBANE_ACTION_MAX), m_instance(static_cast<instance_karazhan*>(creature->GetInstanceData()))
@@ -106,8 +111,9 @@ struct boss_nightbaneAI : public CombatAI
 
     GuidVector m_skeletons;
 
-    bool m_bCombatStarted;
+    bool m_bCombatStarted;                                  // CombatStarted 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -132,6 +138,7 @@ struct boss_nightbaneAI : public CombatAI
         m_skeletons.clear();
     }
 
+    // 触发开场剧情对话序列
     void StartIntro()
     {
         m_creature->GetMotionMaster()->MovePath(0, PATH_FROM_EXTERNAL, FORCED_MOVEMENT_RUN);
@@ -148,6 +155,7 @@ struct boss_nightbaneAI : public CombatAI
             m_instance->SetData(TYPE_NIGHTBANE, DONE);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
@@ -161,6 +169,7 @@ struct boss_nightbaneAI : public CombatAI
         m_creature->ForcedDespawn();
     }
 
+    // 尸体清除回调
     void CorpseRemoved(uint32& respawnDelay) override
     {
         if (m_instance)
@@ -170,6 +179,7 @@ struct boss_nightbaneAI : public CombatAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         m_skeletons.push_back(summoned->GetObjectGuid());
@@ -178,6 +188,7 @@ struct boss_nightbaneAI : public CombatAI
             summoned->AI()->AttackStart(m_creature->GetVictim());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         m_skeletons.erase(std::remove(m_skeletons.begin(), m_skeletons.end(), summoned->GetObjectGuid()), m_skeletons.end());
@@ -185,11 +196,12 @@ struct boss_nightbaneAI : public CombatAI
             ResetCombatAction(NIGHTBANE_PHASE_RESET, 1000);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType == PATH_MOTION_TYPE)
         {
-            if (m_bCombatStarted) // combat movement
+            if (m_bCombatStarted) // combat movement (战斗movement)
             {
                 if (pointId == POINT_LANDING_END)
                 {
@@ -201,7 +213,7 @@ struct boss_nightbaneAI : public CombatAI
                     m_creature->GetMotionMaster()->MoveFall();
                 }
             }
-            else // intro movement
+            else // intro movement (开场movement)
             {
                 // Set in combat after the intro is done
                 if (pointId == POINT_INTRO_END)
@@ -378,7 +390,7 @@ struct boss_nightbaneAI : public CombatAI
                     ResetCombatAction(action, urand(30000, 45000));
 #else
                     ResetCombatAction(action, urand(38000, 48000));
-#endif
+#endif                                                      // 结束头文件防重复包含宏
                 break;
             }
             case NIGHTBANE_CHARRED_EARTH:
@@ -476,6 +488,7 @@ bool ProcessEventId_event_spell_summon_nightbane(uint32 /*eventId*/, Object* sou
     return true;
 }
 
+// 注册并载入脚本模块：boss_nightbane
 void AddSC_boss_nightbane()
 {
     Script* pNewScript = new Script;

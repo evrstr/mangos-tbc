@@ -21,23 +21,27 @@ SDComment: Lava bomb timers may need some adjustements
 SDCategory: Molten Core
 EndScriptData */
 
+// 玛格曼达（Magmadar）2号首领战 AI（狂乱激怒、群体恐惧与熔岩喷吐）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_GENERIC_FRENZY_KILL   = -1000001,
+    EMOTE_GENERIC_FRENZY_KILL   = -1000001,                 // generic狂乱击杀 表情动作 ID
 
     // SPELL_LAVA_BREATH           = 19272,                    // Triggered by SPELL_FRENZY (19451)
-    SPELL_FRENZY                = 19451,
+    SPELL_FRENZY                = 19451,                    // 狂乱 法术 ID
     SPELL_MAGMASPIT             = 19449,                    // This is actually a buff he gives himself
-    SPELL_PANIC                 = 19408,
+    SPELL_PANIC                 = 19408,                    // panic 法术 ID
     SPELL_LAVABOMB              = 19411,                    // This calls a dummy server side effect that cast spell 20494 to spawn GO 177704 for 30s
     SPELL_LAVABOMB_MANA         = 20474,                    // This calls a dummy server side effect that cast spell 20495 to spawn GO 177704 for 60s
     // SPELL_CONFLAGRATION         = 19428                     // Trap spell for GO 177704
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MagmadarActions
 {
     MAGMADAR_FRENZY,
@@ -47,6 +51,7 @@ enum MagmadarActions
     MAGMADAR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（magmadar）
 struct boss_magmadarAI : public CombatAI
 {
     boss_magmadarAI(Creature* creature) : CombatAI(creature, MAGMADAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -60,6 +65,7 @@ struct boss_magmadarAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -78,6 +84,7 @@ struct boss_magmadarAI : public CombatAI
             m_instance->SetData(TYPE_MAGMADAR, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -121,6 +128,7 @@ struct boss_magmadarAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_magmadar
 void AddSC_boss_magmadar()
 {
     Script* pNewScript = new Script;

@@ -21,50 +21,57 @@ SDComment: Not all yells are implemented.
 SDCategory: Auchindoun, Shadow Labyrinth
 EndScriptData */
 
+// 煽动者布莱卡特（暗影迷宫二号首领）
+/* 遭遇战概述：
+ * 煽动者布莱卡特是暗影迷宫的二号首领，战斗中会定期施放煽动混乱（心控所有玩家互相攻击并提升输出）；
+ * 心控期间首领自身定身并狂笑，心控结束后清空仇恨，此外还会施放冲锋与战争践踏。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "shadow_labyrinth.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 #include "World/WorldStateDefines.h"
 
+// 台词、法术、阵营与随从条目枚举
 enum
 {
-    SPELL_CHARGE                = 33709,
-    SPELL_WAR_STOMP             = 33707,
+    SPELL_CHARGE                = 33709,                       // 冲锋
+    SPELL_WAR_STOMP             = 33707,                       // 战争践踏
     
-    // incite chaos mechanic spells
-    SPELL_INCITE_CHAOS          = 33676,                       // spawns triggers and roots/stuns blackheart
-    SPELL_INCITE_CHAOS_CHARM    = 33684,                       // cast by triggers into players
+    // incite chaos mechanic spells (煽动混乱机制法术)
+    SPELL_INCITE_CHAOS          = 33676,                       // spawns triggers and roots/stuns blackheart (生成触发器并定身布莱卡特)
+    SPELL_INCITE_CHAOS_CHARM    = 33684,                       // cast by triggers into players (心控玩家法术)
     SPELL_INCITE_CHAOS_UNK      = 33687,
-    SPELL_THREAT                = 34915,                       // Unk purpose, threat is removed right after
+    SPELL_THREAT                = 34915,                       // Unk purpose, threat is removed right after (仇恨处理法术)
     SPELL_INCITER_THREAT_TRIGGER= 45339,
-    SPELL_LAUGH                 = 33716,                       // used during incite chaos onto one player every 2-4 seconds TODO: add usage
-    SPELL_LAUGH_PERIODIC        = 33722,
+    SPELL_LAUGH                 = 33716,                       // used during incite chaos onto one player every 2-4 seconds TODO: add usage (狂笑法术)
+    SPELL_LAUGH_PERIODIC        = 33722,                       // 周期性狂笑法术
     SPELL_LAUGH_UNK             = 33797,
 
-    SPELL_DUMMY_NUKE            = 21912,
+    SPELL_DUMMY_NUKE            = 21912,                       // 占位伤害法术
 
-    SPELL_INCITE_CHAOS_SPAWN_1  = 33677,
-    SPELL_INCITE_CHAOS_SPAWN_2  = 33680,
-    SPELL_INCITE_CHAOS_SPAWN_3  = 33681,
-    SPELL_INCITE_CHAOS_SPAWN_4  = 33682,
-    SPELL_INCITE_CHAOS_SPAWN_5  = 33683,
+    SPELL_INCITE_CHAOS_SPAWN_1  = 33677,                       // 召唤心控触发器 1
+    SPELL_INCITE_CHAOS_SPAWN_2  = 33680,                       // 召唤心控触发器 2
+    SPELL_INCITE_CHAOS_SPAWN_3  = 33681,                       // 召唤心控触发器 3
+    SPELL_INCITE_CHAOS_SPAWN_4  = 33682,                       // 召唤心控触发器 4
+    SPELL_INCITE_CHAOS_SPAWN_5  = 33683,                       // 召唤心控触发器 5
 
-    SAY_AGGRO_1             = 17563,
-    SAY_AGGRO_2             = 17565,
-    SAY_SLAY1               = 17573,
-    SAY_SLAY2               = 19528,
-    SAY_INCITE              = 16433,
-    SAY_DEATH               = 17569,
+    SAY_AGGRO_1             = 17563,                           // 开战台词 1
+    SAY_AGGRO_2             = 17565,                           // 开战台词 2
+    SAY_SLAY1               = 17573,                           // 击杀玩家台词 1
+    SAY_SLAY2               = 19528,                           // 击杀玩家台词 2
+    SAY_INCITE              = 16433,                           // 煽动混乱台词
+    SAY_DEATH               = 17569,                           // 死亡台词
 
-    // faction IDs used during incite chaos - each trigger has one
+    // faction IDs used during incite chaos - each trigger has one (心控期间分配的互相对立阵营 ID)
     FACTION_INCITER_1       = 1761,
     FACTION_INCITER_2       = 1762,
     FACTION_INCITER_3       = 1763,
     FACTION_INCITER_4       = 1764,
     FACTION_INCITER_5       = 1765,
 
-    // npcs summoned during incite chaos, each one charms a different player - propagates factions above to them
+    // npcs summoned during incite chaos, each one charms a different player - propagates factions above to them (心控触发器生物条目)
     NPC_INCITER_TRIGGER_1   = 19300, // summoned by spellid 33677
     NPC_INCITER_TRIGGER_2   = 19301, // summoned by spellid 33680
     NPC_INCITER_TRIGGER_3   = 19302, // summoned by spellid 33681
@@ -72,12 +79,14 @@ enum
     NPC_INCITER_TRIGGER_5   = 19304, // summoned by spellid 33683
 };
 
+// 战斗行为动作枚举
 enum BlackheartActions
 {
     BLACKHEART_ACTION_MAX,
-    BLACKHEART_INCITE_TIMER,
+    BLACKHEART_INCITE_TIMER,                                    // 混乱结束计时动作
 };
 
+// 煽动者布莱卡特 AI
 struct boss_blackheart_the_inciterAI : public CombatAI
 {
     boss_blackheart_the_inciterAI(Creature* creature) : CombatAI(creature, BLACKHEART_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_isRegularMode(creature->GetMap()->IsRegularDifficulty())
@@ -86,11 +95,11 @@ struct boss_blackheart_the_inciterAI : public CombatAI
         AddOnKillText(SAY_SLAY1, SAY_SLAY2);
     }
 
-    ScriptedInstance* m_instance;
-    bool m_isRegularMode;
-    GuidVector m_vTargetsGuids;
+    ScriptedInstance* m_instance;                               // 副本数据管理指针
+    bool m_isRegularMode;                                       // 是否为普通难度模式
+    GuidVector m_vTargetsGuids;                                 // 目标 GUID 列表
 
-    void JustDied(Unit* /*killer*/) override
+    void JustDied(Unit* /*killer*/) override                    // 首领死亡回调
     {
         DoBroadcastText(SAY_DEATH, m_creature);
 
@@ -98,7 +107,7 @@ struct boss_blackheart_the_inciterAI : public CombatAI
             m_instance->SetData(TYPE_INCITER, DONE);
     }
 
-    void Aggro(Unit* /*who*/) override
+    void Aggro(Unit* /*who*/) override                          // 进入战斗喊话并置状态为进行中
     {
         switch (urand(0, 1))
         {
@@ -113,13 +122,13 @@ struct boss_blackheart_the_inciterAI : public CombatAI
             m_instance->SetData(TYPE_INCITER, IN_PROGRESS);
     }
 
-    void JustReachedHome() override
+    void JustReachedHome() override                             // 脱战回位回调：置状态为失败
     {
         if (m_instance)
             m_instance->SetData(TYPE_INCITER, FAIL);
     }
 
-    void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
+    void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override // 施法完成回调
     {
         if (spellInfo->Id == SPELL_INCITE_CHAOS)
             HandleInciteStart();
@@ -127,7 +136,7 @@ struct boss_blackheart_the_inciterAI : public CombatAI
             DoResetThreat();
     }
 
-    void HandleInciteStart()
+    void HandleInciteStart()                                     // 开启煽动混乱：喊话、定身首领并启动周期性狂笑
     {
         DoBroadcastText(SAY_INCITE, m_creature);
         SetCombatScriptStatus(true);
@@ -137,7 +146,7 @@ struct boss_blackheart_the_inciterAI : public CombatAI
         ResetTimer(BLACKHEART_INCITE_TIMER, 19000);
     }
 
-    void HandleInciteEnd()
+    void HandleInciteEnd()                                       // 混乱结束：清空仇恨并恢复近战攻击
     {
         DoResetThreat();
         SetCombatMovement(true);
@@ -148,6 +157,7 @@ struct boss_blackheart_the_inciterAI : public CombatAI
     }
 };
 
+// 煽动混乱心控触发器 AI
 struct dummy_blackheart_the_inciterAI : public ScriptedAI
 {
     dummy_blackheart_the_inciterAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_threat(false),
@@ -156,15 +166,15 @@ struct dummy_blackheart_the_inciterAI : public ScriptedAI
         SetCombatMovement(false);
     }
 
-    ScriptedInstance* m_instance;
-    bool m_threat;
-    bool m_attack;
+    ScriptedInstance* m_instance;                               // 副本数据管理指针
+    bool m_threat;                                              // 是否已建立初始仇恨
+    bool m_attack;                                              // 是否已开始命令被心控玩家攻击
 
     void Reset() override
     {
     }
 
-    void JustRespawned() override
+    void JustRespawned() override                               // 触发器生成回调：向目标玩家施加心控
     {
         if (m_instance)
             if (Creature* blackheartBoss = m_instance->GetSingleCreatureFromStorage(NPC_BLACKHEART_THE_INCITER))
@@ -174,7 +184,7 @@ struct dummy_blackheart_the_inciterAI : public ScriptedAI
         DoResetThreat();
     }
 
-    void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
+    void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override // 法术命中：将被心控目标间仇恨拉满
     {
         if (spellInfo->Id == SPELL_INCITER_THREAT_TRIGGER)
         {
@@ -185,7 +195,7 @@ struct dummy_blackheart_the_inciterAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 /*diff*/) override
+    void UpdateAI(const uint32 /*diff*/) override               // 步进更新心控攻击逻辑
     {
         if (!m_threat)
         {
@@ -204,6 +214,7 @@ struct dummy_blackheart_the_inciterAI : public ScriptedAI
     }
 };
 
+// 煽动混乱法术脚本：为每位玩家分配不同阵营的心控触发器
 struct InciteChaos : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -225,10 +236,11 @@ struct InciteChaos : public SpellScript
 
         spell->SetScriptValue(spell->GetScriptValue() + 1);
 
-        unitTarget->CastSpell(nullptr, spellId, TRIGGERED_OLD_TRIGGERED); // shouldnt be sent to client
+        unitTarget->CastSpell(nullptr, spellId, TRIGGERED_OLD_TRIGGERED); // shouldnt be sent to client (触发器召唤法术)
     }
 };
 
+// 注册煽动者布莱卡特及心控触发器脚本
 void AddSC_boss_blackheart_the_inciter()
 {
     Script* pNewScript = new Script;

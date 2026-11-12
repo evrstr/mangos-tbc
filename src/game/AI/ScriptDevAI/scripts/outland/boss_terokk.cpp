@@ -21,11 +21,17 @@ SDComment:
 SDCategory: Terokkar Forest
 EndScriptData */
 
+// 泰罗克（泰罗卡森林斯克提斯召唤首领）
+/* 遭遇战概述：
+ * 泰罗克是斯克提斯鸦人的古代半神之王，战斗中会进入神圣免疫护盾，玩家需引导其走入天空卫队投掷的蓝火中烧毁护盾。
+ */
+
 #include <utility>
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "AI/ScriptDevAI/scripts/outland/world_outland.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // Terokk
@@ -72,6 +78,7 @@ enum
     MOUNT_COUNT     = 4,
 };
 
+// TerokkActions 相关枚举
 enum TerokkActions
 {
     TEROKK_COMBAT_ACTION_SPAWN_ACE,
@@ -87,6 +94,7 @@ enum TerokkActions
     TEROKK_ACTION_ACE_CAST,
 };
 
+// boss_terokkAI 逻辑实现
 struct boss_terokkAI : public CombatAI
 {
     boss_terokkAI(Creature* creature) : CombatAI(creature, TEROKK_COMBAT_ACTION_MAX)
@@ -145,6 +153,7 @@ struct boss_terokkAI : public CombatAI
         }
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -157,6 +166,7 @@ struct boss_terokkAI : public CombatAI
             instance->SetData(TYPE_TEROKK, 0);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         if (InstanceData* instance = m_creature->GetInstanceData())
@@ -173,6 +183,7 @@ struct boss_terokkAI : public CombatAI
         }
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -185,6 +196,7 @@ struct boss_terokkAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->AI()->SetReactState(REACT_PASSIVE);
@@ -232,6 +244,7 @@ struct boss_terokkAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -299,6 +312,7 @@ bool ProcessEventId_event_summon_terokk(uint32 /*eventId*/, Object* source, Obje
     return true;
 }
 
+// TerokkAncientFlames 光环脚本
 struct TerokkAncientFlames : public AuraScript
 {
     // substitute for missing serverside 40720
@@ -311,6 +325,7 @@ struct TerokkAncientFlames : public AuraScript
     }
 };
 
+// 注册 boss_terokk 脚本
 void AddSC_boss_terokk()
 {
     Script* pNewScript = new Script;

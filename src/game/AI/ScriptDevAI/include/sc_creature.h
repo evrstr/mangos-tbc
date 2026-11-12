@@ -10,6 +10,7 @@
 #include "AI/BaseAI/CreatureAI.h"
 #include "Entities/Creature.h"
 
+// 刷怪波次生成位置与路径信息结构体
 typedef struct {
     uint32 uiEntry;
     float m_fx;
@@ -18,6 +19,7 @@ typedef struct {
     uint32 uiPathId;
 } WaveLocation;
 
+// 阵营对应生物生成位置结构体
 typedef struct {
     uint32 m_spawnEntry;
     float m_fx;
@@ -28,39 +30,41 @@ typedef struct {
     uint32 m_uiHordeEntry;
 } SpawnLocation;
 
-// Spell targets used by SelectSpell
+// Spell targets used by SelectSpell (SelectSpell 目标类型筛选枚举)
 enum SelectTarget
 {
-    SELECT_TARGET_DONTCARE = 0,                             // All target types allowed
+    SELECT_TARGET_DONTCARE = 0,                             // All target types allowed (允许所有目标类型)
 
-    SELECT_TARGET_SELF,                                     // Only Self casting
+    SELECT_TARGET_SELF,                                     // Only Self casting (仅自身)
 
-    SELECT_TARGET_SINGLE_ENEMY,                             // Only Single Enemy
-    SELECT_TARGET_AOE_ENEMY,                                // Only AoE Enemy
-    SELECT_TARGET_ANY_ENEMY,                                // AoE or Single Enemy
+    SELECT_TARGET_SINGLE_ENEMY,                             // Only Single Enemy (单个敌方目标)
+    SELECT_TARGET_AOE_ENEMY,                                // Only AoE Enemy (敌方群体目标)
+    SELECT_TARGET_ANY_ENEMY,                                // AoE or Single Enemy (任意敌方目标)
 
-    SELECT_TARGET_SINGLE_FRIEND,                            // Only Single Friend
-    SELECT_TARGET_AOE_FRIEND,                               // Only AoE Friend
-    SELECT_TARGET_ANY_FRIEND,                               // AoE or Single Friend
+    SELECT_TARGET_SINGLE_FRIEND,                            // Only Single Friend (单个友方目标)
+    SELECT_TARGET_AOE_FRIEND,                               // Only AoE Friend (友方群体目标)
+    SELECT_TARGET_ANY_FRIEND,                               // AoE or Single Friend (任意友方目标)
 };
 
-// Spell Effects used by SelectSpell
+// Spell Effects used by SelectSpell (SelectSpell 法术效果筛选枚举)
 enum SelectEffect
 {
-    SELECT_EFFECT_DONTCARE = 0,                             // All spell effects allowed
-    SELECT_EFFECT_DAMAGE,                                   // Spell does damage
-    SELECT_EFFECT_HEALING,                                  // Spell does healing
-    SELECT_EFFECT_AURA,                                     // Spell applies an aura
+    SELECT_EFFECT_DONTCARE = 0,                             // All spell effects allowed (允许所有法术效果)
+    SELECT_EFFECT_DAMAGE,                                   // Spell does damage (伤害类法术)
+    SELECT_EFFECT_HEALING,                                  // Spell does healing (治疗类法术)
+    SELECT_EFFECT_AURA,                                     // Spell applies an aura (附加光环类法术)
 };
 
+// 虚拟武器装备操作状态
 enum SCEquip
 {
-    EQUIP_NO_CHANGE = -1,
-    EQUIP_UNEQUIP   = 0
+    EQUIP_NO_CHANGE = -1,                                   // 保持原样不变更
+    EQUIP_UNEQUIP   = 0                                     // 卸下该槽位装备
 };
 
 /// Documentation of UnitAI functions can be found in MaNGOS source
 // Only list them here again to ensure that the interface between SD2 and the core is not changed unnoticed
+// ScriptDev2 生物脚本核心基类：提供法术筛选、位置移动、玩家传送与战斗台词等高层封装
 struct ScriptedAI : public CreatureAI
 {
     public:
@@ -183,40 +187,40 @@ struct ScriptedAI : public CreatureAI
          * This is a SD2 internal function
          * Called by default on creature EnterCombat with an enemy
          */
-        virtual void Aggro(Unit* /*who*/) {}
+        virtual void Aggro(Unit* /*who*/) {}               // 进入战斗虚函数回调（供脚本扩展开战台词与技能逻辑）
 
         // *************
         // AI Helper Functions
         // *************
 
-        // Start movement toward victim
+        // Start movement toward victim (开始追击目标)
         void DoStartMovement(Unit* victim);
 
-        // Start no movement on victim
+        // Start no movement on victim (停止移动原地面对目标)
         void DoStartNoMovement(Unit* victim);
 
-        // Stop attack of current victim
+        // Stop attack of current victim (停止对当前目标的攻击)
         void DoStopAttack();
 
-        // Plays a sound to all nearby players
+        // Plays a sound to all nearby players (向周围玩家广播声音)
         void DoPlaySoundToSet(WorldObject* source, uint32 soundId);
 
-        // Teleports a player without dropping threat (only teleports to same map)
+        // Teleports a player without dropping threat (only teleports to same map) (战斗中传送玩家且保留仇恨)
         void DoTeleportPlayer(Unit* unit, float x, float y, float z, float ori);
 
-        // Returns a list of all friendly units missing a specific buff within range
+        // Returns a list of all friendly units missing a specific buff within range (寻找范围内缺失指定增益的友方生物)
         CreatureList DoFindFriendlyMissingBuff(float range, uint32 spellId, bool inCombat);
 
-        // Return a player with at least minimumRange from m_creature
+        // Return a player with at least minimumRange from m_creature (获取保持指定最小距离外的玩家)
         Player* GetPlayerAtMinimumRange(float minimumRange) const;
 
-        // Returns spells that meet the specified criteria from the creatures spell list
+        // Returns spells that meet the specified criteria from the creatures spell list (按条件自动挑选可用法术)
         SpellEntry const* SelectSpell(Unit* target, int32 school, int32 mechanic, SelectTarget selectTargets, uint32 powerCostMin, uint32 powerCostMax, float rangeMin, float rangeMax, SelectEffect selectEffects);
 
-        // Checks if you can cast the specified spell
+        // Checks if you can cast the specified spell (判定是否能够向目标施放指定法术)
         bool CanCast(Unit* target, SpellEntry const* spellInfo, bool triggered = false);
 
-        void SetEquipmentSlots(bool loadDefault, int32 mainHand = EQUIP_NO_CHANGE, int32 offHand = EQUIP_NO_CHANGE, int32 ranged = EQUIP_NO_CHANGE);
+        void SetEquipmentSlots(bool loadDefault, int32 mainHand = EQUIP_NO_CHANGE, int32 offHand = EQUIP_NO_CHANGE, int32 ranged = EQUIP_NO_CHANGE); // 动态更换武器外观插槽与双持属性
 
     protected:
         std::string GetAIName() override { return m_creature->GetAIName(); }
@@ -226,6 +230,7 @@ struct ScriptedAI : public CreatureAI
 
 };
 
+// 站桩/不移动生物 AI 基类（如炮台或固定站位首领）
 struct Scripted_NoMovementAI : public ScriptedAI
 {
     Scripted_NoMovementAI(Creature* creature) : ScriptedAI(creature)

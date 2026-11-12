@@ -66,36 +66,41 @@ namespace MaNGOS { struct ObjectUpdater; }
 class Transport;
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
+// GCC 使用不同的 #pragma pack(N) 语法，旧版 GCC 不支持 pack(push, N)
 #if defined( __GNUC__ )
 #pragma pack(1)
 #else
 #pragma pack(push,1)
 #endif
 
+// 副本模板信息，定义副本入口父地图、等级限制、最大人数、重置周期与脚本 ID
 struct InstanceTemplate
 {
-    uint32 map;                                             // instance map
-    uint32 parent;                                          // non-continent parent instance (for instance with entrance in another instances)
+    uint32 map;                                             // instance map (副本地图 ID)
+    uint32 parent;                                          // non-continent parent instance (for instance with entrance in another instances) (非大陆父副本 ID，用于入口位于另一副本内的情况；0 表示与大陆 0 无关联)
     // or 0 (not related to continent 0 map id)
     uint32 levelMin;
     uint32 levelMax;
     uint32 maxPlayers;
-    uint32 reset_delay;                                     // in days
+    uint32 reset_delay;                                     // in days (重置间隔天数)
     uint32 script_id;
     bool   mountAllowed;
 };
 
+// 世界（非副本）地图模板信息
 struct WorldTemplate
 {
-    uint32 map;                                             // non-instance map
+    uint32 map;                                             // non-instance map (非副本地图 ID)
     uint32 script_id;
 };
 
+// 英雄难度等级要求枚举
 enum LevelRequirementVsMode
 {
     LEVELREQUIREMENT_HEROIC = 70
 };
 
+// 经验值倍率修饰类型
 enum class RateModType
 {
     KILL    = 0,
@@ -105,6 +110,7 @@ enum class RateModType
     MAX     = 4
 };
 
+// 区域动态环境信息（背景音乐、天气与光照覆盖）
 struct ZoneDynamicInfo
 {
     ZoneDynamicInfo() : musicId(0), weatherId(0), weatherGrade(0.0f),
@@ -128,6 +134,7 @@ struct ZoneDynamicInfo
 
 typedef std::unordered_map<uint32 /*zoneId*/, ZoneDynamicInfo> ZoneDynamicInfoMap;
 
+// 地图核心基类：管理网格加载/卸载、对象增删与更新、视野同步、广播、脚本调度及动态碰撞树
 class Map : public GridRefManager<NGridType>
 {
         friend class MapReference;
@@ -140,7 +147,7 @@ class Map : public GridRefManager<NGridType>
     public:
         virtual ~Map();
 
-        // currently unused for normal maps
+        // currently unused for normal maps (普通地图当前未使用该延迟卸载判定)
         bool CanUnload(uint32 diff)
         {
             if (!m_unloadTimer) return false;
@@ -156,13 +163,14 @@ class Map : public GridRefManager<NGridType>
         template<class T> void Add(T*);
         template<class T> void Remove(T*, bool);
 
-        static void DeleteFromWorld(Player* pl);        // player object will deleted at call
+        static void DeleteFromWorld(Player* pl);        // player object will deleted at call (从世界删除并释放玩家对象)
 
-        void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
-        virtual void Update(const uint32&);
+        void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor); // 访问对象附近活动 Cell 内的网格/世界对象
+        virtual void Update(const uint32&); // 地图主更新循环（处理异步消息、刷怪、脚本、对象更新、视野与客户端同步）
 
         uint64 PerformObjectUpdate(uint32 t_diff, WorldObjectUnSet& objToUpdate);
 
+        // 消息广播与区域玩家回调遍历方法
         void MessageBroadcast(Player const*, WorldPacket const&, bool to_self);
         void MessageBroadcast(WorldObject const*, WorldPacket const&);
         void MessageDistBroadcast(Player const*, WorldPacket const&, float dist, bool to_self, bool own_team_only = false);
@@ -178,9 +186,11 @@ class Map : public GridRefManager<NGridType>
 
         float GetVisibilityDistance() const { return m_VisibleDistance; }
         // function for setting up visibility distance for maps on per-type/per-Id basis
+        // 按地图类型或地图 ID 初始化默认视野距离
         virtual void InitVisibilityDistance();
         void VisiblityDistanceChanged(WorldObject* obj, float oldVisibility, VisibilityDistanceType newVisiblity);
 
+        // 玩家、生物及游戏对象的移动与 Cell 重定位
         void PlayerRelocation(Player*, float x, float y, float z, float orientation);
         void CreatureRelocation(Creature* creature, float x, float y, float z, float ang);
         void GameObjectRelocation(GameObject* go, float x, float y, float z, float orientation, bool respawnRelocationOnFail = true);
@@ -216,10 +226,11 @@ class Map : public GridRefManager<NGridType>
 
         // some calls like isInWater should not use vmaps due to processor power
         // can return INVALID_HEIGHT if under z+2 z coord not found height
+        // 某些调用（如 isInWater）因性能开销不应使用 VMap；若 z+2 以下未找到高度则可能返回 INVALID_HEIGHT
 
         virtual void RemoveAllObjectsInRemoveList();
 
-        bool CreatureRespawnRelocation(Creature* c);        // used only in CreatureRelocation and ObjectGridUnloader
+        bool CreatureRespawnRelocation(Creature* c);        // used only in CreatureRelocation and ObjectGridUnloader (仅在生物重定位与网格卸载时将生物移回出生点)
 
         uint32 GetInstanceId() const { return i_InstanceId; }
 
@@ -232,6 +243,8 @@ class Map : public GridRefManager<NGridType>
         // _currently_ spawnmode == difficulty, but this can be changes later, so use appropriate spawnmode/difficult functions
         // for simplify later code support
         // regular difficulty = continent/dungeon normal/raid normal difficulty
+        // 当前 spawnMode 等价于 difficulty，但后续可能调整，请使用封装函数以便兼容扩展
+        // 普通难度对应大陆地图、普通地下城与普通团队副本
         uint8 GetSpawnMode() const { return (i_spawnMode); }
         Difficulty GetDifficulty() const { return Difficulty(GetSpawnMode()); }
         bool IsRegularDifficulty() const { return GetDifficulty() == REGULAR_DIFFICULTY; }
@@ -254,7 +267,7 @@ class Map : public GridRefManager<NGridType>
         bool IsMountAllowed() const;
         bool IsDynguidForced() const;
 
-        // can't be nullptr for loaded map
+        // can't be nullptr for loaded map (已加载地图的持久化状态指针不可为空)
         MapPersistentState* GetPersistentState() const { return m_persistentState; }
 
         void AddObjectToRemoveList(WorldObject* obj);
@@ -271,31 +284,31 @@ class Map : public GridRefManager<NGridType>
         uint32 GetPlayersCountExceptGMs() const;
         bool ActiveObjectsNearGrid(uint32 x, uint32 y) const;
 
-        /// Send a Packet to all players on a map
+        /// Send a Packet to all players on a map (向地图内所有玩家发送数据包)
         void SendToPlayers(WorldPacket const& data) const;
-        /// Send a Packet to all players in a zone. Return false if no player found
+        /// Send a Packet to all players in a zone. Return false if no player found (向指定区域内所有玩家发送数据包，若无玩家返回 false)
         bool SendToPlayersInZone(WorldPacket const& data, uint32 zoneId) const;
 
         typedef MapRefManager PlayerList;
         PlayerList const& GetPlayers() const { return m_mapRefManager; }
 
-        // per-map script storage
+        // per-map script storage (地图独立脚本调度与去重执行参数)
         enum ScriptExecutionParam
         {
-            SCRIPT_EXEC_PARAM_NONE                    = 0x00,   // Start regardless if already started
-            SCRIPT_EXEC_PARAM_UNIQUE_BY_SOURCE        = 0x01,   // Start Script only if not yet started (uniqueness identified by id and source)
-            SCRIPT_EXEC_PARAM_UNIQUE_BY_TARGET        = 0x02,   // Start Script only if not yet started (uniqueness identified by id and target)
-            SCRIPT_EXEC_PARAM_UNIQUE_BY_SOURCE_TARGET = 0x03,   // Start Script only if not yet started (uniqueness identified by id, source and target)
+            SCRIPT_EXEC_PARAM_NONE                    = 0x00,   // Start regardless if already started (无论是否已启动均直接执行)
+            SCRIPT_EXEC_PARAM_UNIQUE_BY_SOURCE        = 0x01,   // Start Script only if not yet started (uniqueness identified by id and source) (仅当同 id 与 source 的脚本未运行时启动)
+            SCRIPT_EXEC_PARAM_UNIQUE_BY_TARGET        = 0x02,   // Start Script only if not yet started (uniqueness identified by id and target) (仅当同 id 与 target 的脚本未运行时启动)
+            SCRIPT_EXEC_PARAM_UNIQUE_BY_SOURCE_TARGET = 0x03,   // Start Script only if not yet started (uniqueness identified by id, source and target) (仅当同 id、source 与 target 的脚本未运行时启动)
         };
         bool ScriptsStart(ScriptMapType scriptType, uint32 id, Object* source, Object* target, ScriptExecutionParam execParams = SCRIPT_EXEC_PARAM_NONE);
         void ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* source, Object* target);
 
-        // must called with AddToWorld
+        // must called with AddToWorld (必须配合 AddToWorld 调用，加入活跃非玩家对象集合)
         void AddToActive(WorldObject* obj);
-        // must called with RemoveFromWorld
+        // must called with RemoveFromWorld (必须配合 RemoveFromWorld 调用，移出活跃非玩家对象集合)
         void RemoveFromActive(WorldObject* obj);
 
-        // Game Event notification system
+        // Game Event notification system (游戏事件通知订阅系统)
         void AddToOnEventNotified(WorldObject* obj);
         void RemoveFromOnEventNotified(WorldObject* obj);
         void OnEventHappened(uint16 event_id, bool activate, bool resume);
@@ -304,13 +317,13 @@ class Map : public GridRefManager<NGridType>
         Creature* GetCreature(ObjectGuid guid);
         Creature* GetCreatureByEntry(uint32 entry);
         Pet* GetPet(ObjectGuid guid);
-        Creature* GetAnyTypeCreature(ObjectGuid guid);      // normal creature or pet
+        Creature* GetAnyTypeCreature(ObjectGuid guid);      // normal creature or pet (普通生物或宠物)
         GameObject* GetGameObject(ObjectGuid guid);
         DynamicObject* GetDynamicObject(ObjectGuid guid);
-        Corpse* GetCorpse(ObjectGuid guid) const;                 // !!! find corpse can be not in world
-        Unit* GetUnit(ObjectGuid guid);                     // only use if sure that need objects at current map, specially for player case
-        WorldObject* GetWorldObject(ObjectGuid guid);       // only use if sure that need objects at current map, specially for player case
-        // dbguid methods
+        Corpse* GetCorpse(ObjectGuid guid) const;                 // !!! find corpse can be not in world (注意：查找到的尸体可能已不在世界中)
+        Unit* GetUnit(ObjectGuid guid);                     // only use if sure that need objects at current map, specially for player case (仅在确认需要当前地图内对象时使用，尤其针对玩家)
+        WorldObject* GetWorldObject(ObjectGuid guid);       // only use if sure that need objects at current map, specially for player case (仅在确认需要当前地图内对象时使用，尤其针对玩家)
+        // dbguid methods (基于数据库 GUID 或 StringId 的对象查找接口)
         Creature* GetCreature(uint32 dbguid) const;
         GameObject* GetGameObject(uint32 dbguid) const;
         std::vector<WorldObject*> const* GetWorldObjects(std::string stringId) const;
@@ -334,16 +347,16 @@ class Map : public GridRefManager<NGridType>
         std::map<uint32, uint32>& GetTempCreatures() { return m_tempCreatures; }
         std::map<uint32, uint32>& GetTempPets() { return m_tempPets; }
         
-        // schedule for update object create change
+        // schedule for update object create change (加入客户端创建对象更新队列)
         void AddUpdateCreateObject(Object* obj) { m_objectsToClientCreateUpdate.insert({ obj, obj->GetObjectGuid() }); }
         void RemoveUpdateCreateObject(Object* obj) { m_objectsToClientCreateUpdate.erase({ obj, obj->GetObjectGuid() }); }
-        // schedule for update object values change
+        // schedule for update object values change (加入客户端属性数值更新队列)
         void AddUpdateObject(Object* obj) { m_objectsToClientUpdate.insert(obj); }
         void RemoveUpdateObject(Object* obj) { m_objectsToClientUpdate.erase(obj); }
-        // schedule for update object visibility change
+        // schedule for update object visibility change (加入客户端移动状态更新队列)
         void AddUpdateMovementObject(Object* obj) { m_objectsToClientMovementUpdate.insert(obj); }
         void RemoveUpdateMovementObject(Object* obj) { m_objectsToClientMovementUpdate.erase(obj); }
-        // schedule update object destruction of object
+        // schedule update object destruction of object (加入客户端销毁对象通知队列)
         void AddUpdateRemoveObject(GuidSet& visible, ObjectGuid guid);
         void AddUpdateRemoveObject(GuidSet&& visible, ObjectGuid guid);
 
@@ -354,9 +367,11 @@ class Map : public GridRefManager<NGridType>
 
         // entry: the one written in the guid (the pet number for pets), not used for dynamic objects
         // Stops the server if no counter is free for this entry after a full round (see MapGuidAllocator)
+        // entry：写入 GUID 的条目编号（宠物为其编号），动态对象不使用；
+        // 若完整遍历一轮后该条目仍无可用计数器则会停止服务器（详见 MapGuidAllocator）
         uint32 GenerateLocalLowGuid(HighGuid guidhigh, uint32 entry = 0);
 
-        // get corresponding TerrainData object for this particular map
+        // get corresponding TerrainData object for this particular map (获取当前地图共享的地形数据对象)
         const TerrainInfo* GetTerrain() const { return m_TerrainData; }
 
         void CreateInstanceData(bool load);
@@ -367,24 +382,24 @@ class Map : public GridRefManager<NGridType>
         void MonsterYellToMap(CreatureInfo const* cinfo, int32 textId, ChatMsg chatMsg, Language language, Unit const* target, uint32 senderLowGuid = 0) const;
         void PlayDirectSoundToMap(uint32 soundId, uint32 zoneId = 0) const;
 
-        // Dynamic VMaps
+        // Dynamic VMaps (动态 VMap 高度、视线与碰撞检测接口)
         float GetHeight(float x, float y, float z, bool swim = false) const;
         bool GetHeightInRange(float x, float y, float& z, float maxSearchDist = 4.0f) const;
         bool IsInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, bool ignoreM2Model) const;
         bool GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, float modifyDist) const;
 
-        // Object Model insertion/remove/test for dynamic vmaps use
+        // Object Model insertion/remove/test for dynamic vmaps use (向动态 VMap 碰撞树插入/移除/查询游戏对象模型)
         void InsertGameObjectModel(const GameObjectModel& mdl);
         void RemoveGameObjectModel(const GameObjectModel& mdl);
         bool ContainsGameObjectModel(const GameObjectModel& mdl) const;
 
-        // Get Holder for Creature Linking
+        // Get Holder for Creature Linking (获取生物链接关系管理器)
         CreatureLinkingHolder* GetCreatureLinkingHolder() { return &m_creatureLinkingHolder; }
 
-        // Teleport all players in that map to choosed location
+        // Teleport all players in that map to choosed location (将地图内所有玩家传送到指定位置)
         void TeleportAllPlayersTo(TeleportLocation loc);
 
-        // WeatherSystem
+        // WeatherSystem (天气系统：设置指定区域的天气类型、强度及是否永久)
         WeatherSystem* GetWeatherSystem() const { return m_weatherSystem; }
         /** Set the weather in a zone on this map
          * @param zoneId set the weather for which zone
@@ -394,7 +409,7 @@ class Map : public GridRefManager<NGridType>
          */
         void SetWeather(uint32 zoneId, WeatherType type, float grade, bool permanently);
 
-        // Random on map generation
+        // Random on map generation (地图随机可达点/地面点/空中点/水下点生成)
         bool GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, float radius, bool randomRange = true) const;
         bool GetReachableRandomPointOnGround(float& x, float& y, float& z, float radius, bool randomRange = true) const;
         bool GetRandomPointInTheAir(float& x, float& y, float& z, float radius, bool randomRange = true) const;
@@ -441,7 +456,7 @@ class Map : public GridRefManager<NGridType>
 
         virtual BattleGround* GetBG() const { return nullptr; }
 
-        // debug
+        // debug (调试用对象移除追踪列表，最终可能占用过多内存，仅用于排查 VisibleNotifier::Notify() 泄漏)
         std::set<ObjectGuid> m_objRemoveList; // this will eventually eat up too much memory - only used for debugging VisibleNotifier::Notify() customlog leak
 
 #ifdef ENABLE_PLAYERBOTS
@@ -539,7 +554,7 @@ class Map : public GridRefManager<NGridType>
 
         NGridType* i_grids[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
-        // Shared geodata object with map coord info...
+        // Shared geodata object with map coord info... (共享地图地理地形数据对象)
         TerrainInfo* const m_TerrainData;
         bool m_bLoadedGrids[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
@@ -553,35 +568,35 @@ class Map : public GridRefManager<NGridType>
         InstanceData* i_data;
         uint32 i_script_id;
 
-        // Map local low guid counters
+        // Map local low guid counters (地图局部低位 GUID 分配器)
         MapGuidAllocator m_CreatureGuids;
         MapGuidAllocator m_GameObjectGuids;
         ObjectGuidGenerator<HIGHGUID_TRANSPORT> m_transportGuids;
         MapGuidAllocator m_DynObjectGuids;
         MapGuidAllocator m_PetGuids;
 
-        // Type specific code for add/remove to/from grid
+        // Type specific code for add/remove to/from grid (按对象类型向网格中添加或移除对象的模板方法)
         template<class T>
         void AddToGrid(T*, NGridType*, Cell const&);
 
         template<class T>
         void RemoveFromGrid(T*, NGridType*, Cell const&);
-        // Holder for information about linked mobs
+        // Holder for information about linked mobs (生物链接信息容器)
         CreatureLinkingHolder m_creatureLinkingHolder;
 
-        // Dynamic Map tree object
+        // Dynamic Map tree object (动态地图碰撞树)
         DynamicMapTree m_dyn_tree;
 
-        // WeatherSystem
+        // WeatherSystem (天气系统实例)
         WeatherSystem* m_weatherSystem;
 
-        // Transports
+        // Transports (当前地图中的运输载具集合)
         TransportSet m_transports;
         TransportSet::iterator m_transportsIterator;
 
         std::unordered_map<uint32, std::set<ObjectGuid>> m_spawnedCount;
 
-        // spawning
+        // spawning (地图刷新管理器)
         SpawnManager m_spawnManager;
 
         struct StringIdMapStorage
@@ -609,22 +624,24 @@ class Map : public GridRefManager<NGridType>
         uint32 m_defaultLight;
 };
 
+// 世界大陆地图子类（非副本大地图）
 class WorldMap : public Map
 {
     private:
-        using Map::GetPersistentState;                      // hide in subclass for overwrite
+        using Map::GetPersistentState;                      // hide in subclass for overwrite (在子类中隐藏基类接口以提供精确返回类型)
     public:
         WorldMap(uint32 id, time_t expiry, uint32 InstanceId) : Map(id, expiry, InstanceId, REGULAR_DIFFICULTY) {}
         ~WorldMap() {}
 
-        // can't be nullptr for loaded map
+        // can't be nullptr for loaded map (已加载地图的持久化状态不可为空)
         WorldPersistentState* GetPersistanceState() const;
 };
 
+// 地下城/团队副本实例地图子类，处理进入权限、队伍阵营锁定、重置调度与持久化绑定
 class DungeonMap : public Map
 {
     private:
-        using Map::GetPersistentState;                      // hide in subclass for overwrite
+        using Map::GetPersistentState;                      // hide in subclass for overwrite (在子类中隐藏基类接口以提供精确返回类型)
     public:
         DungeonMap(uint32 id, time_t, uint32 InstanceId, uint8 SpawnMode);
         ~DungeonMap();
@@ -639,7 +656,7 @@ class DungeonMap : public Map
 
         Team GetInstanceTeam() { return m_team; };
 
-        // can't be nullptr for loaded map
+        // can't be nullptr for loaded map (已加载副本的持久化状态不可为空)
         DungeonPersistentState* GetPersistanceState() const;
 
         virtual void InitVisibilityDistance() override;
@@ -649,10 +666,11 @@ class DungeonMap : public Map
         Team m_team;
 };
 
+// 战场/竞技场实例地图子类，关联 BattleGround 对象与战局生命周期
 class BattleGroundMap : public Map
 {
     private:
-        using Map::GetPersistentState;                      // hide in subclass for overwrite
+        using Map::GetPersistentState;                      // hide in subclass for overwrite (在子类中隐藏基类接口以提供精确返回类型)
     public:
         BattleGroundMap(uint32 id, time_t, uint32 InstanceId, uint8 spawnMode);
         ~BattleGroundMap();
@@ -669,7 +687,7 @@ class BattleGroundMap : public Map
         BattleGround* GetBG() const override { return m_bg; }
         void SetBG(BattleGround* bg) { m_bg = bg; }
 
-        // can't be nullptr for loaded map
+        // can't be nullptr for loaded map (已加载战场地图的持久化状态不可为空)
         BattleGroundPersistentState* GetPersistanceState() const;
 
     private:

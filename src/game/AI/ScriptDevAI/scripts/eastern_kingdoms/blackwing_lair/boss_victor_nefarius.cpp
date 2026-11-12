@@ -21,35 +21,38 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 维克多·奈法里奥斯勋爵（Lord Victor Nefarius）入场剧情引导与人形态 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_GAMESBEGIN_1                = -1469004,
-    SAY_GAMESBEGIN_2                = -1469005,
+    SAY_GAMESBEGIN_1                = -1469004,             // gamesbegin1 台词广播 ID
+    SAY_GAMESBEGIN_2                = -1469005,             // gamesbegin2 台词广播 ID
 
-    GOSSIP_ITEM_NEFARIUS_1          = -3469000,
-    GOSSIP_ITEM_NEFARIUS_2          = -3469001,
-    GOSSIP_ITEM_NEFARIUS_3          = -3469002,
-    GOSSIP_TEXT_NEFARIUS_1          = 7134,
-    GOSSIP_TEXT_NEFARIUS_2          = 7198,
-    GOSSIP_TEXT_NEFARIUS_3          = 7199,
+    GOSSIP_ITEM_NEFARIUS_1          = -3469000,             // 物品奈法利奥斯1 对话菜单选项 ID
+    GOSSIP_ITEM_NEFARIUS_2          = -3469001,             // 物品奈法利奥斯2 对话菜单选项 ID
+    GOSSIP_ITEM_NEFARIUS_3          = -3469002,             // 物品奈法利奥斯3 对话菜单选项 ID
+    GOSSIP_TEXT_NEFARIUS_1          = 7134,                 // text奈法利奥斯1 对话菜单选项 ID
+    GOSSIP_TEXT_NEFARIUS_2          = 7198,                 // text奈法利奥斯2 对话菜单选项 ID
+    GOSSIP_TEXT_NEFARIUS_3          = 7199,                 // text奈法利奥斯3 对话菜单选项 ID
 
     SPELL_NEFARIUS_BARRIER          = 22663,                // immunity in phase 1
     SPELL_SHADOWBLINK               = 22664,                // triggers a random from spells (22668 - 22676)
-    SPELL_SHADOWBOLT_VOLLEY         = 22665,
-    SPELL_SILENCE                   = 22666,
-    SPELL_SHADOW_COMMAND            = 22667,
-    SPELL_SHADOWBOLT                = 22677,
-    SPELL_FEAR                      = 22678,
-    SPELL_TUNNEL_SELECTION          = 23343,
+    SPELL_SHADOWBOLT_VOLLEY         = 22665,                // shadowbolt箭雨 法术 ID
+    SPELL_SILENCE                   = 22666,                // 沉默 法术 ID
+    SPELL_SHADOW_COMMAND            = 22667,                // 暗影command 法术 ID
+    SPELL_SHADOWBOLT                = 22677,                // shadowbolt 法术 ID
+    SPELL_FEAR                      = 22678,                // 恐惧 法术 ID
+    SPELL_TUNNEL_SELECTION          = 23343,                // tunnelselection 法术 ID
     // wotlk + uses weird 65634 spell
 
-    MAP_ID_BWL                      = 469,
+    MAP_ID_BWL                      = 469,                  // IDbwl 标识 ID
 
-    FACTION_BLACK_DRAGON            = 103
+    FACTION_BLACK_DRAGON            = 103                   // black巨龙 阵营 ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
@@ -60,6 +63,7 @@ static const DialogueEntry aIntroDialogue[] =
     {0, 0, 0},
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum VictorNefariusActions
 {
     NEFARIUS_SHADOW_BOLT,
@@ -71,6 +75,7 @@ enum VictorNefariusActions
     NEFARIUS_ACTION_MAX,
 };
 
+// 首领战 AI：奈法利奥斯（victor_nefarius）
 struct boss_victor_nefariusAI : public CombatAI, private DialogueHelper
 {
     boss_victor_nefariusAI(Creature* creature) : CombatAI(creature, NEFARIUS_ACTION_MAX), DialogueHelper(aIntroDialogue),
@@ -91,6 +96,7 @@ struct boss_victor_nefariusAI : public CombatAI, private DialogueHelper
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         if (m_creature->GetMapId() != MAP_ID_BWL)
@@ -108,6 +114,7 @@ struct boss_victor_nefariusAI : public CombatAI, private DialogueHelper
             m_instance->SetData(TYPE_NEFARIAN, IN_PROGRESS);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -191,6 +198,7 @@ struct boss_victor_nefariusAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_creature->GetMapId() != MAP_ID_BWL)
@@ -201,6 +209,7 @@ struct boss_victor_nefariusAI : public CombatAI, private DialogueHelper
     }
 };
 
+// NPC 对话交互入口函数：boss_victor_nefarius
 bool GossipHello_boss_victor_nefarius(Player* player, Creature* creature)
 {
     if (creature->GetMapId() != MAP_ID_BWL)
@@ -231,7 +240,7 @@ bool GossipSelect_boss_victor_nefarius(Player* player, Creature* creature, uint3
         case GOSSIP_ACTION_INFO_DEF+3:
             creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
             player->CLOSE_GOSSIP_MENU();
-            // Start the intro event
+            // Start the intro event (开始the开场事件)
             if (boss_victor_nefariusAI* bossAI = dynamic_cast<boss_victor_nefariusAI*>(creature->AI()))
                 bossAI->DoStartIntro();
             break;
@@ -239,6 +248,7 @@ bool GossipSelect_boss_victor_nefarius(Player* player, Creature* creature, uint3
     return true;
 }
 
+// 注册并载入脚本模块：boss_victor_nefarius
 void AddSC_boss_victor_nefarius()
 {
     Script* pNewScript = new Script;

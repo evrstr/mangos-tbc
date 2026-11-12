@@ -19,26 +19,29 @@
 #ifndef CHARACTERDATABASECLEANER_H
 #define CHARACTERDATABASECLEANER_H
 
+// 角色数据库启动清理工具：根据 saved_variables.cleaning_flags 清理失效的技能与法术记录
 namespace CharacterDatabaseCleaner
 {
+    // 清理任务标志掩码
     enum CleaningFlags
     {
-        // reserved for next version          0x1
-        CLEANING_FLAG_SKILLS                = 0x2,
-        CLEANING_FLAG_SPELLS                = 0x4,
-        // reserved for next version          0x8
+        // reserved for next version          0x1 (保留给后续版本使用)
+        CLEANING_FLAG_SKILLS                = 0x2,          // 清理无效技能记录
+        CLEANING_FLAG_SPELLS                = 0x4,          // 清理无效法术记录
+        // reserved for next version          0x8 (保留给后续版本使用)
     };
 
 
-    void CleanDatabase();
+    void CleanDatabase();                                   // 执行数据库清理总入口
 
+    // 去重查询指定表的唯一 ID，并删除校验回调返回 false 的无效记录
     void CheckUnique(const char* column, const char* table, bool (*check)(uint32));
 
-    bool SkillCheck(uint32 skill);
-    bool SpellCheck(uint32 spell_id);
+    bool SkillCheck(uint32 skill);                          // 校验技能 ID 是否存在于 SkillLine.dbc
+    bool SpellCheck(uint32 spell_id);                       // 校验法术 ID 是否存在于 Spell 模板表
 
-    void CleanCharacterSkills();
-    void CleanCharacterSpell();
+    void CleanCharacterSkills();                            // 清理 character_skills 表中失效技能
+    void CleanCharacterSpell();                             // 清理 character_spell 表中失效法术
 }
 
 #endif

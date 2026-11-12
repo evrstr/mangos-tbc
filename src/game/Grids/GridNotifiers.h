@@ -33,6 +33,7 @@
 
 namespace MaNGOS
 {
+    /// 可见性通知器：收集并同步摄像机视野内所有世界对象的创建/销毁与更新数据
     struct VisibleNotifier
     {
         Camera& i_camera;
@@ -44,9 +45,11 @@ namespace MaNGOS
         explicit VisibleNotifier(Camera& c, UpdateData& data, bool processSend) : i_camera(c), i_data(data), i_clientGUIDs(c.GetOwner()->GetClientGuids()), i_processSend(processSend) {}
         template<class T> void Visit(GridRefManager<T>& m);
         void Visit(CameraMapType& /*m*/) {}
+        /// 汇总视野变更（含传送船乘客、远距对象、超距销毁及新可见对象光环）并发送数据包
         void Notify(void);
     };
 
+    /// 对象变化通知器：当某个世界对象进入视野或状态变化时，通知周围所有摄像机更新其可见性
     struct VisibleChangesNotifier
     {
         WorldObject& i_object;
@@ -60,6 +63,7 @@ namespace MaNGOS
         GuidSet m_unvisitedGuids;
     };
 
+    /// 玩家消息投递器：向视野范围内的摄像机玩家广播数据包（可控制是否包含自身）
     struct MessageDeliverer
     {
         Player const& i_player;
@@ -70,6 +74,7 @@ namespace MaNGOS
         template<class SKIP> void Visit(GridRefManager<SKIP>&) {}
     };
 
+    /// 排除指定玩家的消息投递器：向视野内除 i_skipped_receiver 外的所有玩家广播数据包
     struct MessageDelivererExcept
     {
         WorldPacket const& i_message;
@@ -82,6 +87,7 @@ namespace MaNGOS
         template<class SKIP> void Visit(GridRefManager<SKIP>&) {}
     };
 
+    /// 通用对象消息投递器：向所有访问到的摄像机所有者发送数据包
     struct ObjectMessageDeliverer
     {
         WorldPacket const& i_message;
@@ -90,6 +96,7 @@ namespace MaNGOS
         template<class SKIP> void Visit(GridRefManager<SKIP>&) {}
     };
 
+    /// 按距离与阵营过滤的玩家消息投递器
     struct MessageDistDeliverer
     {
         Player const& i_player;
@@ -104,6 +111,7 @@ namespace MaNGOS
         template<class SKIP> void Visit(GridRefManager<SKIP>&) {}
     };
 
+    /// 按距离过滤的对象消息投递器
     struct ObjectMessageDistDeliverer
     {
         WorldObject const& i_object;
@@ -114,6 +122,7 @@ namespace MaNGOS
         template<class SKIP> void Visit(GridRefManager<SKIP>&) {}
     };
 
+    /// 网格对象更新收集器：收集待本帧更新的网格对象集合
     struct ObjectUpdater
     {
         ObjectUpdater(WorldObjectUnSet& otus, const uint32& diff) : m_objectToUpdateSet(otus), m_timeDiff(diff) {}
@@ -128,6 +137,7 @@ namespace MaNGOS
             uint32 m_timeDiff;
     };
 
+    /// 玩家移动视野感知通知器：玩家位置更新时触发周围玩家/生物与自身 AI 的 MoveInLineOfSight 检查
     struct PlayerVisitObjectsNotifier
     {
         Player& i_player;
@@ -139,6 +149,7 @@ namespace MaNGOS
 #endif
     };
 
+    /// 生物移动视野感知通知器：生物位置更新时触发周围玩家/生物 AI 的 MoveInLineOfSight 检查
     struct CreatureVisitObjectsNotifier
     {
         Creature& i_creature;
@@ -150,6 +161,7 @@ namespace MaNGOS
 #endif
     };
 
+    /// 动态法术区域对象（DynamicObject）周期更新访问器：检测范围内目标并施加持久区域光环
     struct DynamicObjectUpdater
     {
         DynamicObject& i_dynobject;
@@ -164,12 +176,13 @@ namespace MaNGOS
         template<> inline void Visit<Creature>(CreatureMapType&);
 #endif
 
+        /// 对单个候选单位执行法术目标校验与持久光环施加
         void VisitHelper(Unit* target);
     };
 
-    // SEARCHERS & LIST SEARCHERS & WORKERS
+    // SEARCHERS & LIST SEARCHERS & WORKERS | 搜索器、列表搜索器与遍历执行器
 
-    /* Model Searcher class:
+    /* Model Searcher class: | 搜索器模板结构示例：
     template<class Check>
     struct SomeSearcher
     {
@@ -199,8 +212,9 @@ namespace MaNGOS
     };
     */
 
-    // WorldObject searchers & workers
+    // WorldObject searchers & workers | WorldObject 通用搜索器与执行器
 
+    /// 查找首个满足条件的 WorldObject
     template<class Check>
     struct WorldObjectSearcher
     {
@@ -274,8 +288,9 @@ namespace MaNGOS
         template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED>&) {}
     };
 
-    // Gameobject searchers
+    // Gameobject searchers | GameObject 搜索器
 
+    /// 查找首个满足条件的 GameObject
     template<class Check>
     struct GameObjectSearcher
     {
@@ -290,6 +305,7 @@ namespace MaNGOS
     };
 
     // Last accepted by Check GO if any (Check can change requirements at each call)
+    // 返回最后一个通过 Check 的 GameObject（Check 可在每次匹配后收紧范围条件，用于找最近目标）
     template<class Check>
     struct GameObjectLastSearcher
     {
@@ -329,9 +345,9 @@ namespace MaNGOS
         template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED>&) {}
     };
 
-    // Unit searchers
+    // Unit searchers | Unit 单位搜索器
 
-    // First accepted by Check Unit if any
+    // First accepted by Check Unit if any | 查找首个通过 Check 的 Unit（含玩家与生物）
     template<class Check>
     struct UnitSearcher
     {
@@ -347,6 +363,7 @@ namespace MaNGOS
     };
 
     // Last accepted by Check Unit if any (Check can change requirements at each call)
+    // 返回最后一个通过 Check 的 Unit（Check 可动态收缩条件，用于寻找最优/最近单位）
     template<class Check>
     struct UnitLastSearcher
     {
@@ -361,7 +378,7 @@ namespace MaNGOS
         template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED>&) {}
     };
 
-    // All accepted by Check units if any
+    // All accepted by Check units if any | 收集所有通过 Check 的 Unit 到列表
     template<class Check>
     struct UnitListSearcher
     {
@@ -376,8 +393,9 @@ namespace MaNGOS
         template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED>&) {}
     };
 
-    // Creature searchers
+    // Creature searchers | Creature 生物搜索器
 
+    /// 查找首个满足条件的 Creature
     template<class Check>
     struct CreatureSearcher
     {
@@ -392,6 +410,7 @@ namespace MaNGOS
     };
 
     // Last accepted by Check Creature if any (Check can change requirements at each call)
+    // 返回最后一个通过 Check 的 Creature（常用于查找最近生物）
     template<class Check>
     struct CreatureLastSearcher
     {
@@ -434,8 +453,9 @@ namespace MaNGOS
         template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED>&) {}
     };
 
-    // Player searchers
+    // Player searchers | Player 玩家与摄像机搜索器/执行器
 
+    /// 查找首个满足条件的玩家
     template<class Check>
     struct PlayerSearcher
     {
@@ -522,9 +542,9 @@ namespace MaNGOS
         template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED>&) {}
     };
 
-    // CHECKS && DO classes
+    // CHECKS && DO classes | 条件谓词（Check）与动作仿函数（Do）
 
-    /* Model Check class:
+    /* Model Check class: | 条件谓词类示例：
     class SomeCheck
     {
         public:
@@ -536,12 +556,12 @@ namespace MaNGOS
             }
             template<class NOT_INTERESTED> bool operator()(NOT_INTERESTED*) { return false; }
         private:
-            SomeObjecType const* i_fobj;                    // Focus object used for check distance from, phase, so place in world
+            SomeObjecType const* i_fobj;                    // Focus object used for check distance from, phase, so place in world | 作为距离与相位基准的焦点对象
             ..other values need for check
     };
     */
 
-    // Can only work for unit since WO -> Corpse reaction is undefined
+    // Can only work for unit since WO -> Corpse reaction is undefined | 仅适用于 Unit（WorldObject 到 Corpse 的阵营敌友关系未定义）；用于食尸技能目标判定
     class CannibalizeObjectCheck
     {
         public:
@@ -588,8 +608,9 @@ namespace MaNGOS
             float i_range;
     };
 
-    // WorldObject do classes
+    // WorldObject do classes | WorldObject 动作执行器
 
+    /// 重生执行器：触发指定生物或游戏对象重生
     class RespawnDo
     {
         public:
@@ -600,8 +621,9 @@ namespace MaNGOS
             void operator()(Corpse*) const {}
     };
 
-    // GameObject checks
+    // GameObject checks | GameObject 过滤谓词
 
+    /// 检查范围内是否存在已生成且匹配的法术焦点（Spell Focus）游戏对象
     class GameObjectFocusCheck
     {
         public:
@@ -629,6 +651,7 @@ namespace MaNGOS
     };
 
     // Find the nearest Fishing hole and return true only if source object is in range of hole
+    // 查找最近的鱼点（Fishing Hole），仅当源对象处于鱼点交互半径内时返回 true
     class NearestGameObjectFishingHoleCheck
     {
         public:
@@ -648,11 +671,12 @@ namespace MaNGOS
             WorldObject const& i_obj;
             float  i_range;
 
-            // prevent clone
+            // prevent clone | 禁止拷贝构造
             NearestGameObjectFishingHoleCheck(NearestGameObjectFishingHoleCheck const&);
     };
 
     // Success at unit in range, range update for next check (this can be used with GameobjectLastSearcher to find nearest GO)
+    // 检查指定 entry 的 GameObject 是否在范围内，并收紧 i_range（配合 GameObjectLastSearcher 查找最近目标）
     class NearestGameObjectEntryInObjectRangeCheck
     {
         public:
@@ -662,7 +686,7 @@ namespace MaNGOS
             {
                 if (go->GetEntry() == i_entry && i_obj.IsWithinDistInMap(go, i_range))
                 {
-                    i_range = i_obj.GetDistance(go);        // use found GO range as new range limit for next check
+                    i_range = i_obj.GetDistance(go);        // use found GO range as new range limit for next check | 将当前命中距离更新为下次检查的距离上限
                     return true;
                 }
                 return false;
@@ -673,11 +697,11 @@ namespace MaNGOS
             uint32 i_entry;
             float  i_range;
 
-            // prevent clone this object
+            // prevent clone this object | 禁止拷贝此对象
             NearestGameObjectEntryInObjectRangeCheck(NearestGameObjectEntryInObjectRangeCheck const&);
     };
 
-    // Success at go in range
+    // Success at go in range | 匹配指定 entry 集合中位于对象范围内的全部 GameObject
     class AllGameObjectEntriesListInObjectRangeCheck
     {
         public:
@@ -729,7 +753,7 @@ namespace MaNGOS
             float m_fRange;
     };
 
-    // x y z version of above
+    // x y z version of above | 基于坐标 (x, y, z) 的 GameObject 集合范围匹配版本
     class AllGameObjectEntriesListInPosRangeCheck
     {
     public:
@@ -749,11 +773,12 @@ namespace MaNGOS
         float  i_range;
         bool   i_is3D;
 
-        // prevent clone this object
+        // prevent clone this object | 禁止拷贝此对象
         AllGameObjectEntriesListInPosRangeCheck(AllGameObjectEntriesListInObjectRangeCheck const&);
     };
 
     // Success at gameobject in range of xyz, range update for next check (this can be use with GameobjectLastSearcher to find nearest GO)
+    // 查找指定坐标 (x, y, z) 范围内最近的指定 entry GameObject（动态缩小距离上限）
     class NearestGameObjectEntryInPosRangeCheck
     {
         public:
@@ -766,7 +791,7 @@ namespace MaNGOS
             {
                 if (go->GetEntry() == i_entry && go->IsWithinDist3d(i_x, i_y, i_z, i_range))
                 {
-                    // use found GO range as new range limit for next check
+                    // use found GO range as new range limit for next check | 以命中距离更新后续搜索的距离上限
                     i_range = go->GetDistance(i_x, i_y, i_z);
                     return true;
                 }
@@ -782,11 +807,11 @@ namespace MaNGOS
             float i_x, i_y, i_z;
             float i_range;
 
-            // prevent clone this object
+            // prevent clone this object | 禁止拷贝此对象
             NearestGameObjectEntryInPosRangeCheck(NearestGameObjectEntryInPosRangeCheck const&);
     };
 
-    // Success at gameobject with entry in range of provided xyz
+    // Success at gameobject with entry in range of provided xyz | 匹配指定坐标 (x, y, z) 范围内指定 entry 的 GameObject
     class GameObjectEntryInPosRangeCheck
     {
         public:
@@ -836,8 +861,9 @@ namespace MaNGOS
             GameObjectInPosRangeCheck(GameObjectEntryInPosRangeCheck const&);
     };
 
-    // Unit checks
+    // Unit checks | Unit 单位过滤谓词
 
+    /// 查找范围内已损失生命值绝对值最大的友方单位
     class MostHPMissingInRangeCheck
     {
         public:
@@ -869,6 +895,7 @@ namespace MaNGOS
             bool i_targetSelf;
     };
 
+    /// 查找范围内已损失生命值百分比最高的友方单位
     class MostHPPercentMissingInRangeCheck
     {
         public:
@@ -900,6 +927,7 @@ namespace MaNGOS
             bool i_targetSelf;
     };
 
+    /// 检查范围内满足指定 UnitCondition 条件的存活友方单位
     class FriendlyEligibleUnitConditionCheck
     {
         public:
@@ -922,6 +950,7 @@ namespace MaNGOS
             int32 i_unitConditionId;
     };
 
+    /// 检查范围内处于受控/减速状态且可被指定驱散/机制掩码解除的战斗中友方单位
     class FriendlyEligibleDispelInRangeCheck
     {
         public:
@@ -952,6 +981,7 @@ namespace MaNGOS
             bool m_self;
     };
 
+    /// 检查范围内处于战斗中且缺少指定增益光环的友方单位
     class FriendlyMissingBuffInRangeInCombatCheck
     {
         public:
@@ -969,6 +999,7 @@ namespace MaNGOS
             uint32 i_spawnGroupId;
     };
 
+    /// 检查范围内（不限战斗状态）缺少指定增益光环的友方单位
     class FriendlyMissingBuffInRangeNotInCombatCheck
     {
         public:
@@ -986,6 +1017,7 @@ namespace MaNGOS
             uint32 i_spawnGroupId;
     };
 
+    /// 匹配范围内可见且可被法术攻击的敌对单位（忽略图腾）
     class AnyUnfriendlyUnitInObjectRangeCheck
     {
         public:
@@ -996,7 +1028,7 @@ namespace MaNGOS
             WorldObject const& GetFocusObject() const { return *i_obj; }
             bool operator()(Unit* u) const
             {
-                // ignore totems
+                // ignore totems | 忽略图腾单位
                 if (u->GetTypeId() == TYPEID_UNIT && ((Creature*)u)->IsTotem())
                     return false;
                 
@@ -1008,6 +1040,7 @@ namespace MaNGOS
             float i_range;
     };
 
+    /// 匹配范围内可被指定法术协助（治疗/增益）的存活单位
     class AnySpellAssistableUnitInObjectRangeCheck
     {
         public:
@@ -1041,6 +1074,7 @@ namespace MaNGOS
             bool i_ignorePhase;
     };
 
+    /// 匹配范围内对给定法术友好的存活单位（若指定队伍则仅限同队玩家及其宠物）
     class AnyFriendlyOrGroupMemberUnitInUnitRangeCheck
     {
         public:
@@ -1052,7 +1086,7 @@ namespace MaNGOS
                 if (!u->IsAlive() || !i_target->IsWithinDistInMap(u, i_range) || !i_obj->CanAssistSpell(u, i_spellInfo))
                     return false;
 
-                //if group is defined then we apply group members only filtering
+                //if group is defined then we apply group members only filtering | 若指定了队伍，则仅允许该小队/团队成员及其宠物通过
                 if (i_group)
                 {
                     switch (u->GetTypeId())
@@ -1069,6 +1103,7 @@ namespace MaNGOS
                             Creature* creature = static_cast<Creature*>(u);
 
                             //the only other possible group members besides players are pets, we exclude anyone else
+                            // 除玩家外仅有宠物可能属于队伍，其余非宠物生物一律排除
                             if (!creature->IsPet())
                                 return false;
 
@@ -1135,6 +1170,7 @@ namespace MaNGOS
     };
 
     // Success at unit in range, range update for next check (this can be use with UnitLastSearcher to find nearest unit)
+    // 查找范围内最近的可攻击敌对单位，并在命中后收缩 m_range 上限（配合 UnitLastSearcher 使用）
     class NearestAttackableUnitInObjectRangeCheck
     {
         public:
@@ -1150,7 +1186,7 @@ namespace MaNGOS
                     && currUnit->IsVisibleForOrDetect(m_source, m_source, false)
                     && m_source->IsWithinDistInMap(currUnit, m_range))
                 {
-                    m_range = m_source->GetDistance(currUnit);        // use found unit range as new range limit for next check
+                    m_range = m_source->GetDistance(currUnit);        // use found unit range as new range limit for next check | 将当前距离更新为下一次检查的范围上限
                     return true;
                 }
 
@@ -1163,6 +1199,7 @@ namespace MaNGOS
             float       m_range;
     };
 
+    /// 匹配范围内可被范围攻击法术命中的敌对单位（忽略图腾）
     class AnyAoETargetUnitInObjectRangeCheck
     {
         public:
@@ -1175,6 +1212,7 @@ namespace MaNGOS
             bool operator()(Unit* u)
             {
                 // Check contains checks for: live, non-selectable, non-attackable flags, flight check and GM check, ignore totems
+                // CanAttackSpell 已包含存活、不可选中、不可攻击标记、飞行及 GM 检查，此处额外忽略图腾
                 if (u->GetTypeId() == TYPEID_UNIT && ((Creature*)u)->IsTotem())
                     return false;
 
@@ -1189,7 +1227,7 @@ namespace MaNGOS
             bool i_ignorePhase;
     };
 
-    // do attack at call of help to friendly crearture
+    // do attack at call of help to friendly crearture | 呼救执行器：通知范围内有视线的友方生物协助攻击敌人
     class CallOfHelpCreatureInRangeDo
     {
         public:
@@ -1224,8 +1262,9 @@ namespace MaNGOS
             WorldObject const* i_fobj;
     };
 
-    // Creature checks
+    // Creature checks | Creature 生物过滤谓词
 
+    /// 检查范围内是否存在可协助战斗且在视线内的友方生物
     class AnyAssistCreatureInRangeCheck
     {
         public:
@@ -1242,6 +1281,7 @@ namespace MaNGOS
             float i_range;
     };
 
+    /// 查找范围内最近的可协战友方生物
     class NearestAssistCreatureInCreatureRangeCheck
     {
         public:
@@ -1262,12 +1302,12 @@ namespace MaNGOS
                 if (!i_obj->IsWithinLOSInMap(u))
                     return false;
 
-                i_range = i_obj->GetDistance(u);            // use found unit range as new range limit for next check
+                i_range = i_obj->GetDistance(u);            // use found unit range as new range limit for next check | 将命中生物距离作为下一次检查的距离上限
                 return true;
             }
             float GetLastRange() const { return i_range; }
 
-            // prevent clone this object
+            // prevent clone this object | 禁止拷贝此对象
             NearestAssistCreatureInCreatureRangeCheck(NearestAssistCreatureInCreatureRangeCheck const&);
 
         private:
@@ -1277,6 +1317,7 @@ namespace MaNGOS
     };
 
     // Success at unit in range, range update for next check (this can be use with CreatureLastSearcher to find nearest creature)
+    // 按 entry 与存活状态查找范围内最近的 Creature（以距离平方收缩上限，配合 CreatureLastSearcher 使用）
     class NearestCreatureEntryWithLiveStateInObjectRangeCheck
     {
         public:
@@ -1290,7 +1331,7 @@ namespace MaNGOS
                     float dist = i_obj.GetDistance(u, true, DIST_CALC_NONE);
                     if (dist < i_range)
                     {
-                        i_range = dist; // use found unit range as new range limit for next check
+                        i_range = dist; // use found unit range as new range limit for next check | 更新距离平方上限
                         return true;
                     }
                     i_foundOutOfRange = true;
@@ -1308,11 +1349,12 @@ namespace MaNGOS
             bool   i_is3D;
             bool   i_foundOutOfRange;
 
-            // prevent clone this object
+            // prevent clone this object | 禁止拷贝此对象
             NearestCreatureEntryWithLiveStateInObjectRangeCheck(NearestCreatureEntryWithLiveStateInObjectRangeCheck const&);
     };
 
     // Success at unit in range, range update for next check (this can be used with CreatureListSearcher to find creatures with given entry)
+    // 匹配范围内符合指定 entry/DB GUID 集合与存活状态的全部生物
     class AllCreatureEntriesWithLiveStateInObjectRangeCheck
     {
         public:
@@ -1384,8 +1426,9 @@ namespace MaNGOS
             float m_fRange;
     };
 
-    // Player checks and do
+    // Player checks and do | 玩家过滤谓词与本地化数据包缓存投递器
 
+    /// 匹配范围内所有存活的玩家
     class AnyPlayerInObjectRangeCheck
     {
         public:
@@ -1400,6 +1443,7 @@ namespace MaNGOS
             float i_range;
     };
 
+    /// 匹配范围内拥有指定光环的存活玩家
     class AnyPlayerInObjectRangeWithAuraCheck
     {
         public:
@@ -1418,6 +1462,7 @@ namespace MaNGOS
             uint32 i_spellId;
     };
 
+    /// 匹配范围内可参与占据点（Capture Point）控制的玩家
     class AnyPlayerInCapturePointRange
     {
         public:
@@ -1435,6 +1480,7 @@ namespace MaNGOS
     };
 
     // Prepare using Builder localized packets with caching and send to player
+    // 使用 Builder 按客户端语言区域生成并缓存单条本地化数据包后发送给玩家
     template<class Builder>
     class LocalizedPacketDo
     {
@@ -1445,10 +1491,11 @@ namespace MaNGOS
 
         private:
             Builder& i_builder;
-            std::vector<std::unique_ptr<WorldPacket>> i_data_cache;         // 0 = default, i => i-1 locale index
+            std::vector<std::unique_ptr<WorldPacket>> i_data_cache;         // 0 = default, i => i-1 locale index | 0 为默认语言，下标 i 对应 locale_idx = i-1
     };
 
     // Prepare using Builder localized packets with caching and send to player
+    // 使用 Builder 按客户端语言区域生成并缓存多条本地化数据包列表后批量发送给玩家
     template<class Builder>
     class LocalizedPacketListDo
     {
@@ -1461,7 +1508,7 @@ namespace MaNGOS
         private:
             Builder& i_builder;
             std::vector<WorldPacketList> i_data_cache;
-            // 0 = default, i => i-1 locale index
+            // 0 = default, i => i-1 locale index | 0 为默认语言，下标 i 对应 locale_idx = i-1
     };
 
 #ifndef _MSC_VER

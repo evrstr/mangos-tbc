@@ -12,11 +12,11 @@ EndScriptData */
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/follower_ai.h"
 
-const float MAX_PLAYER_DISTANCE = 100.0f;
+const float MAX_PLAYER_DISTANCE = 100.0f;                   // 允许跟随的最大距离（超出则判定脱节）
 
 enum
 {
-    POINT_COMBAT_START  = 0xFFFFFF
+    POINT_COMBAT_START  = 0xFFFFFF                          // 战斗起始位置点 ID
 };
 
 FollowerAI::FollowerAI(Creature* creature) : ScriptedAI(creature),
@@ -27,6 +27,7 @@ FollowerAI::FollowerAI(Creature* creature) : ScriptedAI(creature),
 
 // This part provides assistance to a player that are attacked by pWho, even if out of normal aggro range
 // It will cause m_creature to attack pWho that are attacking _any_ player (which has been confirmed may happen also on offi)
+// 协助处于战斗中的玩家（攻击正在攻击玩家的目标）
 bool FollowerAI::AssistPlayerInCombat(Unit* who)
 {
     if (!HasFollowState(STATE_FOLLOW_INPROGRESS))
@@ -67,6 +68,7 @@ bool FollowerAI::AssistPlayerInCombat(Unit* who)
     return false;
 }
 
+// 死亡处理：若跟随中死亡则判定领袖及小队任务失败
 void FollowerAI::JustDied(Unit* /*killer*/)
 {
     if (!HasFollowState(STATE_FOLLOW_INPROGRESS) || !m_leaderGuid || !m_questForFollow)
@@ -94,6 +96,7 @@ void FollowerAI::JustDied(Unit* /*killer*/)
     }
 }
 
+// 尸体清除后重置跟随状态
 void FollowerAI::CorpseRemoved(uint32& /*respawnDelay*/)
 {
     m_followState = STATE_FOLLOW_NONE;
@@ -102,6 +105,7 @@ void FollowerAI::CorpseRemoved(uint32& /*respawnDelay*/)
         SetCombatMovement(true);
 }
 
+// 闪避脱战：停止战斗并跑回战斗开始点
 void FollowerAI::EnterEvadeMode()
 {
     ResetTimersOnEvade();
@@ -130,6 +134,7 @@ void FollowerAI::EnterEvadeMode()
     Reset();
 }
 
+// 内部主更新：定期检测与领袖距离、处理脱战回位跟随与完成消失
 void FollowerAI::UpdateAI(const uint32 diff)
 {
     if (HasFollowState(STATE_FOLLOW_INPROGRESS) && !m_creature->GetVictim())
@@ -192,6 +197,7 @@ void FollowerAI::UpdateAI(const uint32 diff)
     UpdateFollowerAI(diff);
 }
 
+// 子类更新逻辑：基础近战攻击
 void FollowerAI::UpdateFollowerAI(const uint32 /*diff*/)
 {
     if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -200,6 +206,7 @@ void FollowerAI::UpdateFollowerAI(const uint32 /*diff*/)
     DoMeleeAttackIfReady();
 }
 
+// 移动到达通知：到达战斗初始点后标记返回领袖
 void FollowerAI::MovementInform(uint32 motionType, uint32 pointId)
 {
     if (motionType != POINT_MOTION_TYPE || !HasFollowState(STATE_FOLLOW_INPROGRESS))
@@ -217,6 +224,7 @@ void FollowerAI::MovementInform(uint32 motionType, uint32 pointId)
     }
 }
 
+// 启动跟随领袖
 void FollowerAI::StartFollow(Player* leader, uint32 factionForFollower, const Quest* quest)
 {
     if (m_creature->GetVictim())
@@ -255,6 +263,7 @@ void FollowerAI::StartFollow(Player* leader, uint32 factionForFollower, const Qu
     debug_log("SD2: FollowerAI start follow %s (Guid %s)", leader->GetName(), m_leaderGuid.GetString().c_str());
 }
 
+// 获取当前有效领袖（若原领袖死亡则在小队存活成员中切换）
 Player* FollowerAI::GetLeaderForFollower()
 {
     if (Player* leader = m_creature->GetMap()->GetPlayer(m_leaderGuid))
@@ -281,6 +290,7 @@ Player* FollowerAI::GetLeaderForFollower()
     return nullptr;
 }
 
+// 设置跟随完成状态（可配置后置剧情事件）
 void FollowerAI::SetFollowComplete(bool withEndEvent)
 {
     if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == FOLLOW_MOTION_TYPE)
@@ -301,6 +311,7 @@ void FollowerAI::SetFollowComplete(bool withEndEvent)
     AddFollowState(STATE_FOLLOW_COMPLETE);
 }
 
+// 暂停或恢复跟随
 void FollowerAI::SetFollowPaused(bool paused)
 {
     if (!HasFollowState(STATE_FOLLOW_INPROGRESS) || HasFollowState(STATE_FOLLOW_COMPLETE))

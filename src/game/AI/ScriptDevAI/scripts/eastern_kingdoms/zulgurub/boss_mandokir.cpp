@@ -21,45 +21,48 @@ SDComment: test Threating Gaze. Script depends on ACID script for Vilebranch Spe
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 血领主曼多基尔（Bloodlord Mandokir）首领战 AI（坐骑迅猛龙奥根、凝视点名玩家与击杀成长升级）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    NPC_OHGAN           = 14988,
+    NPC_OHGAN           = 14988,                            // ohgan Entry ID
     NPC_CHAINED_SPIRIT  = 15117,                            // resing spirits
 
-    SAY_AGGRO           = -1309015,
-    SAY_DING_KILL       = -1309016,
-    SAY_GRATS_JINDO     = -1309017,
-    SAY_WATCH           = -1309018,
-    SAY_WATCH_WHISPER   = -1309019,
+    SAY_AGGRO           = -1309015,                         // 开战 台词广播 ID
+    SAY_DING_KILL       = -1309016,                         // ding击杀 台词广播 ID
+    SAY_GRATS_JINDO     = -1309017,                         // gratsjindo 台词广播 ID
+    SAY_WATCH           = -1309018,                         // watch 台词广播 ID
+    SAY_WATCH_WHISPER   = -1309019,                         // watchwhisper 台词广播 ID
 
-    EMOTE_RAGE          = -1309024,
+    EMOTE_RAGE          = -1309024,                         // rage 表情动作 ID
 
-    SPELL_CHARGE        = 24408,
-    SPELL_CHARGE_GAZE   = 24315,
-    SPELL_INTIMIDATING_SHOUT          = 29321,
-    SPELL_WHIRLWIND     = 13736,
-    SPELL_MORTAL_STRIKE = 16856,
-    SPELL_ENRAGE        = 23537,
-    SPELL_THREATENING_GAZE = 24314,
-    SPELL_SUMMON_PLAYER = 25104,
-    SPELL_LEVEL_UP      = 24312,
-    SPELL_OVERPOWER     = 24407,
+    SPELL_CHARGE        = 24408,                            // 冲锋 法术 ID
+    SPELL_CHARGE_GAZE   = 24315,                            // 冲锋gaze 法术 ID
+    SPELL_INTIMIDATING_SHOUT          = 29321,              // intimidatingshout 法术 ID
+    SPELL_WHIRLWIND     = 13736,                            // 旋风斩 法术 ID
+    SPELL_MORTAL_STRIKE = 16856,                            // mortal打击 法术 ID
+    SPELL_ENRAGE        = 23537,                            // 狂暴 法术 ID
+    SPELL_THREATENING_GAZE = 24314,                         // threateninggaze 法术 ID
+    SPELL_SUMMON_PLAYER = 25104,                            // 召唤player 法术 ID
+    SPELL_LEVEL_UP      = 24312,                            // levelup 法术 ID
+    SPELL_OVERPOWER     = 24407,                            // overpower 法术 ID
 
-    SPELL_SUMMON_BLOODLORDS_RAPTOR = 24349,
+    SPELL_SUMMON_BLOODLORDS_RAPTOR = 24349,                 // 召唤bloodlordsraptor 法术 ID
 
     // Ohgans Spells
-    SPELL_SUNDERARMOR   = 24317,
+    SPELL_SUNDERARMOR   = 24317,                            // sunderarmor 法术 ID
 
     // Chained Spirit Spells
-    SPELL_REVIVE        = 24341,
+    SPELL_REVIVE        = 24341,                            // revive 法术 ID
 
-    SPELL_DESPAWN_CHAINED_SPIRITS = 24342,
+    SPELL_DESPAWN_CHAINED_SPIRITS = 24342,                  // 消除chainedspirits 法术 ID
 
-    POINT_DOWNSTAIRS    = 1
+    POINT_DOWNSTAIRS    = 1                                 // downstairs 路径点 ID
 };
 
 static Position aSpirits[] =
@@ -85,11 +88,13 @@ static Position aSpirits[] =
     { -12266.1f, -1940.72f, 132.606f, 0.70910f}
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MandokirActions
 {
     MANDOKIR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（mandokir）
 struct boss_mandokirAI : public CombatAI
 {
     boss_mandokirAI(Creature* creature) : CombatAI(creature, MANDOKIR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -103,6 +108,7 @@ struct boss_mandokirAI : public CombatAI
 
     float m_targetThreat;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -129,6 +135,7 @@ struct boss_mandokirAI : public CombatAI
             m_instance->SetData(TYPE_OHGAN, IN_PROGRESS);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
@@ -176,6 +183,7 @@ struct boss_mandokirAI : public CombatAI
         }
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* victim) override
     {
         if (victim->IsPlayer())
@@ -207,6 +215,7 @@ struct boss_mandokirAI : public CombatAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_OHGAN)
@@ -216,6 +225,7 @@ struct boss_mandokirAI : public CombatAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_OHGAN)
@@ -225,6 +235,7 @@ struct boss_mandokirAI : public CombatAI
         }
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 moveType, uint32 pointId) override
     {
         if (moveType != POINT_MOTION_TYPE || !m_instance)
@@ -246,6 +257,7 @@ struct mob_ohganAI : public CombatAI
         AddCombatAction(0, 5000u);
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* pVictim) override
     {
         if (pVictim->IsPlayer())
@@ -278,6 +290,7 @@ struct ThreateningGaze : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（DespawnChainedSpirits）
 struct DespawnChainedSpirits : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -289,6 +302,7 @@ struct DespawnChainedSpirits : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_mandokir
 void AddSC_boss_mandokir()
 {
     Script* pNewScript = new Script;

@@ -21,10 +21,16 @@ SDComment: Timers will need adjustments.
 SDCategory: Tempest Keep, The Arcatraz
 EndScriptData */
 
+// 预言者斯克瑞斯（禁魔监狱最终首领）
+/* 遭遇战概述：
+ * 预言者斯克瑞斯是被囚禁的无面者首领，战斗中施放心灵控制、心智衰退，并在 66% 和 33% 分裂出完全相同的幻象分身。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "arcatraz.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_KILL_1                  = 19813,
@@ -49,6 +55,7 @@ enum
     SPELL_BLINK_VISUAL          = 36937,
 };
 
+// HarbingerSkyrissActions 相关枚举
 enum HarbingerSkyrissActions
 {
     SKYRISS_66,
@@ -56,6 +63,7 @@ enum HarbingerSkyrissActions
     SKYRISS_ACTION_MAX,
 };
 
+// boss_harbinger_skyrissAI 逻辑实现
 struct boss_harbinger_skyrissAI : public CombatAI
 {
     boss_harbinger_skyrissAI(Creature* creature) : CombatAI(creature, SKYRISS_ACTION_MAX),
@@ -69,6 +77,7 @@ struct boss_harbinger_skyrissAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -77,12 +86,14 @@ struct boss_harbinger_skyrissAI : public CombatAI
             m_instance->SetData(TYPE_HARBINGERSKYRISS, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_HARBINGERSKYRISS, FAIL);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetCreatedBySpellId())
@@ -96,6 +107,7 @@ struct boss_harbinger_skyrissAI : public CombatAI
             summoned->AI()->AttackStart(m_creature->GetVictim());
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -121,6 +133,7 @@ struct boss_harbinger_skyrissAI : public CombatAI
         }
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         if (spellInfo->Id == SPELL_FEAR)
@@ -130,6 +143,7 @@ struct boss_harbinger_skyrissAI : public CombatAI
     }
 };
 
+// 注册 boss_harbinger_skyriss 脚本
 void AddSC_boss_harbinger_skyriss()
 {
     Script* pNewScript = new Script;

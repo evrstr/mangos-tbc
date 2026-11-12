@@ -19,12 +19,15 @@
 #include "SpellScript.h"
 #include "Entities/DynamicObject.h"
 
+// 按法术 ID 索引的脚本查找表
 std::map<uint32, SpellScript*> SpellScriptMgr::m_spellScriptMap {};
 std::map<uint32, AuraScript*> SpellScriptMgr::m_auraScriptMap {};
 
+// 按脚本名称索引的脚本对象所有权表
 std::map<std::string, std::unique_ptr<SpellScript>> SpellScriptMgr::m_spellScriptStringMap {};
 std::map<std::string, std::unique_ptr<AuraScript>> SpellScriptMgr::m_auraScriptStringMap {};
 
+// 按法术 ID 查找已绑定的 SpellScript
 SpellScript* SpellScriptMgr::GetSpellScript(uint32 spellId)
 {
     auto itr = m_spellScriptMap.find(spellId);
@@ -33,6 +36,7 @@ SpellScript* SpellScriptMgr::GetSpellScript(uint32 spellId)
     return nullptr;
 }
 
+// 按法术 ID 查找已绑定的 AuraScript
 AuraScript* SpellScriptMgr::GetAuraScript(uint32 spellId)
 {
     auto itr = m_auraScriptMap.find(spellId);
@@ -41,16 +45,19 @@ AuraScript* SpellScriptMgr::GetAuraScript(uint32 spellId)
     return nullptr;
 }
 
+// 注册命名 SpellScript 到名称映射表
 void SpellScriptMgr::SetSpellScript(std::string scriptName, SpellScript* script)
 {
     m_spellScriptStringMap.emplace(scriptName, script);
 }
 
+// 注册命名 AuraScript 到名称映射表
 void SpellScriptMgr::SetAuraScript(std::string scriptName, AuraScript* script)
 {
     m_auraScriptStringMap.emplace(scriptName, script);
 }
 
+// 各职业与通用缩放法术脚本加载入口声明
 extern void LoadDruidScripts();
 extern void LoadHunterScripts();
 extern void LoadMageScripts();
@@ -62,9 +69,10 @@ extern void LoadWarlockScripts();
 extern void LoadWarriorScripts();
 extern void LoadScalingScripts();
 
+// 注册全部 C++ 法术脚本并依据数据库 spell_scripts 表完成法术 ID 绑定
 void SpellScriptMgr::LoadScripts()
 {
-    // load all scripts with names
+    // load all scripts with names (加载所有职业和缩放脚本并注册名称)
     LoadDruidScripts();
     LoadHunterScripts();
     LoadMageScripts();
@@ -76,7 +84,7 @@ void SpellScriptMgr::LoadScripts()
     LoadWarriorScripts();
     LoadScalingScripts();
 
-    // load names from DB and pair names to Ids
+    // load names from DB and pair names to Ids (从数据库 spell_scripts 表读取脚本名与法术 ID 的映射关系)
     std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT Id, ScriptName FROM spell_scripts"));
     if (result)
     {
@@ -107,6 +115,7 @@ void SpellScriptMgr::LoadScripts()
     }
 }
 
+// 按名称查找已注册的 SpellScript
 SpellScript* SpellScriptMgr::GetSpellScript(std::string scriptName)
 {
     auto itr = m_spellScriptStringMap.find(scriptName);
@@ -115,6 +124,7 @@ SpellScript* SpellScriptMgr::GetSpellScript(std::string scriptName)
     return nullptr;
 }
 
+// 按名称查找已注册的 AuraScript
 AuraScript* SpellScriptMgr::GetAuraScript(std::string scriptName)
 {
     auto itr = m_auraScriptStringMap.find(scriptName);
@@ -123,11 +133,13 @@ AuraScript* SpellScriptMgr::GetAuraScript(std::string scriptName)
     return nullptr;
 }
 
+// 绑定法术 ID 与 SpellScript 实例
 void SpellScriptMgr::SetSpellScript(uint32 spellId, SpellScript* script)
 {
     m_spellScriptMap.emplace(spellId, script);
 }
 
+// 绑定法术 ID 与 AuraScript 实例
 void SpellScriptMgr::SetAuraScript(uint32 spellId, AuraScript* script)
 {
     m_auraScriptMap.emplace(spellId, script);

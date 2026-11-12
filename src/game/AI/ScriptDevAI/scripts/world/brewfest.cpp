@@ -19,6 +19,7 @@
 #include "AI/ScriptDevAI/scripts/kalimdor/world_kalimdor.h"
 #include "AI/ScriptDevAI/scripts/world/brewfest.h"
 
+// 美酒节坐骑变身法术脚本：根据玩家阵营将现有坐骑转换为赛羊或赛角鹰/科多兽
 struct BrewfestMountTransformation : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -54,6 +55,7 @@ struct BrewfestMountTransformation : public SpellScript
     }
 };
 
+// 美酒节跨阵营坐骑变身法术脚本
 struct BrewfestMountTransformationFactionSwap : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -787,6 +789,7 @@ BrewfestEvent::BrewfestEvent(ScriptedInstance* instance) : m_instance(instance)
     });
 }
 
+// 美酒节世界事件周期更新与倒计时管理
 void BrewfestEvent::Update(const uint32 diff)
 {
     UpdateTimers(diff);
@@ -798,6 +801,7 @@ void BrewfestEvent::StartKegTappingEvent()
     HandleKegTappingEvent();
 }
 
+// 处理美酒节敲酒桶仪式各阶段流程演出
 void BrewfestEvent::HandleKegTappingEvent()
 {
     switch (m_kegTappingStage)
@@ -826,12 +830,14 @@ enum DarkIronEvent
     SPELL_PLAYERS_WON_H_SUMMON_DARK_IRON_DWARF_PLANS = 49318,
 };
 
+// 开启黑铁矮人进攻营地事件
 void BrewfestEvent::StartDarkIronAttackEvent() // TODO: Implement event
 {
     if (Creature* herald = m_instance->GetSingleCreatureFromStorage(NPC_DARK_IRON_HERALD))
         herald->CastSpell(nullptr, m_kalimdor ? SPELL_PLAYERS_WON_H_SUMMON_DARK_IRON_DWARF_PLANS : SPELL_PLAYERS_WON_A_SUMMON_DARK_IRON_DWARF_PLANS, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 注册美酒节相关法术与生物脚本
 void AddSC_brewfest()
 {
     Script* pNewScript = new Script;

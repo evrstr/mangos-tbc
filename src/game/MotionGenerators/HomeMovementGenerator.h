@@ -26,6 +26,7 @@ class Creature;
 template < class T >
 class HomeMovementGenerator;
 
+/// 生物脱战返巢移动生成器：将怪物沿寻路路径带回战斗起点或刷新重生点
 template <>
 class HomeMovementGenerator<Creature>
     : public MovementGeneratorMedium< Creature, HomeMovementGenerator<Creature> >
@@ -46,9 +47,10 @@ class HomeMovementGenerator<Creature>
         MovementGeneratorType GetMovementGeneratorType() const override { return HOME_MOTION_TYPE; }
 
     private:
+        /// 计算并下发返巢寻路目标点及样条移动
         void _setTargetLocation(Creature&);
-        bool arrived;
-        bool runHome;
-        bool wasActive;
+        bool arrived;    // 是否已到达返巢终点
+        bool runHome;    // true 为奔跑返巢，false 为步行返巢
+        bool wasActive;  // 返巢前生物是否原本处于 ActiveObject 状态
 };
 #endif

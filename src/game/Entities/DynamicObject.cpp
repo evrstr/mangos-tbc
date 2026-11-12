@@ -26,28 +26,31 @@
 #include "Server/DBCStores.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 构造动态对象，初始化对象类型掩码与更新标志
 DynamicObject::DynamicObject() : WorldObject(), m_spellId(0), m_effIndex(), m_radius(0), m_positive(false), m_target(), m_auraScript(nullptr)
 {
     m_objectType |= TYPEMASK_DYNAMICOBJECT;
     m_objectTypeId = TYPEID_DYNAMICOBJECT;
-    // 2.3.2 - 0x58
+    // 2.3.2 - 0x58 (2.3.2 起更新标志掩码)
     m_updateFlag = (UPDATEFLAG_LOWGUID | UPDATEFLAG_HIGHGUID | UPDATEFLAG_HAS_POSITION);
 
     m_valuesCount = DYNAMICOBJECT_END;
 }
 
+// 加入世界并注册至当前地图的 DynamicObject 对象存储
 void DynamicObject::AddToWorld()
 {
-    ///- Register the dynamicObject for guid lookup
+    ///- Register the dynamicObject for guid lookup (注册动态对象以支持按 GUID 查找)
     if (!IsInWorld())
         GetMap()->GetObjectsStore().insert<DynamicObject>(GetObjectGuid(), (DynamicObject*)this);
 
     WorldObject::AddToWorld();
 }
 
+// 通知附着摄像机重置视角、从地图对象存储注销并移出世界
 void DynamicObject::RemoveFromWorld()
 {
-    ///- Remove the dynamicObject from the accessor
+    ///- Remove the dynamicObject from the accessor (从地图对象存储中移除动态对象)
     if (IsInWorld())
     {
         GetViewPoint().Event_RemovedFromWorld();
@@ -57,9 +60,10 @@ void DynamicObject::RemoveFromWorld()
     WorldObject::RemoveFromWorld();
 }
 
+// 创建并初始化法术动态对象实例，设置位置、半径、施法者、时间戳及光环脚本
 bool DynamicObject::Create(uint32 guidlow, Unit* caster, uint32 spellId, SpellEffectIndex effIndex, float x, float y, float z, int32 duration, float radius, DynamicObjectType type, SpellTarget target, int32 damage, int32 basePoints)
 {
-    if (!guidlow)                                           // no free map guid counter, already logged
+    if (!guidlow)                                           // no free map guid counter, already logged (无可用地图 GUID，调用前已记录错误)
         return false;
 
     WorldObject::_Create(guidlow, HIGHGUID_DYNAMICOBJECT, caster->GetPhaseMask());
@@ -81,6 +85,7 @@ bool DynamicObject::Create(uint32 guidlow, Unit* caster, uint32 spellId, SpellEf
        Farsight for example, does not have this flag, instead it has 0x80000002.
        Flags are set dynamically with some conditions, so one spell may have different flags set, depending on those conditions.
        The size of the visual may be controlled to some degree with these flags.
+       (BYTES 字段包含 4 个子字节标志：多数区域法术首字节为 1，远视则为 2 等，部分标志影响客户端视觉大小)
 
     uint32 bytes = 0x00000000;
     bytes |= 0x01;
@@ -95,7 +100,7 @@ bool DynamicObject::Create(uint32 guidlow, Unit* caster, uint32 spellId, SpellEf
     SetFloatValue(DYNAMICOBJECT_POS_X, x);
     SetFloatValue(DYNAMICOBJECT_POS_Y, y);
     SetFloatValue(DYNAMICOBJECT_POS_Z, z);
-    SetUInt32Value(DYNAMICOBJECT_CASTTIME, GetMap()->GetCurrentMSTime());    // new 2.4.0
+    SetUInt32Value(DYNAMICOBJECT_CASTTIME, GetMap()->GetCurrentMSTime());    // new 2.4.0 (2.4.0 新增施放时间戳字段)
 
     SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
     if (!spellProto)
@@ -104,7 +109,7 @@ bool DynamicObject::Create(uint32 guidlow, Unit* caster, uint32 spellId, SpellEf
         return false;
     }
 
-    if (spellId == 44007) // Akilzon - Electrical storm - always takes 500 ms more than spell data - confirmed in sniff
+    if (spellId == 44007) // Akilzon - Electrical storm - always takes 500 ms more than spell data - confirmed in sniff (阿基尔佐恩“电能风暴”实测抓包持续时间恒比 DBC 多 500 毫秒)
         duration += 500;
 
     m_aliveTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(duration);
@@ -121,15 +126,18 @@ bool DynamicObject::Create(uint32 guidlow, Unit* caster, uint32 spellId, SpellEf
     return true;
 }
 
+// 查找并返回施法者单位指针（若已离线或移除可能返回 nullptr）
 Unit* DynamicObject::GetCaster() const
 {
-    // can be not found in some cases
+    // can be not found in some cases (某些情况下施法者可能已不在当前地图中)
     return ObjectAccessor::GetUnit(*this, GetCasterGuid());
 }
 
+// 周期更新动态对象：检验施法者存在性、到期状态并扫描半径内受影响单位
 void DynamicObject::Update(const uint32 /*diff*/)
 {
     // caster can be not in world at time dynamic object update, but dynamic object not yet deleted in Unit destructor
+    // 更新时施法者可能已离开世界但尚未在析构中清理动态对象
     Unit* caster = GetCaster();
     if (!caster)
     {
@@ -142,7 +150,7 @@ void DynamicObject::Update(const uint32 /*diff*/)
     if (m_aliveTime < GetMap()->GetCurrentClockTime())
         deleteThis = true;
 
-    // have radius and work as persistent effect
+    // have radius and work as persistent effect (存在有效半径时作为持久区域光环每帧扫描范围内目标)
     if (m_radius)
     {
         // TODO: make a timer and update this in larger intervals
@@ -158,6 +166,7 @@ void DynamicObject::Update(const uint32 /*diff*/)
     }
 }
 
+// 销毁动态对象：发送消散动画、在非更新阶段主动通知客户端销毁，并加入移除列表
 void DynamicObject::Delete()
 {
     SendObjectDeSpawnAnim(GetObjectGuid());
@@ -166,6 +175,7 @@ void DynamicObject::Delete()
     AddObjectToRemoveList();
 }
 
+// 缩减动态对象存活时间，并同步缩减仍受该法术影响目标身上的光环持续时间
 void DynamicObject::Delay(int32 delaytime)
 {
     m_aliveTime -= std::chrono::milliseconds(delaytime);
@@ -205,25 +215,28 @@ void DynamicObject::Delay(int32 delaytime)
     }
 }
 
+// 判断动态对象对观察者玩家是否可见（施法者本人始终可见）
 bool DynamicObject::isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool /*inVisibleList*/) const
 {
     if (!IsInWorld() || !u->IsInWorld())
         return false;
 
-    // always seen by owner
+    // always seen by owner (施法者自身始终可见)
     if (GetCasterGuid() == u->GetObjectGuid())
         return true;
 
-    // normal case
+    // normal case (普通玩家按可见距离判定)
     return IsWithinDistInMap(viewPoint, GetVisibilityData().GetVisibilityDistance(), false);
 }
 
+// 持久区域光环结束时回调关联 AuraScript
 void DynamicObject::OnPersistentAreaAuraEnd()
 {
     if (m_auraScript)
         m_auraScript->OnPersistentAreaAuraEnd(this);
 }
 
+// 检查目标是否可受持久区域光环影响（委托 AuraScript 自定义过滤）
 bool DynamicObject::OnPersistentAreaAuraCheckTarget(Unit* target)
 {
     if (m_auraScript)

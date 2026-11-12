@@ -5,6 +5,7 @@
 #ifndef SC_SCRIPTLOADER_H
 #define SC_SCRIPTLOADER_H
 
+// 注册所有 ScriptDevAI C++ 脚本（世界区域、副本首领、战场事件与任务脚本）
 void AddScripts();
 
 #endif

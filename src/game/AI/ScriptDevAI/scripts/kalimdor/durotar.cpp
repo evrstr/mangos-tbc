@@ -21,6 +21,10 @@ SDComment: Quest support: 5441
 SDCategory: Durotar
 EndScriptData */
 
+/**
+ * 杜隆塔尔 (Durotar) 兽人与巨魔起始区任务脚本
+ */
+
 /* ContentData
 npc_lazy_peon
 EndContentData */
@@ -31,21 +35,23 @@ EndContentData */
 ## npc_lazy_peon
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_PEON_AWOKEN      = -1000795,
+    SAY_PEON_AWOKEN      = -1000795,                        // 剧情台词/喊话文本 ID
 
-    SOUND_PEON_WORK      = 6197,
-    SOUND_PEON_AWAKE_1   = 6292,
-    SOUND_PEON_AWAKE_2   = 6294,
+    SOUND_PEON_WORK      = 6197,                            // 音效 ID
+    SOUND_PEON_AWAKE_1   = 6292,                            // 音效 ID
+    SOUND_PEON_AWAKE_2   = 6294,                            // 音效 ID
 
-    SPELL_PEON_SLEEP     = 17743,
-    SPELL_AWAKEN_PEON    = 19938,
+    SPELL_PEON_SLEEP     = 17743,                           // 技能法术 ID
+    SPELL_AWAKEN_PEON    = 19938,                           // 技能法术 ID
 
-    NPC_SLEEPING_PEON    = 10556,
-    GO_LUMBERPILE        = 175784,
+    NPC_SLEEPING_PEON    = 10556,                           // NPC 条目 ID
+    GO_LUMBERPILE        = 175784,                          // 游戏对象条目 ID
 };
 
+// npc_lazy_peonAI NPC 脚本 AI
 struct npc_lazy_peonAI : public ScriptedAI
 {
     npc_lazy_peonAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -53,27 +59,27 @@ struct npc_lazy_peonAI : public ScriptedAI
         Reset();
     }
 
-    uint32 m_uiSleepTimer;  //Time, until the npc goes to sleep
-    uint32 m_uiWakeTimer;   //Time, until the npc wakes up on its own
-    uint32 m_uiChopTimer;   //Time, until the npc stops chopping at the tree
-    uint32 m_uiKneelTimer;  //Time, delay kneeling to allow sound to finish playing
-    uint32 m_uiGetUpTimer;  //Time, npc stays at the pile so kneel animation can finish
+    uint32 m_uiSleepTimer;  // Time, until the npc goes to sleep (说明)
+    uint32 m_uiWakeTimer;   // Time, until the npc wakes up on its own (说明)
+    uint32 m_uiChopTimer;   // Time, until the npc stops chopping at the tree (说明)
+    uint32 m_uiKneelTimer;  // Time, delay kneeling to allow sound to finish playing (说明)
+    uint32 m_uiGetUpTimer;  // Time, npc stays at the pile so kneel animation can finish (说明)
     bool m_bIsAtPile;
     float m_fSpawnO;
 
     void RestartWakeTimer()
     {
-        m_uiWakeTimer = urand(100000, 120000);  //Random wakeup timer 1m40s to 2m, retail times unknown, 2m is duration of sleep aura
-        m_uiSleepTimer = 0;                     //Ensure only one of the two timers is running at any given time
+        m_uiWakeTimer = urand(100000, 120000);  // Random wakeup timer 1m40s to 2m, retail times unknown, 2m is duration of sleep aura (说明)
+        m_uiSleepTimer = 0;                     // Ensure only one of the two timers is running at any given time (说明)
     }
 
     void RestartSleepTimer()
     {
-        m_uiSleepTimer = 80000;     //Go to sleep after 1m20s, confirmed blizzlike
-        m_uiWakeTimer = 0;          //Ensure only one of the two timers is running at any given time
+        m_uiSleepTimer = 80000;     // Go to sleep after 1m20s, confirmed blizzlike (说明)
+        m_uiWakeTimer = 0;          // Ensure only one of the two timers is running at any given time (说明)
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         RestartWakeTimer();
         m_uiGetUpTimer = 0;
@@ -88,11 +94,11 @@ struct npc_lazy_peonAI : public ScriptedAI
         {
             DoScriptText(SAY_PEON_AWOKEN, m_creature, pInvoker);
             m_creature->PlayDistanceSound(urand(0, 1) ? SOUND_PEON_AWAKE_1 : SOUND_PEON_AWAKE_2);
-            m_creature->SetWalk(false); //peon will run if awoken by player
+            m_creature->SetWalk(false); // peon will run if awoken by player (说明)
             ((Player*)pInvoker)->KilledMonsterCredit(m_creature->GetEntry(), m_creature->GetObjectGuid());
         }
         else
-            m_creature->SetWalk(true); //peon will walk if awoken on its own
+            m_creature->SetWalk(true); // peon will walk if awoken on its own (说明)
 
         m_creature->RemoveAurasDueToSpell(SPELL_PEON_SLEEP);
         RestartSleepTimer();
@@ -105,28 +111,28 @@ struct npc_lazy_peonAI : public ScriptedAI
         {
             float fX, fY, fZ;
             pLumber->GetContactPoint(m_creature, fX, fY, fZ, CONTACT_DISTANCE);
-            m_creature->HandleEmote(EMOTE_STATE_NONE); //cancel chopping
+            m_creature->HandleEmote(EMOTE_STATE_NONE); // cancel chopping (说明)
             m_creature->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
             m_uiChopTimer = 0;
-            m_uiKneelTimer = 2500; //timer duration guessed, true retail time unknown
+            m_uiKneelTimer = 2500; // timer duration guessed, true retail time unknown (计时器时间为推测值，官方正式服确切时间未知)
         }
         else
             script_error_log("No GameObject of entry %u was found in range or something really bad happened.", GO_LUMBERPILE);
     }
 
-    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override    // 移动节点到达通知
     {
         if (uiMotionType == POINT_MOTION_TYPE && uiPointId)
         {
             switch (uiPointId)
             {
-                case 1: //lumber pile
+                case 1: // lumber pile (说明)
                 {
                     m_creature->SetWalk(true);
                     m_bIsAtPile = true;
                     break;
                 }
-                case 2: //spawn
+                case 2: // spawn (刷新)
                 {
                     m_creature->GetMotionMaster()->MoveIdle();
                     m_creature->HandleEmote(EMOTE_STATE_NONE);
@@ -139,15 +145,15 @@ struct npc_lazy_peonAI : public ScriptedAI
         }
         else if (uiMotionType == WAYPOINT_MOTION_TYPE)
         {
-            //tree
+            // tree (说明)
             m_creature->GetMotionMaster()->MoveIdle();
             m_creature->PlayDistanceSound(SOUND_PEON_WORK);
             m_creature->HandleEmote(EMOTE_STATE_WORK_CHOPWOOD);
-            m_uiChopTimer = urand(25000, 30000); //timer duration guessed, true retail time unknown
+            m_uiChopTimer = urand(25000, 30000); // timer duration guessed, true retail time unknown (计时器时间为推测值，官方正式服确切时间未知)
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_uiGetUpTimer)
         {
@@ -170,7 +176,7 @@ struct npc_lazy_peonAI : public ScriptedAI
                 {
                     m_uiKneelTimer = 0;
                     m_creature->HandleEmote(EMOTE_ONESHOT_KNEEL);
-                    m_uiGetUpTimer = 3000; //timer duration guessed, true retail time unknown
+                    m_uiGetUpTimer = 3000; // timer duration guessed, true retail time unknown (计时器时间为推测值，官方正式服确切时间未知)
                 }
                 else
                     m_uiKneelTimer = 1; //guarantee it's checked again on next update
@@ -213,22 +219,22 @@ struct npc_lazy_peonAI : public ScriptedAI
                 Awaken(m_creature);
             else
             {
-                //reapply aura if it fell off while the peon was unloaded
+                // reapply aura if it fell off while the peon was unloaded (说明)
                 if (!m_creature->HasAura(SPELL_PEON_SLEEP))
                     DoCastSpellIfCan(m_creature, SPELL_PEON_SLEEP);
-                //decrement timer
+                // decrement timer (计时器)
                 m_uiWakeTimer -= uiDiff;
             }
         }
     }
 };
 
-UnitAI* GetAI_npc_lazy_peon(Creature* pCreature)
+UnitAI* GetAI_npc_lazy_peon(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_lazy_peonAI(pCreature);
 }
 
-// 19938 - Awaken Peon
+// 19938 - Awaken Peon (法术 19938 - Awaken Peon)
 struct AwakenPeon : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -247,7 +253,7 @@ struct AwakenPeon : public SpellScript
     }
 };
 
-void AddSC_durotar()
+void AddSC_durotar() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_lazy_peon";

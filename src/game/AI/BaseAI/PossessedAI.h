@@ -27,6 +27,7 @@ class Creature;
 class Spell;
 struct CreatureSpellList;
 
+// 被玩家附身（如心灵视界/控制亡灵/眼睛类操控法术）时的极简 AI，仅在存在目标时执行自动近战攻击
 class PossessedAI : public UnitAI
 {
     public:
@@ -34,7 +35,7 @@ class PossessedAI : public UnitAI
         explicit PossessedAI(Creature* creature);
         explicit PossessedAI(Unit* unit) : UnitAI(unit) {}
 
-        static int Permissible(const Creature* /*creature*/) { return PERMIT_BASE_NO; }
+        static int Permissible(const Creature* /*creature*/) { return PERMIT_BASE_NO; } // 不参与自动选择，仅由控制机制显式指定
 
         //void GetAIInformation(ChatHandler& reader) override;
 
@@ -43,7 +44,7 @@ class PossessedAI : public UnitAI
             DoMeleeAttackIfReady();
         }
 
-        // ugly compilation fix
+        // ugly compilation fix (提供空的法术列表以满足基类纯虚接口)
         CreatureSpellList const& GetSpellList() const override;
 
     protected:

@@ -21,6 +21,10 @@ SDComment: Ogre costume suit missing for Tribute Run, Cho'Rush spells randomisat
 SDCategory: Dire Maul
 EndScriptData */
 
+/**
+ * 厄运之槌 (Dire Maul) 东区、西区、北区综合副本数据管理脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "dire_maul.h"
 
@@ -59,8 +63,8 @@ void instance_dire_maul::Update(uint32 /*uiDiff*/)
 
 void instance_dire_maul::OnPlayerEnter(Player* pPlayer)
 {
-    // figure where to enter to set library doors accordingly
-    // Enter DM North first
+    // figure where to enter to set library doors accordingly (说明)
+    // Enter DM North first (北)
     if (pPlayer->IsWithinDist2d(260.0f, -20.0f, 20.0f) && m_auiEncounter[TYPE_WARPWOOD] != DONE)
         m_bDoNorthBeforeWest = true;
     else
@@ -74,11 +78,11 @@ void instance_dire_maul::OnCreatureCreate(Creature* pCreature)
 {
     switch (pCreature->GetEntry())
     {
-        // East
+        // East (东方)
         case NPC_OLD_IRONBARK:
             break;
 
-        // West
+        // West (西方)
         case NPC_PRINCE_TORTHELDRIN:
             if (m_auiEncounter[TYPE_IMMOLTHAR] == DONE)
                 pCreature->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_TOGGLE_IMMUNE_TO_PLAYER);
@@ -95,7 +99,7 @@ void instance_dire_maul::OnCreatureCreate(Creature* pCreature)
             m_luiHighborneSummonerGUIDs.push_back(pCreature->GetObjectGuid());
             return;
 
-        // North
+        // North (北方)
         case NPC_CHO_RUSH_THE_OBSERVER:
             if (m_auiEncounter[TYPE_KING_GORDOK] == DONE)
                 pCreature->SetStandState(UNIT_STAND_STATE_SIT);
@@ -115,7 +119,7 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
 {
     switch (pGo->GetEntry())
     {
-        // East
+        // East (东方)
         case GO_CONSERVATORY_DOOR:
             if (m_auiEncounter[TYPE_IRONBARK] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
@@ -132,7 +136,7 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
             m_lFelvineShardGUIDs.push_back(pGo->GetObjectGuid());
             break;
 
-        // West
+        // West (西方)
         case GO_CRYSTAL_GENERATOR_1:
             m_aCrystalGeneratorGuid[0] = pGo->GetObjectGuid();
             if (m_auiEncounter[TYPE_PYLON_1] == DONE)
@@ -173,7 +177,7 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
             pGo->RemoveFlag(GAMEOBJECT_FLAGS, m_bDoNorthBeforeWest ? GO_FLAG_LOCKED : GO_FLAG_NO_INTERACT);
             break;
         case GO_DREADSTEED_PORTAL:
-            // exclude the central portal
+            // exclude the central portal (说明)
             if (pGo->GetPositionZ() > -29.0f)
                 m_lDreadsteedPortalsGUIDs.push_back(pGo->GetObjectGuid());
             return; 
@@ -189,7 +193,7 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
             m_lRitualSymbolGUIDs.push_back(pGo->GetObjectGuid());
             break;
 
-        // North
+        // North (北方)
         case GO_NORTH_LIBRARY_DOOR:
             break;
 
@@ -203,11 +207,11 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
 {
     switch (uiType)
     {
-        // East
+        // East (东方)
         case TYPE_ZEVRIM:
             if (uiData == DONE)
             {
-                // Update Old Ironbark so he can open the conservatory door
+                // Update Old Ironbark so he can open the conservatory door (说明)
                 if (Creature* pIronbark = GetSingleCreatureFromStorage(NPC_OLD_IRONBARK))
                 {
                     DoScriptText(SAY_IRONBARK_REDEEM, pIronbark);
@@ -219,7 +223,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
         case TYPE_IRONBARK:
             m_auiEncounter[uiType] = uiData;
             break;
-        case TYPE_ALZZIN:                                   // This Encounter is expected to be handled within Acid (reason handling at 50% hp)
+        case TYPE_ALZZIN:                                   // This Encounter is expected to be handled within Acid (reason handling at 50% hp) (说明)
             if (uiData == DONE)
             {
                 if (!m_bWallDestroyed)
@@ -244,7 +248,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             break;
 
-        // West
+        // West (西方)
         case TYPE_WARPWOOD:
             if (uiData == DONE)
                 DoUseDoorOrButton(GO_WARPWOOD_DOOR);
@@ -257,7 +261,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
                 {
                     DoScriptText(SAY_FREE_IMMOLTHAR, pPrince);
                     pPrince->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_TOGGLE_IMMUNE_TO_PLAYER);
-                    // Despawn Chest-Aura
+                    // Despawn Chest-Aura (消失)
                     if (GameObject* pChestAura = GetSingleGameObjectFromStorage(GO_PRINCES_CHEST_AURA))
                         pChestAura->Use(pPrince);
                 }
@@ -307,19 +311,19 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
                     pGo->SetLootState(GO_JUST_DEACTIVATED);
             }
             break;
-        // North
+        // North (北方)
         case TYPE_KING_GORDOK:
             m_auiEncounter[uiType] = uiData;
             if (uiData == DONE)
             {
-                // change faction to certian ogres
+                // change faction to certian ogres (说明)
                 if (Creature* pOgre = GetSingleCreatureFromStorage(NPC_CAPTAIN_KROMCRUSH))
                 {
                     if (pOgre->IsAlive())
                     {
                         pOgre->SetFactionTemporary(FACTION_FRIENDLY, TEMPFACTION_RESTORE_RESPAWN);
 
-                        // only evade if required
+                        // only evade if required (说明)
                         if (pOgre->GetVictim())
                             pOgre->AI()->EnterEvadeMode();
                     }
@@ -327,7 +331,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
 
                 if (Creature* pOgre = GetSingleCreatureFromStorage(NPC_CHO_RUSH_THE_OBSERVER))
                 {
-                    // Chorush evades and yells on king death (if alive)
+                    // Chorush evades and yells on king death (if alive) (说明)
                     if (pOgre->IsAlive())
                     {
                         DoScriptText(SAY_CHORUSH_KING_DEAD, pOgre);
@@ -335,7 +339,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
                         pOgre->AI()->EnterEvadeMode();
                     }
 
-                    // start WP movement for Mizzle; event handled by movement and gossip dbscripts
+                    // start WP movement for Mizzle; event handled by movement and gossip dbscripts (说明)
                     if (Creature* pMizzle = pOgre->SummonCreature(NPC_MIZZLE_THE_CRAFTY, afMizzleSpawnLoc[0], afMizzleSpawnLoc[1], afMizzleSpawnLoc[2], afMizzleSpawnLoc[3], TEMPSPAWN_DEAD_DESPAWN, 0, true))
                     {
                         pMizzle->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
@@ -387,13 +391,13 @@ void instance_dire_maul::OnCreatureEnterCombat(Creature* pCreature)
 {
     switch (pCreature->GetEntry())
     {
-        // West
-        // - Handling of guards of generators
+        // West (西方)
+        // - Handling of guards of generators (说明)
         case NPC_ARCANE_ABERRATION:
         case NPC_MANA_REMNANT:
             SortPylonGuards();
             break;
-        // - Set InstData for ImmolThar
+        // - Set InstData for ImmolThar (说明)
         case NPC_IMMOLTHAR:
             SetData(TYPE_IMMOLTHAR, IN_PROGRESS);
             break;
@@ -404,8 +408,8 @@ void instance_dire_maul::OnCreatureDeath(Creature* pCreature)
 {
     switch (pCreature->GetEntry())
     {
-        // East
-        // - Handling Zevrim and Old Ironbark for the door event
+        // East (东方)
+        // - Handling Zevrim and Old Ironbark for the door event (说明)
         case NPC_ZEVRIM_THORNHOOF:
             SetData(TYPE_ZEVRIM, DONE);
             break;
@@ -413,13 +417,13 @@ void instance_dire_maul::OnCreatureDeath(Creature* pCreature)
             SetData(TYPE_IRONBARK, DONE);
             break;
 
-        // West
-        // - Handling of guards of generators
+        // West (西方)
+        // - Handling of guards of generators (说明)
         case NPC_ARCANE_ABERRATION:
         case NPC_MANA_REMNANT:
             PylonGuardJustDied(pCreature);
             break;
-        // - InstData settings
+        // - InstData settings (说明)
         case NPC_TENDRIS_WARPWOOD:
             SetData(TYPE_WARPWOOD, DONE);
             break;
@@ -430,12 +434,12 @@ void instance_dire_maul::OnCreatureDeath(Creature* pCreature)
             SetData(TYPE_DREADSTEED, DONE);
             break;
 
-        // North
-        // - Handling of Ogre Boss (Assume boss can be handled in Acid)
+        // North (北方)
+        // - Handling of Ogre Boss (Assume boss can be handled in Acid) (说明)
         case NPC_KING_GORDOK:
             SetData(TYPE_KING_GORDOK, DONE);
             break;
-        // Handle Ogre guards for Tribute Run chest
+        // Handle Ogre guards for Tribute Run chest (说明)
         case NPC_GUARD_MOLDAR:
             SetData(TYPE_MOLDAR, DONE);
             break;
@@ -492,13 +496,13 @@ bool instance_dire_maul::CheckConditionCriteriaMeet(Player const* pPlayer, uint3
 {
     switch (uiInstanceConditionId)
     {
-        case INSTANCE_CONDITION_ID_NORMAL_MODE:             // No guards alive
-        case INSTANCE_CONDITION_ID_HARD_MODE:               // One guard alive
-        case INSTANCE_CONDITION_ID_HARD_MODE_2:             // Two guards alive
-        case INSTANCE_CONDITION_ID_HARD_MODE_3:             // Three guards alive
-        case INSTANCE_CONDITION_ID_HARD_MODE_4:             // Four guards alive
-        case INSTANCE_CONDITION_ID_HARD_MODE_5:             // Five guards alive
-        case INSTANCE_CONDITION_ID_HARD_MODE_6:             // Six guards alive
+        case INSTANCE_CONDITION_ID_NORMAL_MODE:             // No guards alive (说明)
+        case INSTANCE_CONDITION_ID_HARD_MODE:               // One guard alive (说明)
+        case INSTANCE_CONDITION_ID_HARD_MODE_2:             // Two guards alive (说明)
+        case INSTANCE_CONDITION_ID_HARD_MODE_3:             // Three guards alive (说明)
+        case INSTANCE_CONDITION_ID_HARD_MODE_4:             // Four guards alive (说明)
+        case INSTANCE_CONDITION_ID_HARD_MODE_5:             // Five guards alive (说明)
+        case INSTANCE_CONDITION_ID_HARD_MODE_6:             // Six guards alive (说明)
         {
             uint8 uiTributeRunAliveBosses = (GetData(TYPE_MOLDAR) != DONE ? 1 : 0) + (GetData(TYPE_FENGUS) != DONE ? 1 : 0) + (GetData(TYPE_SLIPKIK) != DONE ? 1 : 0)
                                             + (GetData(TYPE_KROMCRUSH) != DONE ? 1 : 0) + (GetData(TYPE_CHORUSH) != DONE ? 1 : 0) + (GetData(TYPE_STOMPER_KREEG) != DONE ? 1 : 0);
@@ -558,15 +562,15 @@ void instance_dire_maul::SortPylonGuards()
         for (uint8 i = 0; i < MAX_GENERATORS; ++i)
         {
             GameObject* pGenerator = instance->GetGameObject(m_aCrystalGeneratorGuid[i]);
-            // Skip non-existing or finished generators
+            // Skip non-existing or finished generators (说明)
             if (!pGenerator || GetData(TYPE_PYLON_1 + i) == DONE)
                 continue;
 
-            // Sort all remaining (alive) NPCs to unfinished generators
+            // Sort all remaining (alive) NPCs to unfinished generators (说明)
             for (GuidList::iterator itr = m_lGeneratorGuardGUIDs.begin(); itr != m_lGeneratorGuardGUIDs.end();)
             {
                 Creature* pGuard = instance->GetCreature(*itr);
-                if (!pGuard || pGuard->IsDead())    // Remove invalid guids and dead guards
+                if (!pGuard || pGuard->IsDead())    // Remove invalid guids and dead guards (说明)
                 {
                     m_lGeneratorGuardGUIDs.erase(itr++);
                     continue;
@@ -588,11 +592,11 @@ void instance_dire_maul::PylonGuardJustDied(Creature* pCreature)
 {
     for (uint8 i = 0; i < MAX_GENERATORS; ++i)
     {
-        // Skip already activated generators
+        // Skip already activated generators (说明)
         if (GetData(TYPE_PYLON_1 + i) == DONE)
             continue;
 
-        // Only process generator where the npc is sorted in
+        // Only process generator where the npc is sorted in (说明)
         if (m_sSortedGeneratorGuards[i].find(pCreature->GetObjectGuid()) != m_sSortedGeneratorGuards[i].end())
         {
             m_sSortedGeneratorGuards[i].erase(pCreature->GetObjectGuid());
@@ -617,7 +621,7 @@ void instance_dire_maul::ProcessDreadsteedRitualStart()
             DoRespawnGameObject(portal, 380);
 }
 
-InstanceData* GetInstanceData_instance_dire_maul(Map* pMap)
+InstanceData* GetInstanceData_instance_dire_maul(Map* pMap) // 创建并返回副本数据实例
 {
     return new instance_dire_maul(pMap);
 }
@@ -626,6 +630,7 @@ InstanceData* GetInstanceData_instance_dire_maul(Map* pMap)
 ## go_fixed_trap
 ################*/
 
+// go_ai_fixed_trap 游戏对象脚本 AI
 struct go_ai_fixed_trap : public GameObjectAI
 {
     go_ai_fixed_trap(GameObject* go) : GameObjectAI(go) {}
@@ -635,8 +640,8 @@ struct go_ai_fixed_trap : public GameObjectAI
         if (m_go->IsSpawned())
         {
             // Sniffs show that trap should only react to Guard Slip'kik
-            // He then enters evade mode and becomes an invalid target to hostile actions from players
-            // Faction is changed to 14 and restored by spell 22799 (King of the Gordok)
+            // He then enters evade mode and becomes an invalid target to hostile actions from players (说明)
+            // Faction is changed to 14 and restored by spell 22799 (King of the Gordok) (说明)
             // Additionnaly, Guard Slip'kik should get UnitFlags 16 but purpose is unknown so we skip it for now
             if (Creature* slipkik = GetClosestCreatureWithEntry(m_go, NPC_GUARD_SLIPKIK, 0.5f))
             {
@@ -645,7 +650,7 @@ struct go_ai_fixed_trap : public GameObjectAI
                 slipkik->AI()->EnterEvadeMode();
                 slipkik->SetImmuneToPlayer(true);
                 slipkik->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_RESPAWN);
-                m_go->SetLootState(GO_JUST_DEACTIVATED);    // Despawn the trap
+                m_go->SetLootState(GO_JUST_DEACTIVATED);    // Despawn the trap (消失)
             }
         }
     }
@@ -673,7 +678,7 @@ struct GuardSlipkikTrigger : public SpellScript
     }
 };
 
-void AddSC_instance_dire_maul()
+void AddSC_instance_dire_maul() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_dire_maul";

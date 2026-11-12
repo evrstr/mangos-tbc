@@ -21,6 +21,8 @@ SDComment: Timers; Not sure if we need to respawn dead npcs on evade; May need a
 SDCategory: Stratholme
 EndScriptData */
 
+// 白银之手五圣骑士（Order of the Silver Hand）首领战 AI（五名幽灵圣骑士协同作战）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "stratholme.h"
 
@@ -31,25 +33,26 @@ EndScriptData */
 # Once Aurius is defeated, he should be the one summoning the ghosts.
 #####*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // Gregor
-    SPELL_HAMMER_JUSTICE        = 13005,
-    SPELL_HAMMER_WRATH          = 32772,
-    SPELL_HOLY_SHOCK            = 32771,
+    SPELL_HAMMER_JUSTICE        = 13005,                    // hammerjustice 法术 ID
+    SPELL_HAMMER_WRATH          = 32772,                    // hammerwrath 法术 ID
+    SPELL_HOLY_SHOCK            = 32771,                    // 神圣震击 法术 ID
     // Cathela
-    SPELL_HOLY_SHIELD           = 32777,
-    SPELL_REDOUBT               = 32776,
+    SPELL_HOLY_SHIELD           = 32777,                    // 神圣护盾 法术 ID
+    SPELL_REDOUBT               = 32776,                    // redoubt 法术 ID
     // Aelmar
-    AELMAR_SPELL_JUDGEMENT      = 32778,
+    AELMAR_SPELL_JUDGEMENT      = 32778,                    // 法术judgement 标识 ID
     // Vicar
-    SPELL_BLESSING_SD           = 32770,
-    SPELL_HOLY_LIGHT            = 32769,
+    SPELL_BLESSING_SD           = 32770,                    // blessingsd 法术 ID
+    SPELL_HOLY_LIGHT            = 32769,                    // 神圣light 法术 ID
 
-    TARGET_TYPE_RANDOM          = 0,
-    TARGET_TYPE_VICTIM          = 1,
-    TARGET_TYPE_SELF            = 2,
-    TARGET_TYPE_FRIENDLY        = 3,
+    TARGET_TYPE_RANDOM          = 0,                        // 遭遇战类型random 标识 ID
+    TARGET_TYPE_VICTIM          = 1,                        // 遭遇战类型victim 标识 ID
+    TARGET_TYPE_SELF            = 2,                        // 遭遇战类型self 标识 ID
+    TARGET_TYPE_FRIENDLY        = 3,                        // 遭遇战类型friendly 标识 ID
 };
 
 struct SilverHandAbilityStruct
@@ -70,6 +73,7 @@ static SilverHandAbilityStruct m_aSilverHandAbility[8] =
     {NPC_VICAR_HYERONIMUS,      SPELL_BLESSING_SD,         TARGET_TYPE_FRIENDLY,   2000,  13000},
     {NPC_VICAR_HYERONIMUS,      SPELL_HOLY_LIGHT,       TARGET_TYPE_FRIENDLY,   5000,  9000},
 };
+// 首领战 AI：handbosses（silver_hand_bosses）
 struct boss_silver_hand_bossesAI : public ScriptedAI
 {
     boss_silver_hand_bossesAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -87,12 +91,14 @@ struct boss_silver_hand_bossesAI : public ScriptedAI
 
     std::unordered_map<uint8, uint32> m_mSpellTimers;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         for (auto& m_mSpellTimer : m_mSpellTimers)
             m_mSpellTimer.second = m_aSilverHandAbility[m_mSpellTimer.first].m_uiInitialTimer;
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         if (m_pInstance)
@@ -141,9 +147,10 @@ struct boss_silver_hand_bossesAI : public ScriptedAI
         return false;
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -161,15 +168,17 @@ struct boss_silver_hand_bossesAI : public ScriptedAI
                 m_mSpellTimer.second -= uiDiff;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_silver_hand_bossesAI
 UnitAI* GetAI_boss_silver_hand_bossesAI(Creature* pCreature)
 {
     return new boss_silver_hand_bossesAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_order_of_silver_hand
 void AddSC_boss_order_of_silver_hand()
 {
     Script* pNewScript = new Script;

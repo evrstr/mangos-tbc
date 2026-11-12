@@ -21,6 +21,8 @@ SDComment: Quest support: 3367.
 SDCategory: Searing Gorge
 EndScriptData */
 
+// 灼热峡谷（Searing Gorge）黑铁矮人与索瑞森相关任务脚本
+
 /* ContentData
 npc_dorius_stonetender
 EndContentData */
@@ -32,25 +34,27 @@ EndContentData */
 ## npc_dorius_stonetender
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_DORIUS_AGGRO_1              = 4351,
-    SAY_DORIUS_AGGRO_2              = 4352,
-    SAY_DORIUS_AGGRO_3              = 4353,
+    SAY_DORIUS_AGGRO_1              = 4351,                 // dorius开战1 台词广播 ID
+    SAY_DORIUS_AGGRO_2              = 4352,                 // dorius开战2 台词广播 ID
+    SAY_DORIUS_AGGRO_3              = 4353,                 // dorius开战3 台词广播 ID
 
-    SAY_DORIUS_TO_PLAYER            = 4354,
-    SAY_DORIUS_FINISH               = 4359,
+    SAY_DORIUS_TO_PLAYER            = 4354,                 // doriustoplayer 台词广播 ID
+    SAY_DORIUS_FINISH               = 4359,                 // doriusfinish 台词广播 ID
 
-    NPC_DARK_IRON_STEELSHIFTER      = 8337,
+    NPC_DARK_IRON_STEELSHIFTER      = 8337,                 // dark黑铁steelshifter Entry ID
 
-    SPELL_MARKSMAN_HIT              = 12198,
+    SPELL_MARKSMAN_HIT              = 12198,                // marksmanhit 法术 ID
     
-    RELAY_SCRIPT_FINISHED           = 8284,
+    RELAY_SCRIPT_FINISHED           = 8284,                 // scriptfinished 标识 ID
 
     PATH_ID                         = 8284,        // Sniffed Waypoints for Escort Event
-    QUEST_ID_SUNTARA_STONES         = 3367,
+    QUEST_ID_SUNTARA_STONES         = 3367,                 // IDsuntarastones 任务 ID
 };
 
+// 随从/NPC AI：stonetender（dorius_stonetender）
 struct npc_dorius_stonetenderAI : public npc_escortAI
 {
     npc_dorius_stonetenderAI(Creature* pCreature) : npc_escortAI(pCreature) 
@@ -58,12 +62,14 @@ struct npc_dorius_stonetenderAI : public npc_escortAI
         Reset(); 
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
             m_creature->SetStandState(UNIT_STAND_STATE_DEAD, true);
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         switch (urand(0, 2))
@@ -84,6 +90,7 @@ struct npc_dorius_stonetenderAI : public npc_escortAI
         }
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {        
         if (pSpell->Id == SPELL_MARKSMAN_HIT)
@@ -126,15 +133,17 @@ struct npc_dorius_stonetenderAI : public npc_escortAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_dorius_stonetender
 UnitAI* GetAI_npc_dorius_stonetender(Creature* pCreature)
 {
     return new npc_dorius_stonetenderAI(pCreature);
 }
 
+// 任务接取回调函数：npc_dorius_stonetender
 bool QuestAccept_npc_dorius_stonetender(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ID_SUNTARA_STONES)
@@ -146,6 +155,7 @@ bool QuestAccept_npc_dorius_stonetender(Player* pPlayer, Creature* pCreature, co
     return false;
 }
 
+// 注册并载入脚本模块：searing_gorge
 void AddSC_searing_gorge()
 {
     Script* pNewScript = new Script;

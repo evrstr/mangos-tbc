@@ -21,25 +21,29 @@ SDComment:
 SDCategory: Uldaman
 EndScriptData */
 
+// 阿扎达斯（Archaedas）最终首领战 AI（唤醒大厅石灵守卫、土元素雕像与大地冲击）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "uldaman.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_ARCHAEDAS_AWAKEN_VISUAL   = 10347,
-    SPELL_GROUND_TREMOR             = 6524,
+    SPELL_ARCHAEDAS_AWAKEN_VISUAL   = 10347,                // 阿扎达斯唤醒视觉特效 法术 ID
+    SPELL_GROUND_TREMOR             = 6524,                 // groundtremor 法术 ID
 
     SPELL_AWAKEN_EARTHEN_GUARDIAN   = 10252,                // awaken all 7076 npcs
     SPELL_AWAKEN_VAULT_WARDER       = 10258,                // awaken 2 npcs 10120
     SPELL_AWAKEN_EARTHEN_DWARF      = 10259,                // awaken random npc 7309 or 7077
 
-    SAY_AGGRO                       = -1070001,
-    SAY_AWAKE_GUARDIANS             = -1070002,
-    SAY_AWAKE_WARDERS               = -1070003,
-    SAY_UNIT_SLAIN                  = -1070004,
-    EMOTE_BREAKS_FREE               = -1070005,
+    SAY_AGGRO                       = -1070001,             // 开战 台词广播 ID
+    SAY_AWAKE_GUARDIANS             = -1070002,             // awakeguardians 台词广播 ID
+    SAY_AWAKE_WARDERS               = -1070003,             // awakewarders 台词广播 ID
+    SAY_UNIT_SLAIN                  = -1070004,             // unitslain 台词广播 ID
+    EMOTE_BREAKS_FREE               = -1070005,             // breaks释放 表情动作 ID
 };
 
+// 首领战 AI：标识 ID（archaedas）
 struct boss_archaedasAI : public ScriptedAI
 {
     boss_archaedasAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -50,14 +54,15 @@ struct boss_archaedasAI : public ScriptedAI
 
     instance_uldaman* m_pInstance;
 
-    uint32 m_uiAwakeningTimer;
-    uint32 m_uiAwakeDwarfTimer;
-    uint32 m_uiTremorTimer;
+    uint32 m_uiAwakeningTimer;                              // Awakening 技能计时器
+    uint32 m_uiAwakeDwarfTimer;                             // AwakeDwarf 技能计时器
+    uint32 m_uiTremorTimer;                                 // Tremor 技能计时器
     uint8 m_uiSubevent;
-    bool m_bDwarvesAwaken;
+    bool m_bDwarvesAwaken;                                  // DwarvesAwaken 状态标记
 
     uint8 m_uiHpPhaseCheck;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiAwakeningTimer  = 1000;
@@ -89,12 +94,14 @@ struct boss_archaedasAI : public ScriptedAI
             m_pInstance->SetData(TYPE_ARCHAEDAS, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ARCHAEDAS, FAIL);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         // so many things are based in this script on instance data
@@ -122,7 +129,7 @@ struct boss_archaedasAI : public ScriptedAI
                         m_creature->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
                         m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE);
 
-                        // Attack player
+                        // Attack player (攻击player)
                         if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_pInstance->GetGuid(DATA_EVENT_STARTER)))
                             AttackStart(pPlayer);
                         else
@@ -141,7 +148,7 @@ struct boss_archaedasAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        // Phase switch
+        // Phase switch (阶段switch)
         if (m_creature->GetHealthPercent() < 100.0f - 33.4f * (float)m_uiHpPhaseCheck)
         {
             if (DoCastSpellIfCan(m_creature, m_uiHpPhaseCheck == 1 ? SPELL_AWAKEN_EARTHEN_GUARDIAN : SPELL_AWAKEN_VAULT_WARDER) == CAST_OK)
@@ -176,16 +183,17 @@ struct boss_archaedasAI : public ScriptedAI
         else
             m_uiTremorTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_archaedas
 UnitAI* GetAI_boss_archaedas(Creature* pCreature)
 {
     return new boss_archaedasAI(pCreature);
 }
 
-// 10258 - Awaken Vault Warder
+// 10258 - Awaken Vault Warder (10258 - 唤醒 宝库 守卫者)
 struct AwakenVaultWarder : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -202,8 +210,8 @@ struct AwakenVaultWarder : public SpellScript
     }
 };
 
-// 10252 - Awaken Earthen Guardians
-// 10259 - Awaken Earthen Dwarf
+// 10252 - Awaken Earthen Guardians (10252 - 唤醒 土灵 Guardians)
+// 10259 - Awaken Earthen Dwarf (10259 - 唤醒 土灵 矮人)
 struct AwakenEarthenArchaedas : public AuraScript
 {
     void OnApply(Aura* aura, bool /*apply*/) const override
@@ -223,6 +231,7 @@ struct AwakenEarthenArchaedas : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_archaedas
 void AddSC_boss_archaedas()
 {
     Script* pNewScript = new Script;

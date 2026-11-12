@@ -16,19 +16,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "Globals/ObjectMgr.h"                                      // for normalizePlayerName
+#include "Globals/ObjectMgr.h"                                      // for normalizePlayerName | 用于角色名规范化 normalizePlayerName
 #include "Chat/ChannelMgr.h"
 
+/// 校验频道名称与密码合法性（截断超长名称、剔除不可见字符、拦截普通玩家使用转义序列）
 bool WorldSession::CheckChatChannelNameAndPassword(std::string& name, std::string& pass)
 {
-    // check name max length and truncate if needed
+    // check name max length and truncate if needed | 检查频道名称最大长度，超出 128 字节则按 UTF-8 边界截断
     if (name.length() > 128)
         utf8limit(name, 128);
 
-    // strip invisible characters
+    // strip invisible characters | 剥离不可见控制字符
     stripLineInvisibleChars(name);
 
-    // check if password is too long
+    // check if password is too long | 密码超过 128 字节则提示密码错误
     if (pass.length() > 128)
     {
         WorldPacket data(SMSG_CHANNEL_NOTIFY, (1 + name.size() + 1));
@@ -37,11 +38,11 @@ bool WorldSession::CheckChatChannelNameAndPassword(std::string& name, std::strin
         return false;
     }
 
-    // skip remaining checks for higher sec level accounts
+    // skip remaining checks for higher sec level accounts | 高权限账号跳过后续转义序列检测
     if (GetSecurity() > SEC_PLAYER)
         return true;
 
-    // check for presence of escape sequences
+    // check for presence of escape sequences | 禁止普通玩家在频道名中使用颜色/链接等转义序列
     if (ChatHandler::HasEscapeSequences(name.c_str()))
     {
         sLog.outError("Player %s (GUID: %u) attempted to join a chat channel with name containing escape sequence: \"%s\"", GetPlayer()->GetName(),
@@ -55,6 +56,7 @@ bool WorldSession::CheckChatChannelNameAndPassword(std::string& name, std::strin
     return true;
 }
 
+/// 处理加入聊天频道请求 (CMSG_JOIN_CHANNEL)
 void WorldSession::HandleJoinChannelOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -79,6 +81,7 @@ void WorldSession::HandleJoinChannelOpcode(WorldPacket& recvPacket)
             chn->Join(_player, pass.c_str());
 }
 
+/// 处理离开聊天频道请求 (CMSG_LEAVE_CHANNEL)
 void WorldSession::HandleLeaveChannelOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -86,7 +89,7 @@ void WorldSession::HandleLeaveChannelOpcode(WorldPacket& recvPacket)
 
     uint32 unk;
     std::string channelname;
-    recvPacket >> unk;                                      // channel id?
+    recvPacket >> unk;                                      // channel id? | 疑似频道 ID
     recvPacket >> channelname;
 
     if (channelname.empty())
@@ -100,6 +103,7 @@ void WorldSession::HandleLeaveChannelOpcode(WorldPacket& recvPacket)
     }
 }
 
+/// 处理查询频道成员列表请求 (CMSG_CHANNEL_LIST)
 void WorldSession::HandleChannelListOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -112,6 +116,7 @@ void WorldSession::HandleChannelListOpcode(WorldPacket& recvPacket)
             chn->SendChannelListResponse(_player);
 }
 
+/// 处理修改频道密码请求 (CMSG_CHANNEL_PASSWORD)
 void WorldSession::HandleChannelPasswordOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -126,6 +131,7 @@ void WorldSession::HandleChannelPasswordOpcode(WorldPacket& recvPacket)
             chn->SetPassword(_player, pass.c_str());
 }
 
+/// 处理移交频道所有权请求 (CMSG_CHANNEL_SET_OWNER)
 void WorldSession::HandleChannelSetOwnerOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -144,6 +150,7 @@ void WorldSession::HandleChannelSetOwnerOpcode(WorldPacket& recvPacket)
             chn->SetOwner(_player, newp.c_str());
 }
 
+/// 处理查询频道所有者请求 (CMSG_CHANNEL_OWNER)
 void WorldSession::HandleChannelOwnerOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -155,6 +162,7 @@ void WorldSession::HandleChannelOwnerOpcode(WorldPacket& recvPacket)
             chn->SendChannelOwnerResponse(_player);
 }
 
+/// 处理授予频道管理员权限请求 (CMSG_CHANNEL_MODERATOR)
 void WorldSession::HandleChannelModeratorOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -172,6 +180,7 @@ void WorldSession::HandleChannelModeratorOpcode(WorldPacket& recvPacket)
             chn->SetModerator(_player, otp.c_str(), true);
 }
 
+/// 处理撤销频道管理员权限请求 (CMSG_CHANNEL_UNMODERATOR)
 void WorldSession::HandleChannelUnmoderatorOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -189,6 +198,7 @@ void WorldSession::HandleChannelUnmoderatorOpcode(WorldPacket& recvPacket)
             chn->SetModerator(_player, otp.c_str(), false);
 }
 
+/// 处理频道禁言请求 (CMSG_CHANNEL_MUTE)
 void WorldSession::HandleChannelMuteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -206,6 +216,7 @@ void WorldSession::HandleChannelMuteOpcode(WorldPacket& recvPacket)
             chn->SetMute(_player, otp.c_str(), true);
 }
 
+/// 处理取消频道禁言请求 (CMSG_CHANNEL_UNMUTE)
 void WorldSession::HandleChannelUnmuteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -224,6 +235,7 @@ void WorldSession::HandleChannelUnmuteOpcode(WorldPacket& recvPacket)
             chn->SetMute(_player, otp.c_str(), false);
 }
 
+/// 处理邀请玩家加入频道请求 (CMSG_CHANNEL_INVITE)
 void WorldSession::HandleChannelInviteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -241,6 +253,7 @@ void WorldSession::HandleChannelInviteOpcode(WorldPacket& recvPacket)
             chn->Invite(_player, otp.c_str());
 }
 
+/// 处理踢出频道成员请求 (CMSG_CHANNEL_KICK)
 void WorldSession::HandleChannelKickOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -257,6 +270,7 @@ void WorldSession::HandleChannelKickOpcode(WorldPacket& recvPacket)
             chn->Kick(_player, otp.c_str());
 }
 
+/// 处理封禁频道成员请求 (CMSG_CHANNEL_BAN)
 void WorldSession::HandleChannelBanOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -274,6 +288,7 @@ void WorldSession::HandleChannelBanOpcode(WorldPacket& recvPacket)
             chn->Ban(_player, otp.c_str());
 }
 
+/// 处理解封频道成员请求 (CMSG_CHANNEL_UNBAN)
 void WorldSession::HandleChannelUnbanOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -292,6 +307,7 @@ void WorldSession::HandleChannelUnbanOpcode(WorldPacket& recvPacket)
             chn->UnBan(_player, otp.c_str());
 }
 
+/// 处理切换频道进出通告请求 (CMSG_CHANNEL_ANNOUNCEMENTS)
 void WorldSession::HandleChannelAnnouncementsOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -303,6 +319,7 @@ void WorldSession::HandleChannelAnnouncementsOpcode(WorldPacket& recvPacket)
             chn->ToggleAnnouncements(_player);
 }
 
+/// 处理切换频道发言审核模式请求 (CMSG_CHANNEL_MODERATE)
 void WorldSession::HandleChannelModerateOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -314,6 +331,7 @@ void WorldSession::HandleChannelModerateOpcode(WorldPacket& recvPacket)
             chn->ToggleModeration(_player);
 }
 
+/// 处理展示频道成员列表查询请求 (CMSG_CHANNEL_DISPLAY_LIST)
 void WorldSession::HandleChannelDisplayListQueryOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -325,6 +343,7 @@ void WorldSession::HandleChannelDisplayListQueryOpcode(WorldPacket& recvPacket)
             chn->SendChannelListResponse(_player, true);
 }
 
+/// 处理获取频道成员数量请求 (CMSG_GET_CHANNEL_MEMBER_COUNT)
 void WorldSession::HandleGetChannelMemberCountOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());
@@ -344,6 +363,7 @@ void WorldSession::HandleGetChannelMemberCountOpcode(WorldPacket& recvPacket)
     }
 }
 
+/// 处理设置频道监听请求（当前仅解析频道名，静默加入通知逻辑已注释停用）
 void WorldSession::HandleSetChannelWatchOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode %s (%u, 0x%X)", recvPacket.GetOpcodeName(), recvPacket.GetOpcode(), recvPacket.GetOpcode());

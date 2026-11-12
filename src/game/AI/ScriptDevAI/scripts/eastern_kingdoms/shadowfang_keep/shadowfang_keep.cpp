@@ -21,6 +21,8 @@ SDComment: Scourge Invasion boss is missing, Archmage Arugal timers have to be c
 SDCategory: Shadowfang Keep
 EndScriptData */
 
+// 影牙城堡（Shadowfang Keep）盲眼守卫、阿鲁高之子与牢房 NPC 护送任务 AI
+
 /* ContentData
 npc_shadowfang_prisoner
 mob_arugal_voidwalker
@@ -40,23 +42,25 @@ EndContentData */
 ## npc_shadowfang_prisoner
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_FREE_AS             = -1033000,
-    SAY_OPEN_DOOR_AS        = -1033001,
-    SAY_POST_DOOR_AS        = -1033002,
-    EMOTE_VANISH_AS         = -1033014,
-    SAY_FREE_AD             = -1033003,
-    SAY_OPEN_DOOR_AD        = -1033004,
-    SAY_POST1_DOOR_AD       = -1033005,
-    SAY_POST2_DOOR_AD       = -1033006,
-    EMOTE_UNLOCK_DOOR_AD    = -1033015,
+    SAY_FREE_AS             = -1033000,                     // 释放as 台词广播 ID
+    SAY_OPEN_DOOR_AS        = -1033001,                     // open门as 台词广播 ID
+    SAY_POST_DOOR_AS        = -1033002,                     // post门as 台词广播 ID
+    EMOTE_VANISH_AS         = -1033014,                     // vanishas 表情动作 ID
+    SAY_FREE_AD             = -1033003,                     // 释放ad 台词广播 ID
+    SAY_OPEN_DOOR_AD        = -1033004,                     // open门ad 台词广播 ID
+    SAY_POST1_DOOR_AD       = -1033005,                     // post1门ad 台词广播 ID
+    SAY_POST2_DOOR_AD       = -1033006,                     // post2门ad 台词广播 ID
+    EMOTE_UNLOCK_DOOR_AD    = -1033015,                     // unlock门ad 表情动作 ID
 
-    SPELL_UNLOCK            = 6421,
+    SPELL_UNLOCK            = 6421,                         // unlock 法术 ID
 
-    GOSSIP_ITEM_DOOR        = -3033000
+    GOSSIP_ITEM_DOOR        = -3033000                      // 物品门 对话菜单选项 ID
 };
 
+// 随从/NPC AI：prisoner（shadowfang_prisoner）
 struct npc_shadowfang_prisonerAI : public npc_escortAI
 {
     npc_shadowfang_prisonerAI(Creature* creature) : npc_escortAI(creature)
@@ -156,6 +160,7 @@ struct npc_shadowfang_prisonerAI : public npc_escortAI
     }
 };
 
+// NPC 对话交互入口函数：npc_shadowfang_prisoner
 bool GossipHello_npc_shadowfang_prisoner(Player* player, Creature* creature)
 {
     ScriptedInstance* instance = (ScriptedInstance*)creature->GetInstanceData();
@@ -191,13 +196,15 @@ bool GossipSelect_npc_shadowfang_prisoner(Player* player, Creature* creature, ui
 ## mob_arugal_voidwalker
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    NPC_VOIDWALKER      = 4627,
-    SPELL_DARK_OFFERING = 7154,
-    MAX_VOID_WALKERS    = 4,
+    NPC_VOIDWALKER      = 4627,                             // voidwalker Entry ID
+    SPELL_DARK_OFFERING = 7154,                             // darkoffering 法术 ID
+    MAX_VOID_WALKERS    = 4,                                // voidwalkers 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ArugalVoidWalker
 {
     VOIDWALKER_DARKOFFERING,
@@ -208,6 +215,7 @@ enum ArugalVoidWalker
 // Coordinates for Voidwalker home
 static const Waypoint voidwalkerHome = { -146.06f,  2172.84f, 127.953f};  // This is the initial location, in the middle of the room
 
+// 随从/NPC AI：voidwalker（arugal_voidwalker）
 struct mob_arugal_voidwalkerAI : public CombatAI
 {
     mob_arugal_voidwalkerAI(Creature* creature) : CombatAI(creature, VOIDWALKER_ACTIONS_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -221,7 +229,7 @@ struct mob_arugal_voidwalkerAI : public CombatAI
     ScriptedInstance* m_instance;
 
     int8 m_position;           // 0 - leader, 1 - behind-right, 2 - behind, 3 - behind-left
-    ObjectGuid m_leaderGuid;
+    ObjectGuid m_leaderGuid;                                // leader 实体 GUID
 
     void GetAIInformation(ChatHandler& reader) override
     {
@@ -339,21 +347,23 @@ struct mob_arugal_voidwalkerAI : public CombatAI
 ## boss_arugal
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_VOID_BOLT                 = 7588,
-    SPELL_SHADOW_PORT_UPPER_LEDGE   = 7587,
-    SPELL_SHADOW_PORT_SPAWN_LEDGE   = 7586,
-    SPELL_SHADOW_PORT_STAIRS        = 7136,
-    SPELL_ARUGALS_CURSE             = 7621,
-    SPELL_THUNDERSHOCK              = 7803,
+    SPELL_VOID_BOLT                 = 7588,                 // void箭 法术 ID
+    SPELL_SHADOW_PORT_UPPER_LEDGE   = 7587,                 // 暗影portupperledge 法术 ID
+    SPELL_SHADOW_PORT_SPAWN_LEDGE   = 7586,                 // 暗影port生成ledge 法术 ID
+    SPELL_SHADOW_PORT_STAIRS        = 7136,                 // 暗影portstairs 法术 ID
+    SPELL_ARUGALS_CURSE             = 7621,                 // arugals诅咒 法术 ID
+    SPELL_THUNDERSHOCK              = 7803,                 // thundershock 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ArugalPosition
 {
-    POSITION_SPAWN_LEDGE = 0,
-    POSITION_UPPER_LEDGE = 1,
-    POSITION_STAIRS      = 2
+    POSITION_SPAWN_LEDGE = 0,                               // 生成ledge 标识 ID
+    POSITION_UPPER_LEDGE = 1,                               // upperledge 标识 ID
+    POSITION_STAIRS      = 2                                // stairs 标识 ID
 };
 
 struct SpawnPoint
@@ -375,6 +385,7 @@ static const SpawnPoint VWSpawns[] =
 // Used to tell how he should behave
 const float HEIGHT_FENRUS_ROOM      = 140.0f;
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ArugalActions
 {
     ARUGAL_TELEPORT,
@@ -384,6 +395,7 @@ enum ArugalActions
     ARUGAL_ACTIONS_MAX,
 };
 
+// 首领战 AI：标识 ID（arugal）
 struct boss_arugalAI : public CombatAI
 {
     boss_arugalAI(Creature* creature) : CombatAI(creature, ARUGAL_ACTIONS_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -410,18 +422,21 @@ struct boss_arugalAI : public CombatAI
     ArugalPosition m_position;
     bool m_attacking, m_eventMode;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_attacking = true;
         m_position = POSITION_SPAWN_LEDGE;
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         DoScriptText(YELL_AGGRO, m_creature);
         DoCastSpellIfCan(who, SPELL_VOID_BOLT);
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* victim) override
     {
         if (victim->GetTypeId() == TYPEID_PLAYER)
@@ -561,13 +576,15 @@ struct boss_arugalAI : public CombatAI
 ## npc_deathstalker_vincent
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_VINCENT_DIE     = -1033016,
+    SAY_VINCENT_DIE     = -1033016,                         // vincentdie 台词广播 ID
 
-    FACTION_FRIENDLY    = 35
+    FACTION_FRIENDLY    = 35                                // friendly 阵营 ID
 };
 
+// 随从/NPC AI：vincent（deathstalker_vincent）
 struct npc_deathstalker_vincentAI : public ScriptedAI
 {
     npc_deathstalker_vincentAI(Creature* creature) : ScriptedAI(creature)
@@ -578,6 +595,7 @@ struct npc_deathstalker_vincentAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         // Set the proper stand state (standing or dead) depending on the intro event having been played or not
@@ -602,6 +620,7 @@ struct npc_deathstalker_vincentAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_creature->IsInCombat() && m_creature->GetFaction() == FACTION_FRIENDLY)
@@ -637,6 +656,7 @@ struct ForsakenSkill : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：shadowfang_keep
 void AddSC_shadowfang_keep()
 {
     Script* newScript = new Script;

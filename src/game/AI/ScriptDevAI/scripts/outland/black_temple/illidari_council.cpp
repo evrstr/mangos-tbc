@@ -21,11 +21,21 @@ SDComment: Lady Malandes Reflective Shield should make her immune to physical in
 SDCategory: Black Temple
 EndScriptData */
 
+// 伊利达雷议会（黑暗神殿八号首领）
+/* 遭遇战概述：
+ * 伊利达雷议会由伊利丹麾下四位最强效忠者组成，四人共享生命值池：
+ * 女祭司玛兰德（牧师：盾、反射护盾、极度昏睡、强效治疗术）；
+ * 高阶术士维尔莱斯（潜行者：消失、致命毒药、伏击）；
+ * 击碎者加西奥斯（圣骑士：保护祝福、自由祝福、审判、奉献）；
+ * 塞勒斯·逐日者（法师：烈焰风暴、暴风雪、奥术箭雨）。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // Speech'n'Sounds
@@ -126,6 +136,7 @@ static const uint32 aCouncilMember[] = {NPC_GATHIOS, NPC_VERAS, NPC_LADY_MALANDE
 ## mob_blood_elf_council_voice_trigger
 ######*/
 
+// mob_blood_elf_council_voice_triggerAI 逻辑实现
 struct mob_blood_elf_council_voice_triggerAI : public ScriptedAI
 {
     mob_blood_elf_council_voice_triggerAI(Creature* creature) : ScriptedAI(creature),
@@ -143,6 +154,7 @@ struct mob_blood_elf_council_voice_triggerAI : public ScriptedAI
 
     uint32 m_uiEnrageTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiEnrageTimer = 0;
@@ -160,12 +172,14 @@ struct mob_blood_elf_council_voice_triggerAI : public ScriptedAI
         m_uiEnrageTimer = 15 * MINUTE * IN_MILLISECONDS;
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
             Reset();
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         m_councilDialogue.DialogueUpdate(diff);
@@ -194,6 +208,7 @@ struct mob_blood_elf_council_voice_triggerAI : public ScriptedAI
 ## mob_illidari_council
 ######*/
 
+// mob_illidari_councilAI 逻辑实现
 struct mob_illidari_councilAI : public ScriptedAI
 {
     mob_illidari_councilAI(Creature* creature) : ScriptedAI(creature, 0), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -213,6 +228,7 @@ struct mob_illidari_councilAI : public ScriptedAI
     bool m_eventBegun;
     bool m_eventEnd;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_eventBegun = false;
@@ -225,6 +241,7 @@ struct mob_illidari_councilAI : public ScriptedAI
     void AttackStart(Unit* /*who*/) override { }
     void MoveInLineOfSight(Unit* /*who*/) override { }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoEndEvent();
@@ -285,6 +302,7 @@ struct mob_illidari_councilAI : public ScriptedAI
 ## boss_illidari_council
 ######*/
 
+// boss_illidari_councilAI 逻辑实现
 struct boss_illidari_councilAI : public CombatAI
 {
     boss_illidari_councilAI(Creature* creature, uint32 combatActions) : CombatAI(creature, combatActions),
@@ -298,12 +316,14 @@ struct boss_illidari_councilAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
         DoCastSpellIfCan(nullptr, SPELL_BALANCE_OF_POWER, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (m_instance)
@@ -320,6 +340,7 @@ struct boss_illidari_councilAI : public CombatAI
         }
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -356,6 +377,7 @@ struct boss_illidari_councilAI : public CombatAI
 ## boss_gathios_the_shatterer
 ######*/
 
+// GathiosActions 相关枚举
 enum GathiosActions
 {
     GATHIOS_ACTION_JUDGEMENT,
@@ -367,6 +389,7 @@ enum GathiosActions
     GATHIOS_ACTION_MAX,
 };
 
+// boss_gathios_the_shattererAI 逻辑实现
 struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
 {
     boss_gathios_the_shattererAI(Creature* creature) : boss_illidari_councilAI(creature, GATHIOS_ACTION_MAX) 
@@ -383,6 +406,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
     bool m_seal;
     bool m_aura;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         boss_illidari_councilAI::Reset();
@@ -390,6 +414,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
         m_aura = bool(urand(0, 1)); // first aura random
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         DoScriptText(SAY_GATH_DEATH, m_creature);
@@ -416,6 +441,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
         return nullptr; // veras should always be found
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -476,6 +502,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
 ## boss_high_nethermancer_zerevor
 ######*/
 
+// ZerevorActions 相关枚举
 enum ZerevorActions
 {
     ZEREVOR_ACTION_BLIZZARD,
@@ -486,6 +513,7 @@ enum ZerevorActions
     ZEREVOR_ACTION_MAX,
 };
 
+// boss_high_nethermancer_zerevorAI 逻辑实现
 struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
 {
     boss_high_nethermancer_zerevorAI(Creature* creature) : boss_illidari_councilAI(creature, ZEREVOR_ACTION_MAX)
@@ -503,6 +531,7 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
         AddOnKillText(SAY_ZERE_SLAY);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         DoScriptText(SAY_ZERE_DEATH, m_creature);
@@ -510,6 +539,7 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
         boss_illidari_councilAI::JustDied(killer);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -555,6 +585,7 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
 ## boss_lady_malande
 ######*/
 
+// MalandeActions 相关枚举
 enum MalandeActions
 {
     MALANDE_ACTION_CIRCLE_OF_HEALING,
@@ -564,6 +595,7 @@ enum MalandeActions
     MALANDE_ACTION_MAX,
 };
 
+// boss_lady_malandeAI 逻辑实现
 struct boss_lady_malandeAI : public boss_illidari_councilAI
 {
     boss_lady_malandeAI(Creature* creature) : boss_illidari_councilAI(creature, MALANDE_ACTION_MAX)
@@ -577,6 +609,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
         AddMainSpell(SPELL_EMPOWERED_SMITE);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         DoScriptText(SAY_MALA_DEATH, m_creature);
@@ -596,6 +629,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
         DoStartMovement(m_creature->GetVictim());
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -633,6 +667,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
 ## boss_veras_darkshadow
 ######*/
 
+// VerasActions 相关枚举
 enum VerasActions
 {
     VERAS_ACTION_VANISH,
@@ -640,6 +675,7 @@ enum VerasActions
     VERAS_ENVENOM_ANIMATION,
 };
 
+// boss_veras_darkshadowAI 逻辑实现
 struct boss_veras_darkshadowAI : public boss_illidari_councilAI
 {
     boss_veras_darkshadowAI(Creature* creature) : boss_illidari_councilAI(creature, VERAS_ACTION_MAX)
@@ -656,6 +692,7 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
 
     ObjectGuid m_envenomAnimTarget;
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         DoScriptText(SAY_VERA_DEATH, m_creature);
@@ -663,6 +700,7 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
         boss_illidari_councilAI::JustDied(killer);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         if (action == VERAS_ACTION_VANISH)
@@ -676,6 +714,7 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->CastSpell(nullptr, SPELL_INSTANT_SPAWN, TRIGGERED_NONE);
@@ -685,8 +724,10 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
     }
 };
 
+// VerasVanish 光环脚本
 struct VerasVanish : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -694,6 +735,7 @@ struct VerasVanish : public AuraScript
     }
 };
 
+// VerasDeadlyPoison 光环脚本
 struct VerasDeadlyPoison : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
@@ -702,8 +744,10 @@ struct VerasDeadlyPoison : public AuraScript
     }
 };
 
+// VerasDeadlyPoisonTick 光环脚本
 struct VerasDeadlyPoisonTick : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -721,6 +765,7 @@ struct VerasDeadlyPoisonTick : public AuraScript
 };
 
 // 41341 - Balance of Power
+// BalanceOfPower 光环脚本
 struct BalanceOfPower : public AuraScript
 {
     void OnAbsorb(Aura* /*aura*/, int32& currentAbsorb, int32& remainingDamage, uint32& /*reflectedSpellId*/, int32& /*reflectDamage*/, bool& /*preventedDeath*/, bool& dropCharge, DamageEffectType /*damageType*/) const override
@@ -733,6 +778,7 @@ struct BalanceOfPower : public AuraScript
 };
 
 // 41475 - Reflective Shield
+// ReflectiveShieldMalande 光环脚本
 struct ReflectiveShieldMalande : public AuraScript
 {
     void OnAbsorb(Aura* /*aura*/, int32& currentAbsorb, int32& remainingDamage, uint32& reflectedSpellId, int32& reflectDamage, bool& /*preventedDeath*/, bool& /*dropCharge*/, DamageEffectType /*damageType*/) const override
@@ -746,8 +792,10 @@ struct ReflectiveShieldMalande : public AuraScript
 };
 
 // 41467 - Judgement
+// JudgementGathios 法术脚本
 struct JudgementGathios : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* unitTarget = spell->GetUnitTarget();
@@ -777,6 +825,7 @@ struct JudgementGathios : public SpellScript
     }
 };
 
+// 注册 boss_illidari_council 脚本
 void AddSC_boss_illidari_council()
 {
     Script* pNewScript = new Script;

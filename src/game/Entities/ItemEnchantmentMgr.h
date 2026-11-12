@@ -21,7 +21,10 @@
 
 #include "Common.h"
 
+// 从数据库加载物品随机附魔模板表 (item_enchantment_template)
 void LoadRandomEnchantmentsTable();
+// 根据随机附魔组 ID 按概率抽取一个附魔条目 ID
 uint32 GetItemEnchantMod(uint32 entry);
+// 根据物品等级、装备部位和品质计算随机后缀属性缩放系数
 uint32 GenerateEnchSuffixFactor(uint32 item_id);
 #endif

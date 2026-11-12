@@ -21,6 +21,10 @@ SDComment: Quest support: 11129.
 SDCategory: Mulgore
 EndScriptData */
 
+/**
+ * 莫高雷 (Mulgore) 牛头人起始区任务脚本
+ */
+
 /* ContentData
 npc_kyle_the_frenzied
 EndContentData */
@@ -31,18 +35,20 @@ EndContentData */
 # npc_kyle_the_frenzied
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_SEE_LUNCH         = -1000340,
-    EMOTE_EAT_LUNCH         = -1000341,
-    EMOTE_DANCE             = -1000342,
+    EMOTE_SEE_LUNCH         = -1000340,                     // 剧情台词/喊话文本 ID
+    EMOTE_EAT_LUNCH         = -1000341,                     // 剧情台词/喊话文本 ID
+    EMOTE_DANCE             = -1000342,                     // 剧情台词/喊话文本 ID
 
-    SPELL_LUNCH             = 42222,
-    NPC_KYLE_FRENZIED       = 23616,
-    NPC_KYLE_FRIENDLY       = 23622,
+    SPELL_LUNCH             = 42222,                        // 技能法术 ID
+    NPC_KYLE_FRENZIED       = 23616,                        // NPC 条目 ID
+    NPC_KYLE_FRIENDLY       = 23622,                        // NPC 条目 ID
     POINT_ID                = 1
 };
 
+// npc_kyle_the_frenziedAI NPC 脚本 AI
 struct npc_kyle_the_frenziedAI : public ScriptedAI
 {
     npc_kyle_the_frenziedAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -53,7 +59,7 @@ struct npc_kyle_the_frenziedAI : public ScriptedAI
     uint32 m_uiEventTimer;
     uint8 m_uiEventPhase;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_bEvent = false;
         m_bIsMovingToLunch = false;
@@ -85,7 +91,7 @@ struct npc_kyle_the_frenziedAI : public ScriptedAI
         }
     }
 
-    void MovementInform(uint32 uiType, uint32 uiPointId) override
+    void MovementInform(uint32 uiType, uint32 uiPointId) override    // 移动节点到达通知
     {
         if (uiType != POINT_MOTION_TYPE || !m_bEvent)
             return;
@@ -94,7 +100,7 @@ struct npc_kyle_the_frenziedAI : public ScriptedAI
             m_bIsMovingToLunch = false;
     }
 
-    void UpdateAI(const uint32 diff) override
+    void UpdateAI(const uint32 diff) override               // AI 核心帧更新处理
     {
         if (m_bEvent)
         {
@@ -113,7 +119,7 @@ struct npc_kyle_the_frenziedAI : public ScriptedAI
                         {
                             GameObject* pGo = pPlayer->GetGameObject(SPELL_LUNCH);
 
-                            // Workaround for broken function GetGameObject
+                            // Workaround for broken function GetGameObject (说明)
                             if (!pGo)
                             {
                                 const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_LUNCH);
@@ -162,12 +168,12 @@ struct npc_kyle_the_frenziedAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_kyle_the_frenzied(Creature* pCreature)
+UnitAI* GetAI_npc_kyle_the_frenzied(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_kyle_the_frenziedAI(pCreature);
 }
 
-void AddSC_mulgore()
+void AddSC_mulgore() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_kyle_the_frenzied";

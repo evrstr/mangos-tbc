@@ -33,31 +33,32 @@
 
 namespace
 {
-static constexpr uint32 sOfsGetText = 0x307200;
+// TBC 2.4.3 (Build 8606) Windows 客户端内存与函数偏移常量
+static constexpr uint32 sOfsGetText = 0x307200;             // FrameScript::GetText 偏移
 
-static constexpr uint32 sOfsExecute = 0x306C80;
+static constexpr uint32 sOfsExecute = 0x306C80;             // FrameScript::Execute 偏移
 
-static constexpr uint32 sOfsOpen = 0x257970;
-static constexpr uint32 sOfsSize = 0x254080;
-static constexpr uint32 sOfsRead = 0x254E00;
-static constexpr uint32 sOfsClose = 0x255290;
+static constexpr uint32 sOfsOpen = 0x257970;                // SFileOpenFile 偏移
+static constexpr uint32 sOfsSize = 0x254080;                // SFileGetFileSize 偏移
+static constexpr uint32 sOfsRead = 0x254E00;                // SFileReadFile 偏移
+static constexpr uint32 sOfsClose = 0x255290;               // SFileCloseFile 偏移
 
-static constexpr uint32 sOfsTickCount = 0x349850;
+static constexpr uint32 sOfsTickCount = 0x349850;           // OsGetAsyncTimeMs 偏移
 
-static constexpr uint32 sOfsCWorld__enables = 0xDA4510;
+static constexpr uint32 sOfsCWorld__enables = 0xDA4510;     // CWorld::enables 世界渲染开关掩码偏移
 
-static constexpr uint32 sOfsCSimpleTop__m_eventTime = 0xBE10FC;
+static constexpr uint32 sOfsCSimpleTop__m_eventTime = 0xBE10FC; // CSimpleTop::m_eventTime 最近硬件输入时间偏移
 
-static constexpr uint32 sOfsg_theGxDevicePtr = 0xD2A15C;
+static constexpr uint32 sOfsg_theGxDevicePtr = 0xD2A15C;    // Direct3D 设备指针链：g_theGxDevicePtr -> Device -> EndScene
 static constexpr uint32 sOfsDevice2 = 0x3864;
 static constexpr uint32 sOfsDevice3 = 0x0;
 static constexpr uint32 sOfsDevice4 = 0xA8;
 
-static constexpr uint32 sOfsWardenModule = 0xE118D8;
+static constexpr uint32 sOfsWardenModule = 0xE118D8;        // Warden 模块接口指针偏移
 static constexpr uint32 sOfsWardenSysInfo = 0x228;
 static constexpr uint32 sOfsWardenWinSysInfo = 0x08;
 
-// TODO: Identify drivers for other hypervisors and add detections for them too
+// TODO: Identify drivers for other hypervisors and add detections for them too (常见虚拟机监控程序驱动特征表)
 constexpr struct
 {
     const char *Name;
@@ -71,44 +72,46 @@ constexpr struct
 
 auto constexpr HypervisorCount = sizeof(Hypervisors) / sizeof(Hypervisors[0]);
 
+// CWorld::enables 客户端世界渲染标志位（用于检测透视/隐藏地形/关闭碰撞等修改）
 enum WorldEnables
 {
-    TerrainDoodads                  = 0x1,              // default, toggled by sub at 0x673130, which is never called.  should always be set
-    Terrain                         = 0x2,              // default, toggled by sub at 0x6730F0, which is never called.  should always be set
+    TerrainDoodads                  = 0x1,              // default, toggled by sub at 0x673130, which is never called.  should always be set (默认必须开启)
+    Terrain                         = 0x2,              // default, toggled by sub at 0x6730F0, which is never called.  should always be set (默认必须开启)
     TerrainLOD                      = 0x4,              // lod console var
     Unk10                           = 0x10,             // default
     TerrainCulling                  = 0x20,             // default, showCull console command
     TerrainShadows                  = 0x40,             // default, mapShadows console var, showShadow console command
-    TerrainDoodadCollisionVisuals   = 0x80,             // toggled by sub at 0x6731C0, which is never called.  should never be set
-    MapObjects                      = 0x100,            // default, toggled by sub at 0x673430, which is never called.  should always be set
-    MapObjectLighting               = 0x200,            // default, toggled by sub at 0x673360, which is never called.  should always be set
+    TerrainDoodadCollisionVisuals   = 0x80,             // toggled by sub at 0x6731C0, which is never called.  should never be set (禁止开启)
+    MapObjects                      = 0x100,            // default, toggled by sub at 0x673430, which is never called.  should always be set (默认必须开启)
+    MapObjectLighting               = 0x200,            // default, toggled by sub at 0x673360, which is never called.  should always be set (默认必须开启)
     FootPrints                      = 0x400,            // showfootprints console var
-    MapObjectTextures               = 0x800,            // default, toggled by sub at 0x6733A0, which is never called.  should always be set
+    MapObjectTextures               = 0x800,            // default, toggled by sub at 0x6733A0, which is never called.  should always be set (默认必须开启)
     PortalDisplay                   = 0x1000,           // toggled by sub at 0x673470, which is never called.  should never be set
     PortalVisual                    = 0x2000,           // toggled by sub at 0x6734B0, which is never called.  should never be set
     DisableDoodadFullAlpha          = 0x4000,           // fullAlpha console var
     DoodadAnimation                 = 0x8000,           // doodadAnim console var
     TriangleStrips                  = 0x10000,          // triangleStrips console var
-    CrappyBatches                   = 0x20000,          // toggled by sub at 0x6733E0, which is never called.  should never be set
-    ZoneBoundaryVisuals             = 0x40000,          // zoneBoundary disabled console command (should never be set, also sends CMSG_ZONE_MAP, sub at 0x673850)
-    BSPRender                       = 0x80000,          // toggled by sub at 0x6730A0, which is never called.  should never be set
+    CrappyBatches                   = 0x20000,          // toggled by sub at 0x6733E0, which is never called.  should never be set (禁止开启)
+    ZoneBoundaryVisuals             = 0x40000,          // zoneBoundary disabled console command (should never be set, also sends CMSG_ZONE_MAP, sub at 0x673850) (禁止开启)
+    BSPRender                       = 0x80000,          // toggled by sub at 0x6730A0, which is never called.  should never be set (禁止开启)
     DetailDoodads                   = 0x100000,         // default, showDetailDoodads console command
-    ShowQuery                       = 0x200000,         // showQuery disabled console command (should never be set)
-    TerrainDoodadAABoxVisuals       = 0x400000,         // toggled by sub at 0x673170, which is never called.  should never be set
+    ShowQuery                       = 0x200000,         // showQuery disabled console command (should never be set) (禁止开启)
+    TerrainDoodadAABoxVisuals       = 0x400000,         // toggled by sub at 0x673170, which is never called.  should never be set (禁止开启)
     TrilinearFiltering              = 0x800000,         // trilinear console var
-    Water                           = 0x1000000,        // default, toggled by sub at 0x673670, which is never called.  should always be set
+    Water                           = 0x1000000,        // default, toggled by sub at 0x673670, which is never called.  should always be set (默认必须开启)
     WaterParticulates               = 0x2000000,        // default, waterParticulates console command
     TerrainLowDetail                = 0x4000000,        // default, showLowDetail console command
     Specular                        = 0x8000000,        // specular console var
     PixelShaders                    = 0x10000000,       // pixelShaders console var
-    Unknown6737F9                   = 0x20000000,       // unknown, set by sub at 0x6737F0, should never be set
-    Unknown673820                   = 0x40000000,       // unknown, set by sub at 0x673820, should never be set
+    Unknown6737F9                   = 0x20000000,       // unknown, set by sub at 0x6737F0, should never be set (禁止开启)
+    Unknown673820                   = 0x40000000,       // unknown, set by sub at 0x673820, should never be set (禁止开启)
     Anisotropic                     = 0x80000000,       // anisotropic console var
 
     Required = (TerrainDoodads|Terrain| MapObjects| MapObjectLighting| MapObjectTextures| Water),
     Prohibited = (TerrainDoodadCollisionVisuals|CrappyBatches|ZoneBoundaryVisuals|BSPRender|ShowQuery|TerrainDoodadAABoxVisuals|Unknown6737F9|Unknown673820),
 };
 
+// 将 Windows SYSTEM_INFO.wProcessorArchitecture 枚举转为可读架构名称
 std::string ArchitectureString(uint16 arch)
 {
     switch (arch)
@@ -128,6 +131,7 @@ std::string ArchitectureString(uint16 arch)
     }
 }
 
+// 格式化 Windows 处理器类型与修订号（Model / Stepping）
 std::string CPUTypeAndRevision(uint32 cpuType, uint16 revision)
 {
     std::stringstream str;
@@ -191,6 +195,7 @@ std::string CPUTypeAndRevision(uint32 cpuType, uint16 revision)
 
 // this function assumes that the given code begins with a valid instruction.  in other words, that
 // it does not begin in random data or in the middle of an instruction.
+// x86 机器码去混淆器：剥离垃圾 NOP、等价 xchg/mov 及跳转花指令（主要用于识别 WRobot 的 EndScene Hook）
 void DeobfuscateAsm(std::vector<std::uint8_t> &code)
 {
 #define LSTRIP(c, l) do { if (c.size() <= l) { c.clear(); return; } else { c.erase(c.begin(), c.begin()+l); } } while(false)
@@ -202,7 +207,7 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
 
         // At the start of this loop we re-assume the entry condition that the code begins at a valid instruction.
 
-        // remove NOP
+        // remove NOP (剥离单字节 NOP 填充)
         if (code[0] == 0x90)
         {
             LSTRIP(code, 1);
@@ -211,6 +216,7 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
 
         // xchg statements which are either semantically equivalent to NOP or
         // which will be inverted later on.
+        // 剥离等价于空操作的寄存器自交换/成对交换指令
         if (code[0] == 0x87)
         {
             // {"eax", "ebx", "ecx", "edx", "edi", "esi"};
@@ -250,7 +256,7 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
             LSTRIP(code, 1);
             continue;
         }
-        // simple NOP-equivalent mov statements
+        // simple NOP-equivalent mov statements (剥离寄存器自赋值 mov reg, reg)
         else if (code[0] == 0x89)
         {
             if (code[1] == 0xC9 ||  // mov ecx, ecx
@@ -263,7 +269,7 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
                 continue;
             }
         }
-        // near JMP past random junk
+        // near JMP past random junk (跳过短跳转花指令及其后的垃圾字节)
         else if (code[0] == 0xEB)   // JMP +1-0xFF
         {
             // not enough room? clear out anything left and finish
@@ -278,7 +284,7 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
             LSTRIP(code, len);
             continue;
         }
-        // far JMP past random junk
+        // far JMP past random junk (跳过近跳转花指令)
         else if (code[0] == 0xE9)
         {
             if (code.size() < 5)
@@ -294,6 +300,7 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
         }
         // short conditional jumps that always are followed by far jumps to the same place:
         // "JE", "JZ", "JNE", "JNZ", "JG", "JNLE", "JGE", "JNL", "JNGE", "JLE", "JNG", "JO", "JNO", "JP", "JPE", "JNP", "JPO", "JS"
+        // 若短条件跳转与随后不远处的无条件跳转指向同一目标，则视为永真互补花指令并整段剥离
         else if (code[0] == 0x70 ||
             code[0] == 0x71 ||
             code[0] == 0x74 ||
@@ -335,6 +342,7 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
         // deobfuscate whatever comes after them.  this will let us build up deobfuscated code.
         // pushfd.  this is currently not part of the obfuscation of wrobot but rather it appears to always be
         // the first non-obfuscated opcode.  therefore, lets skip it and debofuscate what comes after it.
+        // 遇到真实有效指令 pushfd / pushad 时保留之并递归清理后续指令
         else if (code[0] == 0x9C || // pushfd
             code[0] == 0x60)   // pushad
         {
@@ -354,12 +362,12 @@ void DeobfuscateAsm(std::vector<std::uint8_t> &code)
 #undef LSTRIP
 }
 
-// returns true when the given hook code is suspicious
+// returns true when the given hook code is suspicious (对 EndScene Hook 目标机器码去混淆，若匹配外挂特征则返回 true)
 bool ValidateEndSceneHook(const std::vector<uint8> &code)
 {
     auto copy = code;
 
-    // attempt asm deobfuscation to detect wrobot
+    // attempt asm deobfuscation to detect wrobot (尝试去混淆以识别 WRobot 机器人挂钩)
     DeobfuscateAsm(copy);
 
     std::stringstream str;
@@ -377,6 +385,7 @@ bool ValidateEndSceneHook(const std::vector<uint8> &code)
 
     // wrobot's deobfuscated endscene hook begins with pushfd, pushad.  if thats what this starts with,
     // assume it is wrobot, regardless of what comes after it.
+    // 去混淆后以 pushfd + pushad 开头，或大量花指令被剥离至不足 15 字节，均判定为可疑外挂 Hook
     if (copy.size() >= 2 && copy[0] == 0x9C && copy[1] == 0x60)
         return true;
 
@@ -384,6 +393,7 @@ bool ValidateEndSceneHook(const std::vector<uint8> &code)
 }
 }
 
+// 注册 Windows 平台脚本化 Warden 扫描链（系统信息读取、CWorld::enables、防 AFK 计时、虚拟机、内存读取完整性、EndScene Hook 及代理驱动检测）
 void WardenWin::LoadScriptedScans()
 {
     // sys info locate phase 2
@@ -913,6 +923,7 @@ void WardenWin::LoadScriptedScans()
     }), "Proxifier check", WinAllBuild | InitialLogin));
 }
 
+// 构造 Lua 脚本执行/读取初始化包（Warden 子操作码 4）
 void WardenWin::BuildLuaInit(const std::string &module, bool fastcall, uint32 offset, ByteBuffer &out) const
 {
     const uint16 len = 1 + 1 + 1 + module.length() + 4 + 1;
@@ -921,24 +932,25 @@ void WardenWin::BuildLuaInit(const std::string &module, bool fastcall, uint32 of
 
     out << static_cast<uint8>(WARDEN_SMSG_MODULE_INITIALIZE)
         << static_cast<uint16>(len)
-        << static_cast<uint32>(0)   // checksum placeholder
+        << static_cast<uint32>(0)   // checksum placeholder (校验和占位)
         << static_cast<uint8>(4)
         << static_cast<uint8>(0)
         << static_cast<uint8>(module.length());
 
-    // avoid writing null terminator
+    // avoid writing null terminator (不写入末尾空字节)
     out.append(module.c_str(), module.length());
 
     out << offset
         << static_cast<uint8>(fastcall ? 0 : 1);
 
-    // write checksum
+    // write checksum (回填载荷 SHA-1 校验和)
     auto const oldwpos = out.wpos();
     out.wpos(3);
     out << BuildChecksum(out.contents() + 7, len);
     out.wpos(oldwpos);
 }
 
+// 构造客户端文件读取/哈希初始化包（配置 SFileOpen/Size/Read/Close 偏移）
 void WardenWin::BuildFileHashInit(const std::string &module, bool asyncparam, uint32 openOffset,
     uint32 sizeOffset, uint32 readOffset, uint32 closeOffset, ByteBuffer &out) const
 {
@@ -969,6 +981,7 @@ void WardenWin::BuildFileHashInit(const std::string &module, bool asyncparam, ui
     out.wpos(oldwpos);
 }
 
+// 构造客户端计时函数初始化包（配置 OsGetAsyncTimeMs 偏移）
 void WardenWin::BuildTimingInit(const std::string &module, uint32 offset, bool set, ByteBuffer &out) const
 {
     const uint16 len = 1 + 1 + 1 + module.length() + 4 + 1;
@@ -1003,24 +1016,25 @@ WardenWin::WardenWin(WorldSession *session, const BigNumber &K, SessionAnticheat
 }
 
 // read the dx9 EndScene binary code to look for bad stuff
+// 检查 DirectX9 EndScene 函数首部机器码是否存在 INT3 断点或 JMP 跳转挂钩，若为 JMP 则进一步读取目标跳板代码做去混淆特征校验
 void WardenWin::ValidateEndScene(const std::vector<uint8> &code)
 {
     auto p = &code[0];
 
-    // skip any NOPs
+    // skip any NOPs (跳过开头可能存在的 NOP 填充)
     while (*p == 0x90) ++p;
 
     auto const nopCount = static_cast<int>(p - &code[0]);
 
     static constexpr size_t codeRequestLength = 200u;
 
-    // int3 breakpoint
+    // int3 breakpoint (检测到 INT3 软断点)
     if (*p == 0xCC)
     {
         sLog.outBasic("WARDEN: Detected INT3 EndScene hook for account %u IP %s (NOP count = %d)",
             _session->GetAccountId(), _session->GetRemoteAddress().c_str(), nopCount);
     }
-    // JMP hook
+    // JMP hook (检测到 E9 相对跳转 Hook，计算绝对目标地址并入队读取 200 字节做特征校验)
     else if (*p == 0xE9)
     {
         auto const dest = *reinterpret_cast<const uint32 *>(p + 1);
@@ -1059,6 +1073,7 @@ void WardenWin::ValidateEndScene(const std::vector<uint8> &code)
     }
 }
 
+// 根据玩家最高角色等级与客户端 Build 号返回适用的 Windows 扫描标志掩码
 uint32 WardenWin::GetScanFlags() const
 {
     uint32 result = _session->GetAccountMaxLevel() >= sAnticheatConfig.GetWardenMinimumAdvancedLevel()
@@ -1078,17 +1093,18 @@ uint32 WardenWin::GetScanFlags() const
     return result;
 }
 
+// 打包并下发 Windows Warden 模块初始化数据（Lua 读取、文件哈希及计时器偏移）
 void WardenWin::InitializeClient()
 {
-    // initialize lua
+    // initialize lua (初始化 Lua 变量读取偏移)
     ByteBuffer lua;
     BuildLuaInit("", true, sOfsGetText, lua);
 
-    // initialize SFile*
+    // initialize SFile* (初始化客户端文件操作偏移)
     ByteBuffer file;
     BuildFileHashInit("", true, sOfsOpen, sOfsSize, sOfsRead, sOfsClose, file);
 
-    // initialize timing check
+    // initialize timing check (初始化异步时间读取偏移)
     ByteBuffer timing;
     BuildTimingInit("", sOfsTickCount, true, timing);
 
@@ -1103,6 +1119,7 @@ void WardenWin::InitializeClient()
     _initialized = true;
 }
 
+// 帧更新：采集到客户机 SYSTEM_INFO 后写入登录库指纹记录，并放行延迟的角色列表包
 void WardenWin::Update(uint32 diff)
 {
     Warden::Update(diff);
@@ -1110,7 +1127,7 @@ void WardenWin::Update(uint32 diff)
     if (!_initialized)
         return;
 
-    // 'lpMaximumApplicationAddress' should never be zero if the structure has been read
+    // 'lpMaximumApplicationAddress' should never be zero if the structure has been read (该指针非零表明系统信息已成功读取)
     if (!_sysInfoSaved && !!_sysInfo.lpMaximumApplicationAddress)
     {
         auto activeProcCount = 0;
@@ -1143,7 +1160,7 @@ void WardenWin::Update(uint32 diff)
 
         _sysInfoSaved = true;
 
-        // at this point if we have the character enum packet, it is okay to send
+        // at this point if we have the character enum packet, it is okay to send (硬件指纹落库后放行角色枚举包)
         if (!_charEnum.empty())
         {
             _session->SendPacket(_charEnum, true);
@@ -1152,6 +1169,7 @@ void WardenWin::Update(uint32 diff)
     }
 }
 
+// 缓存或立即发送角色枚举包
 void WardenWin::SetCharEnumPacket(WorldPacket &&packet)
 {
     // if we have already recorded system information, send the packet immediately.  otherwise delay
@@ -1161,6 +1179,7 @@ void WardenWin::SetCharEnumPacket(WorldPacket &&packet)
         _charEnum = std::move(packet);
 }
 
+// 向 GM 输出客户端硬件信息、空闲时长、虚拟机、EndScene 地址及 Proxifier 检测结果
 void WardenWin::SendPlayerInfo(ChatHandler *handler, bool includeFingerprint) const
 {
     if (!!_lastTimeCheckServer)

@@ -51,24 +51,25 @@ char serviceName[] = "mangosd";
 char serviceLongName[] = "MaNGOS world service";
 char serviceDescription[] = "Massive Network Game Object Server";
 /*
- * -1 - not in service mode
- *  0 - stopped
- *  1 - running
- *  2 - paused
+ * Windows 服务运行状态说明：
+ * -1 - not in service mode | 非服务模式
+ *  0 - stopped             | 已停止
+ *  1 - running             | 运行中
+ *  2 - paused              | 已暂停
  */
 int m_ServiceStatus = -1;
 #else
 #include "Platform/PosixDaemon.h"
 #endif
 
-DatabaseType WorldDatabase;                                 ///< Accessor to the world database
-DatabaseType CharacterDatabase;                             ///< Accessor to the character database
-DatabaseType LoginDatabase;                                 ///< Accessor to the realm/login database
-DatabaseType LogsDatabase;                                  ///< Accessor to the logs database
+DatabaseType WorldDatabase;                                 ///< Accessor to the world database | 世界数据库访问器
+DatabaseType CharacterDatabase;                             ///< Accessor to the character database | 角色数据库访问器
+DatabaseType LoginDatabase;                                 ///< Accessor to the realm/login database | 分区/登录数据库访问器
+DatabaseType LogsDatabase;                                  ///< Accessor to the logs database | 日志数据库访问器
 
-uint32 realmID;                                             ///< Id of the realm
+uint32 realmID;                                             ///< Id of the realm | 当前服务器分区（Realm）ID
 
-/// Launch the mangos server
+/// Launch the mangos server | 启动 MaNGOS 服务端主入口函数
 int main(int argc, char* argv[])
 {
     std::string auctionBotConfig, configFile, aiPlayerBotConfig, serviceParameter;
@@ -124,7 +125,7 @@ int main(int argc, char* argv[])
         _D_AIPLAYERBOT_CONFIG = aiPlayerBotConfig;
 #endif
 
-#ifdef _WIN32                                                // windows service command need execute before config read
+#ifdef _WIN32                                                // windows service command need execute before config read | Windows 服务控制命令需在读取配置文件前执行
     if (vm.count("s"))
     {
         switch (::tolower(serviceParameter[0]))
@@ -151,7 +152,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-#ifndef _WIN32                                               // posix daemon commands need apply after config read
+#ifndef _WIN32                                               // posix daemon commands need apply after config read | POSIX 守护进程命令需在读取配置文件后应用
     if (vm.count("s"))
     {
         switch (::tolower(serviceParameter[0]))
@@ -183,9 +184,9 @@ int main(int argc, char* argv[])
     sLog.outString("Using configuration file %s.", configFile.c_str());
 
     DETAIL_LOG("%s (Library: %s)", OPENSSL_VERSION_TEXT, OpenSSL_version(OPENSSL_VERSION));
-    // Load OpenSSL 3.0+ providers
+    // Load OpenSSL 3.0+ providers | 加载 OpenSSL 3.0+ 提供程序（Provider）
 #ifdef _WIN32
-    // For bundled OpenSSL library
+    // For bundled OpenSSL library | 为随附的 OpenSSL 动态库设置默认 Provider 搜索路径
     OSSL_PROVIDER_set_default_search_path(nullptr, boost::filesystem::current_path().string().c_str());
 #endif
     OSSL_PROVIDER* openssl_legacy = OSSL_PROVIDER_load(nullptr, "legacy");
@@ -207,17 +208,17 @@ int main(int argc, char* argv[])
     sLog.outString();
     sLog.outString("<Ctrl-C> to stop.");
 
-    ///- Set progress bars show mode
+    ///- Set progress bars show mode | 设置控制台进度条显示开关
     BarGoLink::SetOutputState(sConfig.GetBoolDefault("ShowProgressBars", true));
 
-    ///- and run the 'Master'
-    /// \todo Why do we need this 'Master'? Can't all of this be in the Main as for Realmd?
+    ///- and run the 'Master' | 启动并运行 'Master' 主控实例
+    /// \todo Why do we need this 'Master'? Can't all of this be in the Main as for Realmd? | 待办：为何需要独立的 'Master' 类？是否可以像 Realmd 一样全部放在 Main 中？
     return sMaster.Run();
 
-    // at sMaster return function exist with codes
-    // 0 - normal shutdown
-    // 1 - shutdown at error
-    // 2 - restart command used, this code can be used by restarter for restart mangosd
+    // at sMaster return function exist with codes | sMaster::Run() 返回值（进程退出码）含义：
+    // 0 - normal shutdown | 0 - 正常关闭
+    // 1 - shutdown at error | 1 - 发生错误异常退出
+    // 2 - restart command used, this code can be used by restarter for restart mangosd | 2 - 收到重启命令，守护脚本可据此退出码自动重启 mangosd
 }
 
 /// @}

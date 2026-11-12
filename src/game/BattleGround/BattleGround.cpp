@@ -38,6 +38,7 @@
 
 namespace MaNGOS
 {
+    // 本地化战场系统/阵营消息数据包构造器
     class BattleGroundChatBuilder
     {
         public:
@@ -52,7 +53,7 @@ namespace MaNGOS
 
                 if (i_args)
                 {
-                    // we need copy va_list before use or original va_list will corrupted
+                    // we need copy va_list before use or original va_list will corrupted (使用前必须复制 va_list 以免多语言循环时失效)
                     va_list ap;
                     va_copy(ap, *i_args);
 
@@ -72,6 +73,7 @@ namespace MaNGOS
             va_list* i_args;
     };
 
+    // 本地化战场 NPC 喊话数据包构造器
     class BattleGroundYellBuilder
     {
         public:
@@ -83,7 +85,7 @@ namespace MaNGOS
 
                 if (i_args)
                 {
-                    // we need copy va_list before use or original va_list will corrupted
+                    // we need copy va_list before use or original va_list will corrupted (复制可变参数列表以适配多语言广播)
                     va_list ap;
                     va_copy(ap, *i_args);
 
@@ -103,6 +105,7 @@ namespace MaNGOS
             va_list* i_args;
     };
 
+    // 本地化 BroadcastText 战场消息构造器
     class BattleGroundBroadcastBuilder
     {
         public:
@@ -120,6 +123,7 @@ namespace MaNGOS
     };
 
 
+    // 带两个本地化文本参数的战场聊天消息构造器
     class BattleGround2ChatBuilder
     {
         public:
@@ -151,6 +155,7 @@ namespace MaNGOS
             int32 i_arg2;
     };
 
+    // 带两个本地化文本参数的战场 NPC 喊话构造器
     class BattleGround2YellBuilder
     {
         public:
@@ -245,7 +250,7 @@ BattleGround::BattleGround(): m_buffChange(false), m_startDelayTime(0), m_arenaB
     m_startDelayTimes[BG_STARTING_EVENT_SECOND] = BG_START_DELAY_1M;
     m_startDelayTimes[BG_STARTING_EVENT_THIRD]  = BG_START_DELAY_30S;
     m_startDelayTimes[BG_STARTING_EVENT_FOURTH] = BG_START_DELAY_NONE;
-    // we must set to some default existing values
+    // we must set to some default existing values (默认启动倒计时提示语 ID)
     m_startMessageIds[BG_STARTING_EVENT_FIRST]  = 0;
     m_startMessageIds[BG_STARTING_EVENT_SECOND] = LANG_BG_WS_START_ONE_MINUTE;
     m_startMessageIds[BG_STARTING_EVENT_THIRD]  = LANG_BG_WS_START_HALF_MINUTE;
@@ -253,14 +258,14 @@ BattleGround::BattleGround(): m_buffChange(false), m_startDelayTime(0), m_arenaB
 }
 
 /**
-  Deconstructor
+  Deconstructor (析构函数：释放客户端可见实例编号、标记地图卸载、退出空闲队列并释放玩家记分记录)
 */
 BattleGround::~BattleGround()
 {
     // remove objects and creatures
     // (this is done automatically in mapmanager update, when the instance is reset after the reset time)
 
-    // skip template bgs as they were never added to visible bg list
+    // skip template bgs as they were never added to visible bg list (跳过模板战场，模板从未分配过客户端可见实例 ID)
     BattleGroundBracketId bracketId = GetBracketId();
     if (bracketId != BG_BRACKET_ID_TEMPLATE)
     {
@@ -271,11 +276,11 @@ BattleGround::~BattleGround()
     }
 
     // unload map
-    // map can be null at bg destruction
+    // map can be null at bg destruction (若关联战场地图存在，通知其卸载)
     if (m_bgMap)
         m_bgMap->SetUnload();
 
-    // remove from bg free slot queue
+    // remove from bg free slot queue (从空闲槽位队列移除)
     this->RemovedFromBgFreeSlotQueue(true);
 
     for (BattleGroundScoreMap::const_iterator itr = m_playerScores.begin(); itr != m_playerScores.end(); ++itr)
@@ -283,13 +288,13 @@ BattleGround::~BattleGround()
 }
 
 /**
-  Update method
+  Update method (战场主更新循环：处理掉线踢出、人数失衡提前结束倒计时、竞技场暗影视界刷新、开战倒计时及赛后传出)
 
   @param    diff
 */
 void BattleGround::Update(uint32 diff)
 {
-    // remove offline players from bg after 5 minutes
+    // remove offline players from bg after 5 minutes (掉线超过 5 分钟的玩家自动移出战场并标记逃兵状态)
     if (!m_offlineQueue.empty())
     {
         BattleGroundPlayerMap::iterator itr = m_players.find(*(m_offlineQueue.begin()));
@@ -297,7 +302,7 @@ void BattleGround::Update(uint32 diff)
         {
             if (itr->second.offlineRemoveTime <= sWorld.GetGameTime())
             {
-                // add deserter at next login
+                // add deserter at next login (下次登录时附加逃兵减益)
                 CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '%u' WHERE guid = '%u'", uint32(AT_LOGIN_ADD_BG_DESERTER), itr->first.GetCounter());
 
                 RemovePlayerAtLeave(itr->first, true, true);// remove player from BG
@@ -312,6 +317,7 @@ void BattleGround::Update(uint32 diff)
     /*********************************************************/
 
     // if less then minimum players are in on one side, then start premature finish timer
+    // (若任一方在场人数低于最低要求，启动提前结束倒计时并定时公告)
     if (GetStatus() == STATUS_IN_PROGRESS && !IsArena() && sBattleGroundMgr.GetPrematureFinishTime() && (GetPlayersCountByTeam(ALLIANCE) < GetMinPlayersPerTeam() || GetPlayersCountByTeam(HORDE) < GetMinPlayersPerTeam()))
     {
         if (!m_prematureCountDown)
@@ -327,7 +333,7 @@ void BattleGround::Update(uint32 diff)
         else if (!sBattleGroundMgr.IsTesting())
         {
             uint32 newtime = m_prematureCountDownTimer - diff;
-            // announce every minute
+            // announce every minute (剩余超过 1 分钟时每分钟提示一次)
             if (newtime > (MINUTE * IN_MILLISECONDS))
             {
                 if (newtime / (MINUTE * IN_MILLISECONDS) != m_prematureCountDownTimer / (MINUTE * IN_MILLISECONDS))
@@ -335,7 +341,7 @@ void BattleGround::Update(uint32 diff)
             }
             else
             {
-                // announce every 15 seconds
+                // announce every 15 seconds (最后 1 分钟内每 15 秒提示一次)
                 if (newtime / (15 * IN_MILLISECONDS) != m_prematureCountDownTimer / (15 * IN_MILLISECONDS))
                     PSendMessageToAll(LANG_BATTLEGROUND_PREMATURE_FINISH_WARNING_SECS, CHAT_MSG_SYSTEM, nullptr, (uint32)(m_prematureCountDownTimer / IN_MILLISECONDS));
             }
@@ -350,7 +356,7 @@ void BattleGround::Update(uint32 diff)
     /*********************************************************/
     if (IsArena() && !m_arenaBuffSpawned)
     {
-        // 60 seconds after start the buffobjects in arena should get spawned
+        // 60 seconds after start the buffobjects in arena should get spawned (竞技场开战 90 秒后刷出暗影视界增益水晶)
         if (m_startTime > static_cast<uint32>(m_startDelayTimes[BG_STARTING_EVENT_FIRST]) + static_cast<uint32>(ARENA_SPAWN_BUFF_OBJECTS))
         {
             SpawnEvent(ARENA_BUFF_EVENT, 0, true);
@@ -395,11 +401,11 @@ void BattleGround::Update(uint32 diff)
 
             StartingEventCloseDoors();
             SetStartDelayTime(m_startDelayTimes[BG_STARTING_EVENT_FIRST]);
-            // first start warning - 2 or 1 minute, only if defined
+            // first start warning - 2 or 1 minute, only if defined (首阶段关闭大门并广播开战公告)
             if (m_startMessageIds[BG_STARTING_EVENT_FIRST])
                 SendMessageToAll(m_startMessageIds[BG_STARTING_EVENT_FIRST], CHAT_MSG_BG_SYSTEM_NEUTRAL);
 
-            // Announce BG Started
+            // Announce BG Started (若配置开启则向全服发送战场开启公告)
             if (sWorld.getConfig(CONFIG_BOOL_BATTLEGROUND_QUEUE_ANNOUNCER_START))
             {
                 BattleGroundBracketId bracketId = GetBracketId();
@@ -411,19 +417,19 @@ void BattleGround::Update(uint32 diff)
                     sWorld.SendWorldText(LANG_ARENA_STARTED_ANNOUNCE_WORLD, GetName(), GetArenaType(), GetArenaType());
             }
         }
-        // After 1 minute or 30 seconds, warning is signalled
+        // After 1 minute or 30 seconds, warning is signalled (第二阶段提示：1 分钟或 30 秒)
         else if (GetStartDelayTime() <= m_startDelayTimes[BG_STARTING_EVENT_SECOND] && !(m_events & BG_STARTING_EVENT_2))
         {
             m_events |= BG_STARTING_EVENT_2;
             SendMessageToAll(m_startMessageIds[BG_STARTING_EVENT_SECOND], CHAT_MSG_BG_SYSTEM_NEUTRAL);
         }
-        // After 30 or 15 seconds, warning is signalled
+        // After 30 or 15 seconds, warning is signalled (第三阶段提示：30 秒或 15 秒)
         else if (GetStartDelayTime() <= m_startDelayTimes[BG_STARTING_EVENT_THIRD] && !(m_events & BG_STARTING_EVENT_3))
         {
             m_events |= BG_STARTING_EVENT_3;
             SendMessageToAll(m_startMessageIds[BG_STARTING_EVENT_THIRD], CHAT_MSG_BG_SYSTEM_NEUTRAL);
         }
-        // delay expired (atfer 2 or 1 minute)
+        // delay expired (atfer 2 or 1 minute) (倒计时归零：打开大门、移除准备光环并正式进入战斗状态)
         else if (GetStartDelayTime() <= 0 && !(m_events & BG_STARTING_EVENT_4))
         {
             m_events |= BG_STARTING_EVENT_4;
@@ -436,7 +442,7 @@ void BattleGround::Update(uint32 diff)
             SetStatus(STATUS_IN_PROGRESS);
             SetStartDelayTime(m_startDelayTimes[BG_STARTING_EVENT_FOURTH]);
 
-            // remove preparation
+            // remove preparation (移除准备光环并校验竞技场开局胜负条件)
             if (IsArena())
             {
                 for (BattleGroundPlayerMap::const_iterator itr = m_players.begin(); itr != m_players.end(); ++itr)
@@ -464,6 +470,7 @@ void BattleGround::Update(uint32 diff)
     if (GetStatus() == STATUS_IN_PROGRESS && IsArena())
     {
         // after 45 minutes without one team losing, the arena closes with no winner and -16 rating change for both
+        // (竞技场超过 45 分钟未决出胜负，强制平局结束且双方均扣 16 分)
         if (m_startTime > static_cast<uint32>(m_startDelayTimes[BG_STARTING_EVENT_FIRST]) + static_cast<uint32>(ARENA_FORCED_DRAW))
         {
             EndBattleGround(TEAM_NONE);
@@ -472,7 +479,7 @@ void BattleGround::Update(uint32 diff)
 
     if (GetStatus() == STATUS_WAIT_LEAVE)
     {
-        // remove all players from battleground after 2 minutes
+        // remove all players from battleground after 2 minutes (比赛结束 2 分钟后强制将所有剩余玩家传出战场)
         m_endTime -= diff;
         if (m_endTime <= 0)
         {
@@ -482,19 +489,19 @@ void BattleGround::Update(uint32 diff)
             {
                 next = itr;
                 ++next;
-                // itr is erased here!
+                // itr is erased here! (RemovePlayerAtLeave 会擦除当前迭代器元素)
                 RemovePlayerAtLeave(itr->first, true, true);// remove player from BG
                 // do not change any battleground's private variables
             }
         }
     }
 
-    // update start time
+    // update start time (累计战场已运行总时长)
     m_startTime += diff;
 }
 
 /**
-  Method that sets the team start location
+  Method that sets the team start location (设置指定阵营在战场内的出生传送坐标)
 
   @param    team Id
   @param    x
@@ -512,7 +519,7 @@ void BattleGround::SetTeamStartLoc(Team team, float x, float y, float z, float o
 }
 
 /**
-  Method that sends packet to all players
+  Method that sends packet to all players (向战场内所有在线玩家广播数据包)
 
   @param    packet
 */
@@ -531,7 +538,7 @@ void BattleGround::SendPacketToAll(WorldPacket const& packet) const
 }
 
 /**
-  Method that sends packet to the team
+  Method that sends packet to the team (向指定阵营的在线玩家发送数据包，可选择是否排除发送者自身)
 
   @param    team Id
   @param    packet
@@ -564,7 +571,7 @@ void BattleGround::SendPacketToTeam(Team teamId, WorldPacket const& packet, Play
 }
 
 /**
-  Method that plays sound to all players
+  Method that plays sound to all players (向全场在线玩家播放音效)
 
   @param    sound Id
   @param    team
@@ -577,7 +584,7 @@ void BattleGround::PlaySoundToAll(uint32 soundId)
 }
 
 /**
-  Method that plays sound to the given team
+  Method that plays sound to the given team (向指定阵营玩家播放音效)
 
   @param    sound Id
   @param    team
@@ -610,7 +617,7 @@ void BattleGround::PlaySoundToTeam(uint32 soundId, Team teamId)
 }
 
 /**
-  Method casts spell to an entire battleground team
+  Method casts spell to an entire battleground team (对指定阵营全体在线玩家施放法术)
 
   @param    spell Id
   @param    team
@@ -639,7 +646,7 @@ void BattleGround::CastSpellOnTeam(uint32 spellId, Team teamId)
 }
 
 /**
-  Method that rewards honor to team - called at the end of the battleground
+  Method that rewards honor to team - called at the end of the battleground (向指定阵营全体在线玩家发放额外荣誉)
 
   @param    honor
   @param    team
@@ -671,7 +678,7 @@ void BattleGround::RewardHonorToTeam(uint32 honor, Team teamId)
 }
 
 /**
-  Method that rewards reputation to team - called at the end of the battleground
+  Method that rewards reputation to team - called at the end of the battleground (向指定阵营全体在线玩家发放战场声望)
 
   @param    faction Id
   @param    reputation
@@ -706,7 +713,7 @@ void BattleGround::RewardReputationToTeam(uint32 factionId, uint32 reputation, T
 }
 
 /**
-  Method that updates world state for all players
+  Method that updates world state for all players (向全场在线玩家广播单个世界状态更新)
 
   @param    field
   @param    value
@@ -719,7 +726,7 @@ void BattleGround::UpdateWorldState(uint32 field, uint32 value)
 }
 
 /**
-  Method that updates world state for a give player
+  Method that updates world state for a give player (向指定玩家发送单个世界状态更新)
 
   @param    field
   @param    value
@@ -733,7 +740,7 @@ void BattleGround::UpdateWorldStateForPlayer(uint32 field, uint32 value, Player*
 }
 
 /**
-  Method that ends battleground
+  Method that ends battleground (结束战场或竞技场：结算胜负、记录战绩统计、计算竞技场 ELO 等级变化、发放奖章/任务奖励并广播结束面板)
 
   @param    winner team
 */
@@ -758,7 +765,7 @@ void BattleGround::EndBattleGround(Team winner)
 
         SetWinner(WINNER_ALLIANCE);
 
-        // reversed index for the bg score storage system
+        // reversed index for the bg score storage system (记分统计系统使用反向阵营索引)
         bgScoresWinner = TEAM_INDEX_HORDE;
     }
     else if (winner == HORDE)
@@ -774,7 +781,7 @@ void BattleGround::EndBattleGround(Team winner)
     else
         SetWinner(WINNER_NONE);
 
-    // store battleground scores
+    // store battleground scores (若开启战绩统计则写入 pvpstats_battlegrounds 表)
     if (IsBattleGround() && sWorld.getConfig(CONFIG_BOOL_BATTLEGROUND_SCORE_STATISTICS))
     {
         static SqlStatementID insPvPstatsBattleground;
@@ -785,16 +792,17 @@ void BattleGround::EndBattleGround(Team winner)
         uint8 battleground_type = (uint8)GetTypeId();
 
         // the id comes from a counter: reading MAX(id) here would give the same id to two battlegrounds ending before the first insert runs
+        // (使用原子计数器生成唯一 ID，避免多战场同时结束时 MAX(id) 冲突)
         battleground_id = sBattleGroundMgr.GeneratePvpStatsBattleGroundId();
 
         stmt.PExecute(battleground_id, bgScoresWinner, battleground_bracket, battleground_type);
     }
 
     SetStatus(STATUS_WAIT_LEAVE);
-    // we must set it this way, because end time is sent in packet!
+    // we must set it this way, because end time is sent in packet! (必须先设为自动传出倒计时再发送状态数据包)
     m_endTime = TIME_TO_AUTOREMOVE;
 
-    // arena rating calculation
+    // arena rating calculation (排位竞技场结算战队 ELO 等级变动)
     if (IsArena() && IsRated())
     {
         if (winner != TEAM_NONE)
@@ -841,7 +849,7 @@ void BattleGround::EndBattleGround(Team winner)
 
         if (m_Player.second.offlineRemoveTime)
         {
-            // if rated arena match - make member lost!
+            // if rated arena match - make member lost! (排位赛结束时仍在离线状态的队员按战败扣分)
             if (IsArena() && IsRated() && winner_arena_team && loser_arena_team)
             {
                 if (team == winner)
@@ -859,7 +867,7 @@ void BattleGround::EndBattleGround(Team winner)
             continue;
         }
 
-        // should remove spirit of redemption
+        // should remove spirit of redemption (移除救赎之魂形态)
         if (plr->HasAuraType(SPELL_AURA_SPIRIT_OF_REDEMPTION))
             plr->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
 
@@ -870,14 +878,14 @@ void BattleGround::EndBattleGround(Team winner)
         }
         else
         {
-            // needed cause else in av some creatures will kill the players at the end
+            // needed cause else in av some creatures will kill the players at the end (结束时脱战以防奥山残留怪物继续攻击)
             plr->CombatStop();
         }
 
         // this line is obsolete - team is set ALWAYS
         // if(!team) team = plr->GetTeam();
 
-        // per player calculation
+        // per player calculation (计算在线参战成员的个人竞技场等级变化)
         if (IsArena() && IsRated() && winner_arena_team && loser_arena_team)
         {
             if (team == winner)
@@ -886,7 +894,7 @@ void BattleGround::EndBattleGround(Team winner)
                 loser_arena_team->MemberLost(plr, winner_rating);
         }
 
-        // store battleground score statistics for each player
+        // store battleground score statistics for each player (保存单个玩家战场战绩至 pvpstats_players 表)
         if (IsBattleGround() && sWorld.getConfig(CONFIG_BOOL_BATTLEGROUND_SCORE_STATISTICS))
         {
             static SqlStatementID insPvPstatsPlayer;
@@ -936,7 +944,7 @@ void BattleGround::EndBattleGround(Team winner)
         // update arena points only after increasing the player's match count!
         // obsolete: winner_arena_team->UpdateArenaPointsHelper();
         // obsolete: loser_arena_team->UpdateArenaPointsHelper();
-        // save the stat changes
+        // save the stat changes (持久化战队与个人战绩变化并广播给全体在线队员)
         winner_arena_team->SaveToDB();
         loser_arena_team->SaveToDB();
         // send updated arena team stats to players
@@ -945,13 +953,13 @@ void BattleGround::EndBattleGround(Team winner)
         loser_arena_team->NotifyStatsChanged();
     }
 
-    // AV message is different - TODO: check if others are also wrong
+    // AV message is different - TODO: check if others are also wrong (奥山由传令官自行播报胜负消息，其余战场统一发送系统通告)
     if (winmsg_id && GetTypeId() != BATTLEGROUND_AV)
         SendMessageToAll(winmsg_id, CHAT_MSG_BG_SYSTEM_NEUTRAL);
 }
 
 /**
-  Method that calculates and rewars bonus honor from kill
+  Method that calculates and rewars bonus honor from kill (按最高准入等级计算指定荣誉击杀数对应的额外荣誉点数)
 
   @param    kills
 */
@@ -961,6 +969,7 @@ uint32 BattleGround::GetBonusHonorFromKill(uint32 kills) const
     return (uint32)MaNGOS::Honor::hk_honor_at_level(GetMaxLevel(), kills);
 }
 
+// 更新战场运行状态并同步通知队列线程中的空闲槽位快照
 void BattleGround::SetStatus(BattleGroundStatus status)
 {
     m_status = status;
@@ -972,7 +981,7 @@ void BattleGround::SetStatus(BattleGroundStatus status)
 }
 
 /**
-  Function that returns the battleground master entry
+  Function that returns the battleground master entry (返回对应战场类型的战场军官 NPC 条目 ID，用于补发奖章邮件发件人)
 */
 uint32 BattleGround::GetBattlemasterEntry() const
 {
@@ -988,7 +997,7 @@ uint32 BattleGround::GetBattlemasterEntry() const
 }
 
 /**
-  Method that rewards battleground mark - called at the end of the battleground
+  Method that rewards battleground mark - called at the end of the battleground (向玩家发放胜/负方对应的战场荣誉奖章)
 
   @param    player
   @param    count
@@ -1024,7 +1033,7 @@ void BattleGround::RewardMark(Player* player, uint32 count)
 }
 
 /**
-  Method that rewards spell cast - called at the end of the battleground
+  Method that rewards spell cast - called at the end of the battleground (向非挂机状态的玩家施放奖励法术)
 
   @param    player
   @param    spellId
@@ -1032,6 +1041,7 @@ void BattleGround::RewardMark(Player* player, uint32 count)
 void BattleGround::RewardSpellCast(Player* player, uint32 spellId) const
 {
     // 'Inactive' this aura prevents the player from gaining honor points and battleground tokens
+    // (带有挂机不活跃减益的玩家不发放荣誉和奖章)
     if (player->GetDummyAura(SPELL_AURA_PLAYER_INACTIVE))
         return;
 
@@ -1046,7 +1056,7 @@ void BattleGround::RewardSpellCast(Player* player, uint32 spellId) const
 }
 
 /**
-  Method that rewards item - called at the end of the battleground
+  Method that rewards item - called at the end of the battleground (发放物品奖励，背包满时通过邮件补发)
 
   @param    player
   @param    mark
@@ -1068,7 +1078,7 @@ void BattleGround::RewardItem(Player* player, uint32 itemId, uint32 count)
         return;
     }
 
-    if (msg != EQUIP_ERR_OK)                                // convert to possible store amount
+    if (msg != EQUIP_ERR_OK)                                // convert to possible store amount (扣除超出背包容量的数量)
         count -= no_space_count;
 
     if (count != 0 && !dest.empty())                        // can add some
@@ -1080,7 +1090,7 @@ void BattleGround::RewardItem(Player* player, uint32 itemId, uint32 count)
 }
 
 /**
-  Method that sends reward by mail - called at the end of the battleground
+  Method that sends reward by mail - called at the end of the battleground (背包空间不足时通过系统邮件补发战场奖章)
 
   @param    player
   @param    mark
@@ -1098,7 +1108,7 @@ void BattleGround::SendRewardMarkByMail(Player* player, uint32 mark, uint32 coun
 
     if (Item* markItem = Item::CreateItem(mark, count, player))
     {
-        // save new item before send
+        // save new item before send (发送邮件前先持久化物品，防止发信失败丢失)
         markItem->SaveToDB();                               // save for prevent lost at next mail load, if send fail then item will deleted
 
         int loc_idx = player->GetSession()->GetSessionDbLocaleIndex();
@@ -1117,7 +1127,7 @@ void BattleGround::SendRewardMarkByMail(Player* player, uint32 mark, uint32 coun
 }
 
 /**
-  Method that rewards player quest complete - called at the end of the battleground
+  Method that rewards player quest complete - called at the end of the battleground (向胜利方玩家触发战场日常/胜利任务完成法术)
 
   @param    player
 */
@@ -1146,7 +1156,7 @@ void BattleGround::RewardQuestComplete(Player* player)
 }
 
 /**
-  Method that blocks player movement - called at the end of battleground
+  Method that blocks player movement - called at the end of battleground (战场结束时冻结玩家客户端移动控制权)
 */
 void BattleGround::BlockMovement(Player* player)
 {
@@ -1158,7 +1168,7 @@ void BattleGround::BlockMovement(Player* player)
 }
 
 /**
-  Method that handles player removal on leaving battleground
+  Method that handles player removal on leaving battleground (处理玩家离开战场或掉线超时移出：清理状态、团队、排位赛逃跑扣分、队列空位并传回原地图)
 
   @param    player guid
   @param    isOnTransport
@@ -1169,17 +1179,18 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
     Team team = GetPlayerTeam(playerGuid);
     bool participant = false;
 
-    // Remove from lists/maps
+    // Remove from lists/maps (从在场玩家映射移除并减少队伍计数)
     BattleGroundPlayerMap::iterator itr = m_players.find(playerGuid);
     if (itr != m_players.end())
     {
         UpdatePlayersCountByTeam(team, true);               // -1 player
         m_players.erase(itr);
         // check if the player was a participant of the match, or only entered through gm command (goname)
+        // (区分正常参赛玩家与 GM 传送旁观)
         participant = true;
     }
 
-    // Arena scoreboard retains all players.
+    // Arena scoreboard retains all players. (竞技场记分板保留所有参赛者记录至比赛结束)
     if (IsBattleGround() && GetStatus() != STATUS_WAIT_LEAVE)
     {
         BattleGroundScoreMap::iterator itr2 = m_playerScores.find(playerGuid);
@@ -1194,7 +1205,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
 
     if (player)
     {
-        // Remove flag set in BattleGround::BlockMovement()
+        // Remove flag set in BattleGround::BlockMovement() (恢复客户端控制标记)
         player->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CLIENT_CONTROL_LOST);
 
         // should remove spirit of redemption
@@ -1203,14 +1214,14 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
 
         player->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
-        if (!player->IsAlive())                                // resurrect on exit
+        if (!player->IsAlive())                                // resurrect on exit (离开战场前自动复活)
         {
             player->ResurrectPlayer(1.0f);
             player->SpawnCorpseBones();
         }
     }
 
-    RemovePlayer(player, playerGuid);                                // BG subclass specific code
+    RemovePlayer(player, playerGuid);                                // BG subclass specific code (调用具体战场的离场清理钩子，如掉旗)
 
     if (participant) // if the player was a match participant, remove auras, calc rating, update queue
     {
@@ -1223,7 +1234,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
 
             if (team != ALLIANCE && team != HORDE) team = player->GetTeam();
 
-            // if arena, remove the specific arena auras
+            // if arena, remove the specific arena auras (若为竞技场，清除临时光环、恢复临时解散的宠物并结算中途退赛扣分)
             if (IsArena())
             {
                 player->RemoveArenaAuras(true);                // removes debuffs / dots etc., we don't want the player to die after porting out
@@ -1235,7 +1246,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
 
                 if (IsRated() && (GetStatus() == STATUS_WAIT_JOIN || GetStatus() == STATUS_IN_PROGRESS))
                 {
-                    // left a rated match while the encounter was in progress, consider as loser
+                    // left a rated match while the encounter was in progress, consider as loser (排位赛中途退出直接按战败扣分)
                     ArenaTeam* winner_arena_team = sObjectMgr.GetArenaTeamById(GetArenaTeamIdForTeam(GetOtherTeam(team)));
                     ArenaTeam* loser_arena_team = sObjectMgr.GetArenaTeamById(GetArenaTeamIdForTeam(team));
 
@@ -1251,10 +1262,11 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
             }
 
             // this call is important, because player, when joins to battleground, this method is not called, so it must be called when leaving bg
+            // (释放玩家身上的排队槽位)
             player->RemoveBattleGroundQueueId(bgQueueTypeId);
         }
         else
-            // removing offline participant
+            // removing offline participant (处理离线参赛者：排位赛中同样按战败扣分)
         {
             if (IsRated() && GetStatus() == STATUS_IN_PROGRESS)
             {
@@ -1266,10 +1278,10 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
             }
         }
 
-        // remove from raid group if player is member
+        // remove from raid group if player is member (从战场临时团队移除该成员)
         if (Group* group = GetBgRaid(team))
         {
-            if (!group->RemoveMember(playerGuid, 0))              // group was disbanded
+            if (!group->RemoveMember(playerGuid, 0))              // group was disbanded (队伍已空则销毁战场团队)
             {
                 SetBgRaid(team, nullptr);
                 delete group;
@@ -1277,7 +1289,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
         }
 
         SetInvitedCount(team, GetInvitedCount(team) - 1); // change ahead of free slot queue - will be synched again after
-        // we should update battleground queue, but only if bg isn't ending
+        // we should update battleground queue, but only if bg isn't ending (普通战场尚在进行中时，通知队列线程释出空位并触发补人匹配)
         if (IsBattleGround() && GetStatus() < STATUS_WAIT_LEAVE)
         {
             // a player has left the battleground, so there are free slots -> add to queue
@@ -1295,7 +1307,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
             });
         }
 
-        // Let others know
+        // Let others know (通知同阵营队友该玩家已离开战场)
         WorldPacket data;
         sBattleGroundMgr.BuildPlayerLeftBattleGroundPacket(data, playerGuid);
         SendPacketToTeam(team, data, player, false);
@@ -1303,7 +1315,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
 
     if (player)
     {
-        // Do next only if found in battleground
+        // Do next only if found in battleground (清空玩家战场标记并传回入场前记录点)
         player->SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);  // We're not in BG.
         // reset destination bg team
         player->SetBGTeam(TEAM_NONE);
@@ -1318,7 +1330,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid playerGuid, bool isOnTransport
 }
 
 /**
-  Method that is called when no players remains in battleground
+  Method that is called when no players remains in battleground (重置战场所有通用属性为待分配状态)
 */
 void BattleGround::Reset()
 {
@@ -1331,7 +1343,7 @@ void BattleGround::Reset()
 
     m_events = 0;
 
-    // door-event2 is always 0
+    // door-event2 is always 0 (大门事件默认激活 event2=0)
     m_activeEvents[BG_EVENT_DOOR] = 0;
     if (IsArena())
     {
@@ -1354,7 +1366,7 @@ void BattleGround::Reset()
 }
 
 /**
-  Method that starts the battleground
+  Method that starts the battleground (将战场实例注册进管理器以开始接受 Update 驱动)
 */
 void BattleGround::StartBattleGround()
 {
@@ -1369,13 +1381,13 @@ void BattleGround::StartBattleGround()
 }
 
 /**
-  Method that is called when adding a player to the battleground
+  Method that is called when adding a player to the battleground (玩家进入战场实例：初始化阵营团队、竞技场旗帜与准备光环)
 
   @param    player
 */
 void BattleGround::AddPlayer(Player* player)
 {
-    // remove afk from player
+    // remove afk from player (进场清除挂机状态)
     if (player->isAFK())
         player->ToggleAFK();
 
@@ -1397,21 +1409,21 @@ void BattleGround::AddPlayer(Player* player)
     sBattleGroundMgr.BuildPlayerJoinedBattleGroundPacket(data, player);
     SendPacketToTeam(team, data, player, false);
 
-    // add arena specific auras
+    // add arena specific auras (竞技场进场重置技能冷却、移除临时附魔/造物、施加金/绿阵营旗帜光环)
     if (IsArena())
     {
         player->RemoveArenaSpellCooldowns();
         player->RemoveArenaAuras();
         player->RemoveAllEnchantments(TEMP_ENCHANTMENT_SLOT, true);
 
-        if (team == ALLIANCE)                               // gold
+        if (team == ALLIANCE)                               // gold (金队)
         {
             if (player->GetTeam() == HORDE)
                 player->CastSpell(player, SPELL_HORDE_GOLD_FLAG, TRIGGERED_OLD_TRIGGERED);
             else
                 player->CastSpell(player, SPELL_ALLIANCE_GOLD_FLAG, TRIGGERED_OLD_TRIGGERED);
         }
-        else                                                // green
+        else                                                // green (绿队)
         {
             if (player->GetTeam() == HORDE)
                 player->CastSpell(player, SPELL_HORDE_GREEN_FLAG, TRIGGERED_OLD_TRIGGERED);
@@ -1428,10 +1440,10 @@ void BattleGround::AddPlayer(Player* player)
     else
     {
         if (GetStatus() == STATUS_WAIT_JOIN)                // not started yet
-            player->CastSpell(player, SPELL_PREPARATION, TRIGGERED_OLD_TRIGGERED);   // reduces all mana cost of spells.
+            player->CastSpell(player, SPELL_PREPARATION, TRIGGERED_OLD_TRIGGERED);   // reduces all mana cost of spells. (准备阶段免蓝消耗光环)
     }
 
-    // setup BG group membership
+    // setup BG group membership (编入对应阵营的战场团队)
     PlayerAddedToBgCheckIfBgIsRunning(player);
     AddOrSetPlayerToCorrectBgGroup(player, guid, team);
 
@@ -1441,7 +1453,7 @@ void BattleGround::AddPlayer(Player* player)
 
 /* this method adds player to his team's bg group, or sets his correct group if player is already in bg group */
 /**
-  Method that handles adding players to the correct BG group
+  Method that handles adding players to the correct BG group (将玩家加入或创建所属阵营的战场团队)
 
   @param    player
   @param    objectGuid
@@ -1464,7 +1476,7 @@ void BattleGround::AddOrSetPlayerToCorrectBgGroup(Player* plr, ObjectGuid player
                     group->ChangeLeader(playerGuid);
         }
     }
-    else                                                    // first player joined
+    else                                                    // first player joined (首位队员进场时创建团队)
     {
         group = new Group;
         SetBgRaid(team, group);
@@ -1473,7 +1485,7 @@ void BattleGround::AddOrSetPlayerToCorrectBgGroup(Player* plr, ObjectGuid player
 }
 
 /**
-  Method that handles players logging out from ongoing battlegrounds
+  Method that handles players logging out from ongoing battlegrounds (玩家在战场内重连登录：清除离线超时移除记录)
 
   @param    player
 */
@@ -1498,7 +1510,7 @@ void BattleGround::EventPlayerLoggedIn(Player* player)
 }
 
 /**
-  Method that handles players logging out from ongoing battlegrounds
+  Method that handles players logging out from ongoing battlegrounds (玩家在战场内掉线登出：加入 5 分钟超时移除队列，竞技场若仅剩一人则判负)
 
   @param    player
 */
@@ -1510,10 +1522,10 @@ void BattleGround::EventPlayerLoggedOut(Player* player)
 
     if (GetStatus() == STATUS_IN_PROGRESS)
     {
-        // drop flag and handle other cleanups
+        // drop flag and handle other cleanups (触发掉旗等离场清理)
         RemovePlayer(player, player->GetObjectGuid());
 
-        // 1 player is logging out, if it is the last, then end arena!
+        // 1 player is logging out, if it is the last, then end arena! (竞技场若本队最后一名存活者登出，直接判敌方获胜)
         if (IsArena())
             if (GetAlivePlayersCountByTeam(player->GetTeam()) <= 1 && GetPlayersCountByTeam(GetOtherTeam(player->GetTeam())))
                 EndBattleGround(GetOtherTeam(player->GetTeam()));
@@ -1522,10 +1534,11 @@ void BattleGround::EventPlayerLoggedOut(Player* player)
 
 /**
   Function that returns the number of players that can join a battleground based on the provided team
+  (将未满员的普通战场登记到全局空闲槽位队列以便接受补人)
 */
 bool BattleGround::AddToBgFreeSlotQueue()
 {
-    // make sure to add only once
+    // make sure to add only once (仅添加一次且仅适用于普通战场)
     if (!m_hasBgFreeSlotQueue && IsBattleGround())
     {
         m_hasBgFreeSlotQueue = true;
@@ -1541,7 +1554,7 @@ bool BattleGround::AddToBgFreeSlotQueue()
 }
 
 /**
-  Method that removes this battleground from free queue - it must be called when deleting battleground
+  Method that removes this battleground from free queue - it must be called when deleting battleground (从空闲槽位队列注销战场实例)
 */
 void BattleGround::RemovedFromBgFreeSlotQueue(bool removeFromQueue)
 {
@@ -1565,7 +1578,7 @@ void BattleGround::SetInvitedCount(Team team, uint32 count)
 }
 
 /**
-  Function that returns the number of players that can join a battleground based on the provided team
+  Function that returns the number of players that can join a battleground based on the provided team (计算指定阵营剩余可邀请名额)
 
   @param    team
 */
@@ -1579,7 +1592,7 @@ uint32 BattleGround::GetFreeSlotsForTeam(Team team) const
 }
 
 /**
-  Method that updates player score
+  Method that updates player score (更新玩家基础战场记分统计：击杀、死亡、荣誉击杀、额外荣誉、伤害量、治疗量)
 
   @param    player
   @param    type
@@ -1590,34 +1603,34 @@ void BattleGround::UpdatePlayerScore(Player* player, uint32 type, uint32 value)
     // this procedure is called from virtual function implemented in bg subclass
     BattleGroundScoreMap::const_iterator itr = m_playerScores.find(player->GetObjectGuid());
 
-    if (itr == m_playerScores.end())                        // player not found...
+    if (itr == m_playerScores.end())                        // player not found... (未找到玩家记分记录)
         return;
 
     switch (type)
     {
-        case SCORE_KILLING_BLOWS:                           // Killing blows
+        case SCORE_KILLING_BLOWS:                           // Killing blows (最后一击次数)
             itr->second->killingBlows += value;
             break;
-        case SCORE_DEATHS:                                  // Deaths
+        case SCORE_DEATHS:                                  // Deaths (死亡次数)
             itr->second->deaths += value;
             break;
-        case SCORE_HONORABLE_KILLS:                         // Honorable kills
+        case SCORE_HONORABLE_KILLS:                         // Honorable kills (荣誉击杀次数)
             itr->second->honorableKills += value;
             break;
-        case SCORE_BONUS_HONOR:                             // Honor bonus
+        case SCORE_BONUS_HONOR:                             // Honor bonus (额外荣誉点数，竞技场不发放)
             // do not add honor in arenas
             if (IsBattleGround())
             {
-                // reward honor instantly
+                // reward honor instantly (即时发放并记录到记分表)
                 if (player->RewardHonor(nullptr, 1, (float)value))
                     itr->second->bonusHonor += value;
             }
             break;
         // used only in EY, but in MSG_PVP_LOG_DATA opcode
-        case SCORE_DAMAGE_DONE:                             // Damage Done
+        case SCORE_DAMAGE_DONE:                             // Damage Done (造成伤害总量)
             itr->second->damageDone += value;
             break;
-        case SCORE_HEALING_DONE:                            // Healing Done
+        case SCORE_HEALING_DONE:                            // Healing Done (造成治疗总量)
             itr->second->healingDone += value;
             break;
         default:
@@ -1627,7 +1640,7 @@ void BattleGround::UpdatePlayerScore(Player* player, uint32 type, uint32 value)
 }
 
 /**
-  Method that handles door closing
+  Method that handles door closing (关闭指定数据库 GUID 的战场大门)
 
   @param    gameobject guid
 */
@@ -1649,7 +1662,7 @@ void BattleGround::DoorClose(uint32 dbGuid)
 }
 
 /**
-  Method that handles opens doors
+  Method that handles opens doors (开启指定数据库 GUID 的战场大门)
 
   @param    gameobject guid
 */
@@ -1667,7 +1680,7 @@ void BattleGround::DoorOpen(uint32 dbGuid)
 }
 
 /**
-  Function that returns the premature winner
+  Function that returns the premature winner (基类默认按双方在场人数判定人数不足提前结束的胜者)
 */
 Team BattleGround::GetPrematureWinner()
 {
@@ -1684,7 +1697,7 @@ Team BattleGround::GetPrematureWinner()
 }
 
 /**
-  Function that handles creature load from DB event map
+  Function that handles creature load from DB event map (数据库生物加载到战场地图时登记到事件对象表，若所属事件未激活则设为隐藏状态)
 
   @param    creature
 */
@@ -1700,7 +1713,7 @@ void BattleGround::OnObjectDBLoad(Creature* creature)
 }
 
 /**
-  Function returns a creature guid from event map
+  Function returns a creature guid from event map (从指定事件对象表中取第一个生物 DB GUID)
 
   @param    event1
   @param    event2
@@ -1715,7 +1728,7 @@ uint32 BattleGround::GetSingleCreatureGuid(uint8 event1, uint8 event2)
 }
 
 /**
-  Function returns a gameobject guid from event map
+  Function returns a gameobject guid from event map (从指定事件对象表中取第一个游戏对象 DB GUID)
   @param    event1
   @param    event2
 */
@@ -1731,7 +1744,7 @@ uint32 BattleGround::GetSingleGameObjectGuid(uint8 event1, uint8 event2)
 }
 
 /**
-  Method that handles gameobject load from DB event map
+  Method that handles gameobject load from DB event map (数据库游戏对象加载到战场地图时登记到事件对象表，并同步大门与隐藏状态)
 
   @param    gameobject
 */
@@ -1753,7 +1766,7 @@ void BattleGround::OnObjectDBLoad(GameObject* obj)
 }
 
 /**
-  Function that checks if event handles doors
+  Function that checks if event handles doors (判断是否为大门控制事件)
 
   @param    event1
   @param    event2
@@ -1773,7 +1786,7 @@ bool BattleGround::IsDoorEvent(uint8 event1, uint8 event2) const
 }
 
 /**
-  Method that handles door opening
+  Method that handles door opening (打开指定大门事件关联的所有大门游戏对象)
 
   @param    event1
   @param    event2
@@ -1797,7 +1810,7 @@ void BattleGround::OpenDoorEvent(uint8 event1, uint8 event2 /*=0*/)
 }
 
 /**
-  Method that handles event spawn
+  Method that handles event spawn (激活或关闭指定战场事件：刷新新阶段生物/对象，同时自动反激活同组旧阶段)
 
   @param    event1
   @param    event2
@@ -1807,13 +1820,14 @@ void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
 {
     // stop if we want to spawn something which was already spawned
     // or despawn something which was already despawned
+    // (幂等保护：避免重复刷出已激活事件或重复移除未激活事件)
     if (event2 == BG_EVENT_NONE || (spawn && m_activeEvents[event1] == event2)
             || (!spawn && m_activeEvents[event1] != event2))
         return;
 
     if (spawn)
     {
-        // if event gets spawned, the current active event mus get despawned
+        // if event gets spawned, the current active event mus get despawned (刷出新事件前先关闭同 event1 下之前激活的旧事件)
         SpawnEvent(event1, m_activeEvents[event1], false);
         m_activeEvents[event1] = event2;                    // set this event to active
     }
@@ -1830,7 +1844,7 @@ void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
 }
 
 /**
-  Method that changes the battleground gameobject spawn state
+  Method that changes the battleground gameobject spawn state (切换战场游戏对象的刷新或强制隐藏状态)
 
   @param    gameobject guid
   @param    respawn time (can be 0 or 1 day)
@@ -1869,7 +1883,7 @@ void BattleGround::ChangeBgObjectSpawnState(uint32 dbGuid, uint32 respawntime)
 }
 
 /**
-  Method that changes the battleground creature spawn state
+  Method that changes the battleground creature spawn state (切换战场生物的刷新或强制消失状态)
 
   @param    gameobject guid
   @param    respawn time (can be 0 or 1 day)
@@ -1899,7 +1913,7 @@ void BattleGround::ChangeBgCreatureSpawnState(uint32 dbGuid, uint32 respawntime)
 }
 
 /**
-  Method that sends message to all players
+  Method that sends message to all players (向战场所有玩家按各自客户端语言发送系统消息)
 
   @param    text entry
   @param    chat type
@@ -1913,7 +1927,7 @@ void BattleGround::SendMessageToAll(int32 entry, ChatMsg type, Player const* sou
 }
 
 /**
-  Method that sends yell to all players
+  Method that sends yell to all players (向战场所有玩家发送 NPC 喊话)
 
   @param    text entry
   @param    language
@@ -1939,7 +1953,7 @@ void BattleGround::PSendMessageToAll(int32 entry, ChatMsg type, Player const* so
 }
 
 /**
-  Method that sends message to all players
+  Method that sends message to all players (发送带两个本地化文本参数的战场消息)
 
   @param    text entry
   @param    chat type
@@ -1955,7 +1969,7 @@ void BattleGround::SendMessage2ToAll(int32 entry, ChatMsg type, Player const* so
 }
 
 /**
-  Method that sends yell to all players
+  Method that sends yell to all players (发送带两个本地化文本参数的战场 NPC 喊话)
 
   @param    text entry
   @param    language
@@ -1990,7 +2004,7 @@ void BattleGround::SendBcdToTeam(int32 bcdEntry, ChatMsg msgtype, Creature const
 }
 
 /**
-  Function that ends the battleground immediately
+  Function that ends the battleground immediately (异常情况立即强制结束战场并切换至等待离开状态)
 */
 void BattleGround::EndNow()
 {
@@ -2000,7 +2014,7 @@ void BattleGround::EndNow()
 }
 
 /**
-  Method that handles buff triggering based on trap gameobjects
+  Method that handles buff triggering based on trap gameobjects (消耗战场符文陷阱对象，触发 3 分钟重生计时)
 
   @param    gameobject guid
 */
@@ -2010,21 +2024,21 @@ void BattleGround::HandleTriggerBuff(ObjectGuid go_guid)
     if (!obj || obj->GetGoType() != GAMEOBJECT_TYPE_TRAP || !obj->IsSpawned())
         return;
 
-    obj->SetLootState(GO_JUST_DEACTIVATED);             // can be despawned or destroyed
+    obj->SetLootState(GO_JUST_DEACTIVATED);             // can be despawned or destroyed (将符文设为已触发等待重生)
 }
 
 /**
-  Method that handles killing players
+  Method that handles killing players (记录击杀者与受害者的死亡、荣誉击杀、最后一击统计，并在普通战场标记可剥皮徽记)
 
   @param    victim player
   @param    killer player
 */
 void BattleGround::HandleKillPlayer(Player* player, Player* killer)
 {
-    // add +1 deaths
+    // add +1 deaths (死者死亡次数 +1)
     UpdatePlayerScore(player, SCORE_DEATHS, 1);
 
-    // add +1 kills to group and +1 killing_blows to killer
+    // add +1 kills to group and +1 killing_blows to killer (击杀者最后一击 +1，有效距离内同阵营队友荣誉击杀 +1)
     if (killer)
     {
         UpdatePlayerScore(killer, SCORE_HONORABLE_KILLS, 1);
@@ -2042,13 +2056,13 @@ void BattleGround::HandleKillPlayer(Player* player, Player* killer)
         }
     }
 
-    // to be able to remove insignia -- ONLY IN BattleGrounds
+    // to be able to remove insignia -- ONLY IN BattleGrounds (普通战场中允许敌方拾取战败玩家尸体徽记)
     if (!IsArena())
         player->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
 }
 
 /**
-  Function that returns the team of the given player - used mainly in arenas
+  Function that returns the team of the given player - used mainly in arenas (获取玩家在当前战场或竞技场内分配的阵营)
 
   @param    player objectguid
 */
@@ -2061,7 +2075,7 @@ Team BattleGround::GetPlayerTeam(ObjectGuid guid)
 }
 
 /**
-  Function that returns returns if player is in battleground
+  Function that returns returns if player is in battleground (判断指定 GUID 玩家是否在当前战场在场列表中)
 
   @param    player objectguid
 */
@@ -2072,7 +2086,7 @@ bool BattleGround::IsPlayerInBattleGround(ObjectGuid guid)
 }
 
 /**
-  Method that handles player added to battleground when battleground is in progress
+  Method that handles player added to battleground when battleground is in progress (若玩家在战场已进入等待离开阶段后进场/重连，立即冻结移动并发送结算面板)
 
   @param    player
 */
@@ -2094,7 +2108,7 @@ void BattleGround::PlayerAddedToBgCheckIfBgIsRunning(Player* player)
 }
 
 /**
-  Function that counts the alive players by team
+  Function that counts the alive players by team (统计指定阵营当前真正存活的玩家数，排除救赎之魂状态)
 
   @param    team
 */
@@ -2114,7 +2128,7 @@ uint32 BattleGround::GetAlivePlayersCountByTeam(Team team) const
 }
 
 /**
-  Method that checks arena win conditions
+  Method that checks arena win conditions (检查竞技场任一方是否已全员阵亡，若是则判存活方获胜)
 */
 void BattleGround::CheckArenaWinConditions()
 {
@@ -2125,7 +2139,7 @@ void BattleGround::CheckArenaWinConditions()
 }
 
 /**
-  Method that sets battleground group as raid
+  Method that sets battleground group as raid (设置战场内指定阵营的临时团队指针并维护双向关联)
 
   @param    team
   @param    battleground raid
@@ -2145,6 +2159,7 @@ void BattleGround::SetBgRaid(Team team, Group* bgRaid)
 
 /**
   Function that returns the gameobject pointer that was stored in m_goEntryGuidStore. Can return nullptr
+  (从缓存表中按条目读取单例游戏对象指针)
 
   @param    gameobject entry
 */
@@ -2162,6 +2177,7 @@ GameObject* BattleGround::GetSingleGameObjectFromStorage(uint32 entry) const
 
 /**
   Function that returns pointer to a loaded Creature that was stored in m_goEntryGuidStore. Can return nullptr
+  (从缓存表中按条目读取单例生物指针)
 
   @param    creature entry
   @param    skip debug log

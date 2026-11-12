@@ -21,12 +21,21 @@ SDComment:
 SDCategory: Hellfire Citadel, Magtheridon's lair
 EndScriptData */
 
+// 玛瑟里顿（团队副本首领）
+/* 遭遇战概述：
+ * 玛瑟里顿是被囚禁于地狱火堡垒地底的深渊领主前任外域统治者：
+ * 阶段一：击杀五名地狱火导魔师，限时两分钟内击杀否则玛瑟里顿提前苏醒；
+ * 阶段二：玛瑟里顿破封而出，核心机制为引导全屏秒杀级大招「枯萎新星」，全团需要五名玩家同时点击五个魔化立方体进行束缚打断；
+ * 30% 血量时震碎天花板造成落石冲击，高压考验团队协调。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "magtheridons_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 #include "Entities/DynamicObject.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // yells
@@ -91,6 +100,7 @@ enum
 ## boss_magtheridon
 ######*/
 
+// MagtheridonActions 相关枚举
 enum MagtheridonActions
 {
     MAGTHERIDON_PHASE_3,
@@ -102,6 +112,7 @@ enum MagtheridonActions
     MAGTHERIDON_ATTACK_DELAY
 };
 
+// boss_magtheridonAI 逻辑实现
 struct boss_magtheridonAI : public CombatAI
 {
     boss_magtheridonAI(Creature* creature) : CombatAI(creature, MAGTHERIDON_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -132,6 +143,7 @@ struct boss_magtheridonAI : public CombatAI
     uint8 m_uiTransitionCount;
     uint8 m_uiQuakeCount;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -149,6 +161,7 @@ struct boss_magtheridonAI : public CombatAI
         SetReactState(REACT_PASSIVE);
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -177,12 +190,14 @@ struct boss_magtheridonAI : public CombatAI
         }
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* victim) override
     {
         if (victim->GetTypeId() == TYPEID_PLAYER)
             DoBroadcastText(SAY_PLAYER_KILLED, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -202,6 +217,7 @@ struct boss_magtheridonAI : public CombatAI
         CombatAI::EnterEvadeMode();
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
     {
         // When banished by the cubes
@@ -248,6 +264,7 @@ struct boss_magtheridonAI : public CombatAI
             ResetTimer(MAGTHERIDON_TRANSITION_TIMER, timer);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -271,6 +288,7 @@ struct boss_magtheridonAI : public CombatAI
             m_creature->AddCooldown(*sSpellTemplate.LookupEntry<SpellEntry>(SPELL_BLASTNOVA)); // will use spell list cooldown
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -298,12 +316,14 @@ struct boss_magtheridonAI : public CombatAI
 ## mob_hellfire_channeler
 ######*/
 
+// ChannelerActions 相关枚举
 enum ChannelerActions
 {
     CHANNELER_ACTION_MAX,
     CHANNELER_SHADOW_GRASP,
 };
 
+// mob_hellfire_channelerAI 逻辑实现
 struct mob_hellfire_channelerAI : public CombatAI
 {
     mob_hellfire_channelerAI(Creature* creature) : CombatAI(creature, CHANNELER_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -319,6 +339,7 @@ struct mob_hellfire_channelerAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         m_creature->InterruptNonMeleeSpells(false);
@@ -327,6 +348,7 @@ struct mob_hellfire_channelerAI : public CombatAI
             m_instance->SetData(TYPE_CHANNELER_EVENT, IN_PROGRESS);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         m_creature->CastSpell(m_creature, SPELL_SOUL_TRANSFER, TRIGGERED_OLD_TRIGGERED);
@@ -343,6 +365,7 @@ struct mob_hellfire_channelerAI : public CombatAI
 /*######
 ## go_manticron_cube
 ######*/
+// go_manticron_cubeAI 逻辑实现
 struct go_manticron_cubeAI : public GameObjectAI
 {
     go_manticron_cubeAI(GameObject* go) : GameObjectAI(go), m_lastUser(ObjectGuid()) {}
@@ -353,6 +376,7 @@ struct go_manticron_cubeAI : public GameObjectAI
     Player* GetManticronCubeLastUser() const { return m_go->GetMap()->GetPlayer(m_lastUser); }
 };
 
+// 游戏对象使用交互回调
 bool GOUse_go_manticron_cube(Player* player, GameObject* go)
 {
     // if current player is exhausted or last user is still channeling
@@ -383,8 +407,10 @@ bool GOUse_go_manticron_cube(Player* player, GameObject* go)
 }
 
 // 30410 - Shadow Grasp
+// ShadowGraspCube 光环脚本
 struct ShadowGraspCube : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (aura->GetEffIndex() == EFFECT_INDEX_0)
@@ -403,8 +429,10 @@ struct ShadowGraspCube : public AuraScript
 };
 
 // 30166 - Shadow Grasp
+// ShadowGraspMagth 光环脚本
 struct ShadowGraspMagth : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         Unit* target = aura->GetTarget();
@@ -425,8 +453,10 @@ struct ShadowGraspMagth : public AuraScript
 };
 
 // 30658 - Quake
+// QuakeMagth 法术脚本
 struct QuakeMagth : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (urand(0, 8) == 0)
@@ -435,6 +465,7 @@ struct QuakeMagth : public SpellScript
 };
 
 // 30629 - Debris
+// DebrisMagtheridonTargeting 法术脚本
 struct DebrisMagtheridonTargeting : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -445,6 +476,7 @@ struct DebrisMagtheridonTargeting : public SpellScript
         return true;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -456,6 +488,7 @@ struct DebrisMagtheridonTargeting : public SpellScript
 };
 
 // 30632 - Debris
+// DebrisMagtheridon 光环脚本
 struct DebrisMagtheridon : public AuraScript
 {
     void OnPersistentAreaAuraEnd(DynamicObject* dynGo) const override
@@ -465,6 +498,7 @@ struct DebrisMagtheridon : public AuraScript
     }
 };
 
+// 注册 boss_magtheridon 脚本
 void AddSC_boss_magtheridon()
 {
     Script* pNewScript = new Script;

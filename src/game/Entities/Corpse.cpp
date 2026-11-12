@@ -24,13 +24,14 @@
 #include "World/World.h"
 #include "Globals/ObjectMgr.h"
 
+// 构造尸体对象，初始化对象类型掩码、更新标志与创建时间
 Corpse::Corpse(CorpseType type) : WorldObject(),
     lootRecipient(nullptr),
     lootForBody(false)
 {
     m_objectType |= TYPEMASK_CORPSE;
     m_objectTypeId = TYPEID_CORPSE;
-    // 2.3.2 - 0x58
+    // 2.3.2 - 0x58 (2.3.2 起尸体更新标志掩码)
     m_updateFlag = (UPDATEFLAG_LOWGUID | UPDATEFLAG_HIGHGUID | UPDATEFLAG_HAS_POSITION);
 
     m_valuesCount = CORPSE_END;
@@ -44,30 +45,34 @@ Corpse::~Corpse()
 {
 }
 
+// 加入世界并注册到 ObjectAccessor 以支持 GUID 查找
 void Corpse::AddToWorld()
 {
-    ///- Register the corpse for guid lookup
+    ///- Register the corpse for guid lookup (注册尸体以供 GUID 查询)
     if (!IsInWorld())
         sObjectAccessor.AddObject(this);
 
     WorldObject::AddToWorld();
 }
 
+// 从 ObjectAccessor 注销并移出世界
 void Corpse::RemoveFromWorld()
 {
-    ///- Remove the corpse from the accessor
+    ///- Remove the corpse from the accessor (从 ObjectAccessor 中移除尸体)
     if (IsInWorld())
         sObjectAccessor.RemoveObject(this);
 
     Object::RemoveFromWorld();
 }
 
+// 仅使用低位 GUID 初始化尸体基础对象
 bool Corpse::Create(uint32 guidlow)
 {
     Object::_Create(guidlow, guidlow, 0, HIGHGUID_CORPSE);
     return true;
 }
 
+// 基于所属玩家当前位置与地图信息创建尸体对象
 bool Corpse::Create(uint32 guidlow, Player* owner)
 {
     MANGOS_ASSERT(owner);
@@ -77,6 +82,7 @@ bool Corpse::Create(uint32 guidlow, Player* owner)
 
     // we need to assign owner's map for corpse
     // in other way we will get a crash in Corpse::SaveToDB()
+    // 必须为尸体绑定所属玩家的地图指针，否则后续 Corpse::SaveToDB() 会崩溃
     SetMap(owner->GetMap());
 
     if (!IsPositionValid())
@@ -98,12 +104,13 @@ bool Corpse::Create(uint32 guidlow, Player* owner)
     return true;
 }
 
+// 将可复活尸体持久化至角色数据库（在事务中先删旧记录再插入）
 void Corpse::SaveToDB()
 {
-    // bones should not be saved to DB (would be deleted on startup anyway)
+    // bones should not be saved to DB (would be deleted on startup anyway) (骸骨不应存入数据库，启动时也会被清理)
     MANGOS_ASSERT(GetType() != CORPSE_BONES);
 
-    // prevent DB data inconsistence problems and duplicates
+    // prevent DB data inconsistence problems and duplicates (防止数据库重复记录或不一致)
     CharacterDatabase.BeginTransaction();
     DeleteFromDB();
 
@@ -123,6 +130,7 @@ void Corpse::SaveToDB()
     CharacterDatabase.CommitTransaction();
 }
 
+// 将骸骨尸体加入待移除列表以从世界删除
 void Corpse::DeleteBonesFromWorld()
 {
     MANGOS_ASSERT(GetType() == CORPSE_BONES);
@@ -137,18 +145,20 @@ void Corpse::DeleteBonesFromWorld()
     AddObjectToRemoveList();
 }
 
+// 从角色数据库删除该玩家的所有非骸骨尸体记录
 void Corpse::DeleteFromDB() const
 {
-    // bones should not be saved to DB (would be deleted on startup anyway)
+    // bones should not be saved to DB (would be deleted on startup anyway) (骸骨不应存入数据库)
     MANGOS_ASSERT(GetType() != CORPSE_BONES);
 
-    // all corpses (not bones)
+    // all corpses (not bones) (删除所有非骸骨类型的尸体记录)
     static SqlStatementID id;
 
     SqlStatement stmt = CharacterDatabase.CreateStatement(id, "DELETE FROM corpse WHERE player = ? AND corpse_type <> '0'");
     stmt.PExecute(GetOwnerGuid().GetCounter());
 }
 
+// 从数据库查询字段恢复尸体外观、装备缓存、阵营标志与空间位置
 bool Corpse::LoadFromDB(uint32 lowguid, Field* fields)
 {
     ////                                                    0            1       2                  3                  4                  5                   6
@@ -185,7 +195,7 @@ bool Corpse::LoadFromDB(uint32 lowguid, Field* fields)
     ObjectGuid guid = ObjectGuid(HIGHGUID_CORPSE, lowguid);
     ObjectGuid playerGuid = ObjectGuid(HIGHGUID_PLAYER, playerLowGuid);
 
-    // overwrite possible wrong/corrupted guid
+    // overwrite possible wrong/corrupted guid (覆写可能存在偏差或损坏的 GUID)
     SetGuidValue(OBJECT_FIELD_GUID, guid);
     SetOwnerGuid(playerGuid);
 
@@ -199,7 +209,7 @@ bool Corpse::LoadFromDB(uint32 lowguid, Field* fields)
     }
     SetUInt32Value(CORPSE_FIELD_DISPLAY_ID, gender == GENDER_FEMALE ? info->displayId_f : info->displayId_m);
 
-    // Load equipment
+    // Load equipment (根据装备缓存填充尸体展示装备槽位)
     Tokens data = StrSplit(fields[15].GetCppString(), " ");
     for (uint8 slot = 0; slot < EQUIPMENT_SLOT_END; ++slot)
     {
@@ -232,9 +242,9 @@ bool Corpse::LoadFromDB(uint32 lowguid, Field* fields)
         flags |= CORPSE_FLAG_HIDE_CLOAK;
     SetUInt32Value(CORPSE_FIELD_FLAGS, flags);
 
-    // no need to mark corpse as lootable, because corpses are not saved in battle grounds
+    // no need to mark corpse as lootable, because corpses are not saved in battle grounds (战场尸体不入库，无需在此恢复可拾取标志)
 
-    // place
+    // place (设置尸体所在地图、副本与坐标)
     SetLocationInstanceId(instanceid);
     SetLocationMapId(mapid);
     Relocate(positionX, positionY, positionZ, orientation);
@@ -251,6 +261,7 @@ bool Corpse::LoadFromDB(uint32 lowguid, Field* fields)
     return true;
 }
 
+// 根据种族 DBC 获取尸体所属阵营模板 ID
 uint32 Corpse::GetFaction() const
 {
     if (const uint8 race = getRace())
@@ -261,11 +272,13 @@ uint32 Corpse::GetFaction() const
     return 0;
 }
 
+// 判断尸体对观察者玩家是否处于可见距离内
 bool Corpse::isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool /*inVisibleList*/) const
 {
     return IsInWorld() && u->IsInWorld() && IsWithinDistInMap(viewPoint, GetMap()->GetVisibilityDistance(), false);
 }
 
+// 判断尸体是否过期（骸骨保留 60 分钟，普通尸体保留 3 天）
 bool Corpse::IsExpired(time_t t) const
 {
     if (m_type == CORPSE_BONES)
@@ -273,6 +286,7 @@ bool Corpse::IsExpired(time_t t) const
     return m_time < t - 3 * DAY;
 }
 
+// 根据尸体种族返回阵营（联盟 / 部落）
 Team Corpse::GetTeam() const
 {
     return Player::TeamForRace(getRace());

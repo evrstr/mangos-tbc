@@ -17,6 +17,7 @@
 #include <fstream>
 #include <exception>
 
+// 从磁盘加载单个 Warden 模块三件套（.bin 模块二进制、.key RC4 解密密钥、.cr 挑战响应表与扫描操作码）
 WardenModule::WardenModule(std::string const &bin, std::string const &kf, std::string const &cr)
 {
     std::ifstream b(bin, std::ios::binary | std::ios::ate);
@@ -35,7 +36,7 @@ WardenModule::WardenModule(std::string const &bin, std::string const &kf, std::s
 
     b.close();
 
-    // compute md5 hash of encrypted/compressed data
+    // compute md5 hash of encrypted/compressed data (计算模块二进制的 MD5 校验值作为客户端握手标识)
     MD5Hash md5;
     md5.UpdateData(&binary[0], binary.size());
     md5.Finalize();
@@ -79,6 +80,7 @@ WardenModule::WardenModule(std::string const &bin, std::string const &kf, std::s
 
     c.close();
 
+    // Windows 模块需挑选未与任意扫描操作码冲突的字节作为 scanTerminator 结束哨兵
     if (Windows())
     {
         for (uint8 i = 0; i <= UINT8_MAX; i++)
@@ -106,9 +108,10 @@ WardenModule::WardenModule(std::string const &bin, std::string const &kf, std::s
     }
 }
 
+// 通过 opcodes 数组是否非全零判断该模块是否为 Windows 平台模块
 bool WardenModule::Windows() const
 {
-    // these values will be all zero for OSX modules
+    // these values will be all zero for OSX modules (OSX 模块的操作码表全为 0)
 
     for (auto i = 0; i < sizeof(opcodes); ++i)
         if (!!opcodes[i])

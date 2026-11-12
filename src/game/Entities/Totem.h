@@ -21,13 +21,15 @@
 
 #include "Entities/Creature.h"
 
+// 图腾工作模式类型枚举
 enum TotemType
 {
-    TOTEM_PASSIVE    = 0,
-    TOTEM_ACTIVE     = 1,
-    TOTEM_STATUE     = 2
+    TOTEM_PASSIVE    = 0,                                   // 被动光环类图腾（如增益/减益光环）
+    TOTEM_ACTIVE     = 1,                                   // 主动施法类图腾（如灼热、熔岩图腾）
+    TOTEM_STATUE     = 2                                    // 雕像类图腾（如珠宝加工雕像）
 };
 
+// 图腾实体类（继承自 Creature，战斗属性与法术修正继承自召唤者）
 class Totem : public Creature
 {
     public:
@@ -54,6 +56,7 @@ class Totem : public Creature
         float GetMissChance(SpellSchoolMask schoolMask) const override;
         int32 GetResistancePenetration(SpellSchools school) const override;
 
+        // 图腾属性固定，无需常规生物属性重算
         bool UpdateStats(Stats /*stat*/) override { return true; }
         bool UpdateAllStats() override { return true; }
         void UpdateResistances(uint32 /*school*/) override {}
@@ -68,7 +71,7 @@ class Totem : public Creature
         ObjectGuid const GetSpawnerGuid() const override { return GetOwnerGuid(); }
 
     protected:
-        TotemType m_type;
-        uint32 m_duration;
+        TotemType m_type;                                   // 图腾行为类型
+        uint32 m_duration;                                  // 剩余存在时长（毫秒）
 };
 #endif

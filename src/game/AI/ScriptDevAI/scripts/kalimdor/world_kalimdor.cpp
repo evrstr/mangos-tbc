@@ -14,6 +14,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+/**
+ * 卡利姆多 (Kalimdor) 全局通用任务与世界事件脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "world_kalimdor.h"
 #include "AI/ScriptDevAI/scripts/world/world_map_scripts.h"
@@ -48,12 +52,12 @@ struct world_map_kalimdor : public ScriptedMap
     bool b_isOmenSpellCreditDone;
     std::array<std::vector<ObjectGuid>, MAX_ELEMENTS> m_aElementalRiftGUIDs;
     uint32 m_freedSpriteDarter;
-    // Shade of the Horseman village attack event
+    // Shade of the Horseman village attack event (说明)
     ShadeOfTheHorsemanData m_shadeData;
-    // Brewfest events
+    // Brewfest events (事件)
     BrewfestEvent m_brewfestEvent;
 
-    void Initialize() override
+    void Initialize() override                              // 初始化副本数据与状态
     {
         m_uiMurkdeepAdds_KilledAddCount = 0;
         m_vGOEvents.clear();
@@ -82,7 +86,7 @@ struct world_map_kalimdor : public ScriptedMap
         return false;
     }
 
-    void OnCreatureCreate(Creature* pCreature) override
+    void OnCreatureCreate(Creature* pCreature) override     // 生物创建/加载至副本地图时的回调
     {
         switch (pCreature->GetEntry())
         {
@@ -113,16 +117,16 @@ struct world_map_kalimdor : public ScriptedMap
         }
     }
 
-    void OnCreatureDeath(Creature* pCreature) override
+    void OnCreatureDeath(Creature* pCreature) override      // 生物在副本地图中死亡回调
     {
         switch (pCreature->GetEntry())
         {
             case NPC_GREYMIST_COASTRUNNNER:
-                if (pCreature->IsTemporarySummon())         // Only count the ones summoned for Murkdeep quest
+                if (pCreature->IsTemporarySummon())         // Only count the ones summoned for Murkdeep quest (说明)
                 {
                     ++m_uiMurkdeepAdds_KilledAddCount;
 
-                    // If all 3 coastrunners are killed, summon 2 warriors
+                    // If all 3 coastrunners are killed, summon 2 warriors (说明)
                     if (m_uiMurkdeepAdds_KilledAddCount == 3)
                     {
                         float fX, fY, fZ;
@@ -143,11 +147,11 @@ struct world_map_kalimdor : public ScriptedMap
                 }
                 break;
             case NPC_GREYMIST_WARRIOR:
-                if (pCreature->IsTemporarySummon())         // Only count the ones summoned for Murkdeep quest
+                if (pCreature->IsTemporarySummon())         // Only count the ones summoned for Murkdeep quest (说明)
                 {
                     ++m_uiMurkdeepAdds_KilledAddCount;
 
-                    // After the 2 warriors are killed, Murkdeep spawns, along with a hunter
+                    // After the 2 warriors are killed, Murkdeep spawns, along with a hunter (说明)
                     if (m_uiMurkdeepAdds_KilledAddCount == 2)
                     {
                         float fX, fY, fZ;
@@ -197,12 +201,12 @@ struct world_map_kalimdor : public ScriptedMap
         }
     }
 
-    void OnObjectCreate(GameObject* pGo) override
+    void OnObjectCreate(GameObject* pGo) override           // 游戏对象创建/加载至副本地图时的回调
     {
         switch (pGo->GetEntry())
         {
             case GO_GHOST_MAGNET:
-                m_vGOEvents.push_back({ pGo->GetObjectGuid(), 0, 0, {} }); // insert new event with 0 timer
+                m_vGOEvents.push_back({ pGo->GetObjectGuid(), 0, 0, {} }); // insert new event with 0 timer (事件计时器)
                 pGo->SetActiveObjectState(true);
                 break;
             case GO_ROCKET_CLUSTER:
@@ -228,7 +232,7 @@ struct world_map_kalimdor : public ScriptedMap
 
     void DoDespawnElementalRifts(uint8 index)
     {
-        // Despawn all GO rifts for a given element type, erase the GUIDs for the GOs
+        // Despawn all GO rifts for a given element type, erase the GUIDs for the GOs (说明)
         for (auto guid : m_aElementalRiftGUIDs[index])
         {
             if (GameObject* pRift = instance->GetGameObject(guid))
@@ -245,7 +249,7 @@ struct world_map_kalimdor : public ScriptedMap
             {
                 if (Creature * magrami = instance->GetCreature(guid))
                 {
-                    if (magrami->IsAlive()) // dont despawn corpses with loot
+                    if (magrami->IsAlive()) // dont despawn corpses with loot (消失)
                     {
                         magrami->CastSpell(nullptr, SPELL_SPIRIT_SPAWN_OUT, TRIGGERED_OLD_TRIGGERED);
                         magrami->ForcedDespawn(1000);
@@ -254,7 +258,7 @@ struct world_map_kalimdor : public ScriptedMap
             }
 
             if (GameObject* go = instance->GetGameObject(eventData.guid))
-                go->AddObjectToRemoveList(); // TODO: Establish rules for despawning temporary GOs that were used in their lifetime (buttons for example)
+                go->AddObjectToRemoveList(); // TODO: Establish rules for despawning temporary GOs that were used in their lifetime (buttons for example) (说明)
 
             return false;
         }
@@ -264,12 +268,12 @@ struct world_map_kalimdor : public ScriptedMap
             if (eventData.despawnTimer / 15000 >= eventData.phaseCounter)
             {
                 float x, y, z;
-                go->GetPosition(x, y, z); // do some urand radius shenanigans to spawn it further and make it walk to go using doing X and Y yourself and using function in MAP to get proper Z
+                go->GetPosition(x, y, z); // do some urand radius shenanigans to spawn it further and make it walk to go using doing X and Y yourself and using function in MAP to get proper Z (说明)
                 uint32 random = urand(0, 35);
                 float xR = x + random, yR = y + (40 - random), zR = z;
                 instance->GetHeightInRange(xR, yR, zR);
-                Creature* creature = go->SummonCreature(NPC_MAGRAMI_SPECTRE, xR, yR, zR, 0, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 180000); // add more timed logic here
-                instance->GetReachableRandomPointOnGround(x, y, z, 10.0f); // get position to which spectre will walk
+                Creature* creature = go->SummonCreature(NPC_MAGRAMI_SPECTRE, xR, yR, zR, 0, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 180000); // add more timed logic here (说明)
+                instance->GetReachableRandomPointOnGround(x, y, z, 10.0f); // get position to which spectre will walk (说明)
                 eventData.phaseCounter++;
                 eventData.summonedMagrami.push_back(creature->GetObjectGuid());
                 creature->GetMotionMaster()->MovePoint(1, x, y, z);
@@ -295,12 +299,12 @@ struct world_map_kalimdor : public ScriptedMap
 
         if (GetData(TYPE_OMEN) == DONE)
         {
-            // Timer before Omen event reset (OOC)
+            // Timer before Omen event reset (OOC) (计时器事件重置)
             if (m_uiOmenResetTimer < diff)
             {
                 if (Creature* pOmen = GetSingleCreatureFromStorage(NPC_OMEN))
                 {
-                    // Return is Omen is in fight
+                    // Return is Omen is in fight (说明)
                     if (pOmen->IsInCombat())
                         return;
                     pOmen->ForcedDespawn();
@@ -314,7 +318,7 @@ struct world_map_kalimdor : public ScriptedMap
             else
                 m_uiOmenResetTimer -= diff;
 
-            // Spell summoning GO traps for buff and quest credit for Omen
+            // Spell summoning GO traps for buff and quest credit for Omen (说明)
             if (!b_isOmenSpellCreditDone)
             {
                 if (m_uiOmenMoonlightTimer < diff)
@@ -333,7 +337,7 @@ struct world_map_kalimdor : public ScriptedMap
 
         if (m_shadeData.Update(diff))
         {
-            // Razor Hill
+            // Razor Hill (说明)
             if (Creature* matron = instance->GetCreature(m_npcEntryGuidStore[NPC_MASKED_ORPHAN_MATRON]))
                 matron->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, matron, matron);
         }
@@ -342,7 +346,7 @@ struct world_map_kalimdor : public ScriptedMap
             m_brewfestEvent.Update(diff);
     }
 
-    void SetData(uint32 uiType, uint32 uiData) override
+    void SetData(uint32 uiType, uint32 uiData) override     // 设置自定义状态数据
     {
         switch (uiType)
         {
@@ -351,16 +355,16 @@ struct world_map_kalimdor : public ScriptedMap
                 switch (uiData)
                 {
                     case NOT_STARTED:
-                        // Count another rocket cluster launched
+                        // Count another rocket cluster launched (说明)
                         m_uiRocketsCounter++;
                         if (m_uiRocketsCounter < MAX_ROCKETS)
                         {
-                            // 25% chance of spawning Minions of Omen (guessed), only if not already spawned (encounter is set to FAIL in that case)
+                            // 25% chance of spawning Minions of Omen (guessed), only if not already spawned (encounter is set to FAIL in that case) (说明)
                             if (GetData(TYPE_OMEN) == NOT_STARTED && urand(0, 1) < 1)
                                 SetData(TYPE_OMEN, SPECIAL); // This will notify the GO to summon Omen's minions
                         }
-                        // Set the event in motion and notify the GO to summon Omen
-                        else if (GetData(TYPE_OMEN) != IN_PROGRESS && GetData(TYPE_OMEN) != DONE)   // Check that Omen is not already spawned and event is reset
+                        // Set the event in motion and notify the GO to summon Omen (说明)
+                        else if (GetData(TYPE_OMEN) != IN_PROGRESS && GetData(TYPE_OMEN) != DONE)   // Check that Omen is not already spawned and event is reset (说明)
                             SetData(TYPE_OMEN, IN_PROGRESS);
 
                         return; // Don't store NOT_STARTED data unless explicitly told so: we use it to count rockets
@@ -376,16 +380,16 @@ struct world_map_kalimdor : public ScriptedMap
                         {
                             if (Creature* pOmen = pRocketCluster->SummonCreature(NPC_OMEN, aSpawnLocations[POS_IDX_OMEN_SPAWN][0], aSpawnLocations[POS_IDX_OMEN_SPAWN][1], aSpawnLocations[POS_IDX_OMEN_SPAWN][2], aSpawnLocations[POS_IDX_OMEN_SPAWN][3], TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 15 * MINUTE * IN_MILLISECONDS))
                             {
-                                // Moving him to the lake bank
+                                // Moving him to the lake bank (说明)
                                 pOmen->SetWalk(true);
                                 pOmen->GetMotionMaster()->MovePoint(1, aSpawnLocations[POS_IDX_OMEN_MOVE][0], aSpawnLocations[POS_IDX_OMEN_MOVE][1], aSpawnLocations[POS_IDX_OMEN_MOVE][2]);
-                                m_uiOmenResetTimer = 15 * MINUTE * IN_MILLISECONDS; // Reset after 15 minutes if not engaged or defeated
+                                m_uiOmenResetTimer = 15 * MINUTE * IN_MILLISECONDS; // Reset after 15 minutes if not engaged or defeated (说明)
                             }
                         }
                         break;
                     case DONE:
-                        m_uiOmenMoonlightTimer = 5 * IN_MILLISECONDS;            // Timer before casting the end quest spell
-                        m_uiOmenResetTimer = 5 * MINUTE * IN_MILLISECONDS;       // Prevent another summoning of Omen for 5 minutes (based on spell duration)
+                        m_uiOmenMoonlightTimer = 5 * IN_MILLISECONDS;            // Timer before casting the end quest spell (说明)
+                        m_uiOmenResetTimer = 5 * MINUTE * IN_MILLISECONDS;       // Prevent another summoning of Omen for 5 minutes (based on spell duration) (说明)
                         break;
                 }
                 break;
@@ -399,7 +403,7 @@ struct world_map_kalimdor : public ScriptedMap
                         instance->GetVariableManager().SetVariable(WORLD_STATE_TETHYR_COUNT, 0);
                         instance->SetZoneWeather(0, AREAID_THERAMORE_ISLE, 0, 0.f);
                         break;
-                    case SPECIAL: // Archer slain
+                    case SPECIAL: // Archer slain (说明)
                         instance->GetVariableManager().SetVariable(WORLD_STATE_TETHYR_COUNT, instance->GetVariableManager().GetVariable(WORLD_STATE_TETHYR_COUNT) - 1);
                         break;
                     case IN_PROGRESS:
@@ -424,7 +428,7 @@ struct world_map_kalimdor : public ScriptedMap
                 break;
             }
             case TYPE_GONG_TIME:
-                // TODO: Handle initial first gong only
+                // TODO: Handle initial first gong only (说明)
                 break;
             default:
                 if (uiType >= TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE && uiType <= TYPE_SHADE_OF_THE_HORSEMAN_MAX)
@@ -446,7 +450,7 @@ struct world_map_kalimdor : public ScriptedMap
         }
     }
 
-    uint32 GetData(uint32 type) const override
+    uint32 GetData(uint32 type) const override              // 获取自定义状态数据
     {
         if (type >= TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE && type <= TYPE_SHADE_OF_THE_HORSEMAN_MAX)
             return m_shadeData.HandleGetData(type);
@@ -462,12 +466,12 @@ struct world_map_kalimdor : public ScriptedMap
     }
 };
 
-InstanceData* GetInstanceData_world_map_kalimdor(Map* pMap)
+InstanceData* GetInstanceData_world_map_kalimdor(Map* pMap) // 创建并返回副本数据实例
 {
     return new world_map_kalimdor(pMap);
 }
 
-void AddSC_world_kalimdor()
+void AddSC_world_kalimdor() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "world_map_kalimdor";

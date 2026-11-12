@@ -27,7 +27,7 @@
 #include "Entities/Unit.h"
 #include "Entities/Transports.h"
 
-// numbers represent minutes * 100 while happy (you get 100 loyalty points per min while happy)
+// numbers represent minutes * 100 while happy (you get 100 loyalty points per min while happy) (各忠诚度等级升级所需点数，快乐状态下每分钟获得 100 点)
 uint32 const LevelUpLoyalty[6] =
 {
     5500,
@@ -38,6 +38,7 @@ uint32 const LevelUpLoyalty[6] =
     39500,
 };
 
+// 各忠诚度等级降级后或初始化时的起始点数
 uint32 const LevelStartLoyalty[6] =
 {
     2000,
@@ -48,6 +49,7 @@ uint32 const LevelStartLoyalty[6] =
     17500,
 };
 
+// 构造函数：初始化宠物默认属性与 CharmInfo 控制信息
 Pet::Pet(PetType type) :
     Creature(CREATURE_SUBTYPE_PET),
     m_TrainingPoints(0), m_resetTalentsCost(0), m_resetTalentsTime(0),
@@ -62,12 +64,14 @@ Pet::Pet(PetType type) :
     InitCharmInfo(this);
 }
 
+// 析构函数：释放附身前保存的原始控制信息及屈折语名称
 Pet::~Pet()
 {
     delete m_originalCharminfo;
     delete m_declinedname;
 }
 
+// 将宠物注册到地图对象存储并加入世界
 void Pet::AddToWorld()
 {
     ///- Register the pet for guid lookup
@@ -77,6 +81,7 @@ void Pet::AddToWorld()
     Unit::AddToWorld();
 }
 
+// 将宠物从地图对象存储移除并退出世界（非玩家控制的临时宠物先执行解散清理）
 void Pet::RemoveFromWorld()
 {
     ///- Remove the pet from the accessor
@@ -92,6 +97,7 @@ void Pet::RemoveFromWorld()
     Unit::RemoveFromWorld();
 }
 
+// 预检是否可从数据库加载指定宠物（供召唤法术 CheckCast 校验存在性、驯服性及存活状态）
 SpellCastResult Pet::TryLoadFromDB(Unit* owner, uint32 petentry /*= 0*/, uint32 petnumber /*= 0*/, bool current /*= false*/, PetType mandatoryPetType /*= MAX_PET_TYPE*/)
 {
     uint32 ownerid = owner->GetGUIDLow();
@@ -156,6 +162,7 @@ SpellCastResult Pet::TryLoadFromDB(Unit* owner, uint32 petentry /*= 0*/, uint32 
     return SPELL_CAST_OK; // If errors occur down the line, one must think about data consistency
 }
 
+// 从数据库 character_pet 表加载宠物实例、属性、技能栏、光环与冷却并加入地图
 bool Pet::LoadPetFromDB(Player* owner, Position const& spawnPos, uint32 petentry /*= 0*/, uint32 petnumber /*= 0*/, bool current /*= false*/, uint32 healthPercentage /*= 0*/, bool permanentOnly /*= false*/, bool forced /*= false*/)
 {
     m_loading = true;
@@ -419,6 +426,7 @@ bool Pet::LoadPetFromDB(Player* owner, Position const& spawnPos, uint32 petentry
     return true;
 }
 
+// 将当前宠物数据、技能、冷却与光环按指定槽位模式持久化到数据库（或删除）
 void Pet::SavePetToDB(PetSaveMode mode, Player* owner)
 {
     if (!GetEntry())
@@ -564,6 +572,7 @@ void Pet::SavePetToDB(PetSaveMode mode, Player* owner)
     }
 }
 
+// 计算宠物在主人身侧的默认出生坐标（右偏 90 度、距离 2 码且避开碰撞）
 Position Pet::GetPetSpawnPosition(Player* owner)
 {
     Position pos;
@@ -571,6 +580,7 @@ Position Pet::GetPetSpawnPosition(Player* owner)
     return pos;
 }
 
+// 按宠物编号从数据库彻底删除宠物及其光环、法术、冷却与词形名称记录
 void Pet::DeleteFromDB(uint32 guidlow, bool separate_transaction)
 {
     if (separate_transaction)
@@ -601,6 +611,7 @@ void Pet::DeleteFromDB(uint32 guidlow, bool separate_transaction)
         CharacterDatabase.CommitTransaction();
 }
 
+// 按主人和槽位查找并删除数据库中的宠物记录
 void Pet::DeleteFromDB(Unit* owner, PetSaveMode slot)
 {
     auto queryResult = CharacterDatabase.PQuery("SELECT id FROM character_pet WHERE owner = '%u'  AND slot = '%u' ", owner->GetGUIDLow(), uint32(slot));
@@ -614,6 +625,7 @@ void Pet::DeleteFromDB(Unit* owner, PetSaveMode slot)
     }
 }
 
+// 设置宠物拥有者 GUID（召唤/猎人宠物同步记录召唤者 GUID）
 void Pet::SetOwnerGuid(ObjectGuid owner)
 {
     switch (uint32(m_petType))
@@ -626,6 +638,7 @@ void Pet::SetOwnerGuid(ObjectGuid owner)
     Unit::SetOwnerGuid(owner);
 }
 
+// 获取法术修正所属的玩家（即宠物主人）
 Player* Pet::GetSpellModOwner() const
 {
     Unit* owner = GetOwner();
@@ -634,6 +647,7 @@ Player* Pet::GetSpellModOwner() const
     return nullptr;
 }
 
+// 处理宠物死亡与复活状态切换（禁用尸体拾取、扣除战场外快乐度、刷新主人天赋光环）
 void Pet::SetDeathState(DeathState s)                       // overwrite virtual Creature::SetDeathState and Unit::SetDeathState
 {
     Creature::SetDeathState(s);
@@ -671,6 +685,7 @@ void Pet::SetDeathState(DeathState s)                       // overwrite virtual
             owner->RemoveGuardian(this);
 }
 
+// 宠物每帧更新：处理尸体过期消失、主人离线/超距解散以及临时召唤倒计时
 void Pet::Update(const uint32 diff)
 {
     if (m_removed)                                          // pet already removed, just wait in remove queue, no updates
@@ -728,6 +743,7 @@ void Pet::Update(const uint32 diff)
     Creature::Update(diff);
 }
 
+// 周期性回复生命与集中值/法力，并更新猎人宠物快乐度衰减与忠诚度变化
 void Pet::RegenerateAll(uint32 diff)
 {
     // regenerate focus for hunter pets
@@ -761,6 +777,7 @@ void Pet::RegenerateAll(uint32 diff)
         m_loyaltyTimer -= diff;
 }
 
+// 猎人宠物快乐度随时间衰减（战斗中衰减速度为平时的 1.5 倍）
 void Pet::LooseHappiness()
 {
     uint32 curValue = GetPower(POWER_HAPPINESS);
@@ -772,6 +789,7 @@ void Pet::LooseHappiness()
     ModifyPower(POWER_HAPPINESS, -addvalue);
 }
 
+// 根据主人等级计算升至下一忠诚度等级所需的经验值（主人升级所需经验的 5%）
 void Pet::SetRequiredXpForNextLoyaltyLevel()
 {
     uint32 loyaltylevel = GetLoyaltyLevel();
@@ -788,6 +806,7 @@ void Pet::SetRequiredXpForNextLoyaltyLevel()
     }
 }
 
+// 扣减升级忠诚度所需的剩余经验值
 void Pet::UpdateRequireXpForNextLoyaltyLevel(uint32 xp)
 {
     if (xp > m_xpRequiredForNextLoyaltyLevel)
@@ -796,6 +815,7 @@ void Pet::UpdateRequireXpForNextLoyaltyLevel(uint32 xp)
         m_xpRequiredForNextLoyaltyLevel -= xp;
 }
 
+// 增减忠诚度点数并处理升级或降级（最低忠诚度为负时可能叛逃、主动攻击或被动停留）
 void Pet::ModifyLoyalty(int32 addvalue)
 {
     uint32 loyaltylevel = GetLoyaltyLevel();
@@ -868,6 +888,7 @@ void Pet::ModifyLoyalty(int32 addvalue)
     }
 }
 
+// 根据当前快乐度状态周期性调整宠物忠诚度
 void Pet::TickLoyaltyChange()
 {
     int32 addvalue;
@@ -883,6 +904,7 @@ void Pet::TickLoyaltyChange()
     ModifyLoyalty(addvalue);
 }
 
+// 击杀怪物后按等级与当前忠诚度给予额外忠诚度奖励
 void Pet::KillLoyaltyBonus(uint32 level)
 {
     if (level > 100)
@@ -893,6 +915,7 @@ void Pet::KillLoyaltyBonus(uint32 level)
     ModifyLoyalty(bonus);
 }
 
+// 获取宠物当前快乐度区间枚举（不高兴/满足/快乐）
 HappinessState Pet::GetHappinessState() const
 {
     if (GetPower(POWER_HAPPINESS) < HAPPINESS_LEVEL_SIZE)
@@ -902,11 +925,13 @@ HappinessState Pet::GetHappinessState() const
     return CONTENT;
 }
 
+// 设置宠物当前忠诚度等级字段
 void Pet::SetLoyaltyLevel(LoyaltyLevel level)
 {
     SetByteValue(UNIT_FIELD_BYTES_1, 1, level);
 }
 
+// 检查宠物是否还能学习更多主动技能（非被动法术链上限为 ACTIVE_SPELLS_MAX）
 bool Pet::CanTakeMoreActiveSpells(uint32 spellid) const
 {
     uint8  activecount = 1;
@@ -946,6 +971,7 @@ bool Pet::CanTakeMoreActiveSpells(uint32 spellid) const
     return true;
 }
 
+// 检查宠物当前训练点数是否足够学习指定技能
 bool Pet::HasTPForSpell(uint32 spellid) const
 {
     int32 neededtrainp = GetTPForSpell(spellid);
@@ -954,6 +980,7 @@ bool Pet::HasTPForSpell(uint32 spellid) const
     return true;
 }
 
+// 计算学习指定法术所需的净训练点数（扣除同法术链已花费的点数）
 int32 Pet::GetTPForSpell(uint32 spellid) const
 {
     uint32 basetrainp = 0;
@@ -992,6 +1019,7 @@ int32 Pet::GetTPForSpell(uint32 spellid) const
     return int32(basetrainp) - int32(spenttrainp);
 }
 
+// 获取指定忠诚度等级的升级所需点数上限（含边界保护）
 uint32 Pet::GetMaxLoyaltyPoints(uint32 level) const
 {
     if (level < 1) level = 1; // prevent SIGSEGV (out of range)
@@ -999,6 +1027,7 @@ uint32 Pet::GetMaxLoyaltyPoints(uint32 level) const
     return LevelUpLoyalty[level - 1];
 }
 
+// 获取指定忠诚度等级的起始点数（含边界保护）
 uint32 Pet::GetStartLoyaltyPoints(uint32 level) const
 {
     if (level < 1) level = 1; // prevent SIGSEGV (out of range)
@@ -1006,12 +1035,14 @@ uint32 Pet::GetStartLoyaltyPoints(uint32 level) const
     return LevelStartLoyalty[level - 1];
 }
 
+// 设置宠物剩余训练点数并同步更新客户端显示字段
 void Pet::SetTP(int32 TP)
 {
     m_TrainingPoints = TP;
     SetUInt32Value(UNIT_TRAINING_POINTS, (uint32)GetDispTP());
 }
 
+// 将内部训练点数转换为客户端约定的编码显示值
 int32 Pet::GetDispTP() const
 {
     if (getPetType() != HUNTER_PET)
@@ -1022,6 +1053,7 @@ int32 Pet::GetDispTP() const
         return -(m_TrainingPoints + 1);
 }
 
+// 解散宠物：停止战斗、返还材料或记录战场复活法术、移除动作栏、保存数据库并从世界移除
 void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= nullptr*/, bool removeList /*= true*/)
 {
     MANGOS_ASSERT(!m_removed);
@@ -1119,6 +1151,7 @@ void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= nullptr*/, bool removeList 
         AddObjectToRemoveList();
 }
 
+// 给予猎人宠物经验值并处理连续升级、忠诚度经验及击杀奖励
 void Pet::GivePetXP(uint32 xp)
 {
     if (getPetType() != HUNTER_PET)
@@ -1160,6 +1193,7 @@ void Pet::GivePetXP(uint32 xp)
     KillLoyaltyBonus(level);
 }
 
+// 将宠物提升或调整至指定等级并重算基础属性与训练点数
 void Pet::GivePetLevel(uint32 level)
 {
     if (!level || level == GetLevel())
@@ -1175,6 +1209,7 @@ void Pet::GivePetLevel(uint32 level)
     SetTP(m_TrainingPoints + (GetLoyaltyLevel() - 1));
 }
 
+// 以野外生物为蓝本创建被驯服的猎人宠物初始实体
 bool Pet::CreateBaseAtCreature(Creature* creature)
 {
     if (!creature)
@@ -1231,6 +1266,7 @@ bool Pet::CreateBaseAtCreature(Creature* creature)
     return true;
 }
 
+// 按指定等级初始化宠物的基础属性、血量、法力、护甲、近战伤害及缩放光环
 void Pet::InitStatsForLevel(uint32 petlevel)
 {
     Unit* owner = GetOwner();
@@ -1444,6 +1480,7 @@ void Pet::InitStatsForLevel(uint32 petlevel)
     SetPower(POWER_RAGE, 0);
 }
 
+// 为宠物施放或刷新随主人属性缩放的隐藏光环（TBC 宠物属性继承机制）
 void Pet::InitPetScalingAuras()
 {
     if (m_scalingAuras.size() > 0) // levelup rebuild case
@@ -1495,6 +1532,7 @@ void Pet::InitPetScalingAuras()
         CastSpell(nullptr, spellId, TRIGGERED_NONE);
 }
 
+// 播放术士恶魔宠物被解散时的语音音效
 void Pet::PlayDismissSound()
 {
     uint32 soundId = 0;
@@ -1522,6 +1560,7 @@ void Pet::PlayDismissSound()
     SendPetDismiss(soundId);
 }
 
+// 检查指定物品是否在当前宠物家族的食物食谱中
 bool Pet::HaveInDiet(ItemPrototype const* item) const
 {
     if (!item->FoodType)
@@ -1540,6 +1579,7 @@ bool Pet::HaveInDiet(ItemPrototype const* item) const
     return (diet & FoodMask) != 0;
 }
 
+// 根据食物物品等级与宠物等级差计算单跳回复的快乐度数值
 uint32 Pet::GetCurrentFoodBenefitLevel(uint32 itemlevel) const
 {
     // -5 or greater food level
@@ -1556,6 +1596,7 @@ uint32 Pet::GetCurrentFoodBenefitLevel(uint32 itemlevel) const
     // food too low level
 }
 
+// 从数据库加载宠物未过期的法术冷却并同步通知主人客户端
 void Pet::_LoadSpellCooldowns()
 {
     auto queryResult = CharacterDatabase.PQuery("SELECT spell,time FROM pet_spell_cooldown WHERE guid = '%u'", m_charmInfo->GetPetNumber());
@@ -1611,6 +1652,7 @@ void Pet::_LoadSpellCooldowns()
     }
 }
 
+// 将宠物当前非永久法术冷却写入数据库 pet_spell_cooldown 表
 void Pet::_SaveSpellCooldowns()
 {
     static SqlStatementID delSpellCD;
@@ -1636,6 +1678,7 @@ void Pet::_SaveSpellCooldowns()
     }
 }
 
+// 从数据库加载宠物已学会的技能列表
 void Pet::_LoadSpells()
 {
     auto queryResult = CharacterDatabase.PQuery("SELECT spell,active FROM pet_spell WHERE guid = '%u'", m_charmInfo->GetPetNumber());
@@ -1652,6 +1695,7 @@ void Pet::_LoadSpells()
     }
 }
 
+// 按增量状态（新增/修改/移除）同步宠物技能到数据库 pet_spell 表
 void Pet::_SaveSpells()
 {
     static SqlStatementID delSpell ;
@@ -1697,6 +1741,7 @@ void Pet::_SaveSpells()
     }
 }
 
+// 从数据库加载宠物持久化光环并扣减离线经过时间
 void Pet::_LoadAuras(uint32 timediff)
 {
     auto queryResult = CharacterDatabase.PQuery("SELECT caster_guid,item_guid,spell,stackcount,remaincharges,basepoints0,basepoints1,basepoints2,periodictime0,periodictime1,periodictime2,maxduration,remaintime,effIndexMask FROM pet_aura WHERE guid = '%u'", m_charmInfo->GetPetNumber());
@@ -1792,6 +1837,7 @@ void Pet::_LoadAuras(uint32 timediff)
     }
 }
 
+// 将宠物当前可保存的光环状态写入数据库 pet_aura 表
 void Pet::_SaveAuras()
 {
     static SqlStatementID delAuras ;
@@ -1875,6 +1921,7 @@ void Pet::_SaveAuras()
     }
 }
 
+// 为宠物添加技能，自动处理高低等级法术替换、被动触发及自动施法状态
 bool Pet::addSpell(uint32 spell_id, ActiveStates active /*= ACT_DECIDE*/, PetSpellState state /*= PETSPELL_NEW*/, PetSpellType type /*= PETSPELL_NORMAL*/)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spell_id);
@@ -1972,6 +2019,7 @@ bool Pet::addSpell(uint32 spell_id, ActiveStates active /*= ACT_DECIDE*/, PetSpe
     return true;
 }
 
+// 让宠物学习新法术并在非加载阶段刷新主人客户端宠物技能栏
 bool Pet::learnSpell(uint32 spell_id)
 {
     // prevent duplicated entires in spell book
@@ -1987,6 +2035,7 @@ bool Pet::learnSpell(uint32 spell_id)
     return true;
 }
 
+// 使宠物遗忘指定法术（removeSpell 的对外包装）
 bool Pet::unlearnSpell(uint32 spell_id, bool learn_prev, bool clear_ab)
 {
     if (removeSpell(spell_id, learn_prev, clear_ab))
@@ -1994,6 +2043,7 @@ bool Pet::unlearnSpell(uint32 spell_id, bool learn_prev, bool clear_ab)
     return false;
 }
 
+// 从宠物法术书与动作栏移除指定法术，可选回退学习上一等级技能
 bool Pet::removeSpell(uint32 spell_id, bool learn_prev, bool clear_ab)
 {
     PetSpellMap::iterator itr = m_spells.find(spell_id);
@@ -2033,6 +2083,7 @@ bool Pet::removeSpell(uint32 spell_id, bool learn_prev, bool clear_ab)
     return true;
 }
 
+// 清理宠物动作栏中不再已学会的无效法术槽位
 void Pet::CleanupActionBar()
 {
     for (int i = 0; i < MAX_UNIT_ACTION_BAR_INDEX; ++i)
@@ -2042,6 +2093,7 @@ void Pet::CleanupActionBar()
                     m_charmInfo->SetActionBar(i, 0, ACT_DISABLED);
 }
 
+// 初始化新创建/新驯服宠物的默认初始技能、被动及可传授法术
 void Pet::InitPetCreateSpells()
 {
     m_charmInfo->InitPetActionBar();
@@ -2094,6 +2146,7 @@ void Pet::InitPetCreateSpells()
     SetTP(-usedtrainpoints);
 }
 
+// 猎人宠物施放可传授技能时，以 10% 概率让主人领悟对应的野兽训练法术
 void Pet::CheckLearning(uint32 spellid)
 {
     // charmed case -> prevent crash
@@ -2116,6 +2169,7 @@ void Pet::CheckLearning(uint32 spellid)
     }
 }
 
+// 计算本次洗宠物天赋（技能）的金币消耗（随洗点次数递增并在 1 天后重置为 10 银）
 uint32 Pet::resetTalentsCost() const
 {
     uint32 days = uint32(sWorld.GetGameTime() - m_resetTalentsTime) / DAY;
@@ -2133,6 +2187,7 @@ uint32 Pet::resetTalentsCost() const
     return (m_resetTalentsCost + 1 * GOLD > 10 * GOLD ? 10 * GOLD : m_resetTalentsCost + 1 * GOLD);
 }
 
+// 初始化控制信息（保留原 CharmInfo 以便解除附身控制后恢复）
 CharmInfo* Pet::InitCharmInfo(Unit* charm)
 {
     if (!m_originalCharminfo)
@@ -2143,6 +2198,7 @@ CharmInfo* Pet::InitCharmInfo(Unit* charm)
     return m_charmInfo;
 }
 
+// 释放临时控制信息并还原原始 CharmInfo
 void Pet::DeleteCharmInfo()
 {
     if (m_originalCharminfo)
@@ -2153,6 +2209,7 @@ void Pet::DeleteCharmInfo()
     }
 }
 
+// 切换宠物技能的自动施法开关状态并更新 m_autospells 列表
 void Pet::ToggleAutocast(uint32 spellid, bool apply)
 {
     if (!IsAutocastable(spellid))
@@ -2200,6 +2257,7 @@ void Pet::ToggleAutocast(uint32 spellid, bool apply)
 
 }
 
+// 根据模板与生成位置初始化宠物实体对象与坐标
 bool Pet::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* cinfo, uint32 pet_number)
 {
     SetMap(cPos.GetMap());
@@ -2227,13 +2285,14 @@ bool Pet::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* ci
     return true;
 }
 
+// 检查宠物是否拥有指定法术（未处于待移除状态）
 bool Pet::HasSpell(uint32 spell) const
 {
     PetSpellMap::const_iterator itr = m_spells.find(spell);
     return (itr != m_spells.end() && itr->second.state != PETSPELL_REMOVED);
 }
 
-// Get all passive spells in our skill line
+// Get all passive spells in our skill line (学习宠物所属野兽家族的全部被动技能)
 void Pet::LearnPetPassives()
 {
     CreatureInfo const* cInfo = GetCreatureInfo();
@@ -2252,6 +2311,7 @@ void Pet::LearnPetPassives()
     }
 }
 
+// 将主人身上的宠物加成光环施放到当前宠物身上
 void Pet::CastPetAuras(bool current)
 {
     if (!isControlled())
@@ -2271,6 +2331,7 @@ void Pet::CastPetAuras(bool current)
     }
 }
 
+// 刷新主人天赋赋予宠物的光环效果（如猎人“凶猛灵感”）
 void Pet::CastOwnerTalentAuras()
 {
     if (!GetOwner() || GetOwner()->GetTypeId() != TYPEID_PLAYER)
@@ -2300,6 +2361,7 @@ void Pet::CastOwnerTalentAuras()
     } // End Ferocious Inspiration Talent
 }
 
+// 为宠物施放单个匹配当前生物 Entry 的 PetAura 效果
 void Pet::CastPetAura(PetAura const* aura)
 {
     uint32 auraId = aura->GetAura(GetEntry());
@@ -2309,6 +2371,7 @@ void Pet::CastPetAura(PetAura const* aura)
     CastSpell(nullptr, auraId, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 将宠物等级与主人等级同步（召唤物始终同步，猎人宠物不超过主人等级）
 void Pet::SynchronizeLevelWithOwner()
 {
     Unit* owner = GetOwner();
@@ -2331,6 +2394,7 @@ void Pet::SynchronizeLevelWithOwner()
     }
 }
 
+// 更新宠物模式标志并向主人客户端发送 SMSG_PET_MODE 数据包
 void Pet::SetModeFlags(PetModeFlags mode)
 {
     m_petModeFlags = mode;
@@ -2345,6 +2409,7 @@ void Pet::SetModeFlags(PetModeFlags mode)
     ((Player*)owner)->GetSession()->SendPacket(data);
 }
 
+// 按宠物类型计算并回复宠物生命值（每 4 秒周期调用）
 void Pet::RegenerateHealth()
 {
     if (!IsRegeneratingHealth())
@@ -2388,11 +2453,13 @@ void Pet::RegenerateHealth()
     ModifyHealth(addvalue);
 }
 
+// 重置宠物尸体到期时间，使其在下一秒触发清理
 void Pet::ResetCorpseRespawn()
 {
     m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(1000); // rudimentary value - just need more than now
 }
 
+// 强制使宠物立即或延迟消失并执行解散清理
 void Pet::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
 {
     if (timeMSToDespawn)
@@ -2424,6 +2491,7 @@ void Pet::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
     Unsummon(PET_SAVE_NOT_IN_SLOT, owner);
 }
 
+// 判断守护者宠物是否带有“忽略主人死亡”的法术属性（主人死亡时不随之消失）
 bool Pet::IgnoresOwnersDeath() const
 {
     if (IsGuardian())

@@ -60,24 +60,27 @@
 #include <limits>
 #include <array>
 
+// 基础移动速度数组（按 UnitMoveType 枚举顺序排列，单位：码/秒）
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
-    2.5f,                                                   // MOVE_WALK
-    7.0f,                                                   // MOVE_RUN
-    4.5f,                                                   // MOVE_RUN_BACK
-    4.722222f,                                              // MOVE_SWIM
-    2.5f,                                                   // MOVE_SWIM_BACK
-    3.141594f,                                              // MOVE_TURN_RATE
-    7.0f,                                                   // MOVE_FLIGHT
-    4.5f,                                                   // MOVE_FLIGHT_BACK
+    2.5f,                                                   // MOVE_WALK (步行)
+    7.0f,                                                   // MOVE_RUN (奔跑)
+    4.5f,                                                   // MOVE_RUN_BACK (后退奔跑)
+    4.722222f,                                              // MOVE_SWIM (游泳)
+    2.5f,                                                   // MOVE_SWIM_BACK (后退游泳)
+    3.141594f,                                              // MOVE_TURN_RATE (转向角速度)
+    7.0f,                                                   // MOVE_FLIGHT (飞行)
+    4.5f,                                                   // MOVE_FLIGHT_BACK (后退飞行)
 };
 
+// 法术部分抵抗分布表条目（对应 0%、25%、50%、75%、100% 抵抗几率，万分比整数）
 typedef std::array<uint32, NUM_SPELL_PARTIAL_RESISTS> SpellPartialResistChanceEntry;
 typedef std::vector<SpellPartialResistChanceEntry> SpellPartialResistDistribution;
+// 初始化法术部分抵抗概率分布查找表（将 0%~100% 平均抵抗率按 0.01% 精度插值为 10001 项）
 static inline SpellPartialResistDistribution InitSpellPartialResistDistribution()
 {
-    // Precalculated chances for 0-100% mitigation
-    // We use integer random instead of floats, so each chance is premultiplied by 100 (100.00 becomes 10000)
+    // Precalculated chances for 0-100% mitigation (预计算的 0-100% 伤害减免档位概率)
+    // We use integer random instead of floats, so each chance is premultiplied by 100 (100.00 becomes 10000) (使用整型随机数代替浮点，几率预乘 100，即 100.00% 记为 10000)
     const SpellPartialResistDistribution precalculated =
     {
         {{10000, 0, 0, 0, 0}},
@@ -182,14 +185,14 @@ static inline SpellPartialResistDistribution InitSpellPartialResistDistribution(
         {{0, 0, 100, 200, 9700}},
         {{0, 0, 0, 0, 10000}},
     };
-    // Inflate up to two decimal places of chance %: add all intermediate values and 100% value (100*100 + 1)
+    // Inflate up to two decimal places of chance %: add all intermediate values and 100% value (100*100 + 1) (将整数百分点表线性插值扩展至两位小数精度)
     SpellPartialResistDistribution inflated(10001, {{}});
     for (size_t row = 0; row < precalculated.size(); ++row)
     {
         const size_t next = (row + 1);
         const size_t shift = (row * 100);
         const auto& source = precalculated.at(row);
-        // Check if this is the last one first
+        // Check if this is the last one first (若已是最后一行 100%，直接写入末尾槽位)
         if (next == precalculated.size())
         {
             for (uint8 column = SPELL_PARTIAL_RESIST_NONE; column < NUM_SPELL_PARTIAL_RESISTS; ++column)
@@ -206,7 +209,7 @@ static inline SpellPartialResistDistribution InitSpellPartialResistDistribution(
                 const uint32 base = source.at(column);
                 const uint32 upcoming = ahead.at(column);
                 const int64 diff = (int64(upcoming) - base);
-                // Use bigger types signed math to avoid potential erratic behavior on some compilers...
+                // Use bigger types signed math to avoid potential erratic behavior on some compilers... (使用有符号 64 位整数插值避免部分编译器溢出异常)
                 values[column] = uint32(std::max(0.0, (base + ::round(diff * (intermediate / double(100.0))))));
             }
         }
@@ -217,8 +220,9 @@ static inline SpellPartialResistDistribution InitSpellPartialResistDistribution(
 static const SpellPartialResistDistribution SPELL_PARTIAL_RESIST_DISTRIBUTION = InitSpellPartialResistDistribution();
 
 ////////////////////////////////////////////////////////////
-// Methods of class MovementInfo
+// Methods of class MovementInfo (移动信息结构体读写与朝向计算方法)
 
+// 从客户端移动封包字节流反序列化 MovementInfo
 void MovementInfo::Read(ByteBuffer& data)
 {
     stime = sWorld.GetCurrentMSTime();
@@ -230,6 +234,7 @@ void MovementInfo::Read(ByteBuffer& data)
     data >> pos.z;
     data >> pos.o;
 
+    // 若位于载具/飞艇/船只上，读取载具 GUID 及相对局部坐标
     if (HasMovementFlag(MOVEFLAG_ONTRANSPORT))
     {
         data >> t_guid;
@@ -240,6 +245,7 @@ void MovementInfo::Read(ByteBuffer& data)
         data >> t_time;
     }
 
+    // 游泳或飞行状态额外读取俯仰角
     if (HasMovementFlag(MovementFlags(MOVEFLAG_SWIMMING | MOVEFLAG_FLYING)))
     {
         data >> s_pitch;
@@ -247,6 +253,7 @@ void MovementInfo::Read(ByteBuffer& data)
 
     data >> fallTime;
 
+    // 坠落/跳跃状态读取垂直初速度及水平矢量
     if (HasMovementFlag(MOVEFLAG_FALLING))
     {
         data >> jump.zspeed;
@@ -268,6 +275,7 @@ void MovementInfo::Read(ByteBuffer& data)
     }
 }
 
+// 将 MovementInfo 序列化写入发送给客户端的移动封包字节流
 void MovementInfo::Write(ByteBuffer& data) const
 {
     data << moveFlags;
@@ -309,6 +317,7 @@ void MovementInfo::Write(ByteBuffer& data) const
     }
 }
 
+// 根据前后左右平移组合标志计算实际运动方向角
 float MovementInfo::GetOrientationInMotion(MovementFlags flags, float orientation)
 {
     float mod = ((flags & MOVEFLAG_BACKWARD) ? M_PI_F : 0);
@@ -323,8 +332,9 @@ float MovementInfo::GetOrientationInMotion(MovementFlags flags, float orientatio
 }
 
 ////////////////////////////////////////////////////////////
-// Methods of class Unit
+// Methods of class Unit (Unit 基类核心方法实现)
 
+// Unit 构造函数：初始化攻击计时器、属性修正数组、可见性、三围能力及战斗状态
 Unit::Unit() :
     movespline(new Movement::MoveSpline()),
     m_charmInfo(nullptr),
@@ -383,7 +393,7 @@ Unit::Unit() :
         i[TOTAL_PCT] = 1.0f;
     }
 
-    // implement 50% base damage from offhand
+    // implement 50% base damage from offhand (副手基础伤害默认为 50%)
     m_auraModifiersGroup[UNIT_MOD_DAMAGE_OFFHAND][TOTAL_PCT] = 0.5f;
 
     for (auto& i : m_attackPowerMod)
@@ -423,7 +433,7 @@ Unit::Unit() :
     for (float& i : m_speed_rate)
         i = 1.0f;
 
-    // remove aurastates allowing special moves
+    // remove aurastates allowing special moves (初始化反击技能计时器)
     for (unsigned int& i : m_reactiveTimer)
         i = 0;
 
@@ -448,9 +458,10 @@ Unit::Unit() :
     m_chainImmune = false;
 }
 
+// Unit 析构函数：释放当前施法引用、延迟光环、战斗数据、魅惑信息与样条对象
 Unit::~Unit()
 {
-    // set current spells as deletable
+    // set current spells as deletable (解除当前施法指针引用，允许法术实例自行销毁)
     for (auto& m_currentSpell : m_currentSpells)
     {
         if (m_currentSpell)
@@ -466,13 +477,14 @@ Unit::~Unit()
     delete m_charmInfo;
     delete movespline;
 
-    // those should be already removed at "RemoveFromWorld()" call
+    // those should be already removed at "RemoveFromWorld()" call (以下容器应在 RemoveFromWorld 时已清空)
     MANGOS_ASSERT(m_gameObj.empty());
     MANGOS_ASSERT(m_dynObjGUIDs.empty());
     MANGOS_ASSERT(m_deletedAuras.empty());
     MANGOS_ASSERT(m_deletedHolders.empty());
 }
 
+// 单位主更新循环：冷却、事件队列、施法、光环垃圾清理、攻击计时、移动、AI 与脱战检测
 void Unit::Update(const uint32 diff)
 {
     if (!IsInWorld())
@@ -496,7 +508,7 @@ void Unit::Update(const uint32 diff)
 
     // WARNING! Order of execution here is important, do not change.
     // Spells must be processed with event system BEFORE they go to _UpdateSpells.
-    // Or else we may have some SPELL_STATE_FINISHED spells stalled in pointers, that is bad.
+    // Or else we may have some SPELL_STATE_FINISHED spells stalled in pointers, that is bad. (警告：必须先更新事件系统再调用 _UpdateSpells，否则已结束法术指针可能残留)
     m_spellUpdateHappening = true;
 
     UpdateCooldowns(GetMap()->GetCurrentClockTime());
@@ -520,7 +532,7 @@ void Unit::Update(const uint32 diff)
     if (uint32 base_att = getAttackTimer(OFF_ATTACK))
         setAttackTimer(OFF_ATTACK, (diff >= base_att ? 0 : base_att - diff));
 
-    // update abilities available only for fraction of time
+    // update abilities available only for fraction of time (更新反击触发技能剩余时间)
     UpdateReactives(diff);
 
     UpdateSplineMovement(diff);
@@ -538,7 +550,7 @@ void Unit::Update(const uint32 diff)
         }, 1000);
 #endif
 
-        AI()->UpdateAI(diff);   // AI not react good at real update delays (while freeze in non-active part of map)
+        AI()->UpdateAI(diff);   // AI not react good at real update delays (while freeze in non-active part of map) (驱动单位 AI 逻辑)
     }
 
     GetCombatManager().Update(diff);
@@ -552,6 +564,7 @@ void Unit::Update(const uint32 diff)
     WorldObject::Update(diff);
 }
 
+// 单位心跳周期回调：同步飞行样条位置、光环心跳与 AI 心跳
 void Unit::Heartbeat()
 {
     WorldObject::Heartbeat();
@@ -572,6 +585,7 @@ void Unit::Heartbeat()
         AI()->OnHeartbeat();
 }
 
+// 生物拉怪时延迟触发联动事件与友军呼救
 void Unit::TriggerAggroLinkingEvent(Unit* enemy)
 {
     if (!IsCreature() || !enemy)
@@ -589,7 +603,7 @@ void Unit::TriggerAggroLinkingEvent(Unit* enemy)
         if (unit.IsLinkingEventTrigger())
             unit.GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_AGGRO, static_cast<Creature*>(&unit), enemy);
 
-        if (creatureGroup) // if npc dies before event execution, group will be removed from him, however groups are persistent and safe to access like this
+        if (creatureGroup) // if npc dies before event execution, group will be removed from him, however groups are persistent and safe to access like this (若怪物死亡则其队伍指针已清空，队伍对象本身持久有效)
             creatureGroup->TriggerLinkingEvent(CREATURE_GROUP_EVENT_AGGRO, enemy);
 
         if (callAssistance)
@@ -597,6 +611,7 @@ void Unit::TriggerAggroLinkingEvent(Unit* enemy)
     }), m_events.CalculateTime(sWorld.getConfig(CONFIG_UINT32_CREATURE_CHECK_FOR_HELP_AGGRO_DELAY)));
 }
 
+// 生物开始脱战跑回出生点时触发的事件（清理拾取归属、通知副本/联动及控制单位）
 void Unit::TriggerEvadeEvents()
 {
     if (!IsPlayerControlled())
@@ -616,6 +631,7 @@ void Unit::TriggerEvadeEvents()
     CallForAllControlledUnits([](Unit* unit) { unit->HandleExitCombat(false); }, CONTROLLED_PET | CONTROLLED_GUARDIANS | CONTROLLED_CHARM | CONTROLLED_TOTEMS);
 }
 
+// 生物脱战回到出生点后触发的事件（清除逃脱标志、恢复跟随与编组状态）
 void Unit::TriggerHomeEvents()
 {
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_EVADING_HOME);
@@ -644,13 +660,14 @@ void Unit::TriggerHomeEvents()
     }
 }
 
+// 目标不可达导致战斗逃脱计时器超时：若仅有唯一仇恨目标则直接脱战，否则压制当前目标尝试切目标
 void Unit::EvadeTimerExpired()
 {
     // Can happen for any unit with an AI
     if (!AI())
         return;
 
-    // When there is no target to switch to, leave combat
+    // When there is no target to switch to, leave combat (仇恨列表仅剩一个目标时直接重置脱战)
     if (getThreatManager().getThreatList().size() == 1)
     {
         AI()->EnterEvadeMode();
@@ -660,6 +677,7 @@ void Unit::EvadeTimerExpired()
     getThreatManager().SetTargetSuppressed(GetVictim());
 }
 
+// 更新近战自动攻击状态：检测额外攻击、主副手冷却、攻击距离、面向与错误提示
 bool Unit::UpdateMeleeAttackingState()
 {
     Unit* victim = GetVictim();
@@ -690,7 +708,7 @@ bool Unit::UpdateMeleeAttackingState()
     {
         if (isAttackReady(BASE_ATTACK))
         {
-            // prevent base and off attack in same time, delay attack at 0.2 sec
+            // prevent base and off attack in same time, delay attack at 0.2 sec (避免主副手同帧挥击，将副手推迟 0.2 秒)
             if (hasOffhandWeaponForAttack())
             {
                 if (getAttackTimer(OFF_ATTACK) < ATTACK_DISPLAY_DELAY)
@@ -701,7 +719,7 @@ bool Unit::UpdateMeleeAttackingState()
         }
         if (hasOffhandWeaponForAttack() && isAttackReady(OFF_ATTACK))
         {
-            // prevent base and off attack in same time, delay attack at 0.2 sec
+            // prevent base and off attack in same time, delay attack at 0.2 sec (避免主副手同帧挥击，将主手推迟 0.2 秒)
             uint32 base_att = getAttackTimer(BASE_ATTACK);
             if (base_att < ATTACK_DISPLAY_DELAY)
                 setAttackTimer(BASE_ATTACK, ATTACK_DISPLAY_DELAY);
@@ -713,7 +731,7 @@ bool Unit::UpdateMeleeAttackingState()
 
     if (swingError)
     {
-        // delaying a weapon that is not ready would make it ready sooner
+        // delaying a weapon that is not ready would make it ready sooner (攻击失败时设 100ms 重试间隔，防止每帧空转)
         if (isAttackReady(BASE_ATTACK))
             setAttackTimer(BASE_ATTACK, 100);
         if (hasOffhandWeaponForAttack() && isAttackReady(OFF_ATTACK))
@@ -744,6 +762,7 @@ bool Unit::UpdateMeleeAttackingState()
     return swingError != 0;
 }
 
+// 向周围视野广播移动心跳包
 void Unit::SendHeartBeat()
 {
     WorldPacket data(MSG_MOVE_HEARTBEAT, 64);
@@ -752,11 +771,12 @@ void Unit::SendHeartBeat()
     SendMessageToSet(data, true);
 }
 
+// 发送定身/解除定身同步封包（区分客户端控制与服务端样条控制）
 void Unit::SendMoveRoot(bool state, bool broadcastOnly)
 {
     const Player* client = GetClientControlling();
 
-    // Apply flags in-place when unit currently is not controlled by a player
+    // Apply flags in-place when unit currently is not controlled by a player (非玩家客户端控制时直接更新服务端移动标志)
     if (!client && !broadcastOnly)
     {
         if (state)
@@ -774,14 +794,14 @@ void Unit::SendMoveRoot(bool state, bool broadcastOnly)
         return;
 
     const PackedGuid& guid = GetPackGUID();
-    // Pre-Wrath spline root: when unit is currently not controlled by a player, or broadcasting to others
+    // Pre-Wrath spline root: when unit is currently not controlled by a player, or broadcasting to others (向观察者广播样条定身包)
     if (!client || broadcastOnly)
     {
         WorldPacket data(state ? SMSG_SPLINE_MOVE_ROOT : SMSG_SPLINE_MOVE_UNROOT, guid.size());
         data << guid;
         SendMessageToSet(data, (!broadcastOnly));
     }
-    // Pre-Wrath force root: send only to the controlling player
+    // Pre-Wrath force root: send only to the controlling player (向控制端玩家发送强制移动定身命令)
     else
     {
         auto const counter = client->GetSession()->GetOrderCounter();
@@ -795,11 +815,13 @@ void Unit::SendMoveRoot(bool state, bool broadcastOnly)
     }
 }
 
+// 重置指定武器槽位攻击冷却时间为当前修正后的攻击间隔
 void Unit::resetAttackTimer(WeaponAttackType type)
 {
     m_attackTimer[type] = uint32(GetAttackTime(type) * m_modAttackSpeedPct[type]);
 }
 
+// 判断目标是否处于近战攻击触及范围内（双方移动中会增加近战宽容距离 MELEE_LEEWAY）
 bool Unit::CanReachWithMeleeAttack(Unit const* pVictim, float flat_mod /*= 0.0f*/) const
 {
     MANGOS_ASSERT(pVictim);
@@ -809,7 +831,7 @@ bool Unit::CanReachWithMeleeAttack(Unit const* pVictim, float flat_mod /*= 0.0f*
     if (IsMoving() && !IsWalking() && pVictim->IsMoving() && !pVictim->IsWalking())
         reach += MELEE_LEEWAY;
 
-    // This check is not related to bounding radius
+    // This check is not related to bounding radius (此处仅做圆心间距离判定，不再重复叠加包围半径)
     float dx = GetPositionX() - pVictim->GetPositionX();
     float dy = GetPositionY() - pVictim->GetPositionY();
 
@@ -822,6 +844,7 @@ bool Unit::CanReachWithMeleeAttack(Unit const* pVictim, float flat_mod /*= 0.0f*
     return dx * dx + dy * dy < reach* reach;
 }
 
+// 移除导致指定 AuraType 的所有光环持有器
 void Unit::RemoveSpellsCausingAura(AuraType auraType)
 {
     for (AuraList::const_iterator iter = m_modAuras[auraType].begin(); iter != m_modAuras[auraType].end();)
@@ -833,6 +856,7 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType)
     }
 }
 
+// 移除导致指定 AuraType 的光环（排除 except 持有器）
 void Unit::RemoveSpellsCausingAura(AuraType auraType, SpellAuraHolder* except)
 {
     for (AuraList::const_iterator iter = m_modAuras[auraType].begin(); iter != m_modAuras[auraType].end();)
@@ -849,6 +873,7 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType, SpellAuraHolder* except)
     }
 }
 
+// 移除导致指定 AuraType 的光环（可选仅移除带有特定机制掩码的光环）
 void Unit::RemoveSpellsCausingAura(AuraType auraType, SpellAuraHolder* except, bool onlyMechanic)
 {
     for (AuraList::const_iterator iter = m_modAuras[auraType].begin(); iter != m_modAuras[auraType].end();)
@@ -864,6 +889,7 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType, SpellAuraHolder* except, b
     }
 }
 
+// 从指定施法者身上移除导致某 AuraType 的光环层数
 void Unit::RemoveSpellsCausingAura(AuraType auraType, ObjectGuid casterGuid)
 {
     for (AuraList::const_iterator iter = m_modAuras[auraType].begin(); iter != m_modAuras[auraType].end();)
@@ -878,6 +904,7 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType, ObjectGuid casterGuid)
     }
 }
 
+// 伤害结算前置修正：处理脱战/飞行/死亡免疫、圣域禁伤、对宠物三倍伤及双方 AI 伤害回调
 void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* absorb, DamageEffectType damagetype, SpellEntry const* spellInfo)
 {
     if (!victim->IsAlive() || victim->IsTaxiFlying() || victim->GetCombatManager().IsInEvadeMode())
@@ -896,7 +923,7 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         if (dealer->IsDealTripleDamageToPets() && !victim->IsPlayer() && victim->IsPlayerControlled())
             damage *= 3;
 
-        // You don't lose health from damage taken from another player while in a sanctuary
+        // You don't lose health from damage taken from another player while in a sanctuary (圣域安全区内玩家间不扣血，但仍记录战斗日志)
         // You still see it in the combat log though
         if (!IsAllowedDamageInArea(dealer, victim))
         {
@@ -904,10 +931,10 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
                 *absorb += damage;
             damage = 0;
         }
-        if (UnitAI* ai = dealer->AI()) // Script Event damage Deal
+        if (UnitAI* ai = dealer->AI()) // Script Event damage Deal (通知攻击方 AI 伤害输出事件)
             ai->DamageDeal(victim, damage, damagetype, spellInfo);
     }
-    // Script Event damage taken
+    // Script Event damage taken (通知受击方 AI 承受伤害事件)
     if (victim->AI())
         victim->AI()->DamageTaken(dealer, damage, damagetype, spellInfo);
 
@@ -915,17 +942,20 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         *absorb += (originalDamage - damage);
 }
 
+// 立即自杀（INSTAKILL）
 void Unit::Suicide()
 {
     DealDamage(this, this, this->GetHealth(), nullptr, INSTAKILL, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 }
 
+// 坠落致死（记录坠落环境伤害日志后扣光生命）
 void Unit::FallSuicide()
 {
     SendEnvironmentalDamageLog(DAMAGE_FALL, this->GetHealth(), 0, 0);
     DealDamage(this, this, this->GetHealth(), nullptr, SELF_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 }
 
+// 统一伤害结算入口：唤醒坐姿、计算怒气、打断受击易碎光环/引导法术、决斗保底、仇恨分配与致死分支
 uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellInfo, bool durabilityLoss, Spell* spell)
 {
     // remove affects from attacker at any non-DoT damage (including 0 damage)
@@ -1108,19 +1138,20 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
     return damage;
 }
 
+// 处理单位致死流程：击杀归属与经验奖励、救赎之魂天赋判定、耐久惩罚、PvP/决斗结算与生物死亡钩子
 void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEntry const* spellInfo, bool durabilityLoss, bool duel_hasEnded)
 {
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamage %s Killed %s", killer ? killer->GetGuidStr().c_str() : "", victim->GetGuidStr().c_str());
 
     /*
-    *  Preparation: Who gets credit for killing whom, invoke SpiritOfRedemtion?
+    *  Preparation: Who gets credit for killing whom, invoke SpiritOfRedemtion? (前置准备：判定击杀归属者与救赎之魂触发)
     */
     // for loot will be used only if group_tap == nullptr
     Player* responsiblePlayer = killer ? killer->GetBeneficiaryPlayer() : nullptr;
     Player* tapper = responsiblePlayer;
     Group* tapperGroup = nullptr;
 
-    // in creature kill case group/player tap stored for creature
+    // in creature kill case group/player tap stored for creature (生物死亡优先采用怪物记录的最初开怪拾取归属)
     if (victim->GetTypeId() == TYPEID_UNIT)
     {
         if (Player* recipient = ((Creature*)victim)->GetOriginalLootRecipient())
@@ -1136,7 +1167,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
 
     // On death scripts
     // Spirit of Redemtion Talent
-    // if talent known but not triggered (check priest class for speedup check)
+    // if talent known but not triggered (check priest class for speedup check) (检查牧师救赎之魂天赋光环)
     Aura* spiritOfRedemtionTalentReady = nullptr;
     if (damagetype != INSTAKILL &&           // not called from SPELL_AURA_SPIRIT_OF_REDEMPTION
         victim->GetTypeId() == TYPEID_PLAYER && victim->getClass() == CLASS_PRIEST)
@@ -1153,9 +1184,9 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
     }
 
     /*
-    *                      Generic Actions (ProcEvents, Combat-Log, Kill Rewards, Stop Combat)
+    *                      Generic Actions (ProcEvents, Combat-Log, Kill Rewards, Stop Combat) (通用击杀动作：触发日志、击杀奖励与退战)
     */
-    // call kill spell proc event (before real die and combat stop to triggering auras removed at death/combat stop)
+    // call kill spell proc event (before real die and combat stop to triggering auras removed at death/combat stop) (在死亡清理光环前发送击杀日志并触发击杀/死亡 Proc)
     if (damagetype != INSTAKILL)
     {
         if (responsiblePlayer && responsiblePlayer != victim && (responsiblePlayer == tapper || (responsiblePlayer->GetGroup() == tapperGroup && tapperGroup)))
@@ -1180,7 +1211,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
 
     ProcDamageAndSpell(ProcSystemArguments(victim, victim, PROC_FLAG_NONE, PROC_FLAG_DEATH, PROC_EX_NONE, 0, 0));
 
-    // Reward player, his pets, and group/raid members
+    // Reward player, his pets, and group/raid members (向个人或小队/团队发放击杀经验与声望奖励)
     if (tapper != victim)
     {
         if (tapperGroup)
@@ -1190,7 +1221,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
     }
 
     /*
-    *  Actions for the killer
+    *  Actions for the killer (救赎之魂变形或清零血量，并通知击杀者 AI)
     */
     if (spiritOfRedemtionTalentReady)
     {
@@ -1224,7 +1255,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
     }
 
     /*
-    *  Actions for the victim
+    *  Actions for the victim (受害者死亡后处理：玩家耐久惩罚/PvP/决斗，或生物死亡流程)
     */
     if (victim->IsPlayer())          // Killed player
     {
@@ -1244,7 +1275,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
 
 
         // 10% durability loss on death
-        // only if not player and not controlled by player pet. And not at BG
+        // only if not player and not controlled by player pet. And not at BG (非玩家/战场击杀时扣除 10% 装备耐久)
         if (durabilityLoss && !responsiblePlayer && !playerVictim->InBattleGround())
         {
             if (!spellInfo || !spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_DURABILITY_LOSS))
@@ -1297,6 +1328,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
     victim->CombatStop();
 }
 
+// 非致死伤害后续处理：扣减生命、生成仇恨与入战、随机损耗装备耐久、怒气获取、打断/推迟施法及决斗胜负结算
 void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool duel_hasEnded)
 {
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamageAlive");
@@ -1309,7 +1341,7 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
         {
             float threat = damage * sSpellMgr.GetSpellThreatMultiplier(spellProto);
             victim->AddThreat(dealer, threat, (cleanDamage && cleanDamage->hitOutCome == MELEE_HIT_CRIT), damageSchoolMask, spellProto);
-            if (damagetype != DOT && damagetype != SPELL_DAMAGE_SHIELD && (!spellProto || !spellProto->HasAttribute(SPELL_ATTR_EX4_REACTIVE_DAMAGE_PROC))) // DOTs dont put in combat but still cause threat
+            if (damagetype != DOT && damagetype != SPELL_DAMAGE_SHIELD && (!spellProto || !spellProto->HasAttribute(SPELL_ATTR_EX4_REACTIVE_DAMAGE_PROC))) // DOTs dont put in combat but still cause threat (DoT 与反伤盾只产仇恨不拉入直接战斗)
             {
                 dealer->SetInCombatWith(victim);
                 victim->SetInCombatWith(dealer);
@@ -1319,7 +1351,7 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
 
         if (dealer->GetTypeId() == TYPEID_PLAYER)
         {
-            // random durability for items (HIT DONE)
+            // random durability for items (HIT DONE) (攻击命中时随机磨损一件装备耐久)
             if (roll_chance_f(sWorld.getConfig(CONFIG_FLOAT_RATE_DURABILITY_LOSS_DAMAGE)))
             {
                 EquipmentSlots slot = EquipmentSlots(urand(0, EQUIPMENT_SLOT_END - 1));
@@ -1330,12 +1362,12 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
 
     if (victim->GetTypeId() == TYPEID_PLAYER)                               // victim is a player
     {
-        // Rage from damage received
+        // Rage from damage received (受击产生怒气，躲闪/招架不产生)
         if (dealer != victim && victim->GetPowerType() == POWER_RAGE) // player doesnt get rage when he parries
             if (cleanDamage && cleanDamage->damage && cleanDamage->hitOutCome != MELEE_HIT_DODGE && cleanDamage->hitOutCome != MELEE_HIT_PARRY)
                 static_cast<Player*>(victim)->RewardRage(cleanDamage->damage, 0, false);
 
-        // random durability for items (HIT TAKEN)
+        // random durability for items (HIT TAKEN) (受击时随机磨损一件装备耐久)
         if (roll_chance_f(sWorld.getConfig(CONFIG_FLOAT_RATE_DURABILITY_LOSS_DAMAGE)))
         {
             EquipmentSlots slot = EquipmentSlots(urand(0, EQUIPMENT_SLOT_END - 1));
@@ -1346,7 +1378,7 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
     if (dealer)
         dealer->InterruptOrDelaySpell(victim, damagetype, spellProto);
 
-    // last damage from duel opponent
+    // last damage from duel opponent (决斗最后一击判定胜负并强制下跪投降)
     if (duel_hasEnded)
     {
         MANGOS_ASSERT(victim->GetTypeId() == TYPEID_PLAYER);
@@ -1364,6 +1396,7 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
     }
 }
 
+// 受击时打断或推迟目标正在读条或引导的法术
 void Unit::InterruptOrDelaySpell(Unit* pVictim, DamageEffectType damagetype, SpellEntry const* spellInfo)
 {
     bool dotDamage = (damagetype == DOT || spellInfo && spellInfo->HasAttribute(SPELL_ATTR_EX3_TREAT_AS_PERIODIC));
@@ -1427,6 +1460,7 @@ struct PetOwnerKilledUnitHelper
     Unit* m_victim;
 };
 
+// 生物被击杀后的专属收尾流程：任务击杀计数、引导附身打断、AI/副本/脚本通知、准备尸体拾取与清理仇恨列表
 void Unit::JustKilledCreature(Unit* killer, Creature* victim, Player* responsiblePlayer)
 {
     victim->m_deathState = DEAD; // so that IsAlive, IsDead return expected results in the called hooks of JustKilledCreature
@@ -1547,6 +1581,7 @@ void Unit::CastStop(uint32 except_spellid)
             InterruptSpell(CurrentSpellTypes(i), false);
 }
 
+// 根据法术 ID 构造并施放法术（基础重载）
 SpellCastResult Unit::CastSpell(Unit* Victim, uint32 spellId, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -1563,6 +1598,7 @@ SpellCastResult Unit::CastSpell(Unit* Victim, uint32 spellId, uint32 triggeredFl
     return CastSpell(Victim, spellInfo, triggeredFlags, castItem, triggeredByAura, originalCaster, triggeredBy);
 }
 
+// 根据 SpellEntry 原型向指定目标施放法术（核心实现）
 SpellCastResult Unit::CastSpell(Unit* Victim, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     if (!spellInfo)
@@ -1609,6 +1645,7 @@ SpellCastResult Unit::CastSpell(Unit* Victim, SpellEntry const* spellInfo, uint3
     return spell->SpellStart(&targets, triggeredByAura);
 }
 
+// 施放带有自定义基础点数 (BasePoints) 的法术（按 ID）
 SpellCastResult Unit::CastCustomSpell(Unit* Victim, uint32 spellId, int32 const* bp0, int32 const* bp1, int32 const* bp2, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -1625,6 +1662,7 @@ SpellCastResult Unit::CastCustomSpell(Unit* Victim, uint32 spellId, int32 const*
     return CastCustomSpell(Victim, spellInfo, bp0, bp1, bp2, triggeredFlags, castItem, triggeredByAura, originalCaster, triggeredBy);
 }
 
+// 施放带有自定义基础点数 (BasePoints) 的法术（按原型）
 SpellCastResult Unit::CastCustomSpell(Unit* Victim, SpellEntry const* spellInfo, int32 const* bp0, int32 const* bp1, int32 const* bp2, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     if (!spellInfo)
@@ -1672,6 +1710,7 @@ SpellCastResult Unit::CastCustomSpell(Unit* Victim, SpellEntry const* spellInfo,
 }
 
 // used for scripting
+// 向指定三维空间坐标 (x, y, z) 施放法术（按 ID，常用于脚本）
 SpellCastResult Unit::CastSpell(float x, float y, float z, uint32 spellId, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -1689,6 +1728,7 @@ SpellCastResult Unit::CastSpell(float x, float y, float z, uint32 spellId, uint3
 }
 
 // used for scripting
+// 向指定三维空间坐标 (x, y, z) 施放法术（按原型，常用于脚本）
 SpellCastResult Unit::CastSpell(float x, float y, float z, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     if (!spellInfo)
@@ -1728,6 +1768,7 @@ SpellCastResult Unit::CastSpell(float x, float y, float z, SpellEntry const* spe
     return spell->SpellStart(&targets, triggeredByAura);
 }
 
+// 使用预构目标包施放法术
 SpellCastResult Unit::CastSpell(SpellCastTargets& targets, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     if (!spellInfo)
@@ -1756,6 +1797,7 @@ SpellCastResult Unit::CastSpell(SpellCastTargets& targets, SpellEntry const* spe
     return spell->SpellStart(&targets, triggeredByAura);
 }
 
+// 使用预构目标包施放带自定义点数的法术
 SpellCastResult Unit::CastCustomSpell(SpellCastTargets& targets, SpellEntry const* spellInfo, int32 const* bp0, int32 const* bp1, int32 const* bp2, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     if (!spellInfo)
@@ -1793,6 +1835,7 @@ SpellCastResult Unit::CastCustomSpell(SpellCastTargets& targets, SpellEntry cons
     return spell->SpellStart(&targets, triggeredByAura);
 }
 
+// 使用通用参数包 SpellCastArgs 施放法术（按 ID）
 SpellCastResult Unit::CastSpell(SpellCastArgs& args, uint32 spellId, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -1819,6 +1862,7 @@ SpellCastResult Unit::CastSpell(SpellCastArgs& args, SpellEntry const* spellInfo
     return CastSpell(args, spellInfo, uint32(triggeredFlags), castItem, triggeredByAura, originalCaster, triggeredBy);
 }
 
+// 使用通用参数包 SpellCastArgs 施放法术（按原型）
 SpellCastResult Unit::CastSpell(SpellCastArgs& args, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     if (!spellInfo)
@@ -1883,6 +1927,7 @@ uint32 Unit::SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage
     return spellDamageInfo.damage;
 }
 
+// 计算非近战法术伤害：结合暴击判定、物理/魔法法伤加成及护甲减免
 void Unit::CalculateSpellDamage(SpellNonMeleeDamage* spellDamageInfo, int32 damage, SpellEntry const* spellInfo, SpellEffectIndex effectIndex, WeaponAttackType attackType)
 {
     SpellSchoolMask damageSchoolMask = spellDamageInfo->schoolMask;
@@ -1939,6 +1984,7 @@ void Unit::CalculateSpellDamage(SpellNonMeleeDamage* spellDamageInfo, int32 dama
     spellDamageInfo->damage = damage;
 }
 
+// 实际扣除法术伤害并派发战斗日志与仇恨
 void Unit::DealSpellDamage(Unit* affectiveCaster, SpellNonMeleeDamage* spellDamageInfo, bool durabilityLoss, bool resetLeash)
 {
     if (!spellDamageInfo)
@@ -1980,6 +2026,7 @@ void Unit::DealSpellDamage(Unit* affectiveCaster, SpellNonMeleeDamage* spellDama
     DealDamage(affectiveCaster, victim, spellDamageInfo->damage, &cleanDamage, resetLeash ? SPELL_DIRECT_DAMAGE : SPELL_DAMAGE_SHIELD, spellDamageInfo->schoolMask, spellProto, durabilityLoss, spellDamageInfo->spell);
 }
 
+// 根据受击者韧性等级计算对法术/周期性伤害或抽蓝的伤害减免
 uint32 Unit::GetResilienceRatingDamageReduction(uint32 damage, SpellDmgClass dmgClass, bool periodic/* = false*/, Powers pwrType/* = POWER_HEALtH*/) const
 {
     // NOTE: Resilince increases all 3 ratings at once, verify if specialized cases actually exist
@@ -2002,6 +2049,7 @@ uint32 Unit::GetResilienceRatingDamageReduction(uint32 damage, SpellDmgClass dmg
 }
 
 // TODO for melee need create structure as in
+// 近战攻击伤害综合判定：计算武器各学派伤害、圆桌判定（躲闪/招架/格挡/暴击/偏斜/碾压）与吸收抵抗
 void Unit::CalculateMeleeDamage(Unit* pVictim, CalcDamageInfo* calcDamageInfo, WeaponAttackType attackType /*= BASE_ATTACK*/)
 {
     calcDamageInfo->attacker         = this;
@@ -2294,6 +2342,7 @@ void Unit::CalculateMeleeDamage(Unit* pVictim, CalcDamageInfo* calcDamageInfo, W
         calcDamageInfo->HitInfo |= HITINFO_BLOOD_SPURT;
 }
 
+// 造成近战平砍伤害：应用伤害、处理招架反击加速、反伤盾触发与眩晕
 void Unit::DealMeleeDamage(CalcDamageInfo* calcDamageInfo, bool durabilityLoss)
 {
     if (!calcDamageInfo) return;
@@ -2455,6 +2504,7 @@ void Unit::DealMeleeDamage(CalcDamageInfo* calcDamageInfo, bool durabilityLoss)
 }
 
 
+// 发送一次性表情动画网络包
 void Unit::HandleEmoteCommand(uint32 emote_id)
 {
     WorldPacket data(SMSG_EMOTE, 4 + 8);
@@ -2463,11 +2513,13 @@ void Unit::HandleEmoteCommand(uint32 emote_id)
     SendMessageToSet(data, true);
 }
 
+// 设置持续性表情姿态（更新 UNIT_NPC_EMOTESTATE 字段）
 void Unit::HandleEmoteState(uint32 emote_id)
 {
     SetUInt32Value(UNIT_NPC_EMOTESTATE, emote_id);
 }
 
+// 统一处理表情请求：根据 DBC 自动判断为一次性动作还是持续状态
 void Unit::HandleEmote(uint32 emote_id)
 {
     if (!emote_id)
@@ -2481,6 +2533,7 @@ void Unit::HandleEmote(uint32 emote_id)
     }
 }
 
+// 根据等级修正与护甲穿透，依据 75% 封顶公式计算护甲物理减伤
 float Unit::CalcArmorReducedDamage(WorldObject* attacker, Unit* victim, const float damage)
 {
     float armor = (float)victim->GetArmor();
@@ -2509,6 +2562,7 @@ float Unit::CalcArmorReducedDamage(WorldObject* attacker, Unit* victim, const fl
     return (newdamage > 1) ? newdamage : 1.0f;
 }
 
+// 计算伤害的抗性抵抗、护盾吸收、法力护盾消耗、伤害分摊与防致死效果
 void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMask, DamageEffectType damagetype, const uint32 damage, uint32* absorb, int32* resist, bool canReflect, bool canResist, bool binary)
 {
     if (!IsAlive() || !damage)
@@ -2740,6 +2794,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
     *absorb = damage - remainingDamage - *resist;
 }
 
+// 计算可格挡技能法术的格挡减免与吸收抵抗
 void Unit::CalculateAbsorbResistBlock(Unit* caster, SpellNonMeleeDamage* spellDamageInfo, SpellEntry const* spellProto, WeaponAttackType attType)
 {
     if (RollAbilityPartialBlockOutcome(caster, attType, spellProto))
@@ -2756,6 +2811,7 @@ void Unit::CalculateAbsorbResistBlock(Unit* caster, SpellNonMeleeDamage* spellDa
     spellDamageInfo->damage = (spellDamageInfo->damage <= malus ? 0 : (spellDamageInfo->damage - malus));
 }
 
+// 驱动单次武器挥击：主手附魔技能触发、目标重定向、近战伤害计算与 Proc 触发分发
 void Unit::AttackerStateUpdate(Unit* pVictim, WeaponAttackType attType, bool extra)
 {
     if (hasUnitState(UNIT_STAT_CAN_NOT_REACT) || HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED))
@@ -2828,6 +2884,7 @@ void Unit::AttackerStateUpdate(Unit* pVictim, WeaponAttackType attType, bool ext
                          GetGUIDLow(), pVictim->GetGUIDLow(), pVictim->GetTypeId(), meleeDamageInfo.totalDamage, totalAbsorb, meleeDamageInfo.blockedAmount, totalResist);
 }
 
+// 执行风怒/剑专精等额外近战连击（带重入死锁保护）
 void Unit::DoExtraAttacks(Unit* /*victim*/)
 {
     Unit* attackTarget = nullptr;
@@ -2857,6 +2914,7 @@ void Unit::DoExtraAttacks(Unit* /*victim*/)
     m_extraAttacksExecuting = false;
 }
 
+// 近战单圆桌判定掷骰：按未命中->躲闪->招架->格挡->偏斜->暴击->碾压->命中顺序确定结果
 MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(const Unit* pVictim, WeaponAttackType attType, SpellSchoolMask schoolMask) const
 {
     if (pVictim->GetCombatManager().IsInEvadeMode())
@@ -2912,6 +2970,7 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(const Unit* pVictim, WeaponAttackT
     return MELEE_HIT_NORMAL;
 }
 
+// 获取指定攻击槽位在上下限范围内的随机浮动物理伤害
 float Unit::CalculateDamage(WeaponAttackType attType, bool normalized, uint8 index)
 {
     float min_damage, max_damage;
@@ -2956,6 +3015,7 @@ float Unit::CalculateDamage(WeaponAttackType attType, bool normalized, uint8 ind
     return frand(min_damage, max_damage);
 }
 
+// 计算低等级低阶法术因角色等级超出而产生的效果衰减惩罚系数
 float Unit::CalculateLevelPenalty(SpellEntry const* spellProto) const
 {
     uint32 spellLevel = spellProto->spellLevel;
@@ -2997,6 +3057,7 @@ void Unit::SendMeleeAttackStop(Unit const* victim) const
     DETAIL_FILTER_LOG(LOG_FILTER_COMBAT, "%s stopped attacking %s", GetGuidStr().c_str(), victim ? victim->GetGuidStr().c_str() : "nothing");
 }
 
+// 近战/远程技能法术命中圆桌判定（躲闪、招架、偏斜、格挡、抵抗、未命中）
 SpellMissInfo Unit::MeleeSpellHitResult(Unit* pVictim, SpellEntry const* spellInfo, uint32* heartbeatResistChance/* = nullptr*/)
 {
     Die<UnitCombatDieSide, UNIT_COMBAT_DIE_HIT, NUM_UNIT_COMBAT_DIE_SIDES> die;
@@ -3039,6 +3100,7 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit* pVictim, SpellEntry const* spellIn
     return SPELL_MISS_NONE;
 }
 
+// 魔法类法术命中/抵抗掷骰判定
 SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spellInfo, SpellSchoolMask schoolMask, uint32* heartbeatResistChance/* = nullptr*/)
 {
     Die<UnitCombatDieSide, UNIT_COMBAT_DIE_HIT, NUM_UNIT_COMBAT_DIE_SIDES> die;
@@ -3067,6 +3129,7 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spellIn
     return SPELL_MISS_NONE;
 }
 
+// 法术综合命中总判定：处理免疫、圣域禁伤、法术反射与偏斜
 SpellMissInfo Unit::SpellHitResult(WorldObject* caster, Unit* pVictim, SpellEntry const* spellInfo, uint8 effectMask, bool reflectable, bool reflected, uint32* heartbeatResistChance/* = nullptr*/)
 {
     // Dead units can't be missed, can't resist, reflect, etc
@@ -3151,6 +3214,7 @@ SpellMissInfo Unit::SpellHitResult(WorldObject* caster, Unit* pVictim, SpellEntr
     return SPELL_MISS_NONE;
 }
 
+// 获取有效防御技能数值（PvP 自动取技能上限，附加防御等级加成）
 uint32 Unit::GetDefenseSkillValue(Unit const* target) const
 {
     if (GetTypeId() == TYPEID_PLAYER)
@@ -3165,6 +3229,7 @@ uint32 Unit::GetDefenseSkillValue(Unit const* target) const
     return GetUnitMeleeSkill(target);
 }
 
+// 判断单位是否满足触发碾压打击的基本条件
 bool Unit::CanCrush() const
 {
     // Generally, only npcs and npc-controlled players/units are eligible to deal crushing blows
@@ -3173,6 +3238,7 @@ bool Unit::CanCrush() const
     return !GetMasterGuid().IsPlayer();
 }
 
+// 判断单位是否满足产生偏斜打击的基本条件
 bool Unit::CanGlance() const
 {
     // Generally, only players and player-controlled units are eligible to deal glancing blows
@@ -3211,6 +3277,7 @@ void Unit::SetCanBlock(const bool flag)
         ((Player*)this)->UpdateBlockPercentage();
 }
 
+// 判断战斗中自身是否具备躲闪能力
 bool Unit::CanDodgeInCombat() const
 {
     if (!CanDodge() || !CanReactInCombat())
@@ -3231,6 +3298,7 @@ bool Unit::CanDodgeInCombat(const Unit* attacker) const
     return true;
 }
 
+// 判断战斗中自身是否具备招架能力
 bool Unit::CanParryInCombat() const
 {
     if (!CanParry() || !CanReactInCombat() || HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISARMED) || IsNonMeleeSpellCasted(false))
@@ -3252,6 +3320,7 @@ bool Unit::CanParryInCombat(const Unit* attacker) const
     return (attacker && CanParryInCombat() && attacker->IsFacingTargetsFront(this));
 }
 
+// 判断战斗中自身是否具备盾牌格挡能力
 bool Unit::CanBlockInCombat(SpellSchoolMask weaponSchoolMask) const
 {
     // Pre-WotLK: cannot block elemental and magic melee auto-attacks
@@ -3419,6 +3488,7 @@ bool Unit::CanDeflectAbility(const Unit* attacker, const SpellEntry* ability) co
     return true;
 }
 
+// 计算面对指定攻击者时的实际有效躲闪几率（扣除攻击方精准与背后判定）
 float Unit::CalculateEffectiveDodgeChance(const Unit* attacker, WeaponAttackType attType, const SpellEntry* ability) const
 {
     float chance = 0.0f;
@@ -3448,6 +3518,7 @@ float Unit::CalculateEffectiveDodgeChance(const Unit* attacker, WeaponAttackType
     return std::max(0.0f, std::min(chance, 100.0f));
 }
 
+// 计算面对指定攻击者时的实际有效招架几率（扣除精准、背后无法招架）
 float Unit::CalculateEffectiveParryChance(const Unit* attacker, WeaponAttackType attType, const SpellEntry* ability) const
 {
     float chance = 0.0f;
@@ -3484,6 +3555,7 @@ float Unit::CalculateEffectiveParryChance(const Unit* attacker, WeaponAttackType
     return std::max(0.0f, std::min(chance, 100.0f));
 }
 
+// 计算面对指定攻击者时的实际有效格挡几率
 float Unit::CalculateEffectiveBlockChance(const Unit* attacker, WeaponAttackType attType, const SpellEntry* ability) const
 {
     float chance = 0.0f;
@@ -3510,6 +3582,7 @@ float Unit::CalculateEffectiveBlockChance(const Unit* attacker, WeaponAttackType
     return std::max(0.0f, std::min(chance, 100.0f));
 }
 
+// 计算攻击低等级目标时的碾压几率（需等级差 >= 3 或首领级）
 float Unit::CalculateEffectiveCrushChance(const Unit* victim, WeaponAttackType attType) const
 {
     float chance = 0.0f;
@@ -3524,6 +3597,7 @@ float Unit::CalculateEffectiveCrushChance(const Unit* victim, WeaponAttackType a
     return std::max(0.0f, std::min(chance, 100.0f));
 }
 
+// 计算对高等级目标平砍时的偏斜几率
 float Unit::CalculateEffectiveGlanceChance(const Unit* victim, WeaponAttackType attType) const
 {
     float chance = 0.0f;
@@ -3542,6 +3616,7 @@ float Unit::CalculateEffectiveGlanceChance(const Unit* victim, WeaponAttackType 
     return std::max(0.0f, std::min(chance, 100.0f));
 }
 
+// 计算从背后攻击玩家时的眩晕诱发几率
 float Unit::CalculateEffectiveDazeChance(const Unit* victim, WeaponAttackType attType) const
 {
     float chance = 0.0f;
@@ -3559,6 +3634,7 @@ float Unit::CalculateEffectiveDazeChance(const Unit* victim, WeaponAttackType at
     return std::max(0.0f, std::min(chance, 40.0f));
 }
 
+// 计算偏斜打击造成的伤害折扣衰减
 uint32 Unit::CalculateGlanceAmount(CalcDamageInfo* meleeInfo) const
 {
     if (!meleeInfo)
@@ -3650,6 +3726,7 @@ float Unit::GetReflectChance(SpellSchoolMask schoolMask) const
     return chance;
 }
 
+// 判定指定法术或攻击是否具备暴击资格
 bool Unit::CanCrit(const SpellEntry* entry, SpellSchoolMask schoolMask, WeaponAttackType attType) const
 {
     // Only players, player pets and totems can crit with spells
@@ -3759,6 +3836,7 @@ float Unit::GetCritTakenChance(SpellSchoolMask dmgSchoolMask, SpellDmgClass dmgC
     return chance;
 }
 
+// 获取法术或物理攻击的基础暴击伤害倍率（物理 200%，法术 150%，法术天赋可强化）
 float Unit::GetCritMultiplier(SpellSchoolMask dmgSchoolMask, uint32 creatureTypeMask, const SpellEntry* spell, bool heal) const
 {
     const float pct = 0.01f;
@@ -3831,6 +3909,7 @@ float Unit::GetCritTakenMultiplier(SpellSchoolMask dmgSchoolMask, SpellDmgClass 
     return std::max(0.0f, multiplier);
 }
 
+// 计算暴击后的最终伤害/治疗数值（扣除目标韧性暴击伤害减免）
 uint32 Unit::CalculateCritAmount(const Unit *victim, uint32 amount, const SpellEntry* entry, bool heal) const
 {
     if (!entry)
@@ -4074,6 +4153,7 @@ float Unit::CalculateEffectiveMissChance(const Unit *victim, WeaponAttackType at
     return std::max(minimum, std::min(chance, 100.0f));
 }
 
+// 计算对目标施放指定法术时的有效暴击几率
 float Unit::CalculateSpellCritChance(const Unit* victim, SpellSchoolMask schoolMask, const SpellEntry* spellInfo) const
 {
     if (!spellInfo || spellInfo->HasAttribute(SPELL_ATTR_EX2_CANT_CRIT))
@@ -4101,6 +4181,7 @@ float Unit::CalculateSpellCritChance(const Unit* victim, SpellSchoolMask schoolM
     return std::max(0.0f, std::min(chance, 100.0f));
 }
 
+// 计算法术未命中几率（根据等级差基准与命中等级加成换算）
 float Unit::CalculateSpellMissChance(const Unit* victim, SpellSchoolMask schoolMask, const SpellEntry* spell) const
 {
     if (!spell || spell->HasAttribute(SPELL_ATTR_EX3_ALWAYS_HIT))
@@ -4160,6 +4241,7 @@ float Unit::CalculateSpellMissChance(const Unit* victim, SpellSchoolMask schoolM
     return std::max(minimum, std::min(chance, 100.0f));
 }
 
+// 判定法术施放是否暴击掷骰
 bool Unit::RollSpellCritOutcome(Unit* caster, const Unit* victim, SpellSchoolMask schoolMask, const SpellEntry* spell)
 {
     if (!caster || !caster->CanCrit(spell, schoolMask, GetWeaponAttackType(spell)))
@@ -4172,6 +4254,7 @@ bool Unit::RollSpellCritOutcome(Unit* caster, const Unit* victim, SpellSchoolMas
     return roll_chance_combat(chance);
 }
 
+// 获取精准等级折算的精准百分比（降低目标被招架与被躲闪率）
 float Unit::GetExpertisePercent(WeaponAttackType attType) const
 {
     int32 expertise = 0;
@@ -4199,6 +4282,7 @@ int32 Unit::GetResistancePenetration(SpellSchools school) const
     return -(GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_TARGET_RESISTANCE, (1 << school)));
 }
 
+// 计算目标实际有效魔法抗性比例（扣除攻击方抗性穿透）
 float Unit::CalculateEffectiveMagicResistancePercent(const Unit* attacker, SpellSchoolMask schoolMask, bool binary) const
 {
     // Non-magical or contains Physical as a component (such as Chaos) - ignores resistances completely
@@ -4252,6 +4336,7 @@ float Unit::CalculateEffectiveMagicResistancePercent(const Unit* attacker, Spell
     return percent;
 }
 
+// 抗性分级抵抗掷骰：基于抗性比例查表决定 0%/25%/50%/75%/100% 抵抗档位
 float Unit::RollMagicResistanceMultiplierOutcomeAgainst(const Unit* attacker, const Unit *victim, SpellSchoolMask schoolMask, DamageEffectType dmgType, bool binary)
 {
     float percentage = victim->CalculateEffectiveMagicResistancePercent(attacker, schoolMask);
@@ -4370,6 +4455,7 @@ uint32 Unit::GetWeaponSkillValue(WeaponAttackType attType, Unit const* target) c
     return value;
 }
 
+// 每帧更新各施法槽位的状态与自动攻击
 void Unit::_UpdateSpells(uint32 time)
 {
 #ifdef BUILD_METRICS
@@ -4430,6 +4516,7 @@ void Unit::_UpdateSpells(uint32 time)
 #endif
 }
 
+// 每帧更新自动射击/魔杖射击循环
 void Unit::_UpdateAutoRepeatSpell()
 {
     // check "real time" interrupts
@@ -4510,6 +4597,7 @@ void Unit::_UpdateAutoRepeatSpell()
     }
 }
 
+// 设置当前槽位施法对象并管理互斥替换
 void Unit::SetCurrentCastedSpell(Spell* newSpell)
 {
     MANGOS_ASSERT(newSpell);                                  // nullptr may be never passed here, use InterruptSpell or InterruptNonMeleeSpells
@@ -4597,6 +4685,7 @@ void Unit::SetCurrentCastedSpell(Spell* newSpell)
     newSpell->SetReferencedFromCurrent(true);
 }
 
+// 打断指定槽位的正在施放法术
 void Unit::InterruptSpell(CurrentSpellTypes spellType, bool withDelayed)
 {
     if (m_currentSpells[spellType] && (withDelayed || m_currentSpells[spellType]->getState() != SPELL_STATE_TRAVELING))
@@ -4626,6 +4715,7 @@ void Unit::InterruptSpell(CurrentSpellTypes spellType, bool withDelayed)
     }
 }
 
+// 正常完成指定槽位的法术施放
 void Unit::FinishSpell(CurrentSpellTypes spellType, bool ok /*= true*/)
 {
     Spell* spell = m_currentSpells[spellType];
@@ -4638,6 +4728,7 @@ void Unit::FinishSpell(CurrentSpellTypes spellType, bool ok /*= true*/)
     spell->finish(ok);
 }
 
+// 查询当前是否正在进行非近战读条或引导
 bool Unit::IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled, bool skipAutorepeat, bool forMovement, bool forAutoIgnore, bool forEquip) const
 {
     // We don't do loop here to explicitly show that melee spell is excluded.
@@ -4687,6 +4778,7 @@ bool Unit::IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled, bool skip
     return forAutoIgnore;
 }
 
+// 打断当前所有非近战施法
 void Unit::InterruptNonMeleeSpells(bool withDelayed, uint32 spell_id)
 {
     // generic spells are interrupted if they are not finished or delayed
@@ -4702,6 +4794,7 @@ void Unit::InterruptNonMeleeSpells(bool withDelayed, uint32 spell_id)
         InterruptSpell(CURRENT_CHANNELED_SPELL, true);
 }
 
+// 根据引导打断标志打断引导类法术
 void Unit::InterruptSpellsWithChannelFlags(uint32 flags)
 {
     if (m_currentSpells[CURRENT_CHANNELED_SPELL] && (m_currentSpells[CURRENT_CHANNELED_SPELL]->m_spellInfo->ChannelInterruptFlags & flags) != 0)
@@ -4798,6 +4891,7 @@ void Unit::DeMorph()
     SetDisplayId(GetNativeDisplayId());
 }
 
+// 聚合计算指定 AuraType 在身上所有光环中的加法总修正值
 int32 Unit::GetTotalAuraModifier(AuraType auratype) const
 {
     int32 modifier = 0;
@@ -4809,6 +4903,7 @@ int32 Unit::GetTotalAuraModifier(AuraType auratype) const
     return modifier;
 }
 
+// 聚合计算指定 AuraType 在身上所有光环中的乘法总乘数
 float Unit::GetTotalAuraMultiplier(AuraType auratype) const
 {
     float multiplier = 1.0f;
@@ -4990,6 +5085,7 @@ int32 Unit::GetMaxPositiveAuraModifierByItemClass(AuraType auratype, Item* weapo
     return modifier;
 }
 
+// 向单位注册并应用一个 SpellAuraHolder 及其包含的所有光环效果
 bool Unit::AddSpellAuraHolder(SpellAuraHolder* holder)
 {
     SpellEntry const* aurSpellInfo = holder->GetSpellProto();
@@ -5182,6 +5278,7 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder* holder)
     return true;
 }
 
+// 将光环加入 m_modAuras 按类型索引的快速查询列表中
 void Unit::AddAuraToModList(Aura* aura)
 {
     if (aura->GetModifier()->m_auraname < TOTAL_AURAS)
@@ -5232,6 +5329,7 @@ void Unit::RemoveAllGroupBuffsFromCaster(ObjectGuid casterGuid)
     }
 }
 
+// 检查并移除与新施加光环互斥不可叠加的旧同类光环
 bool Unit::RemoveNoStackAurasDueToAuraHolder(SpellAuraHolder* holder)
 {
     if (!holder)
@@ -5690,6 +5788,7 @@ void Unit::RemoveNotOwnTrackedTargetAuras()
     }
 }
 
+// 从单位注销并移除指定的 SpellAuraHolder
 void Unit::RemoveSpellAuraHolder(SpellAuraHolder* holder, AuraRemoveMode mode)
 {
     MANGOS_ASSERT(!holder->IsDeleted());
@@ -5771,6 +5870,7 @@ void Unit::RemoveSingleAuraFromSpellAuraHolder(SpellAuraHolder* holder, SpellEff
         RemoveAura(aura, mode);
 }
 
+// 移除单个光环效果（若 Holder 内所有光环均已移除则销毁 Holder）
 void Unit::RemoveAura(Aura* Aur, AuraRemoveMode mode)
 {
     // remove from list before mods removing (prevent cyclic calls, mods added before including to aura list - use reverse order)
@@ -5815,6 +5915,7 @@ void Unit::RemoveAura(Aura* Aur, AuraRemoveMode mode)
     m_deletedAuras.push_back(Aur);
 }
 
+// 全量清除单位身上所有光环效果
 void Unit::RemoveAllAuras(AuraRemoveMode mode /*= AURA_REMOVE_BY_DEFAULT*/)
 {
     while (!m_spellAuraHolders.empty())
@@ -5848,6 +5949,7 @@ void Unit::RemoveArenaAuras(bool onleave)
     }
 }
 
+// 单位死亡时清理不随死亡保留的光环（如增益、DoT 等）
 void Unit::RemoveAllAurasOnDeath()
 {
     // used just after dieing to remove all visible auras
@@ -5864,6 +5966,7 @@ void Unit::RemoveAllAurasOnDeath()
     }
 }
 
+// 生物脱战重置时清理所有战斗/负面光环
 void Unit::RemoveAllAurasOnEvade()
 {
     // used when evading to remove all auras except some special auras
@@ -6037,6 +6140,7 @@ uint32 Unit::GetAuraCount(uint32 spellId) const
     return count;
 }
 
+// 登记归属于本单位的动态物体（如暴风雪、奉献区域）
 void Unit::AddDynObject(DynamicObject* dynObj)
 {
     m_dynObjGUIDs.push_back(dynObj->GetObjectGuid());
@@ -6131,6 +6235,7 @@ GameObject* Unit::GetGameObject(uint32 spellId) const
     return nullptr;
 }
 
+// 登记归属于本单位召唤/创建的游戏物体
 void Unit::AddGameObject(GameObject* gameObj)
 {
     MANGOS_ASSERT(gameObj && !gameObj->GetOwnerGuid());
@@ -6226,6 +6331,7 @@ void Unit::RemoveGameObject(uint32 spellid, bool del)
     }
 }
 
+// 清除本单位拥有的所有召唤游戏物体
 void Unit::RemoveAllGameObjects()
 {
     // wild summoned GOs - only remove references, do not remove GOs
@@ -6610,6 +6716,7 @@ void Unit::SetPowerType(Powers new_powertype)
     }
 }
 
+// 获取当前单位阵营模板配置条目
 FactionTemplateEntry const* Unit::GetFactionTemplateEntry() const
 {
     FactionTemplateEntry const* entry = sFactionTemplateStore.LookupEntry(GetFaction());
@@ -6662,6 +6769,7 @@ void Unit::AttackedBy(Unit* attacker)
         pet->AttackedBy(attacker);
 }
 
+// 启动对指定目标的近战或远程攻击
 bool Unit::Attack(Unit* victim, bool meleeAttack)
 {
     if (!victim || victim == this)
@@ -6742,6 +6850,7 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
     return true;
 }
 
+// 停止攻击当前目标并解除双方锁定关系
 bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= false*/, bool includingCombo /*= false*/, bool clientInitiated /*= false*/)
 {
     if (includingCombo)
@@ -6768,6 +6877,7 @@ bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= fals
     return false;
 }
 
+// 完全脱离战斗：清空攻击者集合、重置攻击状态与战斗标志
 void Unit::CombatStop(bool includingCast, bool includingCombo)
 {
     AttackStop(true, includingCast, includingCombo);
@@ -6910,6 +7020,7 @@ void Unit::ModifyAuraState(AuraState flag, bool apply)
     }
 }
 
+// 获取当前单位经验/任务归属的最终收益人（宠物/随从归属主人，否则为自身）
 Unit* Unit::GetBeneficiary() const
 {
     Unit* master = GetMaster();
@@ -6924,6 +7035,7 @@ Player* Unit::GetBeneficiaryPlayer() const
     return (GetTypeId() == TYPEID_PLAYER ? const_cast<Player*>(static_cast<Player const*>(this)) : nullptr);
 }
 
+// 判断单位当前是否由客户端直接操控移动（即处于 Mover 状态）
 bool Unit::IsClientControlled(Player const* exactClient /*= nullptr*/) const
 {
     // Severvide method to check if unit is client controlled (optionally check for specific client in control)
@@ -7124,6 +7236,7 @@ WorldObject* Unit::GetChannelObject(WorldObject const* pov /*= nullptr*/) const
     return nullptr;
 }
 
+// 解析并获取单位的最终所有者/主人
 Unit* Unit::GetOwner(WorldObject const* pov /*= nullptr*/, bool recursive /*= false*/) const
 {
     // Default, creator field as owner is present in everything: totems, pets, guardians, etc
@@ -7183,6 +7296,7 @@ Unit* Unit::_GetUnit(ObjectGuid guid) const
     return nullptr;
 }
 
+// 获取单位当前的常驻战斗宠物
 Pet* Unit::GetPet() const
 {
     if (ObjectGuid pet_guid = GetPetGuid())
@@ -7218,6 +7332,7 @@ void Unit::RemoveMiniPet()
         SetCritterGuid(ObjectGuid());
 }
 
+// 添加一个守卫/仆从宠物至随从列表
 void Unit::AddGuardian(Pet* pet)
 {
     m_guardianPets.insert(pet->GetObjectGuid());
@@ -7230,6 +7345,7 @@ void Unit::RemoveGuardian(Pet* pet)
     m_guardianPets.erase(pet->GetObjectGuid());
 }
 
+// 移除所有守卫随从（非战斗时或强制执行）
 void Unit::RemoveGuardians(bool force)
 {
     while (!m_guardianPets.empty())
@@ -7277,6 +7393,7 @@ Unit* Unit::_GetTotem(TotemSlot slot) const
     return GetTotem(slot);
 }
 
+// 获取指定元素槽位（地/火/水/风）的激活图腾
 Totem* Unit::GetTotem(TotemSlot slot) const
 {
     if (!IsInWorld() || !m_TotemSlot[slot])
@@ -7311,6 +7428,7 @@ void Unit::_RemoveTotem(Totem* totem)
     }
 }
 
+// 解散所有激活的图腾
 void Unit::UnsummonAllTotems() const
 {
     for (int i = 0; i < MAX_TOTEM_SLOT; ++i)
@@ -7318,6 +7436,7 @@ void Unit::UnsummonAllTotems() const
             totem->UnSummon();
 }
 
+// 执行治疗数值结算：应用治疗加成、暴击乘数、过量治疗记录与仇恨分配
 int32 Unit::DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellProto, bool critical)
 {
     int32 gain = pVictim->ModifyHealth(int32(addhealth));
@@ -7342,6 +7461,7 @@ int32 Unit::DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellPro
     return gain;
 }
 
+// 图腾吸法/根基图腾判定：检测是否重定向法术或攻击至磁吸目标
 Unit* Unit::SelectMagnetTarget(Unit* victim, Spell* spell)
 {
     if (!victim)
@@ -7429,6 +7549,7 @@ void Unit::SendEnvironmentalDamageLog(uint8 type, uint32 damage, uint32 absorb, 
     SendMessageToSet(data, true);
 }
 
+// 通过法术补充法力/怒气/能量并发送能量回复日志
 void Unit::EnergizeBySpell(Unit* victim, SpellEntry const* spellInfo, uint32 damage, Powers powerType, bool sendLog)
 {
     if (sendLog)
@@ -7448,6 +7569,7 @@ void Unit::EnergizeBySpell(Unit* victim, SpellEntry const* spellInfo, uint32 dam
  * @param damagetype what kind of damage
  * @param donePart calculate for done or taken
  */
+// 依据法术系数计算装备法伤/治疗强度加成
 int32 Unit::SpellBonusWithCoeffs(SpellEntry const* spellInfo, SpellEffectIndex effectIndex, int32 total, int32 benefit, int32 ap_benefit, bool donePart)
 {
     float coeff = 0.f; // no coefficient by default
@@ -7491,6 +7613,7 @@ int32 Unit::SpellBonusWithCoeffs(SpellEntry const* spellInfo, SpellEffectIndex e
  * Calculates caster part of spell damage bonuses,
  * also includes different bonuses dependent from target auras
  */
+// 计算施法方造成的最终法术伤害加成（含法伤系数、被动百分比与目标类型修正）
 uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellSchoolMask schoolMask, SpellEntry const* spellInfo, SpellEffectIndex effectIndex, uint32 pdamage, DamageEffectType damagetype, uint32 stack)
 {
     if (!spellInfo || !victim || damagetype == DIRECT_DAMAGE)
@@ -7572,6 +7695,7 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellSchoolMask schoolMask, Spel
  * Calculates target part of spell damage bonuses,
  * will be called on each tick for periodic damage over time auras
  */
+// 计算受击方承受的法术伤害加成与减免修正
 uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellSchoolMask schoolMask, SpellEntry const* spellInfo, SpellEffectIndex effectIndex, uint32 pdamage, DamageEffectType damagetype, uint32 stack)
 {
     if (!spellInfo || damagetype == DIRECT_DAMAGE || spellInfo->HasAttribute(SPELL_ATTR_EX4_IGNORE_DAMAGE_TAKEN_MODIFIERS))
@@ -7665,6 +7789,7 @@ int32 Unit::SpellBaseDamageBonusTaken(SpellSchoolMask schoolMask) const
  * Calculates caster part of healing spell bonuses,
  * also includes different bonuses dependent from target auras
  */
+// 计算施法方造成的最终法术治疗加成
 uint32 Unit::SpellHealingBonusDone(Unit* victim, SpellEntry const* spellInfo, SpellEffectIndex effectIndex, int32 healamount, DamageEffectType damagetype, uint32 stack)
 {
     // Some spells don't benefit from done mods
@@ -7720,6 +7845,7 @@ uint32 Unit::SpellHealingBonusDone(Unit* victim, SpellEntry const* spellInfo, Sp
  * Calculates target part of healing spell bonuses,
  * will be called on each tick for periodic damage over time auras
  */
+// 计算受疗方承受的治疗加成修正（如致死打击减疗、受疗提升光环）
 uint32 Unit::SpellHealingBonusTaken(Unit* caster, SpellEntry const* spellInfo, SpellEffectIndex effectIndex, int32 healamount, DamageEffectType /*damagetype*/, uint32 stack)
 {
     float TakenTotalMod = 1.0f;
@@ -8209,6 +8335,7 @@ bool Unit::UnmountEntry(const Aura* aura)
     return Unmount(aura);
 }
 
+// 挂载坐骑模型外观并设置坐骑标志位
 bool Unit::Mount(uint32 displayid, const Aura* aura/* = nullptr*/)
 {
     // Custom mount (non-aura such as taxi or command) overwrites aura mounts
@@ -8232,6 +8359,7 @@ bool Unit::Mount(uint32 displayid, const Aura* aura/* = nullptr*/)
     return true;
 }
 
+// 卸下坐骑外观并清理坐骑状态
 bool Unit::Unmount(const Aura* aura/* = nullptr*/)
 {
     if (!GetMountID())
@@ -8264,6 +8392,7 @@ bool Unit::Unmount(const Aura* aura/* = nullptr*/)
     return true;
 }
 
+// 单向建立与目标的战斗锁定状态
 void Unit::SetInCombatWith(Unit* enemy)
 {
     SetInCombatState(enemy && enemy->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED), enemy);
@@ -8373,6 +8502,7 @@ void Unit::SetInCombatWithVictim(Unit* victim, bool touchOnly/* = false*/)
         SetInCombatWith(victim);
 }
 
+// 设置进入战斗状态，通知客户端更新战斗图标并刷新脱战计时器
 void Unit::SetInCombatState(bool PvP, Unit* enemy)
 {
     // only alive units can be in combat
@@ -8481,6 +8611,7 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     }
 }
 
+// 双向正式交战：建立双向战斗状态、初始化仇恨列表并刷新脱战计时
 void Unit::EngageInCombatWith(Unit* enemy)
 {
     MANGOS_ASSERT(enemy);
@@ -8499,6 +8630,7 @@ void Unit::EngageInCombatWithAggressor(Unit* aggressor)
     GetCombatManager().TriggerCombatTimer(aggressor);
 }
 
+// 清除自身的战斗标志并广播状态更新
 void Unit::ClearInCombat()
 {
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
@@ -8508,6 +8640,7 @@ void Unit::ClearInCombat()
         static_cast<Player*>(this)->pvpInfo.inPvPCombat = false;
 }
 
+// 处理退出战斗收尾：清空仇恨列表、重置脱战计时与宠物战斗状态
 void Unit::HandleExitCombat(bool customLeash, bool pvpCombat)
 {
     if (customLeash && AI())
@@ -8527,6 +8660,7 @@ void Unit::HandleExitCombat(bool customLeash, bool pvpCombat)
     CallForAllControlledUnits([customLeash, pvpCombat](Unit* unit) { unit->HandleExitCombat(customLeash, pvpCombat); }, CONTROLLED_PET | CONTROLLED_GUARDIANS | CONTROLLED_CHARM | CONTROLLED_TOTEMS);
 }
 
+// 安全修改当前生命值（自动处理上下限钳位与死亡触发）
 int32 Unit::ModifyHealth(int32 dVal)
 {
     if (dVal == 0)
@@ -8558,6 +8692,7 @@ int32 Unit::ModifyHealth(int32 dVal)
     return gain;
 }
 
+// 安全修改当前能量值（法力/怒气/能量上限钳位）
 int32 Unit::ModifyPower(Powers power, int32 dVal)
 {
     if (dVal == 0)
@@ -8589,6 +8724,7 @@ int32 Unit::ModifyPower(Powers power, int32 dVal)
     return gain;
 }
 
+// 核心可见性与反潜行/隐形侦测算法（综合视线、隐身等级与侦测等级计算）
 bool Unit::IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool /*inVisibleList*/, bool is3dDistance, bool spell, bool ignorePhase) const
 {
     if (!u)
@@ -8816,6 +8952,7 @@ void Unit::SetVisibility(UnitVisibility x)
         UpdateVisibilityAndView();
 }
 
+// 重新计算指定移动类型的最终速度并向周围同步速度变更包
 void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
 {
     int32 main_speed_mod  = 0;
@@ -8948,6 +9085,7 @@ float Unit::GetSpeedRateInMotion() const
     return (movespline->Finalized() ? GetSpeedRate(type) : (movespline->Speed() / GetSpeed(type)));
 }
 
+// 根据当前实际移动标志位（步行/奔跑/后退/游泳/飞行）获取当前移动速度
 float Unit::GetXYFlagBasedSpeed() const
 {
     return GetXYFlagBasedSpeed(m_movementInfo.moveFlags);
@@ -9033,6 +9171,7 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate, bool forced)
     CallForAllControlledUnits(SetSpeedRateHelper(mtype, forced), CONTROLLED_PET | CONTROLLED_GUARDIANS | CONTROLLED_CHARM | CONTROLLED_MINIPET);
 }
 
+// 切换单位生死状态（管理尸体、动态移除与重置）
 void Unit::SetDeathState(DeathState s)
 {
     if (s == JUST_DIED)
@@ -9106,6 +9245,7 @@ bool Unit::IsTargetUnderControl(Unit const& target) const
     return false;
 }
 
+// 判定单位当前是否具备维护仇恨列表的资格
 bool Unit::CanHaveThreatList(bool ignoreAliveState/*=false*/) const
 {
     // only alive units can have threat list
@@ -9154,6 +9294,7 @@ float Unit::ApplyTotalThreatModifier(float threat, SpellSchoolMask schoolMask)
 
 //======================================================================
 
+// 向目标仇恨列表增加指定点数仇恨（包含仇恨系数缩放）
 void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false*/, SpellSchoolMask schoolMask /*= SPELL_SCHOOL_MASK_NONE*/, SpellEntry const* threatSpell /*= nullptr*/ /*= nullptr*/)
 {
     if (threatSpell && threatSpell->HasAttribute(SPELL_ATTR_EX4_NO_HARMFUL_THREAT))
@@ -9166,6 +9307,7 @@ void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false
 
 //======================================================================
 
+// 清空单位自身仇恨列表并解除所有目标的被仇恨引用
 void Unit::DeleteThreatList()
 {
     getThreatManager().clearReferences();
@@ -9174,6 +9316,7 @@ void Unit::DeleteThreatList()
 
 //======================================================================
 
+// 嘲讽效果生效：强制切目标并将自身仇恨置为仇恨列表首位
 void Unit::TauntUpdate()
 {
     if (!CanHaveThreatList())
@@ -9192,6 +9335,7 @@ void Unit::FixateTarget(Unit* taunter)
 
 //======================================================================
 
+// 依据仇恨列表选择当前应攻击的首要敌对目标
 bool Unit::SelectHostileTarget()
 {
     // function provides main threat functionality
@@ -9313,6 +9457,7 @@ bool Unit::SelectHostileTarget()
 //======================================================================
 //======================================================================
 //======================================================================
+// 计算光环施加时的实际持续时间（结合递减收益、天赋延长与抗性减免）
 int32 Unit::CalculateAuraDuration(SpellEntry const* spellInfo, uint32 effectMask, int32 duration, Unit const* /*caster*/)
 {
     if (duration <= 0)
@@ -9345,6 +9490,7 @@ int32 Unit::CalculateAuraDuration(SpellEntry const* spellInfo, uint32 effectMask
     return duration;
 }
 
+// 获取当前单位在指定控制递减组中的递减阶段等级
 DiminishingLevels Unit::GetDiminishing(DiminishingGroup group)
 {
     for (auto& i : m_Diminishing)
@@ -9373,6 +9519,7 @@ DiminishingLevels Unit::GetDiminishing(DiminishingGroup group)
     return DIMINISHING_LEVEL_1;
 }
 
+// 递增指定控制组的递减命中计数并刷新 15 秒重置倒计时
 void Unit::IncrDiminishing(DiminishingGroup group, bool pvp)
 {
     const bool diminished = IsDiminishingReturnsGroupDurationDiminished(group, pvp);
@@ -9395,6 +9542,7 @@ void Unit::IncrDiminishing(DiminishingGroup group, bool pvp)
     m_Diminishing.push_back(DiminishingReturn(group, GetMap()->GetCurrentMSTime(), DIMINISHING_LEVEL_2));
 }
 
+// 按当前递减等级缩短控制法术持续时间（100% -> 50% -> 25% -> 0% 免疫）
 void Unit::ApplyDiminishingToDuration(DiminishingGroup group, int32& duration, Unit* caster, DiminishingLevels Level, bool isReflected, SpellEntry const* /*spellInfo*/, bool hasAuraScript)
 {
     if (duration == -1 || group == DIMINISHING_NONE || (!isReflected && caster->CanAssist(this)))
@@ -9515,6 +9663,7 @@ uint32 Unit::GetCreatureType() const
 ########                         ########
 #######################################*/
 
+// 统一处理属性修饰器的应用与撤销（四阶段修改：基值、基百分比、总值、总百分比）
 bool Unit::HandleStatModifier(UnitMods unitMod, UnitModifierType modifierType, float amount, bool apply)
 {
     if (unitMod >= UNIT_MOD_END || modifierType >= MODIFIER_TYPE_END)
@@ -9608,6 +9757,7 @@ float Unit::GetModifierValue(UnitMods unitMod, UnitModifierType modifierType) co
     return m_auraModifiersGroup[unitMod][modifierType];
 }
 
+// 获取计算光环与装备修正后的基础五维属性最终值
 float Unit::GetTotalStatValue(Stats stat) const
 {
     UnitMods unitMod = UnitMods(static_cast<uint32>(UNIT_MOD_STAT_START) + static_cast<uint32>(stat));
@@ -9624,6 +9774,7 @@ float Unit::GetTotalStatValue(Stats stat) const
     return value;
 }
 
+// 获取计算修饰器后的各系抗性最终数值
 float Unit::GetTotalResistanceValue(SpellSchools school) const
 {
     UnitMods unitMod = UnitMods(static_cast<uint32>(UNIT_MOD_RESISTANCE_START) + static_cast<uint32>(school));
@@ -9985,6 +10136,7 @@ void Unit::CleanupsBeforeDelete()
     WorldObject::CleanupsBeforeDelete();
 }
 
+// 为被魅惑单位或宠物分配并初始化控制信息结构 CharmInfo
 CharmInfo* Unit::InitCharmInfo(Unit* charm)
 {
     delete m_charmInfo;
@@ -10207,6 +10359,7 @@ void CharmInfo::InitCharmCreateSpells()
     }
 }
 
+// 向宠物动作栏动态添加技能并配置默认自动施法状态
 bool CharmInfo::AddSpellToActionBar(uint32 spellId, ActiveStates newstate, uint8 forceSlot)
 {
     if (forceSlot != 255)
@@ -10344,6 +10497,7 @@ void CharmInfo::BuildActionBar(WorldPacket& data) const
         data << uint32(i.packedData);
 }
 
+// 开启或关闭宠物技能自动施法状态
 void CharmInfo::SetSpellAutocast(uint32 spell_id, bool state)
 {
     for (auto& i : PetActionBar)
@@ -10447,6 +10601,7 @@ void Unit::SendPetDismiss(uint32 soundId) const
 
 ///----------End of Pet responses methods----------
 
+// 强制停止当前样条与移动生成器位移，并同步客户端
 void Unit::StopMoving(bool forceSendStop /*=false*/)
 {
     if (IsStopped() && !forceSendStop)
@@ -10477,6 +10632,7 @@ void Unit::InterruptMoving(bool forceSendStop /*=false*/)
     StopMoving(forceSendStop || isMoving);
 }
 
+// 施加或解除迷惑（致盲/闷棍等）控制状态与移动生成器
 bool Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
 {
     if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED))
@@ -10516,6 +10672,7 @@ bool Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
     return false;
 }
 
+// 施加或解除恐惧逃跑状态与逃跑移动生成器
 bool Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint32 spellID/* = 0*/, uint32 duration/* = 0*/)
 {
     // Normal flee always takes prio over timed flee (panic)
@@ -10563,6 +10720,7 @@ bool Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint
     return false;
 }
 
+// 施加或解除昏迷状态并冻结移动
 bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID, bool logout/* = false*/)
 {
     const bool initial = (apply && !IsStunned());
@@ -10620,6 +10778,7 @@ void Unit::SetImmobilizedState(bool apply, bool stun, bool logout)
     }
 }
 
+// 切换猎人假死状态：伪装死亡外观、清除仇恨并暂停战斗
 void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid /*= ObjectGuid()*/, uint32 spellID /*= 0*/, bool dynamic /*= true*/, bool success /*= true*/)
 {
     if (apply)
@@ -10707,6 +10866,7 @@ bool Unit::IsSeatedState() const
     return standState != UNIT_STAND_STATE_SLEEP && standState != UNIT_STAND_STATE_STAND;
 }
 
+// 切换站立/坐卧姿态并同步客户端外观
 void Unit::SetStandState(uint8 state, bool acknowledge/* = false*/)
 {
     if (getStandState() == state)
@@ -10815,6 +10975,7 @@ void Unit::ClearComboPointHolders()
     }
 }
 
+// 清除所有触发性反击技能的可用状态（压制/复仇/猫鼬撕咬等）
 void Unit::ClearAllReactives()
 {
     for (unsigned int& i : m_reactiveTimer)
@@ -10832,6 +10993,7 @@ void Unit::ClearAllReactives()
         ClearComboPoints();
 }
 
+// 周期递减反击技能有效时间，超时自动失效
 void Unit::UpdateReactives(uint32 p_time)
 {
     for (int i = 0; i < MAX_REACTIVE; ++i)
@@ -11138,6 +11300,7 @@ bool Unit::IsUnitConditionSatisfied(int32 unitConditionId, Unit const* otherUnit
     return sObjectMgr.IsUnitConditionSatisfied(unitConditionId, this, otherUnit);
 }
 
+// 近距离坐标瞬移传送（闪现/暗影步等）并更新所在网格与样条
 void Unit::NearTeleportTo(float x, float y, float z, float orientation, bool casting /*= false*/, bool transportLeave /*= false*/)
 {
     if (IsPlayer())
@@ -11351,6 +11514,7 @@ void Unit::RestoreOriginalFaction()
     }
 }
 
+// 从目标所在方向被水平与垂直击退
 void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpeed)
 {
     float angle = this == target ? GetOrientation() + M_PI_F : target->GetAngle(this);
@@ -11820,6 +11984,7 @@ void Unit::SendMessageToAllWhoSeeMeMove(WorldPacket const& data, ObjectGuid move
     }
 }
 
+// 接管附身控制指定单位（视野切换至被控单位）
 bool Unit::TakePossessOf(Unit* possessed)
 {
     // Possess is a unique advertised charm, another advertised charm already exists: we should get rid of it first
@@ -11948,6 +12113,7 @@ bool Unit::TakePossessOf(Unit* possessed)
     return true;
 }
 
+// 魅惑控制指定单位（为其加载宠物动作栏与控制 AI）
 bool Unit::TakeCharmOf(Unit* charmed, uint32 spellId, bool advertised /*= true*/)
 {
     Player* charmerPlayer = (GetTypeId() == TYPEID_PLAYER ? static_cast<Player*>(this) : nullptr);
@@ -12138,6 +12304,7 @@ void Unit::BreakCharmIncoming()
         charmer->BreakCharmOutgoing(this);
 }
 
+// 解除魅惑控制，恢复原始阵营与默认行为
 void Unit::Uncharm(Unit* charmed, uint32 /*spellId*/)
 {
     Player* player = (GetTypeId() == TYPEID_PLAYER ? static_cast<Player*>(this) : nullptr);
@@ -12641,6 +12808,7 @@ std::vector<Aura*> const& Unit::GetScriptedLocationAuras(AuraScriptLocation loca
     return m_scriptedLocations[location];
 }
 
+// 对指定目标增加盗贼/德鲁伊连击点数（上限 5 点）
 void Unit::AddComboPoints(Unit* target, int8 count)
 {
     if (!count)
@@ -12672,6 +12840,7 @@ void Unit::AddComboPoints(Unit* target, int8 count)
         static_cast<Player*>(this)->SendComboPoints();
 }
 
+// 清空当前积累的连击点数并同步客户端界面
 void Unit::ClearComboPoints()
 {
     if (!m_comboTargetGuid)
@@ -12765,6 +12934,7 @@ void Unit::OverrideMountDisplayId(uint32 newDisplayId)
     }
 }
 
+// 判定候选攻击目标是否满足视线、射程、光环及能量类型筛选条件
 bool Unit::MeetsSelectAttackingRequirement(Unit* target, SpellEntry const* spellInfo, uint32 selectFlags, SelectAttackingTargetParams params, int32 unitConditionId) const
 {
     if (selectFlags)
@@ -12888,6 +13058,7 @@ bool Unit::MeetsSelectAttackingRequirement(Unit* target, SpellEntry const* spell
     return true;
 }
 
+// 根据指定筛选条件与排序规则（最高仇恨/最近/最远/随机）选取单一最佳攻击目标
 Unit* Unit::SelectAttackingTarget(AttackingTarget target, uint32 position, uint32 spellId, uint32 selectFlags, SelectAttackingTargetParams params /*= SelectAttackingTargetParams()*/, int32 unitConditionId/* = 0*/) const
 {
     return SelectAttackingTarget(target, position, sSpellTemplate.LookupEntry<SpellEntry>(spellId), selectFlags, params, unitConditionId);
@@ -13003,6 +13174,7 @@ Unit* Unit::SelectAttackingTarget(AttackingTarget target, uint32 position, Spell
     return nullptr;
 }
 
+// 批量筛选满足条件的所有候选攻击目标
 void Unit::SelectAttackingTargets(std::vector<Unit*>& selectedTargets, AttackingTarget target, uint32 position, uint32 spellId, uint32 selectFlags/*= 0*/, SelectAttackingTargetParams params /*= SelectAttackingTargetParams()*/, int32 unitConditionId/* = 0*/) const
 {
     SelectAttackingTargets(selectedTargets, target, position, sSpellTemplate.LookupEntry<SpellEntry>(spellId), selectFlags, params, unitConditionId);
@@ -13048,6 +13220,7 @@ void Unit::SelectAttackingTargets(std::vector<Unit*>& selectedTargets, Attacking
     }
 }
 
+// 检查单位当前是否强制或忽略寻路导航网格 (MMAP)
 Unit::MmapForcingStatus Unit::IsIgnoringMMAP() const
 {
     if (IsPlayer() || IsPlayerControlled())
@@ -13087,6 +13260,7 @@ void Unit::SetSwim(bool enable)
     SendMessageToSet(data, true);
 }
 
+// 开启或关闭单位飞行能力并同步移动标志
 void Unit::SetCanFly(bool enable)
 {
     bool isClientControlled = IsClientControlled();
@@ -13202,6 +13376,7 @@ void Unit::SetHover(bool enable)
     SendMessageToSet(data, true);
 }
 
+// 开启或关闭水上行走能力并更新标志位
 void Unit::SetWaterWalk(bool enable)
 {
     bool isClientControlled = IsClientControlled();

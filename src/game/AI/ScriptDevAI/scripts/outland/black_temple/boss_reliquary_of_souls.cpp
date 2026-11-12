@@ -21,10 +21,19 @@ SDComment:
 SDCategory: Black Temple
 EndScriptData */
 
+// 灵魂之匣（黑暗神殿六号首领）
+/* 遭遇战概述：
+ * 灵魂之匣蕴含着被德莱尼和邪能折磨的无数痛苦灵魂，分为三个独立阶段：
+ * 阶段一（苦痛之精）：全团护甲归零且无法受到任何治疗，考验纯输出与自保；
+ * 阶段二（欲望之精）：玩家受到伤害会反弹法术伤害，但造成的治疗大幅提高，需注意打断护盾；
+ * 阶段三（愤怒之精）：全团随时间不断叠加暗影伤害与受到物理伤害加深，高压狂暴斩杀。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // Sound'n'speech
@@ -107,6 +116,7 @@ enum
     ESSENCE_GENERIC_ACTION_ATTACK   = 100,
 };
 
+// ReliquaryActions 相关枚举
 enum ReliquaryActions
 {
     RELIQUARY_ACTION_SUBMERGE,
@@ -117,6 +127,7 @@ enum ReliquaryActions
 ## boss_reliquary_of_souls
 ######*/
 
+// boss_reliquary_of_soulsAI 逻辑实现
 struct boss_reliquary_of_soulsAI : public ScriptedAI
 {
     boss_reliquary_of_soulsAI(Creature* creature) : ScriptedAI(creature, 0), m_instance(static_cast<instance_black_temple*>(creature->GetInstanceData()))
@@ -157,6 +168,7 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
     uint8 m_soulDeathCount;
     bool m_submerged;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_phase                 = PHASE_0_NOT_BEGUN;
@@ -177,6 +189,7 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
         SetReactState(REACT_PASSIVE);
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -191,6 +204,7 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
     void AttackStart(Unit* /*who*/) override { }
 
     // TODO: use LOS triggers
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (!m_instance)
@@ -217,6 +231,7 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
             m_instance->SetData(TYPE_RELIQUIARY, IN_PROGRESS);
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         // Self kill when the Essence of Anger is killed
@@ -277,6 +292,7 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
 ## essence_base_AI
 ######*/
 
+// essence_base_AI 逻辑实现
 struct essence_base_AI : public CombatAI
 {
     essence_base_AI(Creature* creature, uint32 maxActions) : CombatAI(creature, maxActions), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -344,6 +360,7 @@ struct essence_base_AI : public CombatAI
 ## boss_essence_of_suffering
 ######*/
 
+// SufferingActions 相关枚举
 enum SufferingActions
 {
     SUFFERING_ACTION_ENRAGE,
@@ -351,6 +368,7 @@ enum SufferingActions
     SUFFERING_ACTION_MAX,
 };
 
+// boss_essence_of_sufferingAI 逻辑实现
 struct boss_essence_of_sufferingAI : public essence_base_AI
 {
     boss_essence_of_sufferingAI(Creature* creature) : essence_base_AI(creature, SUFFERING_ACTION_MAX)
@@ -392,6 +410,7 @@ struct boss_essence_of_sufferingAI : public essence_base_AI
         DoScriptText(SUFF_SAY_RECAP, m_creature);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -420,6 +439,7 @@ struct boss_essence_of_sufferingAI : public essence_base_AI
 ## boss_essence_of_desire
 ######*/
 
+// DesireActions 相关枚举
 enum DesireActions
 {
     DESIRE_ACTION_RUNE_SHIELD,
@@ -428,6 +448,7 @@ enum DesireActions
     DESIRE_ACTION_MAX,
 };
 
+// boss_essence_of_desireAI 逻辑实现
 struct boss_essence_of_desireAI : public essence_base_AI
 {
     boss_essence_of_desireAI(Creature* creature) : essence_base_AI(creature, DESIRE_ACTION_MAX)
@@ -485,6 +506,7 @@ struct boss_essence_of_desireAI : public essence_base_AI
             ResetCombatAction(DESIRE_ACTION_SPIRIT_SHOCK, 5000);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -518,6 +540,7 @@ struct boss_essence_of_desireAI : public essence_base_AI
 ## boss_essence_of_anger
 ######*/
 
+// AngerActions 相关枚举
 enum AngerActions
 {
     ANGER_ACTION_SOUL_SCREAM,
@@ -525,6 +548,7 @@ enum AngerActions
     ANGER_ACTION_MAX,
 };
 
+// boss_essence_of_angerAI 逻辑实现
 struct boss_essence_of_angerAI : public CombatAI
 {
     boss_essence_of_angerAI(Creature* creature) : CombatAI(creature, ANGER_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -546,6 +570,7 @@ struct boss_essence_of_angerAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -579,6 +604,7 @@ struct boss_essence_of_angerAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_AURA_OF_ANGER);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoScriptText(ANGER_SAY_DEATH, m_creature);
@@ -603,6 +629,7 @@ struct boss_essence_of_angerAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -630,6 +657,7 @@ struct boss_essence_of_angerAI : public CombatAI
 ## npc_enslaved_soul
 ######*/
 
+// npc_enslaved_soulAI 逻辑实现
 struct npc_enslaved_soulAI : public CombatAI
 {
     npc_enslaved_soulAI(Creature* creature) : CombatAI(creature, 0), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_postpone(false)
@@ -660,6 +688,7 @@ struct npc_enslaved_soulAI : public CombatAI
         DoCastSpellIfCan(m_creature, SPELL_ENSLAVED_SOUL_PASSIVE);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoCastSpellIfCan(m_creature, SPELL_SOUL_RELEASE, CAST_TRIGGERED);
@@ -707,11 +736,13 @@ struct npc_reliquary_LOS_aggro_triggerAI : ScriptedAI
 
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
 
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (who->GetTypeId() != TYPEID_PLAYER)
@@ -735,6 +766,7 @@ struct npc_reliquary_LOS_aggro_triggerAI : ScriptedAI
     }
 };
 
+// npc_reliquary_combat_triggerAI 逻辑实现
 struct npc_reliquary_combat_triggerAI : public ScriptedAI
 {
     npc_reliquary_combat_triggerAI(Creature* creature) : ScriptedAI(creature)
@@ -744,6 +776,7 @@ struct npc_reliquary_combat_triggerAI : public ScriptedAI
         m_creature->GetCombatManager().SetLeashingDisable(true);
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
 
@@ -751,6 +784,7 @@ struct npc_reliquary_combat_triggerAI : public ScriptedAI
 };
 
 // 41545 - Soul Scream
+// SoulScream 法术脚本
 struct SoulScream : public SpellScript
 {
     void OnAfterHit(Spell* spell) const override
@@ -761,6 +795,7 @@ struct SoulScream : public SpellScript
     }
 };
 
+// 注册 boss_reliquary_of_souls 脚本
 void AddSC_boss_reliquary_of_souls()
 {
     Script* pNewScript = new Script;

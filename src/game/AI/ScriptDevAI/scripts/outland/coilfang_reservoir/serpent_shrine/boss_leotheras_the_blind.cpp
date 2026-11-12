@@ -21,12 +21,18 @@ SDComment:
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
+// 盲眼者莱欧瑟拉斯（毒蛇神殿三号首领）
+/* 遭遇战概述：
+ * 盲眼者莱欧瑟拉斯是吸纳了恶魔力量的恶魔猎手，在人形旋风斩与恶魔形混乱暗影烈焰之间转换；15% 血量两者分离同时参战。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO               = -1548009,
@@ -71,6 +77,7 @@ enum
     // Note: Pre 2.1 metamorphosis and whirlwind use completely different timers
 };
 
+// LeotherasActions 相关枚举
 enum LeotherasActions
 {
     LEOTHERAS_PHASE_2,
@@ -84,6 +91,7 @@ enum LeotherasActions
     LEOTHERAS_PHASE_TRANSITION,
 };
 
+// boss_leotheras_the_blindAI 逻辑实现
 struct boss_leotheras_the_blindAI : public CombatAI
 {
     boss_leotheras_the_blindAI(Creature* creature) : CombatAI(creature, LEOTHERAS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -115,6 +123,7 @@ struct boss_leotheras_the_blindAI : public CombatAI
 
     bool m_bDemonForm;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -135,18 +144,21 @@ struct boss_leotheras_the_blindAI : public CombatAI
         m_charmTargets.clear();
     }
 
+    // 法术命中目标回调
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
         if (spellInfo->Id == SPELL_CONS_MADNESS)
             m_charmTargets.insert(target->GetObjectGuid());
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (m_instance)
             m_instance->SetData(TYPE_LEOTHERAS_EVENT, IN_PROGRESS);
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* victim) override
     {
         if (victim->GetTypeId() != TYPEID_PLAYER)
@@ -160,6 +172,7 @@ struct boss_leotheras_the_blindAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SHADOW_LEO)
@@ -170,6 +183,7 @@ struct boss_leotheras_the_blindAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
@@ -185,6 +199,7 @@ struct boss_leotheras_the_blindAI : public CombatAI
         ScriptedAI::EnterEvadeMode();
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -252,6 +267,7 @@ struct boss_leotheras_the_blindAI : public CombatAI
             ResetTimer(LEOTHERAS_PHASE_TRANSITION, timer);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -365,6 +381,7 @@ struct boss_leotheras_the_blindAI : public CombatAI
     }
 };
 
+// npc_inner_demonAI 逻辑实现
 struct npc_inner_demonAI : public ScriptedAI
 {
     npc_inner_demonAI(Creature* creature) : ScriptedAI(creature)
@@ -376,6 +393,7 @@ struct npc_inner_demonAI : public ScriptedAI
 
     uint32 m_uiShadowBoltTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiShadowBoltTimer = urand(6100, 8400);
@@ -406,6 +424,7 @@ struct npc_inner_demonAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         if (m_creature == killer || killer->GetObjectGuid() == m_creature->GetSpawnerGuid())
@@ -416,6 +435,7 @@ struct npc_inner_demonAI : public ScriptedAI
     }
 };
 
+// InsidiousWhisper 法术脚本
 struct InsidiousWhisper : public SpellScript, public AuraScript
 {
     void OnInit(Spell* spell) const override
@@ -434,6 +454,7 @@ struct InsidiousWhisper : public SpellScript, public AuraScript
         return true;
     }
 
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         Unit* target = aura->GetTarget();
@@ -480,8 +501,10 @@ struct InsidiousWhisper : public SpellScript, public AuraScript
     }
 };
 
+// ClearConsumingMadness 法术脚本
 struct ClearConsumingMadness : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_1)
@@ -498,8 +521,10 @@ struct ClearConsumingMadness : public SpellScript
     }
 };
 
+// LeoWhirlwindAura 光环脚本
 struct LeoWhirlwindAura : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -508,8 +533,10 @@ struct LeoWhirlwindAura : public AuraScript
     }
 };
 
+// LeoWhirlwindProc 法术脚本
 struct LeoWhirlwindProc : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         UnitAI* ai = spell->GetCaster()->AI();
@@ -526,6 +553,7 @@ struct LeoWhirlwindProc : public SpellScript
     }
 };
 
+// 注册 boss_leotheras_the_blind 脚本
 void AddSC_boss_leotheras_the_blind()
 {
     Script* pNewScript = new Script;

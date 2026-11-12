@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Hellfire Ramparts
 EndScriptData */
 
+// 地狱火城墙副本数据脚本实现
+/* 遭遇战概述：
+ * 管理地狱火城墙地下城首领进度与城墙大门。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "hellfire_ramparts.h"
 
@@ -143,11 +148,13 @@ void instance_ramparts::DoFailVazruden()
 
 }
 
+// 获取副本数据脚本实例函数
 InstanceData* GetInstanceData_instance_ramparts(Map* pMap)
 {
     return new instance_ramparts(pMap);
 }
 
+// 注册 instance_ramparts 脚本
 void AddSC_instance_ramparts()
 {
     Script* pNewScript = new Script;

@@ -21,6 +21,10 @@ SDComment: Quest support: 648, 1560, 2954, 4005.
 SDCategory: Tanaris
 EndScriptData */
 
+/**
+ * 塔纳利斯 (Tanaris) 加基森与沙漠任务脚本
+ */
+
 /* ContentData
 mob_aquementas
 npc_oox17tn
@@ -35,22 +39,24 @@ EndContentData */
 ## mob_aquementas
 ######*/
 
+// 常量与事件枚举
 enum
 {
     AGGRO_YELL_AQUE         = -1000168,
 
-    SPELL_AQUA_JET          = 13586,
-    SPELL_FROST_SHOCK       = 15089,
+    SPELL_AQUA_JET          = 13586,                        // 技能法术 ID
+    SPELL_FROST_SHOCK       = 15089,                        // 技能法术 ID
 
-    ITEM_SILVER_TOTEM       = 11522,
-    ITEM_BOOK_AQUOR         = 11169,
-    ITEM_SILVERY_CLAWS      = 11172,
-    ITEM_IRONTREE_HEART     = 11173,
+    ITEM_SILVER_TOTEM       = 11522,                        // 物品条目 ID
+    ITEM_BOOK_AQUOR         = 11169,                        // 物品条目 ID
+    ITEM_SILVERY_CLAWS      = 11172,                        // 物品条目 ID
+    ITEM_IRONTREE_HEART     = 11173,                        // 物品条目 ID
 
-    FACTION_FRIENDLY        = 35,
-    FACTION_ELEMENTAL       = 91,
+    FACTION_FRIENDLY        = 35,                           // 阵营 ID
+    FACTION_ELEMENTAL       = 91,                           // 阵营 ID
 };
 
+// mob_aquementasAI AI 逻辑实现
 struct mob_aquementasAI : public ScriptedAI
 {
     mob_aquementasAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -59,13 +65,13 @@ struct mob_aquementasAI : public ScriptedAI
     uint32 m_uiFrostShockTimer;
     uint32 m_uiAquaJetTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiSwitchFactionTimer  = 10000;
         m_uiAquaJetTimer        = 5000;
         m_uiFrostShockTimer     = 1000;
 
-        m_creature->setFaction(FACTION_FRIENDLY);           // TODO: Either do this way, or might require a DB change
+        m_creature->setFaction(FACTION_FRIENDLY);           // TODO: Either do this way, or might require a DB change (说明)
     }
 
     void SendItem(Player* pReceiver)
@@ -80,7 +86,7 @@ struct mob_aquementasAI : public ScriptedAI
         }
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         DoScriptText(AGGRO_YELL_AQUE, m_creature, pWho);
 
@@ -89,7 +95,7 @@ struct mob_aquementasAI : public ScriptedAI
             SendItem(pInvokedPlayer);
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_uiSwitchFactionTimer)
         {
@@ -125,7 +131,7 @@ struct mob_aquementasAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_mob_aquementas(Creature* pCreature)
+UnitAI* GetAI_mob_aquementas(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new mob_aquementasAI(pCreature);
 }
@@ -134,29 +140,31 @@ UnitAI* GetAI_mob_aquementas(Creature* pCreature)
 ## npc_oox17tn
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_OOX_START           = -1000287,
-    SAY_OOX_AGGRO1          = -1000288,
-    SAY_OOX_AGGRO2          = -1000289,
-    SAY_OOX_AMBUSH          = -1000290,
-    SAY_OOX17_AMBUSH_REPLY  = -1000291,
-    SAY_OOX_END             = -1000292,
+    SAY_OOX_START           = -1000287,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_AGGRO1          = -1000288,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_AGGRO2          = -1000289,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_AMBUSH          = -1000290,                     // 剧情台词/喊话文本 ID
+    SAY_OOX17_AMBUSH_REPLY  = -1000291,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_END             = -1000292,                     // 剧情台词/喊话文本 ID
 
-    QUEST_RESCUE_OOX_17TN   = 648,
+    QUEST_RESCUE_OOX_17TN   = 648,                          // 任务 ID
 
-    NPC_SCORPION            = 7803,
-    NPC_SCOFFLAW            = 7805,
+    NPC_SCORPION            = 7803,                         // NPC 条目 ID
+    NPC_SCOFFLAW            = 7805,                         // NPC 条目 ID
     NPC_SHADOW_MAGE         = 5617
 };
 
+// npc_oox17tnAI NPC 脚本 AI
 struct npc_oox17tnAI : public npc_escortAI
 {
     npc_oox17tnAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
     GuidList m_lSummonsList;
 
-    void WaypointReached(uint32 i) override
+    void WaypointReached(uint32 i) override                 // 到达指定路径点回调
     {
         Player* pPlayer = GetPlayerForEscort();
 
@@ -165,14 +173,14 @@ struct npc_oox17tnAI : public npc_escortAI
 
         switch (i)
         {
-            // 1. Ambush: 3 scorpions
+            // 1. Ambush: 3 scorpions (第 1 次伏击：3 scorpions)
             case 23:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
                 m_creature->SummonCreature(NPC_SCORPION, -8340.70f, -4448.17f, 9.17f, 3.10f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 30000);
                 m_creature->SummonCreature(NPC_SCORPION, -8343.18f, -4444.35f, 9.44f, 2.35f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 30000);
                 m_creature->SummonCreature(NPC_SCORPION, -8348.70f, -4457.80f, 9.58f, 2.02f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 30000);
                 break;
-            // 2. Ambush: 2 Rogues & 1 Shadow Mage
+            // 2. Ambush: 2 Rogues & 1 Shadow Mage (第 2 次伏击：2 Rogues & 1 Shadow Mage)
             case 29:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
 
@@ -185,13 +193,13 @@ struct npc_oox17tnAI : public npc_escortAI
                 break;
             case 35:
                 DoScriptText(SAY_OOX_END, m_creature);
-                // Award quest credit
+                // Award quest credit (给予任务完成进度)
                 pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_RESCUE_OOX_17TN, m_creature);
                 break;
         }
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
             m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
@@ -199,7 +207,7 @@ struct npc_oox17tnAI : public npc_escortAI
 
     void Aggro(Unit* /*who*/) override
     {
-        // For an small probability he say something when it aggros
+        // For an small probability he say something when it aggros (说明)
         switch (urand(0, 9))
         {
             case 0: DoScriptText(SAY_OOX_AGGRO1, m_creature); break;
@@ -207,13 +215,13 @@ struct npc_oox17tnAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         summoned->AI()->AttackStart(m_creature);
         m_lSummonsList.push_back(summoned->GetObjectGuid());
     }
 
-    void JustDied(Unit* pKiller) override
+    void JustDied(Unit* pKiller) override                   // 死亡回调处理
     {
         for (GuidList::const_iterator itr = m_lSummonsList.begin(); itr != m_lSummonsList.end(); ++itr)
         {
@@ -225,12 +233,12 @@ struct npc_oox17tnAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_oox17tn(Creature* pCreature)
+UnitAI* GetAI_npc_oox17tn(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_oox17tnAI(pCreature);
 }
 
-bool QuestAccept_npc_oox17tn(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_oox17tn(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_RESCUE_OOX_17TN)
     {
@@ -249,25 +257,27 @@ bool QuestAccept_npc_oox17tn(Player* pPlayer, Creature* pCreature, const Quest* 
 # npc_tooga
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_TOOG_THIRST             = -1000391,
-    SAY_TOOG_WORRIED            = -1000392,
-    SAY_TOOG_POST_1             = -1000393,
-    SAY_TORT_POST_2             = -1000394,
-    SAY_TOOG_POST_3             = -1000395,
-    SAY_TORT_POST_4             = -1000396,
-    SAY_TOOG_POST_5             = -1000397,
-    SAY_TORT_POST_6             = -1000398,
+    SAY_TOOG_THIRST             = -1000391,                 // 剧情台词/喊话文本 ID
+    SAY_TOOG_WORRIED            = -1000392,                 // 剧情台词/喊话文本 ID
+    SAY_TOOG_POST_1             = -1000393,                 // 剧情台词/喊话文本 ID
+    SAY_TORT_POST_2             = -1000394,                 // 剧情台词/喊话文本 ID
+    SAY_TOOG_POST_3             = -1000395,                 // 剧情台词/喊话文本 ID
+    SAY_TORT_POST_4             = -1000396,                 // 剧情台词/喊话文本 ID
+    SAY_TOOG_POST_5             = -1000397,                 // 剧情台词/喊话文本 ID
+    SAY_TORT_POST_6             = -1000398,                 // 剧情台词/喊话文本 ID
 
-    QUEST_TOOGA                 = 1560,
-    NPC_TORTA                   = 6015,
+    QUEST_TOOGA                 = 1560,                     // 任务 ID
+    NPC_TORTA                   = 6015,                     // NPC 条目 ID
 
     POINT_ID_TO_WATER           = 1
 };
 
 const float m_afToWaterLoc[] = { -7032.664551f, -4906.199219f, -1.606446f};
 
+// npc_toogaAI NPC 脚本 AI
 struct npc_toogaAI : public FollowerAI
 {
     npc_toogaAI(Creature* pCreature) : FollowerAI(pCreature) { Reset(); }
@@ -278,7 +288,7 @@ struct npc_toogaAI : public FollowerAI
 
     Unit* pTorta;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiCheckSpeechTimer = 2500;
         m_uiPostEventTimer = 1000;
@@ -307,7 +317,7 @@ struct npc_toogaAI : public FollowerAI
         }
     }
 
-    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override    // 移动节点到达通知
     {
         FollowerAI::MovementInform(uiMotionType, uiPointId);
 
@@ -322,7 +332,7 @@ struct npc_toogaAI : public FollowerAI
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
         {
-            // we are doing the post-event, or...
+            // we are doing the post-event, or... (说明)
             if (HasFollowState(STATE_FOLLOW_POSTEVENT))
             {
                 if (m_uiPostEventTimer < uiDiff)
@@ -331,7 +341,7 @@ struct npc_toogaAI : public FollowerAI
 
                     if (!pTorta || !pTorta->IsAlive())
                     {
-                        // something happened, so just complete
+                        // something happened, so just complete (完成)
                         SetFollowComplete();
                         return;
                     }
@@ -364,7 +374,7 @@ struct npc_toogaAI : public FollowerAI
                 else
                     m_uiPostEventTimer -= uiDiff;
             }
-            //...we are doing regular speech check
+            // ...we are doing regular speech check (说明)
             else if (HasFollowState(STATE_FOLLOW_INPROGRESS))
             {
                 if (m_uiCheckSpeechTimer < uiDiff)
@@ -388,12 +398,12 @@ struct npc_toogaAI : public FollowerAI
     }
 };
 
-UnitAI* GetAI_npc_tooga(Creature* pCreature)
+UnitAI* GetAI_npc_tooga(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_toogaAI(pCreature);
 }
 
-bool QuestAccept_npc_tooga(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_tooga(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_TOOGA)
     {
@@ -404,7 +414,7 @@ bool QuestAccept_npc_tooga(Player* pPlayer, Creature* pCreature, const Quest* pQ
     return true;
 }
 
-void AddSC_tanaris()
+void AddSC_tanaris() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "mob_aquementas";

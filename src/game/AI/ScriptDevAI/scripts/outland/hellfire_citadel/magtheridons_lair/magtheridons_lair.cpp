@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Hellfire Citadel, Magtheridon's lair
 EndScriptData */
 
+// 玛瑟里顿的巢穴团队副本数据脚本实现
+/* 遭遇战概述：
+ * 管理玛瑟里顿封印流放状态、导魔师开怪计时与魔化立方体交互。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "magtheridons_lair.h"
 #include "Spells/Scripts/SpellScript.h"
@@ -266,11 +271,13 @@ void instance_magtheridons_lair::Update(uint32 uiDiff)
         m_uiRandYellTimer -= uiDiff;
 }
 
+// 获取副本数据脚本实例函数
 InstanceData* GetInstanceData_instance_magtheridons_lair(Map* pMap)
 {
     return new instance_magtheridons_lair(pMap);
 }
 
+// 注册 instance_magtheridons_lair 脚本
 void AddSC_instance_magtheridons_lair()
 {
     Script* pNewScript = new Script;

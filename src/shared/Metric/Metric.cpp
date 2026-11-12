@@ -84,7 +84,7 @@ metric::metric::~metric()
     if (!m_enabled)
         return;
 
-	boost::asio::post(m_writeContext, [&] {
+    boost::asio::post(m_writeContext, [&] {
         m_sendTimer->cancel();
     });
 
@@ -115,7 +115,7 @@ void metric::metric::initialize()
     m_queueContextWork = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(boost::asio::make_work_guard(m_queueContext));
     m_writeContextWork = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(boost::asio::make_work_guard(m_writeContext));
 
-    // Start up service thread that will process all queued tasks
+    // Start up service thread that will process all queued tasks | 启动队列处理与 HTTP 写入后台线程
     m_queueServiceThread = std::thread([&] {
         m_queueContext.run();
     });
@@ -199,7 +199,7 @@ void metric::metric::send()
 {
     std::vector<std::unique_ptr<Measurement>> measurements;
 
-    // Scope swapping
+    // Scope swapping | 在锁保护下交换待发送队列，缩短临界区持有时间
     {
         std::lock_guard<std::mutex> guard(m_queueWriteLock);
         std::swap(measurements, m_measurementQueue);
@@ -211,7 +211,7 @@ void metric::metric::send()
 
     boost::system::error_code error;
 
-    // Hostname resolution
+    // Hostname resolution | 解析目标 InfluxDB 主机名与端口
     tcp::resolver resolver(m_writeContext);
     auto endpoints = resolver.resolve(m_connectionInfo.hostname, std::to_string(m_connectionInfo.port), error);
     auto endpoint_iterator = endpoints.begin();
@@ -224,9 +224,9 @@ void metric::metric::send()
 
     error = boost::asio::error::host_not_found;
 
-	auto end = endpoints.end();
+    auto end = endpoints.end();
 
-	tcp::socket socket(m_writeContext);
+    tcp::socket socket(m_writeContext);
     while (error && endpoint_iterator != end)
     {
         socket.close();
@@ -251,14 +251,14 @@ void metric::metric::send()
     boost::asio::streambuf request;
     std::ostream request_stream(&request);
 
-    // Write request
+    // Write request | 组装 InfluxDB /write HTTP POST 请求头与正文
     request_stream << "POST " << "/write?db=" << m_connectionInfo.database << "&u=" << m_connectionInfo.username << "&p=" << m_connectionInfo.password << " HTTP/1.1\r\n";
     request_stream << "Host: " << m_connectionInfo.hostname << "\r\n";
     request_stream << "Content-Length:" << std::to_string(payload.tellp()) << "\r\n";
     request_stream << "Connection: close\r\n\r\n";
     request_stream << payload.rdbuf();
 
-    // Send the request.
+    // Send the request. | 同步发送 HTTP 请求
     boost::asio::write(socket, request, error);
     if (error)
     {
@@ -269,6 +269,7 @@ void metric::metric::send()
     // Read the response status line. The response streambuf will automatically
     // grow to accommodate the entire line. The growth may be limited by passing
     // a maximum size to the streambuf constructor.
+    // | 读取 HTTP 响应状态行（streambuf 会自动扩容以容纳整行）
     boost::asio::streambuf response;
     boost::asio::read_until(socket, response, "\r\n", error);
     if (error)
@@ -277,7 +278,7 @@ void metric::metric::send()
         return;
     }
 
-    // Check that response is OK.
+    // Check that response is OK. | 解析并校验 HTTP 状态行是否合法
     std::string http_version;
     unsigned int status_code;
     std::string status_message;
@@ -295,26 +296,27 @@ void metric::metric::send()
 
     if (status_code < 200 || status_code >= 300)
     {
-        // Should restore measurements back into queue
+        // Should restore measurements back into queue | 失败时此处预留了将未成功发送数据放回队列的扩展点
 
         sLog.outError("metric::metric::send response returned with status code %u", status_code);
 
         // Read the response headers, which are terminated by a blank line.
         // if this errors out its ok
+        // | 读取以空行结尾的 HTTP 响应头（允许此处出错忽略）
         boost::asio::read_until(socket, response, "\r\n\r\n", error);
 
-        // Process the response headers.
+        // Process the response headers. | 输出响应头内容
         std::string header;
         while (std::getline(response_stream, header) && header != "\r")
             std::cout << header << "\n";
 
         std::cout << "\n";
 
-        // Write whatever content we already have to output.
+        // Write whatever content we already have to output. | 输出缓冲区中已读取的响应体内容
         if (response.size() > 0)
             std::cout << &response;
 
-        // Read until EOF, writing data to output as we go.
+        // Read until EOF, writing data to output as we go. | 持续读取剩余响应体直至连接关闭（EOF）
         while (boost::asio::read(socket, response, boost::asio::transfer_at_least(1), error))
             std::cout << &response;
 

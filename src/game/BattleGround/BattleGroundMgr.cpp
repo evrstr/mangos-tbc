@@ -59,17 +59,17 @@ BattleGroundMgr::~BattleGroundMgr()
 }
 
 /**
-  Method that deletes all battlegrounds
+  Method that deletes all battlegrounds (释放全部战场模板与运行中的战场实例)
 */
 void BattleGroundMgr::DeleteAllBattleGrounds()
 {
-    // will also delete template bgs:
+    // will also delete template bgs: (清空映射表会触发 unique_trackable_ptr 释放，同时销毁模板战场)
     for (uint8 i = BATTLEGROUND_TYPE_NONE; i < MAX_BATTLEGROUND_TYPE_ID; ++i)
         m_battleGrounds[i].clear();
 }
 
 /**
-  Update method
+  Update method (执行投递到战场管理器的异步消息队列)
 
   @param    diff
 */
@@ -79,7 +79,7 @@ void BattleGroundMgr::Update(uint32 /*diff*/)
 }
 
 /**
-  Send battleground status update
+  Send battleground status update (构建客户端战场/竞技场排队及进场状态数据包 SMSG_BATTLEFIELD_STATUS)
 
   @param    packet
   @param    battleground
@@ -92,37 +92,37 @@ void BattleGroundMgr::Update(uint32 /*diff*/)
 */
 void BattleGroundMgr::BuildBattleGroundStatusPacket(WorldPacket& data, bool bgExists, uint32 bgTypeId, uint32 bgClientInstanceId, bool isRated, uint32 mapId, uint8 queueSlot, uint8 statusId, uint32 time1, uint32 time2, ArenaType arenaType, Team arenaTeam)
 {
-    // we can be in 3 queues in same time...
+    // we can be in 3 queues in same time... (玩家最多可同时排入 3 个战场队列)
 
     if (statusId == 0 || !bgExists)
     {
         data.Initialize(SMSG_BATTLEFIELD_STATUS, 4 + 8);
-        data << uint32(queueSlot);                         // queue id (0...2)
+        data << uint32(queueSlot);                         // queue id (0...2) (队列槽位 0..2)
         data << uint64(0);
         return;
     }
 
     data.Initialize(SMSG_BATTLEFIELD_STATUS, (4 + 8 + 4 + 1 + 4 + 4 + 4));
     data << uint32(queueSlot);                             // queue id (0...2) - player can be in 3 queues in time
-    // uint64 in client
+    // uint64 in client (客户端编码后的战场唯一识别码)
     data << uint64(uint64(arenaType) | (uint64(0x0D) << 8) | (uint64(bgTypeId) << 16) | (uint64(0x1F90) << 48));
     data << uint32(bgClientInstanceId);
     // alliance/horde for BG and skirmish/rated for Arenas
     // following displays the minimap-icon 0 = faction icon 1 = arenaicon
     data << uint8(isRated);
-    data << uint32(statusId);                              // status
+    data << uint32(statusId);                              // status (状态枚举：等待队列/等待进场/进行中)
 
     switch (statusId)
     {
-        case STATUS_WAIT_QUEUE:                            // status_in_queue
+        case STATUS_WAIT_QUEUE:                            // status_in_queue (排队中：平均等待时间、已等待时间)
             data << uint32(time1);                         // average wait time, milliseconds
             data << uint32(time2);                         // time in queue, updated every minute!, milliseconds
             break;
-        case STATUS_WAIT_JOIN:                             // status_invite
+        case STATUS_WAIT_JOIN:                             // status_invite (已就绪待进场：目标地图 ID、确认超时倒计时)
             data << uint32(mapId);                         // map id
             data << uint32(time1);                         // time to remove from queue, milliseconds
             break;
-        case STATUS_IN_PROGRESS:                           // status_in_progress
+        case STATUS_IN_PROGRESS:                           // status_in_progress (进行中：地图 ID、结束自动传出倒计时、已开战时长、竞技场所属队伍)
             data << uint32(mapId);                         // map id
             data << uint32(time1);                         // time to bg auto leave, 0 at bg start, 120000 after bg end, milliseconds
             data << uint32(time2);                         // time from bg start, milliseconds
@@ -135,7 +135,7 @@ void BattleGroundMgr::BuildBattleGroundStatusPacket(WorldPacket& data, bool bgEx
 }
 
 /**
-  Send battleground log update
+  Send battleground log update (构建战场/竞技场记分面板数据包 MSG_PVP_LOG_DATA)
 
   @param    packet
   @param    battleground
@@ -145,9 +145,9 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket& data, BattleGround* bg)
     uint8 type = (bg->IsArena() ? 1 : 0);
     // last check on 2.4.1
     data.Initialize(MSG_PVP_LOG_DATA, (1 + 1 + 4 + 40 * bg->GetPlayerScoresSize()));
-    data << uint8(type);                                   // type (battleground=0/arena=1)
+    data << uint8(type);                                   // type (battleground=0/arena=1) (0=普通战场，1=竞技场)
 
-    if (type)                                               // arena
+    if (type)                                               // arena (竞技场额外写入双方战队名称、赛前等级与赛后新等级)
     {
         // it seems this must be according to BG_WINNER_A/H and _NOT_ BG_TEAM_A/H
         ArenaTeam* at1 = sObjectMgr.GetArenaTeamById(bg->m_arenaTeamIds[1]); // Winner
@@ -163,10 +163,10 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket& data, BattleGround* bg)
     }
 
     if (bg->GetStatus() != STATUS_WAIT_LEAVE)
-        data << uint8(0);                                  // bg not ended
+        data << uint8(0);                                  // bg not ended (未结束)
     else
     {
-        data << uint8(1);                                  // bg ended
+        data << uint8(1);                                  // bg ended (已结束并附带胜方标识)
         data << uint8(bg->GetWinner());                    // who won
     }
 
@@ -192,15 +192,15 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket& data, BattleGround* bg)
                 if (Player* player = sObjectMgr.GetPlayer(itr->first))
                     team = bg->IsArena() ? Team(itr->second->Team) : player->GetTeam();
 
-            data << uint8(team == ALLIANCE ? 1 : 0); // green or yellow
+            data << uint8(team == ALLIANCE ? 1 : 0); // green or yellow (绿队=0，金队=1)
         }
-        data << (int32)score->damageDone;            // damage done
-        data << (int32)score->healingDone;           // healing done
+        data << (int32)score->damageDone;            // damage done (伤害量)
+        data << (int32)score->healingDone;           // healing done (治疗量)
 
-        switch (bg->GetTypeId())                            // battleground specific things
+        switch (bg->GetTypeId())                            // battleground specific things (按战场类型写入专属统计列)
         {
             case BATTLEGROUND_AV:
-                data << (uint32)0x00000005;                // count of next fields
+                data << (uint32)0x00000005;                // count of next fields (奥山 5 列：墓地突袭/防守、哨塔突袭/防守、次要目标)
                 data << (uint32)((BattleGroundAVScore*)score)->graveyardsAssaulted;  // GraveyardsAssaulted
                 data << (uint32)((BattleGroundAVScore*)score)->graveyardsDefended;   // GraveyardsDefended
                 data << (uint32)((BattleGroundAVScore*)score)->towersAssaulted;      // TowersAssaulted
@@ -208,24 +208,24 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket& data, BattleGround* bg)
                 data << (uint32)((BattleGroundAVScore*)score)->secondaryObjectives;  // SecondaryObjectives - free some of the Lieutnants
                 break;
             case BATTLEGROUND_WS:
-                data << (uint32)0x00000002;                // count of next fields
+                data << (uint32)0x00000002;                // count of next fields (战歌 2 列：夺旗、护旗)
                 data << (uint32)((BattleGroundWGScore*)score)->flagCaptures;         // flag captures
                 data << (uint32)((BattleGroundWGScore*)score)->flagReturns;          // flag returns
                 break;
             case BATTLEGROUND_AB:
-                data << (uint32)0x00000002;                // count of next fields
+                data << (uint32)0x00000002;                // count of next fields (阿拉希 2 列：突袭基地、守卫基地)
                 data << (uint32)((BattleGroundABScore*)score)->basesAssaulted;       // bases asssulted
                 data << (uint32)((BattleGroundABScore*)score)->basesDefended;        // bases defended
                 break;
             case BATTLEGROUND_EY:
-                data << (uint32)0x00000001;                // count of next fields
+                data << (uint32)0x00000001;                // count of next fields (风暴之眼 1 列：夺旗)
                 data << (uint32)((BattleGroundEYScore*)score)->flagCaptures;         // flag captures
                 break;
             case BATTLEGROUND_NA:
             case BATTLEGROUND_BE:
             case BATTLEGROUND_AA:
             case BATTLEGROUND_RL:
-                data << (int32)0;                          // 0
+                data << (int32)0;                          // 0 (竞技场无额外扩展列)
                 break;
             default:
                 DEBUG_LOG("Unhandled MSG_PVP_LOG_DATA for BG id %u", bg->GetTypeId());
@@ -236,7 +236,7 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket& data, BattleGround* bg)
 }
 
 /**
-  Send battleground joined packet
+  Send battleground joined packet (构建组队加入战场队列结果数据包 SMSG_GROUP_JOINED_BATTLEGROUND)
 
   @param    packet
   @param    battleground type id
@@ -263,7 +263,7 @@ void BattleGroundMgr::BuildGroupJoinedBattlegroundPacket(WorldPacket& data, Batt
 }
 
 /**
-  Send battleground world state packet
+  Send battleground world state packet (构建单个世界状态更新包 SMSG_UPDATE_WORLD_STATE)
 
   @param    packet
   @param    field
@@ -277,7 +277,7 @@ void BattleGroundMgr::BuildUpdateWorldStatePacket(WorldPacket& data, uint32 fiel
 }
 
 /**
-  Send battleground sound packet
+  Send battleground sound packet (构建播放音效包 SMSG_PLAY_SOUND)
 
   @param    packet
   @param    sound id
@@ -289,7 +289,7 @@ void BattleGroundMgr::BuildPlaySoundPacket(WorldPacket& data, uint32 soundId)
 }
 
 /**
-  Send player leave from battleground packet
+  Send player leave from battleground packet (构建玩家离开战场通知包 SMSG_BATTLEGROUND_PLAYER_LEFT)
 
   @param    packet
   @param    object guid
@@ -301,7 +301,7 @@ void BattleGroundMgr::BuildPlayerLeftBattleGroundPacket(WorldPacket& data, Objec
 }
 
 /**
-  Send player join from battleground packet
+  Send player join from battleground packet (构建玩家加入战场通知包 SMSG_BATTLEGROUND_PLAYER_JOINED)
 
   @param    packet
   @param    player
@@ -314,6 +314,7 @@ void BattleGroundMgr::BuildPlayerJoinedBattleGroundPacket(WorldPacket& data, Pla
 
 /**
   Function that returns battleground from client instance id and battleground type
+  (根据客户端可见实例编号和战场类型查找对应的战场实例)
 
   @param    instance id
   @param    battleground type id
@@ -339,14 +340,14 @@ BattleGround* BattleGroundMgr::GetBattleGroundThroughClientInstance(uint32 insta
 }
 
 /**
-  Function that returns battleground from instance id and battleground type
+  Function that returns battleground from instance id and battleground type (按服务端地图实例 ID 与战场类型查找战场)
 
   @param    instance id
   @param    battleground type id
 */
 BattleGround* BattleGroundMgr::GetBattleGround(uint32 instanceId, BattleGroundTypeId bgTypeId)
 {
-    // search if needed
+    // search if needed (类型未知时遍历所有战场/竞技场集合查找)
     BattleGroundSet::iterator itr;
     if (bgTypeId == BATTLEGROUND_TYPE_NONE)
     {
@@ -364,7 +365,7 @@ BattleGround* BattleGroundMgr::GetBattleGround(uint32 instanceId, BattleGroundTy
 }
 
 /**
-  Function that returns battleground from template id
+  Function that returns battleground from template id (获取指定类型的战场模板，实例 ID 最小即 0 为模板)
 
   @param    battleground type id
 */
@@ -378,6 +379,7 @@ BattleGround* BattleGroundMgr::GetBattleGroundTemplate(BattleGroundTypeId bgType
 
 /**
   Function that creates a new battleground that is actually used
+  (从模板克隆创建可运行的战场或竞技场实例，分配战场地图并置为等待进场状态)
 
   @param    battleground type id
   @param    bracket entry
@@ -386,7 +388,7 @@ BattleGround* BattleGroundMgr::GetBattleGroundTemplate(BattleGroundTypeId bgType
 */
 BattleGround* BattleGroundMgr::CreateNewBattleGround(BattleGroundTypeId bgTypeId, BattleGroundBracketId bracketId, ArenaType arenaType, bool isRated, uint32 instanceId, uint32 clientInstanceId)
 {
-    // get the template BG
+    // get the template BG (查找对应战场模板)
     BattleGround* bgTemplate = GetBattleGroundTemplate(bgTypeId);
     if (!bgTemplate)
     {
@@ -395,7 +397,7 @@ BattleGround* BattleGroundMgr::CreateNewBattleGround(BattleGroundTypeId bgTypeId
     }
 
     BattleGround* bg;
-    // create a copy of the BG template
+    // create a copy of the BG template (按具体类型拷贝构造新的战场实例)
     switch (bgTypeId)
     {
         case BATTLEGROUND_AV:
@@ -427,29 +429,29 @@ BattleGround* BattleGroundMgr::CreateNewBattleGround(BattleGroundTypeId bgTypeId
             return nullptr;
     }
 
-    // must occur before CreateBgMap - used to detect difficulty of BG
+    // must occur before CreateBgMap - used to detect difficulty of BG (须在创建战场地图前设置等级分段)
     bg->SetBracketId(bracketId);
 
-    // will also set m_bgMap, instanceid
+    // will also set m_bgMap, instanceid (创建并绑定独立的战场地图实例)
     sMapMgr.CreateBgMap(bg->GetMapId(), instanceId, bg);
 
     bg->SetClientInstanceId(clientInstanceId);
 
-    // reset the new bg (set status to status_wait_queue from status_none)
+    // reset the new bg (set status to status_wait_queue from status_none) (重置战场实例并注册世界状态变量)
     bg->Reset();
 
-    // set bg parameters (must occur after reset!)
+    // set bg parameters (must occur after reset!) (必须在 Reset 之后设置竞技场规模与排位赛标志)
     bg->SetArenaType(arenaType);
     bg->SetRated(isRated);
 
-    // start the joining of the bg
+    // start the joining of the bg (切换为等待进场状态)
     bg->SetStatus(STATUS_WAIT_JOIN);
 
     return bg;
 }
 
 /**
-  Function that creates battleground templates
+  Function that creates battleground templates (创建并初始化各类战场/竞技场模板，注册到管理器)
 
   @param    battleground type id
   @param    isArena
@@ -471,7 +473,7 @@ BattleGround* BattleGroundMgr::CreateNewBattleGround(BattleGroundTypeId bgTypeId
 */
 uint32 BattleGroundMgr::CreateBattleGround(BattleGroundTypeId bgTypeId, bool IsArena, uint32 minPlayersPerTeam, uint32 maxPlayersPerTeam, uint32 levelMin, uint32 levelMax, char const* battleGroundName, uint32 mapId, float team1StartLocX, float team1StartLocY, float team1StartLocZ, float team1StartLocO, float team2StartLocX, float team2StartLocY, float team2StartLocZ, float team2StartLocO, float startMaxDist, uint32 playerSkinReflootId)
 {
-    // Create the BG
+    // Create the BG (实例化对应子类对象作为模板)
     BattleGround* bg;
     switch (bgTypeId)
     {
@@ -500,7 +502,7 @@ uint32 BattleGroundMgr::CreateBattleGround(BattleGroundTypeId bgTypeId, bool IsA
     bg->SetLevelRange(levelMin, levelMax);
     bg->SetPlayerSkinRefLootId(playerSkinReflootId);
 
-    // add bg to update list
+    // add bg to update list (加入模板管理表，instanceId 为 0)
     AddBattleGround(bg->GetInstanceId(), bg->GetTypeId(), bg);
 
     // return some not-null value, bgTypeId is good enough for me
@@ -515,7 +517,7 @@ void BattleGroundMgr::AddBattleGround(uint32 instanceId, BattleGroundTypeId bgTy
 }
 
 /**
-  Method that gets the first free id of pvpstats_battlegrounds, once at startup
+  Method that gets the first free id of pvpstats_battlegrounds, once at startup (启动时读取战绩统计表当前最大 ID)
 */
 void BattleGroundMgr::LoadPvpStatsBattleGroundId()
 {
@@ -525,7 +527,7 @@ void BattleGroundMgr::LoadPvpStatsBattleGroundId()
 }
 
 /**
-  Method that loads battleground data from DB
+  Method that loads battleground data from DB (从 battleground_template 与 BattlemasterList.dbc 加载并创建全部战场模板)
 */
 void BattleGroundMgr::CreateInitialBattleGrounds()
 {
@@ -652,7 +654,7 @@ void BattleGroundMgr::CreateInitialBattleGrounds()
 }
 
 /**
-  Method that distributes the arena points distribution
+  Method that distributes the arena points distribution (结算并发放全服每周竞技场点数，随后重置本周战队场次)
 */
 void BattleGroundMgr::DistributeArenaPoints() const
 {
@@ -662,9 +664,10 @@ void BattleGroundMgr::DistributeArenaPoints() const
     sWorld.SendWorldTextToAboveSecurity(SEC_GAMEMASTER, LANG_DIST_ARENA_POINTS_ONLINE_START);
 
     // temporary structure for storing maximum points to add values for all players
+    // (临时映射：记录每位玩家在 2v2/3v3/5v5 战队中可获得的最高竞技场点数)
     std::map<uint32, uint32> PlayerPoints;
 
-    // at first update all points for all team members
+    // at first update all points for all team members (汇总每支满足条件战队的可分配点数)
     for (ObjectMgr::ArenaTeamMap::iterator team_itr = sObjectMgr.GetArenaTeamMapBegin(); team_itr != sObjectMgr.GetArenaTeamMapEnd(); ++team_itr)
     {
         if (ArenaTeam* at = team_itr->second)
@@ -673,7 +676,7 @@ void BattleGroundMgr::DistributeArenaPoints() const
         }
     }
 
-    // cycle that gives points to all players
+    // cycle that gives points to all players (写入数据库并实时增加在线玩家竞技场点数)
     for (auto& PlayerPoint : PlayerPoints)
     {
         // update to database
@@ -692,9 +695,9 @@ void BattleGroundMgr::DistributeArenaPoints() const
     {
         if (ArenaTeam* at = titr->second)
         {
-            at->FinishWeek();                              // set played this week etc values to 0 in memory, too
-            at->SaveToDB();                                // save changes
-            at->NotifyStatsChanged();                      // notify the players of the changes
+            at->FinishWeek();                              // set played this week etc values to 0 in memory, too (清空本周场次与胜场)
+            at->SaveToDB();                                // save changes (持久化到数据库)
+            at->NotifyStatsChanged();                      // notify the players of the changes (通知在线成员刷新面板)
         }
     }
 
@@ -704,7 +707,7 @@ void BattleGroundMgr::DistributeArenaPoints() const
 }
 
 /**
-  Method checks players and arena winners
+  Method checks players and arena winners (筛选满足个人等级差 <= 100 且出勤 > 20% 场次的获奖成员，保留其获得的最高头衔排名)
 
   @param    arena team
   @param    player ranks map
@@ -730,7 +733,7 @@ void CheckPlayersAndAddToWinners(ArenaTeam* team, std::map<ObjectGuid, uint32>& 
 }
 
 /**
-  Method that sets that title values
+  Method that sets that title values (按角色 knownTitles 位掩码格式为离线玩家授予赛季头衔位)
 
   @param    first title
   @param    second title
@@ -751,7 +754,7 @@ void SetTitleValues(uint32& first, uint32& second, uint32 titleId)
 }
 
 /**
-  Method that computes arena season rewards
+  Method that computes arena season rewards (竞技场赛季结算：按天梯百分比发放角斗士虚空幼龙、赛季称号并将竞技场点数折算荣誉，随后重置全部战队)
 
   @param    season id
 */
@@ -765,6 +768,7 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
         {
             // team needs minimum of 10 games played during season to be part of ladders for rewards
             // this number is unproven - in later expansions it may be 50 games min
+            // (赛季内至少完成 10 场比赛的战队才纳入天梯评奖范围)
             if (at->GetStats().games_season >= 10)
             {
                 switch (at->GetType())
@@ -783,7 +787,7 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
             }
         }
 
-    // first sort teams based on rating
+    // first sort teams based on rating (按战队等级降序排序)
     for (uint32 i = 0; i < 3; ++i)
         std::sort(sortedTeams[i].begin(), sortedTeams[i].end(), [](ArenaTeam* first, ArenaTeam* second)
         {
@@ -820,14 +824,14 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
 
     uint32 mountId;
     uint32 titles[5];
-    titles[1] = 42; // Gladiator
-    titles[2] = 43; // Duelist
-    titles[3] = 44; // Rival
-    titles[4] = 45; // Challenger
+    titles[1] = 42; // Gladiator (角斗士)
+    titles[2] = 43; // Duelist (决斗者)
+    titles[3] = 44; // Rival (竞争者)
+    titles[4] = 45; // Challenger (挑战者)
     switch (seasonId)
     {
         case 1:
-        case 4: // Use Season 1 rewards for Season 4 since Brutal Gladiator title/mount do not exist in TBC client
+        case 4: // Use Season 1 rewards for Season 4 since Brutal Gladiator title/mount do not exist in TBC client (S4 在 TBC 客户端无对应野蛮角斗士数据，沿用 S1 奖励)
         default: mountId = 30609; titles[0] = 42; break;
         case 2: mountId = 34092; titles[0] = 62; break;
         case 3: mountId = 37676; titles[0] = 71; break;
@@ -838,6 +842,7 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
 
     // Remove titles from online players
     // Only Rank 1 titles are permanent
+    // (剥夺上赛季的角斗士/决斗者/竞争者/挑战者临时头衔——仅第一名永久称号保留——并将剩余竞技场点数 1:4 折算为荣誉点数)
     sObjectAccessor.ExecuteOnAllPlayers([&](Player* player)
     {
         player->SetTitle(titleEntries[1], true);
@@ -849,12 +854,12 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
         player->SetArenaPoints(0);
     });
 
-    // Remove Gladiator, Duelist and Rival from every offline player
+    // Remove Gladiator, Duelist and Rival from every offline player (清理离线玩家的角斗士、决斗者、竞争者头衔位)
     CharacterDatabase.PExecute("UPDATE characters a SET knownTitles="
         "CONCAT(CAST(TRIM(SUBSTRING_INDEX(knownTitles, ' ', 1))  AS UNSIGNED) &~0xE0000000, ' ', SUBSTR(knownTitles, LOCATE(' ', knownTitles)))"
         "WHERE(CAST(TRIM(SUBSTRING_INDEX(knownTitles, ' ', 1))  AS UNSIGNED) & 0xE0000000) != 0");
 
-    // Remove Challenger from every offline player
+    // Remove Challenger from every offline player (清理离线玩家的挑战者头衔位)
     CharacterDatabase.PExecute("UPDATE characters a SET knownTitles ="
         "CONCAT(SUBSTRING_INDEX(knownTitles, ' ', 1), ' ', CAST(TRIM(SUBSTR(knownTitles, LOCATE(' ', knownTitles)))  AS UNSIGNED) &~0x00000001)"
         "WHERE(CAST(TRIM(SUBSTR(knownTitles, LOCATE(' ', knownTitles)))  AS UNSIGNED) & 0x00000001) != 0");
@@ -864,7 +869,7 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
     for (auto& data : playerRanks)
     {
         Player* player = sObjectMgr.GetPlayer(data.first);
-        if (data.second <= 1) // gladiator reward
+        if (data.second <= 1) // gladiator reward (角斗士与第一名邮件发放赛季铁甲虚空幼龙坐骑)
         {
             MailDraft draft;
             draft.SetSubjectAndBody("Season Rewards", "On behalf of the Steamwheedle Fighting Circuit, we congratulate you for your successes in this arena season. In recognition of your skill and savagery, we hereby bestow upon you this Nether Drake. May it serve you well.");
@@ -910,7 +915,7 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
 }
 
 /**
-  Method that resets all arena data
+  Method that resets all arena data (重置全部竞技场战队赛季数据并保存数据库)
 */
 void BattleGroundMgr::ResetAllArenaData()
 {
@@ -926,7 +931,7 @@ void BattleGroundMgr::ResetAllArenaData()
 }
 
 /**
-  Method that sends player to battleground
+  Method that sends player to battleground (将玩家传送至对应战场地图的阵营出生点)
 
   @param    player
   @param    instance id
@@ -954,7 +959,7 @@ void BattleGroundMgr::SendToBattleGround(Player* player, uint32 instanceId, Batt
 }
 
 /**
-  Function that returns the arena type
+  Function that returns the arena type (判断战场类型是否为竞技场地图或总入口)
 
   @param    battleground type id
 */
@@ -973,7 +978,7 @@ bool BattleGroundMgr::IsArenaType(BattleGroundTypeId bgTypeId)
 }
 
 /**
-  Function that returns the queue type for battleground type id
+  Function that returns the queue type for battleground type id (根据战场类型与竞技场规模返回对应的队列类型 ID)
 
   @param    battleground type id
   @param    arena type
@@ -1011,7 +1016,7 @@ BattleGroundQueueTypeId BattleGroundMgr::BgQueueTypeId(BattleGroundTypeId bgType
 }
 
 /**
-  Function that returns the battleground type id from battleground queue id
+  Function that returns the battleground type id from battleground queue id (根据队列类型 ID 反查战场模板类型 ID)
 
   @param    battleground queue id
 */
@@ -1037,7 +1042,7 @@ BattleGroundTypeId BattleGroundMgr::BgTemplateId(BattleGroundQueueTypeId bgQueue
 }
 
 /**
-  Function that returns the arena type from battleground queue id
+  Function that returns the arena type from battleground queue id (根据队列类型 ID 反查竞技场赛制规模)
 
   @param    battleground queue id
 */
@@ -1057,7 +1062,7 @@ ArenaType BattleGroundMgr::BgArenaType(BattleGroundQueueTypeId bgQueueTypeId)
 }
 
 /**
-  Method that toggles battleground test mode on / off
+  Method that toggles battleground test mode on / off (切换战场单人调试模式并同步给队列线程)
 */
 void BattleGroundMgr::ToggleTesting()
 {
@@ -1073,7 +1078,7 @@ void BattleGroundMgr::ToggleTesting()
 }
 
 /**
-  Method that toggles arena test mode on / off
+  Method that toggles arena test mode on / off (切换竞技场单人调试模式并同步给队列线程)
 */
 void BattleGroundMgr::ToggleArenaTesting()
 {
@@ -1089,7 +1094,7 @@ void BattleGroundMgr::ToggleArenaTesting()
 }
 
 /**
-  Function that returns max arena rating difference
+  Function that returns max arena rating difference (获取竞技场匹配最大初始分差，配置为 0 时回退为 5000)
 */
 uint32 BattleGroundMgr::GetMaxRatingDifference() const
 {
@@ -1101,7 +1106,7 @@ uint32 BattleGroundMgr::GetMaxRatingDifference() const
 }
 
 /**
-  Function that returns the arena rating discard timer
+  Function that returns the arena rating discard timer (获取放宽竞技场分差限制的等待时间配置)
 */
 uint32 BattleGroundMgr::GetRatingDiscardTimer() const
 {
@@ -1109,7 +1114,7 @@ uint32 BattleGroundMgr::GetRatingDiscardTimer() const
 }
 
 /**
-  Function that returns the premature finish time
+  Function that returns the premature finish time (获取战场人数不足提前结束的倒计时配置)
 */
 uint32 BattleGroundMgr::GetPrematureFinishTime() const
 {
@@ -1117,7 +1122,7 @@ uint32 BattleGroundMgr::GetPrematureFinishTime() const
 }
 
 /**
-  Method that loads battlemaster entries from DB
+  Method that loads battlemaster entries from DB (加载或重载战场军官 NPC 到战场类型的映射表，重载时推送给所有地图)
 */
 void BattleGroundMgr::LoadBattleMastersEntry(bool reload)
 {
@@ -1175,7 +1180,7 @@ void BattleGroundMgr::LoadBattleMastersEntry(bool reload)
 }
 
 /**
-  Function that returns the holiday id from battleground type id
+  Function that returns the holiday id from battleground type id (根据战场类型获取对应的“战斗的召唤”节日周末 ID)
 
   @param    battleground type id
 */
@@ -1192,7 +1197,7 @@ HolidayIds BattleGroundMgr::BgTypeToWeekendHolidayId(BattleGroundTypeId bgTypeId
 }
 
 /**
-  Function that returns the battleground type id from holiday id
+  Function that returns the battleground type id from holiday id (根据节日周末 ID 获取对应的战场类型)
 
   @param    holiday id
 */
@@ -1209,7 +1214,7 @@ BattleGroundTypeId BattleGroundMgr::WeekendHolidayIdToBgType(HolidayIds holiday)
 }
 
 /**
-  Function that checks if it's an active battleground holiday weekend
+  Function that checks if it's an active battleground holiday weekend (判断指定战场当前是否处于节日周末双倍奖励期)
 
   @param    battleground type id
 */
@@ -1220,6 +1225,7 @@ bool BattleGroundMgr::IsBgWeekend(BattleGroundTypeId bgTypeId)
 
 /**
   Method that loads battleground events used in battleground scripts
+  (加载 gameobject_battleground 与 creature_battleground 事件索引映射，并校验 battleground_events 定义一致性)
 */
 void BattleGroundMgr::LoadBattleEventIndexes(bool reload)
 {

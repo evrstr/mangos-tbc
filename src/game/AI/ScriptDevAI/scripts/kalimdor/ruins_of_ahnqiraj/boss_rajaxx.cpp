@@ -21,47 +21,52 @@ SDComment: General Andorov script
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟：拉贾克斯将军 (General Rajaxx) 七波攻城防守首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    // Event yells
-    SAY_ANDOROV_INTRO_1         = -1509004,
-    SAY_ANDOROV_INTRO_2         = -1509031,
-    SAY_ANDOROV_INTRO_3         = -1509003,
-    SAY_ANDOROV_INTRO_4         = -1509029,
-    SAY_ANDOROV_ATTACK_START    = -1509030,
-    SAY_ANDOROV_DESPAWN         = -1509032,
+    // Event yells (事件)
+    SAY_ANDOROV_INTRO_1         = -1509004,                 // 剧情台词/喊话文本 ID
+    SAY_ANDOROV_INTRO_2         = -1509031,                 // 剧情台词/喊话文本 ID
+    SAY_ANDOROV_INTRO_3         = -1509003,                 // 剧情台词/喊话文本 ID
+    SAY_ANDOROV_INTRO_4         = -1509029,                 // 剧情台词/喊话文本 ID
+    SAY_ANDOROV_ATTACK_START    = -1509030,                 // 剧情台词/喊话文本 ID
+    SAY_ANDOROV_DESPAWN         = -1509032,                 // 剧情台词/喊话文本 ID
 
-    // Rajaxx kills Andorov
-    SAY_KILLS_ANDOROV           = -1509016,
+    // Rajaxx kills Andorov (说明)
+    SAY_KILLS_ANDOROV           = -1509016,                 // 剧情台词/喊话文本 ID
 
-    // probably related to the opening of AQ event
-    SAY_UNK1                    = -1509011,
-    SAY_UNK2                    = -1509012,
-    SAY_UNK3                    = -1509013,
-    SAY_UNK4                    = -1509014,
+    // probably related to the opening of AQ event (说明)
+    SAY_UNK1                    = -1509011,                 // 剧情台词/喊话文本 ID
+    SAY_UNK2                    = -1509012,                 // 剧情台词/喊话文本 ID
+    SAY_UNK3                    = -1509013,                 // 剧情台词/喊话文本 ID
+    SAY_UNK4                    = -1509014,                 // 剧情台词/喊话文本 ID
 
-    // gossip items
+    // gossip items (说明)
     GOSSIP_TEXT_ID_INTRO        = 7883,
     GOSSIP_TEXT_ID_TRADE        = 8305,
 
     GOSSIP_ITEM_START           = -3509000,
     GOSSIP_ITEM_TRADE           = -3509001,
 
-    // Andorov spells
-    SPELL_AURA_OF_COMMAND       = 25516,
-    SPELL_BASH                  = 25515,
-    SPELL_STRIKE                = 22591,
+    // Andorov spells (法术)
+    SPELL_AURA_OF_COMMAND       = 25516,                    // 技能法术 ID
+    SPELL_BASH                  = 25515,                    // 技能法术 ID
+    SPELL_STRIKE                = 22591,                    // 技能法术 ID
 
-    // Kaldorei spell
-    SPELL_CLEAVE                = 26350,
-    SPELL_MORTAL_STRIKE         = 16856,
+    // Kaldorei spell (法术)
+    SPELL_CLEAVE                = 26350,                    // 技能法术：顺劈斩
+    SPELL_MORTAL_STRIKE         = 16856,                    // 技能法术 ID
 
-    POINT_ID_MOVE_INTRO         = 2,
-    POINT_ID_MOVE_ATTACK        = 4,
+    POINT_ID_MOVE_INTRO         = 2,                        // 路径点 ID
+    POINT_ID_MOVE_ATTACK        = 4,                        // 路径点 ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
@@ -74,16 +79,18 @@ static const DialogueEntry aIntroDialogue[] =
     {0, 0, 0},
 };
 
+// AndorovActions 战斗行为动作枚举
 enum AndorovActions
 {
     ANDOROV_COMMAND_AURA,
     ANDOROV_BASH,
     ANDOROV_STRIKE,
-    ANDOROV_ACTION_MAX,
+    ANDOROV_ACTION_MAX,                                     // 战斗行为动作
     ANDOROV_MOVE,
     ANDOROV_DESPAWN,
 };
 
+// npc_general_andorovAI NPC 脚本 AI
 struct npc_general_andorovAI : public CombatAI, private DialogueHelper
 {
     npc_general_andorovAI(Creature* creature) : CombatAI(creature, ANDOROV_ACTION_MAX), DialogueHelper(aIntroDialogue),
@@ -109,19 +116,19 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
 
     void MoveInLineOfSight(Unit* who) override
     {
-        // If Rajaxx is in range attack him
+        // If Rajaxx is in range attack him (说明)
         if (who->GetEntry() == NPC_RAJAXX && m_creature->IsWithinDistInMap(who, 50.0f))
             AttackStart(who);
 
         ScriptedAI::MoveInLineOfSight(who);
     }
 
-    void JustDied(Unit* killer) override
+    void JustDied(Unit* killer) override                    // 死亡回调处理
     {
         if (killer->GetEntry() != NPC_RAJAXX)
             return;
 
-        // Yell when killed by Rajaxx
+        // Yell when killed by Rajaxx (说明)
         if (m_instance)
         {
             if (Creature* pRajaxx = m_instance->GetSingleCreatureFromStorage(NPC_RAJAXX))
@@ -131,7 +138,7 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
 
     void JustDidDialogueStep(int32 entry) override
     {
-        // Start the event when the dialogue is finished
+        // Start the event when the dialogue is finished (说明)
         if (entry == SAY_ANDOROV_ATTACK_START)
         {
             if (m_instance)
@@ -139,7 +146,7 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
         }
     }
 
-    void MovementInform(uint32 uiType, uint32 uiPointId) override
+    void MovementInform(uint32 uiType, uint32 uiPointId) override    // 移动节点到达通知
     {
         if (uiType != POINT_MOTION_TYPE)
             return;
@@ -158,7 +165,7 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
                 ++m_pointId;
                 break;
             case POINT_ID_MOVE_ATTACK:
-                // Start dialogue only the first time it reaches the point
+                // Start dialogue only the first time it reaches the point (说明)
                 if (m_pointId == 4)
                 {
                     StartNextDialogueText(SAY_ANDOROV_INTRO_3);
@@ -168,7 +175,7 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
         }
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         if (!m_instance)
             return;
@@ -178,10 +185,10 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
 
         if (m_creature->IsAlive())
         {
-            // reset to combat position
+            // reset to combat position (重置战斗)
             if (m_pointId >= 4)
                 m_creature->GetMotionMaster()->MovePoint(POINT_ID_MOVE_ATTACK, aAndorovMoveLocs[4].m_fx, aAndorovMoveLocs[4].m_fy, aAndorovMoveLocs[4].m_fz);
-            // reset to intro position
+            // reset to intro position (重置)
             else
                 m_creature->GetMotionMaster()->MovePoint(POINT_ID_MOVE_INTRO, aAndorovMoveLocs[2].m_fx, aAndorovMoveLocs[2].m_fy, aAndorovMoveLocs[2].m_fz);
         }
@@ -191,7 +198,7 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
         Reset();
     }
 
-    // Wrapper to start initialize Kaldorei followers
+    // Wrapper to start initialize Kaldorei followers (开始)
     void DoInitializeFollowers()
     {
         if (!m_instance)
@@ -205,7 +212,7 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
                 kaldorei->GetMotionMaster()->MoveFollow(m_creature, kaldorei->GetDistance(m_creature), kaldorei->GetAngle(m_creature));
     }
 
-    // Wrapper to start the event
+    // Wrapper to start the event (开始事件)
     void DoMoveToEventLocation()
     {
         m_creature->GetMotionMaster()->MovePoint(m_pointId, aAndorovMoveLocs[m_pointId].m_fx, aAndorovMoveLocs[m_pointId].m_fy, aAndorovMoveLocs[m_pointId].m_fz);
@@ -242,7 +249,7 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
         DoInitializeFollowers();
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -267,14 +274,14 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
         }
     }
 
-    void UpdateAI(const uint32 diff) override
+    void UpdateAI(const uint32 diff) override               // AI 核心帧更新处理
     {
         DialogueUpdate(diff);
         CombatAI::UpdateAI(diff);
     }
 };
 
-bool GossipHello_npc_general_andorov(Player* player, Creature* creature)
+bool GossipHello_npc_general_andorov(Player* player, Creature* creature) // 对话交互问候处理
 {
     if (instance_ruins_of_ahnqiraj* instance = static_cast<instance_ruins_of_ahnqiraj*>(creature->GetInstanceData()))
     {
@@ -309,13 +316,15 @@ bool GossipSelect_npc_general_andorov(Player* player, Creature* creature, uint32
     return true;
 }
 
+// KaldoreiEliteActions 战斗行为动作枚举
 enum KaldoreiEliteActions
 {
     KALDOREI_CLEAVE,
     KALDOREI_STRIKE,
-    KALDOREI_ACTION_MAX,
+    KALDOREI_ACTION_MAX,                                    // 战斗行为动作
 };
 
+// npc_kaldorei_eliteAI NPC 脚本 AI
 struct npc_kaldorei_eliteAI : public CombatAI
 {
     npc_kaldorei_eliteAI(Creature* creature) : CombatAI(creature, KALDOREI_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -326,7 +335,7 @@ struct npc_kaldorei_eliteAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         if (!m_instance)
             return;
@@ -334,7 +343,7 @@ struct npc_kaldorei_eliteAI : public CombatAI
         m_creature->RemoveAllAurasOnEvade();
         m_creature->CombatStop(true);
 
-        // reset only to the last position
+        // reset only to the last position (重置)
         if (m_creature->IsAlive())
         {
             if (Creature* andorov = m_instance->GetSingleCreatureFromStorage(NPC_GENERAL_ANDOROV))
@@ -349,7 +358,7 @@ struct npc_kaldorei_eliteAI : public CombatAI
         Reset();
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -369,7 +378,7 @@ struct npc_kaldorei_eliteAI : public CombatAI
     }
 };
 
-void AddSC_boss_rajaxx()
+void AddSC_boss_rajaxx() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_general_andorov";

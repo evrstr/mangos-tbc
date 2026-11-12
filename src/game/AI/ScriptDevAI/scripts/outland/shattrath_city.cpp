@@ -21,6 +21,11 @@ SDComment: Quest support: 10004, 10231.
 SDCategory: Shattrath City
 EndScriptData */
 
+// 沙塔斯城城市 NPC 与事件脚本
+/* 遭遇战概述：
+ * 外域主城沙塔斯城阿达尔、卡德加城市导览与奥尔多/占星者互动 AI。
+ */
+
 /* ContentData
 npc_dirty_larry
 npc_ishanah
@@ -34,6 +39,7 @@ EndContentData */
 #include "AI/ScriptDevAI/base/TimerAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_START               = -1000274,
@@ -49,6 +55,7 @@ enum
     GOSSIP_ITEM_BOOK        = -3000105,
 };
 
+// npc_dirty_larryAI 逻辑实现
 struct npc_dirty_larryAI : public ScriptedAI
 {
     npc_dirty_larryAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -69,6 +76,7 @@ struct npc_dirty_larryAI : public ScriptedAI
     uint32 m_uiSayTimer;
     uint32 m_uiStep;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_creature->SetUInt32Value(UNIT_NPC_FLAGS, m_uiNpcFlags);
@@ -247,6 +255,7 @@ struct npc_dirty_larryAI : public ScriptedAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         if (bEvent && !bActiveAttack)
@@ -264,6 +273,7 @@ struct npc_dirty_larryAI : public ScriptedAI
     }
 };
 
+// NPC 对话开始交互回调
 bool GossipHello_npc_dirty_larry(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
@@ -276,6 +286,7 @@ bool GossipHello_npc_dirty_larry(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
+// NPC 对话选项选择回调
 bool GossipSelect_npc_dirty_larry(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
@@ -289,6 +300,7 @@ bool GossipSelect_npc_dirty_larry(Player* pPlayer, Creature* pCreature, uint32 /
     return true;
 }
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_dirty_larry(Creature* pCreature)
 {
     return new npc_dirty_larryAI(pCreature);
@@ -298,6 +310,7 @@ UnitAI* GetAI_npc_dirty_larry(Creature* pCreature)
 ## npc_khadgars_servant
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_KHAD_START          = -1000489,
@@ -348,6 +361,7 @@ enum
     QUEST_CITY_LIGHT        = 10211
 };
 
+// npc_khadgars_servantAI 逻辑实现
 struct npc_khadgars_servantAI : public npc_escortAI
 {
     npc_khadgars_servantAI(Creature* creature) : npc_escortAI(creature), m_startPhase(0)
@@ -364,6 +378,7 @@ struct npc_khadgars_servantAI : public npc_escortAI
 
     uint32 m_startPhase;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiTalkTimer = 2500;
@@ -372,6 +387,7 @@ struct npc_khadgars_servantAI : public npc_escortAI
         m_uiRandomTalkCooldown = 0;
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* pWho) override
     {
         if (!m_uiRandomTalkCooldown && pWho->GetTypeId() == TYPEID_UNIT && m_creature->IsWithinDistInMap(pWho, 10.0f))
@@ -603,6 +619,7 @@ struct npc_khadgars_servantAI : public npc_escortAI
 # npc_salsalabim
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     FACTION_HOSTILE_SA              = 90,
@@ -613,12 +630,14 @@ enum
     SAY_SAL_AGGRO                   = -1015104
 };
 
+// npc_salsalabimAI 逻辑实现
 struct npc_salsalabimAI : public ScriptedAI
 {
     npc_salsalabimAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
     uint32 m_uiMagneticPullTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiMagneticPullTimer = 15000;
@@ -654,11 +673,13 @@ struct npc_salsalabimAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_salsalabim(Creature* pCreature)
 {
     return new npc_salsalabimAI(pCreature);
 }
 
+// NPC 对话选项选择回调
 bool GossipSelect_npc_salsalabim(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == 1)
@@ -672,6 +693,7 @@ bool GossipSelect_npc_salsalabim(Player* pPlayer, Creature* pCreature, uint32 /*
     return true;
 }
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     QUEST_KAELTHAS_AND_THE_VERDANT_SPHERE   = 11007,
@@ -699,12 +721,14 @@ bool QuestRewarded_npc_adal(Player* player, Creature* creature, Quest const* que
     return false; // unhandled
 }
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_DEMON_BROILED_SURPRISE    = 43753,
 };
 
 // 43723 - Demon Broiled Surprise
+// DemonBroiledSurprise 法术脚本
 struct DemonBroiledSurprise : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool strict) const override
@@ -719,6 +743,7 @@ struct DemonBroiledSurprise : public SpellScript
         return SPELL_CAST_OK;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_0)
@@ -728,6 +753,7 @@ struct DemonBroiledSurprise : public SpellScript
     }
 };
 
+// 注册 shattrath_city 脚本
 void AddSC_shattrath_city()
 {
     Script* pNewScript = new Script;

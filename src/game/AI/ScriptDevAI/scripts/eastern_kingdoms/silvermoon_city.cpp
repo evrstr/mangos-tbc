@@ -21,6 +21,8 @@ SDComment: Placeholder
 SDCategory: Silvermoon City
 EndScriptData */
 
+// 银月城（Silvermoon City）部落主城 NPC 交互脚本
+
 /* ContentData
 EndContentData */
 
@@ -62,6 +64,7 @@ UnitAI* GetNewAIInstance(Creature* creature)
     return nullptr;
 }
 
+// 注册并载入脚本模块：silvermoon_city
 void AddSC_silvermoon_city()
 {
     Script* pNewScript = new Script;

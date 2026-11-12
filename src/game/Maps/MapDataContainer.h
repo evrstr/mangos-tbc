@@ -41,23 +41,24 @@ struct CombatConditionEntry;
 struct BattleGroundEventIdx;
 struct PetAutocastSpellList;
 
-// Event_Map
+// Event_Map (生物 EventAI 事件映射容器)
 typedef std::vector<CreatureEventAI_Event> CreatureEventAI_Event_Vec;
 typedef std::unordered_map<uint32, CreatureEventAI_Event_Vec> CreatureEventAI_Event_Map;
 typedef std::unordered_map<uint32, CreatureEventAI_EventComputedData> CreatureEventAI_EventComputedData_Map;
 
-// Scripts
+// Scripts (地图脚本映射容器)
 typedef std::multimap < uint32 /*delay*/, std::shared_ptr<ScriptInfo>> ScriptMap;
 typedef std::map < uint32 /*id*/, ScriptMap > ScriptMapMap;
 typedef std::pair<const char*, ScriptMapMap> ScriptMapMapName;
 
-// Battleground
+// Battleground (战场相关映射容器)
 typedef std::unordered_map<uint32, BattleGroundTypeId> BattleMastersMap;
 typedef std::unordered_map<uint32, BattleGroundEventIdx> CreatureBattleEventIndexesMap;
 typedef std::unordered_map<uint32, BattleGroundEventIdx> GameObjectBattleEventIndexesMap;
 
 typedef std::map<std::pair<uint32, uint32>, PetAutocastSpellList> PetAutocastSpellMap;
 
+// 地图级只读/共享数据容器，为单个 Map 实例持有线程安全的技能列表、刷怪组、EventAI、脚本、条件及战场数据引用
 class MapDataContainer
 {
     public:
@@ -108,7 +109,7 @@ class MapDataContainer
 
         std::shared_ptr<ScriptMapMapName> m_scriptMaps[SCRIPT_TYPE_MAX];
 
-        // SCRIPT_ID
+        // SCRIPT_ID (字符串 ID 与数值 ID 双向映射)
         std::shared_ptr<StringIdMap> m_stringIds;
         std::shared_ptr<StringIdMapByString> m_stringIdsByString;
 

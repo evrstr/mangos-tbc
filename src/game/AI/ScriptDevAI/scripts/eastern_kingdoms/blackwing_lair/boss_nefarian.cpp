@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 奈法利安（Nefarian）8号最终首领战 AI（龙兽大军、多阶段转换与九大职业点名诅咒）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "Entities/TemporarySpawn.h"
@@ -28,49 +30,51 @@ EndScriptData */
 #include "MotionGenerators/WaypointManager.h"
 #include <G3D/Vector3.h>
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1469007,
+    SAY_AGGRO                   = -1469007,                 // 开战 台词广播 ID
     SAY_XHEALTH                 = -1469008,             // at 5% hp
-    SAY_SHADOW_FLAME            = -1469009,
-    SAY_RAISE_SKELETONS         = -1469010,
-    SAY_SLAY                    = -1469011,
-    SAY_DEATH                   = -1469012,
+    SAY_SHADOW_FLAME            = -1469009,                 // 暗影烈焰 台词广播 ID
+    SAY_RAISE_SKELETONS         = -1469010,                 // raiseskeletons 台词广播 ID
+    SAY_SLAY                    = -1469011,                 // 击杀 台词广播 ID
+    SAY_DEATH                   = -1469012,                 // 死亡 台词广播 ID
 
-    SAY_MAGE                    = -1469013,
-    SAY_WARRIOR                 = -1469014,
-    SAY_DRUID                   = -1469015,
-    SAY_PRIEST                  = -1469016,
-    SAY_PALADIN                 = -1469017,
-    SAY_SHAMAN                  = -1469018,
-    SAY_WARLOCK                 = -1469019,
-    SAY_HUNTER                  = -1469020,
-    SAY_ROGUE                   = -1469021,
+    SAY_MAGE                    = -1469013,                 // 法师 台词广播 ID
+    SAY_WARRIOR                 = -1469014,                 // 战士 台词广播 ID
+    SAY_DRUID                   = -1469015,                 // 德鲁伊 台词广播 ID
+    SAY_PRIEST                  = -1469016,                 // 牧师 台词广播 ID
+    SAY_PALADIN                 = -1469017,                 // 圣骑士 台词广播 ID
+    SAY_SHAMAN                  = -1469018,                 // 萨满祭司 台词广播 ID
+    SAY_WARLOCK                 = -1469019,                 // 术士 台词广播 ID
+    SAY_HUNTER                  = -1469020,                 // 猎人 台词广播 ID
+    SAY_ROGUE                   = -1469021,                 // 潜行者 台词广播 ID
     SAY_DEATH_KNIGHT            = -1469031,             // spell unk for the moment
 
-    SPELL_SHADOW_FLAME_PASSIVE  = 22992,
-    SPELL_SHADOWFLAME           = 22539,
-    SPELL_BELLOWING_ROAR        = 22686,
-    SPELL_VEIL_OF_SHADOW        = 22687,
-    SPELL_CLEAVE                = 19983,
-    SPELL_TAIL_LASH             = 23364,
-    SPELL_RAISE_DRAKONID        = 23362,
-    SPELL_DOUBLE_ATTACK         = 19818,
-    SPELL_SPEED_BURST           = 25184,
+    SPELL_SHADOW_FLAME_PASSIVE  = 22992,                    // 暗影烈焰passive 法术 ID
+    SPELL_SHADOWFLAME           = 22539,                    // shadowflame 法术 ID
+    SPELL_BELLOWING_ROAR        = 22686,                    // bellowingroar 法术 ID
+    SPELL_VEIL_OF_SHADOW        = 22687,                    // veilof暗影 法术 ID
+    SPELL_CLEAVE                = 19983,                    // 顺劈斩 法术 ID
+    SPELL_TAIL_LASH             = 23364,                    // 扫尾lash 法术 ID
+    SPELL_RAISE_DRAKONID        = 23362,                    // raisedrakonid 法术 ID
+    SPELL_DOUBLE_ATTACK         = 19818,                    // 双重攻击 法术 ID
+    SPELL_SPEED_BURST           = 25184,                    // speedburst 法术 ID
 
     SPELL_MAGE                  = 23410,                // wild magic
     SPELL_WARRIOR               = 23397,                // beserk
     SPELL_DRUID                 = 23398,                // cat form
-    SPELL_PRIEST                = 23401,                // corrupted healing
+    SPELL_PRIEST                = 23401,                // corrupted healing (corrupted治疗)
     SPELL_PALADIN               = 23418,                // syphon blessing
     SPELL_SHAMAN                = 23425,                // totems
     SPELL_WARLOCK               = 23427,                // infernals    -> should trigger 23426
     SPELL_HUNTER                = 23436,                // bow broke
     SPELL_ROGUE                 = 23414,                // Paralise
 
-    NPC_BONE_CONSTRUCT          = 14605,
+    NPC_BONE_CONSTRUCT          = 14605,                    // boneconstruct Entry ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum NefarianActions
 {
     NEFARIAN_PHASE_3,
@@ -86,6 +90,7 @@ enum NefarianActions
     NEFARIAN_ATTACK_START,
 };
 
+// 首领战 AI：标识 ID（nefarian）
 struct boss_nefarianAI : public CombatAI
 {
     boss_nefarianAI(Creature* creature) : CombatAI(creature, NEFARIAN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -119,6 +124,7 @@ struct boss_nefarianAI : public CombatAI
         StartLanding();
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* victim) override
     {
         if (urand(0, 4))
@@ -135,6 +141,7 @@ struct boss_nefarianAI : public CombatAI
             m_instance->SetData(TYPE_NEFARIAN, DONE);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         CombatAI::EnterEvadeMode();
@@ -145,6 +152,7 @@ struct boss_nefarianAI : public CombatAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_BONE_CONSTRUCT)
@@ -157,6 +165,7 @@ struct boss_nefarianAI : public CombatAI
         m_creature->GetMotionMaster()->MoveWaypoint(0, FORCED_MOVEMENT_NONE, true);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 type, uint32 pointId) override
     {
         if (type != WAYPOINT_MOTION_TYPE)
@@ -289,6 +298,7 @@ struct boss_nefarianAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_nefarian
 void AddSC_boss_nefarian()
 {
     Script* pNewScript = new Script;

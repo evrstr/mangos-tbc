@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Blood Furnace
 EndScriptData */
 
+// 鲜血熔炉副本数据脚本实现
+/* 遭遇战概述：
+ * 管理鲜血熔炉牢房释放事件及各首领进度。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blood_furnace.h"
 
@@ -448,6 +453,7 @@ void instance_blood_furnace::ExecuteChatCommand(ChatHandler* handler, char* args
     }
 }
 
+// 游戏对象使用交互回调
 bool GOUse_go_prison_cell_lever(Player* /*player*/, GameObject* go)
 {
     ScriptedInstance* pInstance = static_cast<ScriptedInstance*>(go->GetInstanceData());
@@ -462,6 +468,7 @@ bool GOUse_go_prison_cell_lever(Player* /*player*/, GameObject* go)
     return false;
 }
 
+// 注册 instance_blood_furnace 脚本
 void AddSC_instance_blood_furnace()
 {
     Script* pNewScript = new Script;

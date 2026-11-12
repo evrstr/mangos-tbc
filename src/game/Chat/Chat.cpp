@@ -42,30 +42,31 @@
 
 #include <cstdarg>
 
-// Supported shift-links (client generated and server side)
+// Supported shift-links (client generated and server side) | 支持的 Shift 超链接格式（客户端生成与服务端解析）
 // |color|Harea:area_id|h[name]|h|r
 // |color|Hareatrigger:id|h[name]|h|r
 // |color|Hareatrigger_target:id|h[name]|h|r
 // |color|Hcreature:creature_guid|h[name]|h|r
 // |color|Hcreature_entry:creature_id|h[name]|h|r
-// |color|Henchant:recipe_spell_id|h[prof_name: recipe_name]|h|r          - client, at shift click in recipes list dialog
+// |color|Henchant:recipe_spell_id|h[prof_name: recipe_name]|h|r          - client, at shift click in recipes list dialog | 客户端在专业配方列表 Shift 点击生成
 // |color|Hgameevent:id|h[name]|h|r
 // |color|Hgameobject:go_guid|h[name]|h|r
 // |color|Hgameobject_entry:go_id|h[name]|h|r
-// |color|Hitem:item_id:perm_ench_id:gem1:gem2:gem3:0:0:0:0|h[name]|h|r   - client, item icon shift click
+// |color|Hitem:item_id:perm_ench_id:gem1:gem2:gem3:0:0:0:0|h[name]|h|r   - client, item icon shift click | 客户端物品图标 Shift 点击生成
 // |color|Hitemset:itemset_id|h[name]|h|r
-// |color|Hplayer:name|h[name]|h|r                                        - client, in some messages, at click copy only name instead link, so no way generate it in client string send to server
+// |color|Hplayer:name|h[name]|h|r                                        - client, in some messages, at click copy only name instead link, so no way generate it in client string send to server | 客户端部分场景仅复制角色名而非完整链接
 // |color|Hpool:pool_id|h[name]|h|r
-// |color|Hquest:quest_id:quest_level|h[name]|h|r                         - client, quest list name shift-click
+// |color|Hquest:quest_id:quest_level|h[name]|h|r                         - client, quest list name shift-click | 客户端任务日志 Shift 点击生成
 // |color|Hskill:skill_id|h[name]|h|r
-// |color|Hspell:spell_id|h[name]|h|r                                     - client, spellbook spell icon shift-click
-// |color|Htalent:talent_id,rank|h[name]|h|r                              - client, talent icon shift-click rank==-1 if shift-copy unlearned talent
+// |color|Hspell:spell_id|h[name]|h|r                                     - client, spellbook spell icon shift-click | 客户端法术书 Shift 点击生成
+// |color|Htalent:talent_id,rank|h[name]|h|r                              - client, talent icon shift-click rank==-1 if shift-copy unlearned talent | 客户端天赋 Shift 点击生成（未学习天赋 rank 为 -1）
 // |color|Htaxinode:id|h[name]|h|r
 // |color|Htele:id|h[name]|h|r
 // |color|Htitle:id|h[name]|h|r
 
 bool ChatHandler::load_command_table = true;
 
+/// 获取全局聊天命令表；首次调用时校验命令树完整性并从数据库 `command` 表覆盖权限与帮助文本
 ChatCommand* ChatHandler::getCommandTable()
 {
     static ChatCommand accountSetCommandTable[] =
@@ -1062,7 +1063,7 @@ ChatCommand* ChatHandler::getCommandTable()
     {
         load_command_table = false;
 
-        // check hardcoded part integrity
+        // check hardcoded part integrity | 校验静态硬编码命令表的权限与处理器完整性
         CheckIntegrity(commandTable, nullptr);
 
         auto queryResult = WorldDatabase.Query("SELECT name,security,help FROM command");
@@ -1120,6 +1121,7 @@ std::string ChatHandler::GetNameLink() const
     return GetNameLink(m_session->GetPlayer());
 }
 
+/// 检查调用者对目标玩家是否具备足够权限（strong 为 true 时禁止同级操作）
 bool ChatHandler::HasLowerSecurity(Player* target, ObjectGuid guid, bool strong)
 {
     WorldSession* target_session = nullptr;
@@ -1144,7 +1146,7 @@ bool ChatHandler::HasLowerSecurityAccount(WorldSession* target, uint32 target_ac
 {
     AccountTypes target_sec;
 
-    // ignore only for non-players for non strong checks (when allow apply command at least to same sec level)
+    // ignore only for non-players for non strong checks (when allow apply command at least to same sec level) | 非强校验模式下，允许 GM 对同权限或低权限目标执行操作（除非配置限制）
     if (GetAccessLevel() > SEC_PLAYER && !strong && !sWorld.getConfig(CONFIG_BOOL_GM_LOWER_SECURITY))
         return false;
 
@@ -1153,7 +1155,7 @@ bool ChatHandler::HasLowerSecurityAccount(WorldSession* target, uint32 target_ac
     else if (target_account)
         target_sec = sAccountMgr.GetSecurity(target_account);
     else
-        return true;                                        // caller must report error for (target==nullptr && target_account==0)
+        return true;                                        // caller must report error for (target==nullptr && target_account==0) | 调用方须处理目标不存在的情况
 
     if (GetAccessLevel() < target_sec || (strong && GetAccessLevel() <= target_sec))
     {
@@ -1165,6 +1167,7 @@ bool ChatHandler::HasLowerSecurityAccount(WorldSession* target, uint32 target_ac
     return false;
 }
 
+/// 判断前缀缩写 part 是否匹配命令名 name（不区分大小写）
 bool ChatHandler::hasStringAbbr(const char* name, const char* part) const
 {
     // non "" command
@@ -1190,11 +1193,12 @@ bool ChatHandler::hasStringAbbr(const char* name, const char* part) const
     return true;
 }
 
+/// 向当前会话玩家发送按换行拆分的系统消息
 void ChatHandler::SendSysMessage(const char* str)
 {
     WorldPacket data;
 
-    // need copy to prevent corruption by strtok call in LineFromMessage original string
+    // need copy to prevent corruption by strtok call in LineFromMessage original string | 拷贝字符串以避免 LineFromMessage 内的 strtok 破坏原串
     char* buf = mangos_strdup(str);
     char* pos = buf;
 
@@ -1207,12 +1211,13 @@ void ChatHandler::SendSysMessage(const char* str)
     delete[] buf;
 }
 
+/// 向全服所有在线玩家广播系统消息
 void ChatHandler::SendGlobalSysMessage(const char* str) const
 {
-    // Chat output
+    // Chat output | 按行构造系统消息并全服广播
     WorldPacket data;
 
-    // need copy to prevent corruption by strtok call in LineFromMessage original string
+    // need copy to prevent corruption by strtok call in LineFromMessage original string | 拷贝字符串防止 strtok 修改原文本
     char* buf = mangos_strdup(str);
     char* pos = buf;
     ObjectGuid guid = m_session ? m_session->GetPlayer()->GetObjectGuid() : ObjectGuid();
@@ -1252,6 +1257,7 @@ void ChatHandler::PSendSysMessage(const char* format, ...)
     SendSysMessage(str);
 }
 
+/// 递归校验命令树结构完整性（子命令权限不得低于父命令、不可同时拥有处理器和子表）
 void ChatHandler::CheckIntegrity(ChatCommand* table, ChatCommand* parentCommand) const
 {
     for (uint32 i = 0; table[i].Name != nullptr; ++i)
@@ -1296,10 +1302,11 @@ void ChatHandler::CheckIntegrity(ChatCommand* table, ChatCommand* parentCommand)
 
 /**
  * Search (sub)command for command line available for chat handler access level
+ * 在命令表中检索当前权限可访问的（子）命令
  *
- * @param text  Command line string that will parsed for (sub)command search
+ * @param text  Command line string that will parsed for (sub)command search | 待解析的命令行字符串
  *
- * @return Pointer to found command structure or nullptr if appropriate command not found
+ * @return Pointer to found command structure or nullptr if appropriate command not found | 找到则返回命令节点指针，否则返回 nullptr
  */
 ChatCommand const* ChatHandler::FindCommand(char const* text)
 {
@@ -1311,18 +1318,19 @@ ChatCommand const* ChatHandler::FindCommand(char const* text)
 
 /**
  * Search (sub)command for command line available for chat handler access level with options and fail case additional info
+ * 递归检索命令树中匹配的（子）命令，支持缩写匹配、权限过滤与失败定位信息返回
  *
- * @param table         Pointer to command C-style array first level command where will be searched
+ * @param table         Pointer to command C-style array first level command where will be searched | 当前层级命令数组指针
  * @param text          Command line string that will parsed for (sub)command search,
- *                      it modified at return from function and pointed to not parsed tail
+ *                      it modified at return from function and pointed to not parsed tail | 命令行字符串（返回时推进至未解析的参数尾部）
  * @param command       At success this is found command, at other cases this is last found parent command
- *                      before subcommand search fail
- * @param parentCommand Output arg for optional return parent command for command arg.
- * @param cmdNamePtr    Output arg for optional return last parsed command name.
- * @param allAvailable  Optional arg (with false default value) control use command access level checks while command search.
- * @param exactlyName   Optional arg (with false default value) control use exactly name in checks while command search.
+ *                      before subcommand search fail | 成功时为匹配到的命令节点，失败时为最近匹配的父命令
+ * @param parentCommand Output arg for optional return parent command for command arg. | 可选输出：匹配命令的父命令节点
+ * @param cmdNamePtr    Output arg for optional return last parsed command name. | 可选输出：最后解析的命令名称
+ * @param allAvailable  Optional arg (with false default value) control use command access level checks while command search. | 是否忽略权限限制（默认 false）
+ * @param exactlyName   Optional arg (with false default value) control use exactly name in checks while command search. | 是否要求完整精确匹配（默认 false，允许缩写）
  *
- * @return one from enum value of ChatCommandSearchResult. Output args return values highly dependent from this return result:
+ * @return one from enum value of ChatCommandSearchResult. Output args return values highly dependent from this return result: | 返回检索结果枚举值
  *
  *      CHAT_COMMAND_OK       - Command found!
  *                              text point to non parsed tail with possible command specific data, command store found command pointer,
@@ -1444,6 +1452,7 @@ ChatCommandSearchResult ChatHandler::FindCommand(ChatCommand* table, char const*
 
 /**
  * Execute (sub)command available for chat handler access level with options in command line string
+ * 查找并执行命令行文本对应的命令处理器；权限超过普通玩家时记录命令审计日志，失败时回显帮助或语法提示
  *
  * @param text  Command line string that will parsed for (sub)command search and command specific data
  *
@@ -1502,6 +1511,7 @@ void ChatHandler::ExecuteCommand(const char* text)
 
 /**
  * Function find appropriate command and update command security level and help text
+ * 根据数据库 `command` 表配置覆写命令的权限等级与帮助说明
  *
  * @param commandTable  Table for first level command search
  * @param text          Command line string that will parsed for (sub)command search
@@ -1552,12 +1562,13 @@ bool ChatHandler::SetDataForCommandInTable(ChatCommand* commandTable, const char
     return false;
 }
 
+/// 解析聊天消息或控制台输入，识别 `.` / `!` 前缀命令并分发执行
 bool ChatHandler::ParseCommands(const char* text)
 {
     MANGOS_ASSERT(text);
     MANGOS_ASSERT(*text);
 
-    /// chat case (.command or !command format)
+    /// chat case (.command or !command format) | 聊天通道仅处理以 `.` 或 `!` 开头的命令
     if (m_session)
     {
         if (m_session->GetSecurity() == SEC_PLAYER && !sWorld.getConfig(CONFIG_BOOL_PLAYER_COMMANDS))
@@ -1566,16 +1577,16 @@ bool ChatHandler::ParseCommands(const char* text)
         if (text[0] != '!' && text[0] != '.')
             return false;
 
-        /// ignore single . and ! in line
+        /// ignore single . and ! in line | 忽略单独一个 `.` 或 `!`
         if (strlen(text) < 2)
             return false;
     }
 
-    /// ignore messages staring from many dots.
+    /// ignore messages staring from many dots. | 忽略连续多个点或感叹号开头的普通发言（如 `...`）
     if ((text[0] == '.' && text[1] == '.') || (text[0] == '!' && text[1] == '!'))
         return false;
 
-    /// skip first . or ! (in console allowed use command with . and ! and without its)
+    /// skip first . or ! (in console allowed use command with . and ! and without its) | 跳过前导 `.` 或 `!`（控制台允许省略前缀）
     if (text[0] == '!' || text[0] == '.')
         ++text;
 
@@ -1584,6 +1595,7 @@ bool ChatHandler::ParseCommands(const char* text)
     return true;
 }
 
+/// 列出指定命令表下当前权限可用的所有子命令名称
 bool ChatHandler::ShowHelpForSubCommands(ChatCommand* table, char const* cmd)
 {
     std::string list;
@@ -1620,6 +1632,7 @@ bool ChatHandler::ShowHelpForSubCommands(ChatCommand* table, char const* cmd)
     return true;
 }
 
+/// 输出指定命令的帮助文档及可用子命令列表
 bool ChatHandler::ShowHelpForCommand(ChatCommand* table, const char* cmd)
 {
     char const* oldCmd = cmd;
@@ -1671,11 +1684,12 @@ bool ChatHandler::ShowHelpForCommand(ChatCommand* table, const char* cmd)
     return command || childCommands;
 }
 
+/// 检测字符串中是否包含未转义的 `|` 控制序列（排除合法转义 `||`）
 bool ChatHandler::HasEscapeSequences(const char* message)
 {
     while (*message)
     {
-        // find next pipe command
+        // find next pipe command | 查找下一个竖线控制符
         message = strchr(message, '|');
 
         if (!message)
@@ -1685,7 +1699,7 @@ bool ChatHandler::HasEscapeSequences(const char* message)
 
         char commandChar = *message;
 
-        // ignore escaped pipe
+        // ignore escaped pipe | 忽略转义后的 `||`
         if (commandChar != '|')
             return true;
 
@@ -1694,6 +1708,7 @@ bool ChatHandler::HasEscapeSequences(const char* message)
     return false;
 }
 
+/// 按服务器配置严格度校验聊天消息中的颜色/物品/任务/法术/天赋/附魔超链接序列是否合法
 bool ChatHandler::CheckEscapeSequences(const char* message)
 {
     /*
@@ -2199,6 +2214,7 @@ bool ChatHandler::CheckEscapeSequences(const char* message)
     return validSequence == validSequenceIterator;
 }
 
+/// 获取当前选中的玩家（未选中目标时默认返回命令发起者自身）
 Player* ChatHandler::getSelectedPlayer() const
 {
     if (!m_session)
@@ -2212,6 +2228,7 @@ Player* ChatHandler::getSelectedPlayer() const
     return sObjectMgr.GetPlayer(guid);
 }
 
+/// 获取当前选中的单位（支持跨地图选中玩家；self 为 true 时无目标返回自身）
 Unit* ChatHandler::getSelectedUnit(bool self) const
 {
     if (!m_session)
@@ -2222,10 +2239,11 @@ Unit* ChatHandler::getSelectedUnit(bool self) const
     if (!guid)
         return self ? m_session->GetPlayer() : nullptr;
 
-    // can be selected player at another map
+    // can be selected player at another map | 可跨地图检索被选中的玩家对象
     return ObjectAccessor::GetUnit(*m_session->GetPlayer(), guid);
 }
 
+/// 获取当前选中的任意类型生物（含宠物/图腾等）
 Creature* ChatHandler::getSelectedCreature() const
 {
     if (!m_session)
@@ -2234,6 +2252,7 @@ Creature* ChatHandler::getSelectedCreature() const
     return m_session->GetPlayer()->GetMap()->GetAnyTypeCreature(m_session->GetPlayer()->GetSelectionGuid());
 }
 
+/// 获取当前选中的宠物对象
 Pet* ChatHandler::getSelectedPet() const
 {
     if (!m_session)
@@ -2242,8 +2261,10 @@ Pet* ChatHandler::getSelectedPet() const
     return m_session->GetPlayer()->GetMap()->GetPet(m_session->GetPlayer()->GetSelectionGuid());
 }
 
+/// 从参数字符串中提取十进制/多进制整数、浮点数、字面量、引号串或 Shift 超链接字段的辅助函数组
 /**
  * Function skip all whitespaces in args string
+ * 跳过参数字符串当前开头的所有空白字符
  *
  * @param args variable pointer to non parsed args string, updated at function call to new position (with skipped white spaces)
  *             allowed nullptr string pointer stored in *args
@@ -3322,6 +3343,7 @@ std::string ChatHandler::ExtractPlayerNameFromLink(char** text)
     return name;
 }
 
+/// 根据玩家名字或对象链接提取目标玩家指针、GUID 与名称（支持省略参数默认取选中玩家）
 /**
  * Function extract at least one from request player data (pointer/guid/name) from args name/shift-link or selected player if no args
  *
@@ -3388,6 +3410,7 @@ bool ChatHandler::ExtractPlayerTarget(char** args, Player** player /*= nullptr*/
     return true;
 }
 
+/// 从参数或当前选中玩家提取账号 ID 与账号名
 uint32 ChatHandler::ExtractAccountId(char** args, std::string* accountName /*= nullptr*/, Player** targetIfNullArg /*= nullptr*/)
 {
     uint32 account_id = 0;
@@ -3484,6 +3507,7 @@ static RaceMaskName const raceMaskNames[] =
     { nullptr, 0 }
 };
 
+/// 从数值或种族/阵营关键字提取种族掩码
 bool ChatHandler::ExtractRaceMask(char** text, uint32& raceMask, char const** maskName /*=nullptr*/)
 {
     if (ExtractUInt32(text, raceMask))
@@ -3660,9 +3684,10 @@ std::string ChatHandler::PrepareStringNpcOrGoSpawnInformation(uint32 guid) const
     return str;
 }
 
+/// 记录 GM/控制台命令执行审计日志（含账号、坐标、地图及当前选中目标）
 void ChatHandler::LogCommand(char const* fullcmd) const
 {
-    // chat case
+    // chat case | 游戏内聊天命令日志
     if (m_session)
     {
         Player* p = m_session->GetPlayer();
@@ -3671,13 +3696,14 @@ void ChatHandler::LogCommand(char const* fullcmd) const
                         fullcmd, p->GetName(), GetAccountId(), p->GetPositionX(), p->GetPositionY(), p->GetPositionZ(), p->GetMapId(),
                         sel_guid.GetString().c_str());
     }
-    else                                        // 0 account -> console
+    else                                        // 0 account -> console | 账号为 0 表示本地控制台，非 0 表示远程管理连接 (RA)
     {
         sLog.outCommand(GetAccountId(), "Command: %s [Account: %u from %s]",
                         fullcmd, GetAccountId(), GetAccountId() ? "RA-connection" : "Console");
     }
 }
 
+/// 构建 SMSG_MESSAGECHAT 或 SMSG_GM_MESSAGECHAT 聊天协议封包
 void ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg msgtype, char const* message, Language language /*= LANG_UNIVERSAL*/, ChatTagFlags chatTag /*= CHAT_TAG_NONE*/,
                                   ObjectGuid const& senderGuid /*= ObjectGuid()*/, char const* senderName /*= nullptr*/,
                                   ObjectGuid const& targetGuid /*= ObjectGuid()*/, char const* targetName /*= nullptr*/,
@@ -3746,7 +3772,7 @@ void ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg msgtype, char const
     }
 }
 
-/// Create an account
+/// Create an account | 创建新游戏账号（支持可选资料片标识）
 bool ChatHandler::HandleAccountCreateCommand(char* args)
 {
     ///- %Parse the command line arguments
@@ -3791,8 +3817,8 @@ bool ChatHandler::HandleAccountCreateCommand(char* args)
     return true;
 }
 
-/// Delete a user account and all associated characters in this realm
-/// \todo This function has to be enhanced to respect the login/realm split (delete char, delete account chars in realm, delete account chars in realm then delete account
+/// Delete a user account and all associated characters in this realm | 删除指定账号及本服关联角色
+/// \todo This function has to be enhanced to respect the login/realm split (delete char, delete account chars in realm, delete account chars in realm then delete account | 待优化以适配登录库/游戏库分离架构
 bool ChatHandler::HandleAccountDeleteCommand(char* args)
 {
     if (!*args)
@@ -3832,7 +3858,7 @@ bool ChatHandler::HandleAccountDeleteCommand(char* args)
     return true;
 }
 
-/// Display info on users currently in the realm
+/// Display info on users currently in the realm | 列出当前登录本服的在线账号信息
 bool ChatHandler::HandleAccountOnlineListCommand(char* args)
 {
     uint32 limit;
@@ -3848,6 +3874,7 @@ bool ChatHandler::HandleAccountOnlineListCommand(char* args)
 
 /**
  * Collects all GUIDs (and related info) from deleted characters which are still in the database.
+ * 从数据库收集匹配条件的已删除角色摘要列表（按低位 GUID 或角色名模糊检索，单次上限 100 条）
  *
  * @param foundList    a reference to an std::list which will be filled with info data
  * @param searchString the search string which either contains a player GUID (low part) or a part of the character-name
@@ -4132,6 +4159,7 @@ bool ChatHandler::HandleCharacterDeletedOldCommand(char* args)
     return true;
 }
 
+/// 彻底永久删除指定在线或离线角色数据
 bool ChatHandler::HandleCharacterEraseCommand(char* args)
 {
     char* nameStr = ExtractLiteralArg(&args);
@@ -4162,7 +4190,7 @@ bool ChatHandler::HandleCharacterEraseCommand(char* args)
     return true;
 }
 
-/// Set the filters of logging
+/// Set the filters of logging | 查看或设置服务器日志分类过滤开关
 bool ChatHandler::HandleServerLogFilterCommand(char* args)
 {
     if (!*args)
@@ -4210,7 +4238,7 @@ bool ChatHandler::HandleServerLogFilterCommand(char* args)
     return false;
 }
 
-/// Set the level of logging
+/// Set the level of logging | 查看或动态调整服务器日志输出等级
 bool ChatHandler::HandleServerLogLevelCommand(char* args)
 {
     if (!*args)
@@ -4223,7 +4251,7 @@ bool ChatHandler::HandleServerLogLevelCommand(char* args)
     return true;
 }
 
-/// Close RA connection
+/// Close RA connection | 关闭远程管理 (RA) 连接提示（该命令由 RASocket 直接拦截处理）
 bool ChatHandler::HandleQuitCommand(char* /*args*/)
 {
     // processed in RASocket
@@ -4231,7 +4259,7 @@ bool ChatHandler::HandleQuitCommand(char* /*args*/)
     return true;
 }
 
-/// Exit the realm
+/// Exit the realm | 立即关闭世界服务器进程
 bool ChatHandler::HandleServerExitCommand(char* /*args*/)
 {
     SendSysMessage(LANG_COMMAND_EXIT);

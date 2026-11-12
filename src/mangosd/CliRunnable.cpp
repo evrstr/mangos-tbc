@@ -34,6 +34,7 @@
 #include "Entities/Player.h"
 #include "Chat/Chat.h"
 
+/// 将 UTF-8 字符串输出到控制台（Windows 下先转换为 OEM 编码）
 void utf8print(const char* str)
 {
 #if PLATFORM == PLATFORM_WINDOWS
@@ -43,7 +44,7 @@ void utf8print(const char* str)
     if (!Utf8toWStr(temp_buf, wtemp_buf, 6000))
         return;
 
-    // Guarantee null termination
+    // Guarantee null termination | 确保字符串以空字符结尾
     if (!temp_buf.empty())
     {
         wtemp_buf.push_back('\0');
@@ -57,6 +58,7 @@ void utf8print(const char* str)
 #endif
 }
 
+/// 命令执行完成回调：重新打印命令行提示符并刷新标准输出
 void commandFinished(bool)
 {
     printf("mangos>");
@@ -66,7 +68,7 @@ void commandFinished(bool)
 /// @}
 
 #ifdef __unix__
-// Non-blocking keypress detector, when return pressed, return 1, else always return 0
+// Non-blocking keypress detector, when return pressed, return 1, else always return 0 | 非阻塞按键检测：按下回车返回 1，否则返回 0
 int kb_hit_return()
 {
     struct timeval tv;
@@ -80,42 +82,42 @@ int kb_hit_return()
 }
 #endif
 
-/// %Thread start
+/// %Thread start | 线程启动入口
 void CliRunnable::run()
 {
-    ///- Init new SQL thread for the world database (one connection call enough)
-    WorldDatabase.ThreadStart();                            // let thread do safe mySQL requests
+    ///- Init new SQL thread for the world database (one connection call enough) | 为世界数据库初始化新的 SQL 线程（单次连接调用即可）
+    WorldDatabase.ThreadStart();                            // let thread do safe mySQL requests | 使当前线程能够安全执行 MySQL 请求
 
     char commandbuf[256];
 
-    ///- Display the list of available CLI functions then beep
+    ///- Display the list of available CLI functions then beep | 输出空行并提示可用 CLI 功能，随后发出提示音
     sLog.outString();
 
     if (sConfig.GetBoolDefault("BeepAtStart", true))
-        printf("\a");                                       // \a = Alert
+        printf("\a");                                       // \a = Alert | \a 为响铃提示符
 
-    // print this here the first time
-    // later it will be printed after command queue updates
+    // print this here the first time | 首次启动时先打印提示符
+    // later it will be printed after command queue updates | 后续提示符将在命令队列执行完毕后由回调打印
     printf("mangos>");
 
 #ifdef __unix__
-    //Set stdin IO to nonblocking - prevent Server from hanging in shutdown process till enter is pressed
+    //Set stdin IO to nonblocking - prevent Server from hanging in shutdown process till enter is pressed | 将标准输入设为非阻塞 I/O，防止服务器在关闭流程中因等待回车而挂起
     int fd = fileno(stdin);
     int flags = fcntl(fd, F_GETFL, 0);
     flags |= O_NONBLOCK;
     fcntl(fd, F_SETFL, flags);
 #endif
 
-    ///- As long as the World is running (no World::m_stopEvent), get the command line and handle it
+    ///- As long as the World is running (no World::m_stopEvent), get the command line and handle it | 只要世界线程仍在运行（未触发停止事件），就持续读取并处理命令行输入
     while (!World::IsStopped())
     {
         fflush(stdout);
 #ifdef __unix__
         while (!kb_hit_return() && !World::IsStopped())
         {
-            // With this, we limit CLI to 10commands/second
+            // With this, we limit CLI to 10commands/second | 通过休眠将 CLI 轮询频率限制为每秒约 10 次命令检测
             std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
-            // Check for world stoppage after each sleep interval
+            // Check for world stoppage after each sleep interval | 每次休眠结束后检查世界是否已停止
             if (World::IsStopped())
                 break;
         }
@@ -138,7 +140,7 @@ void CliRunnable::run()
             }
 
             std::string command;
-            if (!consoleToUtf8(command_str, command))       // convert from console encoding to utf8
+            if (!consoleToUtf8(command_str, command))       // convert from console encoding to utf8 | 将控制台编码转换为 UTF-8
             {
                 printf("mangos>");
                 continue;
@@ -152,6 +154,6 @@ void CliRunnable::run()
         }
     }
 
-    ///- End the database thread
-    WorldDatabase.ThreadEnd();                              // free mySQL thread resources
+    ///- End the database thread | 结束数据库线程
+    WorldDatabase.ThreadEnd();                              // free mySQL thread resources | 释放 MySQL 线程资源
 }

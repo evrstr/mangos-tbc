@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Item_Scripts
 SD%Complete: 100
-SDComment: Items for a range of different items. See content below (in script)
+SDComment: Items for a range of different items. See content below (in script) (世界各类任务物品与功能道具脚本)
 SDCategory: Items
 EndScriptData */
 
@@ -33,7 +33,7 @@ EndContentData */
 
 
 /*#####
-# item_orb_of_draconic_energy
+# item_orb_of_draconic_energy (龙类能量宝珠：黑龙门任务控制埃博斯塔夫)
 #####*/
 
 enum
@@ -42,6 +42,7 @@ enum
     NPC_EMBERSTRIFE         = 10321
 };
 
+// 龙类能量宝珠使用回调：目标生命值低于 10% 且未被心控时方可施法
 bool ItemUse_item_orb_of_draconic_energy(Player* pPlayer, Item* pItem, const SpellCastTargets& /*pTargets*/)
 {
     Creature* pEmberstrife = GetClosestCreatureWithEntry(pPlayer, NPC_EMBERSTRIFE, 20.0f);
@@ -63,7 +64,7 @@ bool ItemUse_item_orb_of_draconic_energy(Player* pPlayer, Item* pItem, const Spe
 }
 
 /*#####
-# item_arcane_charges
+# item_arcane_charges (奥术炸药：奎尔丹纳斯轰炸日常)
 #####*/
 
 enum
@@ -71,6 +72,7 @@ enum
     SPELL_ARCANE_CHARGES    = 45072
 };
 
+// 奥术炸药使用回调：仅限飞行航线中方可使用
 bool ItemUse_item_arcane_charges(Player* pPlayer, Item* pItem, const SpellCastTargets& /*pTargets*/)
 {
     if (pPlayer->IsTaxiFlying())
@@ -85,7 +87,7 @@ bool ItemUse_item_arcane_charges(Player* pPlayer, Item* pItem, const SpellCastTa
 }
 
 /*#####
-# item_flying_machine
+# item_flying_machine (工程学飞行器学习检测)
 #####*/
 
 bool ItemUse_item_flying_machine(Player* pPlayer, Item* pItem, const SpellCastTargets& /*pTargets*/)
@@ -106,7 +108,7 @@ bool ItemUse_item_flying_machine(Player* pPlayer, Item* pItem, const SpellCastTa
 }
 
 /*#####
-# item_gor_dreks_ointment
+# item_gor_dreks_ointment (戈德雷克的药膏：任务保护雏龙)
 #####*/
 
 enum
@@ -135,6 +137,7 @@ enum
     SPELL_ASHBRINGER_EFFECT_001 = 28442,
 };
 
+// 堕落的灰烬使者意志光环脚本：降低银色黎明声望至仇恨并提高血色十字军声望
 struct AshbringerItemAura : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const
@@ -155,6 +158,7 @@ enum
     SPELL_PARACHUTE = 37897,
 };
 
+// X-52火箭头盔光环脚本：光环移除时自动施放降落伞保护玩家
 struct X52RocketHelmetAura : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const
@@ -190,6 +194,7 @@ enum
     SPELL_GDR_DAMAGE_HIT      = 13279,
 };
 
+// 侏儒死亡射线引导法术脚本
 struct GDRChannel : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -199,6 +204,7 @@ struct GDRChannel : public SpellScript
     }
 };
 
+// 侏儒死亡射线周期伤害与最终爆发伤害脚本
 struct GDRPeriodicDamage : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& /*data*/, int32 /*value*/) const override
@@ -216,6 +222,7 @@ struct GDRPeriodicDamage : public AuraScript
     }
 };
 
+// 奥格瑞拉合剂光环脚本
 struct OgrilaFlasks : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -581,6 +588,7 @@ struct ShattrathFlasks : public AuraScript
     }
 };
 
+// 注册各类物品使用脚本
 void AddSC_item_scripts()
 {
     Script* pNewScript = new Script;

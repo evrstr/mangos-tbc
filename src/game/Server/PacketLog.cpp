@@ -23,36 +23,37 @@
 
 #pragma pack(push, 1)
 
-// Packet logging structures in PKT 3.1 format
+// Packet logging structures in PKT 3.1 format | PKT 3.1 格式的数据包日志头结构定义
 struct LogHeader
 {
-    char Signature[3];
-    uint16 FormatVersion;
-    uint8 SnifferId;
-    uint32 Build;
-    char Locale[4];
-    uint8 SessionKey[40];
-    uint32 SniffStartUnixtime;
-    uint32 SniffStartTicks;
-    uint32 OptionalDataSize;
+    char Signature[3];                                      ///< 文件魔数 "PKT"
+    uint16 FormatVersion;                                   ///< 格式版本号（0x0301）
+    uint8 SnifferId;                                        ///< 嗅探器标识字符
+    uint32 Build;                                           ///< 客户端期望版本号
+    char Locale[4];                                         ///< 客户端语言区域（如 enUS）
+    uint8 SessionKey[40];                                   ///< 会话密钥占位（全零）
+    uint32 SniffStartUnixtime;                              ///< 抓包开始 Unix 时间戳
+    uint32 SniffStartTicks;                                 ///< 抓包开始毫秒刻度
+    uint32 OptionalDataSize;                                ///< 头部可选附加数据长度
 };
 
+/// 单条数据包记录头
 struct PacketHeader
 {
-    // used to uniquely identify a connection
+    // used to uniquely identify a connection | 用于唯一标识连接来源的可选数据
     struct OptionalData
     {
-        uint8 SocketIPBytes[16];
-        uint32 SocketPort;
+        uint8 SocketIPBytes[16];                            ///< IPv4/IPv6 地址字节
+        uint32 SocketPort;                                  ///< 远端端口号
     };
 
-    uint32 Direction;
-    uint32 ConnectionId;
-    uint32 ArrivalTicks;
-    uint32 OptionalDataSize;
-    uint32 Length;
+    uint32 Direction;                                       ///< 传输方向标识（CMSG / SMSG）
+    uint32 ConnectionId;                                    ///< 连接 ID
+    uint32 ArrivalTicks;                                    ///< 到达/发送时的服务器毫秒刻
+    uint32 OptionalDataSize;                                ///< OptionalData 字节数
+    uint32 Length;                                          ///< 负载长度（含 4 字节 Opcode）
     OptionalData OptionalData;
-    uint32 Opcode;
+    uint32 Opcode;                                          ///< 操作码
 };
 
 #pragma pack(pop)

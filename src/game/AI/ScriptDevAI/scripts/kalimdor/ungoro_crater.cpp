@@ -21,6 +21,10 @@ SDComment: Quest support: 4245, 4491
 SDCategory: Un'Goro Crater
 EndScriptData */
 
+/**
+ * 安戈洛环形山 (Un'Goro Crater) 水晶塔与恐龙任务脚本
+ */
+
 /* ContentData
 npc_ame01
 npc_ringo
@@ -34,18 +38,20 @@ EndContentData */
 ## npc_ame01
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_AME_START           = -1000446,
-    SAY_AME_PROGRESS        = -1000447,
-    SAY_AME_END             = -1000448,
-    SAY_AME_AGGRO1          = -1000449,
-    SAY_AME_AGGRO2          = -1000450,
-    SAY_AME_AGGRO3          = -1000451,
+    SAY_AME_START           = -1000446,                     // 剧情台词/喊话文本 ID
+    SAY_AME_PROGRESS        = -1000447,                     // 剧情台词/喊话文本 ID
+    SAY_AME_END             = -1000448,                     // 剧情台词/喊话文本 ID
+    SAY_AME_AGGRO1          = -1000449,                     // 剧情台词/喊话文本 ID
+    SAY_AME_AGGRO2          = -1000450,                     // 剧情台词/喊话文本 ID
+    SAY_AME_AGGRO3          = -1000451,                     // 剧情台词/喊话文本 ID
 
     QUEST_CHASING_AME       = 4245
 };
 
+// npc_ame01AI NPC 脚本 AI
 struct npc_ame01AI : public npc_escortAI
 {
     npc_ame01AI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -54,9 +60,9 @@ struct npc_ame01AI : public npc_escortAI
         Reset();
     }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -74,7 +80,7 @@ struct npc_ame01AI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         if (pWho->GetTypeId() == TYPEID_PLAYER)
             return;
@@ -94,7 +100,7 @@ struct npc_ame01AI : public npc_escortAI
     }
 };
 
-bool QuestAccept_npc_ame01(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_ame01(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_CHASING_AME)
     {
@@ -113,7 +119,7 @@ bool QuestAccept_npc_ame01(Player* pPlayer, Creature* pCreature, const Quest* pQ
     return true;
 }
 
-UnitAI* GetAI_npc_ame01(Creature* pCreature)
+UnitAI* GetAI_npc_ame01(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_ame01AI(pCreature);
 }
@@ -122,35 +128,37 @@ UnitAI* GetAI_npc_ame01(Creature* pCreature)
 # npc_ringo
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_RIN_START_1             = -1000416,
-    SAY_RIN_START_2             = -1000417,
+    SAY_RIN_START_1             = -1000416,                 // 剧情台词/喊话文本 ID
+    SAY_RIN_START_2             = -1000417,                 // 剧情台词/喊话文本 ID
 
-    SAY_FAINT_1                 = -1000418,
-    SAY_FAINT_2                 = -1000419,
-    SAY_FAINT_3                 = -1000420,
-    SAY_FAINT_4                 = -1000421,
+    SAY_FAINT_1                 = -1000418,                 // 剧情台词/喊话文本 ID
+    SAY_FAINT_2                 = -1000419,                 // 剧情台词/喊话文本 ID
+    SAY_FAINT_3                 = -1000420,                 // 剧情台词/喊话文本 ID
+    SAY_FAINT_4                 = -1000421,                 // 剧情台词/喊话文本 ID
 
-    SAY_WAKE_1                  = -1000422,
-    SAY_WAKE_2                  = -1000423,
-    SAY_WAKE_3                  = -1000424,
-    SAY_WAKE_4                  = -1000425,
+    SAY_WAKE_1                  = -1000422,                 // 剧情台词/喊话文本 ID
+    SAY_WAKE_2                  = -1000423,                 // 剧情台词/喊话文本 ID
+    SAY_WAKE_3                  = -1000424,                 // 剧情台词/喊话文本 ID
+    SAY_WAKE_4                  = -1000425,                 // 剧情台词/喊话文本 ID
 
-    SAY_RIN_END_1               = -1000426,
-    SAY_SPR_END_2               = -1000427,
-    SAY_RIN_END_3               = -1000428,
-    EMOTE_RIN_END_4             = -1000429,
-    EMOTE_RIN_END_5             = -1000430,
-    SAY_RIN_END_6               = -1000431,
-    SAY_SPR_END_7               = -1000432,
-    EMOTE_RIN_END_8             = -1000433,
+    SAY_RIN_END_1               = -1000426,                 // 剧情台词/喊话文本 ID
+    SAY_SPR_END_2               = -1000427,                 // 剧情台词/喊话文本 ID
+    SAY_RIN_END_3               = -1000428,                 // 剧情台词/喊话文本 ID
+    EMOTE_RIN_END_4             = -1000429,                 // 剧情台词/喊话文本 ID
+    EMOTE_RIN_END_5             = -1000430,                 // 剧情台词/喊话文本 ID
+    SAY_RIN_END_6               = -1000431,                 // 剧情台词/喊话文本 ID
+    SAY_SPR_END_7               = -1000432,                 // 剧情台词/喊话文本 ID
+    EMOTE_RIN_END_8             = -1000433,                 // 剧情台词/喊话文本 ID
 
-    SPELL_REVIVE_RINGO          = 15591,
-    QUEST_A_LITTLE_HELP         = 4491,
+    SPELL_REVIVE_RINGO          = 15591,                    // 技能法术 ID
+    QUEST_A_LITTLE_HELP         = 4491,                     // 任务 ID
     NPC_SPRAGGLE                = 9997
 };
 
+// npc_ringoAI NPC 脚本 AI
 struct npc_ringoAI : public FollowerAI
 {
     npc_ringoAI(Creature* pCreature) : FollowerAI(pCreature)
@@ -165,7 +173,7 @@ struct npc_ringoAI : public FollowerAI
 
     Unit* pSpraggle;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiFaintTimer = urand(30000, 60000);
         m_uiEndEventProgress = 0;
@@ -214,7 +222,7 @@ struct npc_ringoAI : public FollowerAI
             }
         }
 
-        // what does actually happen here? Emote? Aura?
+        // what does actually happen here? Emote? Aura? (说明)
         m_creature->SetStandState(UNIT_STAND_STATE_SLEEP);
     }
 
@@ -317,12 +325,12 @@ struct npc_ringoAI : public FollowerAI
     }
 };
 
-UnitAI* GetAI_npc_ringo(Creature* pCreature)
+UnitAI* GetAI_npc_ringo(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_ringoAI(pCreature);
 }
 
-bool QuestAccept_npc_ringo(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_ringo(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_A_LITTLE_HELP)
     {
@@ -336,20 +344,21 @@ bool QuestAccept_npc_ringo(Player* pPlayer, Creature* pCreature, const Quest* pQ
     return true;
 }
 
+// 常量与事件枚举
 enum
 {
-    SPELL_FOOLS_PLIGHT              = 23504,
-    SPELL_CHAIN_LIGHTNING           = 23206,
-    SPELL_TEMPTRESS_KISS            = 23205,
-    SPELL_SILENCE                   = 23207,
+    SPELL_FOOLS_PLIGHT              = 23504,                // 技能法术 ID
+    SPELL_CHAIN_LIGHTNING           = 23206,                // 技能法术：闪电链
+    SPELL_TEMPTRESS_KISS            = 23205,                // 技能法术 ID
+    SPELL_SILENCE                   = 23207,                // 技能法术：沉默
 
-    EMOTE_SILENCE                   = -1001250,
+    EMOTE_SILENCE                   = -1001250,             // 剧情台词/喊话文本 ID
 
-    NPC_SIMONE_THE_INCONSPICUOUS    = 14527,
-    NPC_SIMONE_THE_SEDUCTRESS       = 14533,
-    NPC_PRECIOUS                    = 14528,
-    NPC_PRECIOUS_THE_DEVOURER       = 14538,
-    NPC_THE_CLEANER                 = 14503,
+    NPC_SIMONE_THE_INCONSPICUOUS    = 14527,                // NPC 条目 ID
+    NPC_SIMONE_THE_SEDUCTRESS       = 14533,                // NPC 条目 ID
+    NPC_PRECIOUS                    = 14528,                // NPC 条目 ID
+    NPC_PRECIOUS_THE_DEVOURER       = 14538,                // NPC 条目 ID
+    NPC_THE_CLEANER                 = 14503,                // NPC 条目 ID
 
     QUEST_STAVE_OF_THE_ANCIENTS     = 7636
 };
@@ -358,6 +367,7 @@ enum
 ## npc_precious_the_devourer
 ######*/
 
+// npc_precious_the_devourerAI NPC 脚本 AI
 struct npc_precious_the_devourerAI : public ScriptedAI
 {
     npc_precious_the_devourerAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -365,13 +375,13 @@ struct npc_precious_the_devourerAI : public ScriptedAI
     ObjectGuid m_simoneGuid;
     uint32 m_uiSplitCheck_Timer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_creature->SetVisibility(VISIBILITY_ON);
         m_uiSplitCheck_Timer = 7500;
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         if (Creature* pSimone = m_creature->GetMap()->GetCreature(m_simoneGuid))
         {
@@ -382,7 +392,7 @@ struct npc_precious_the_devourerAI : public ScriptedAI
         }
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         if (Creature* pSimone = m_creature->GetMap()->GetCreature(m_simoneGuid))
         {
@@ -395,7 +405,7 @@ struct npc_precious_the_devourerAI : public ScriptedAI
         ScriptedAI::EnterEvadeMode();
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
         {
@@ -418,7 +428,7 @@ struct npc_precious_the_devourerAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_precious_the_devourer(Creature* pCreature)
+UnitAI* GetAI_npc_precious_the_devourer(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_precious_the_devourerAI(pCreature);
 }
@@ -427,6 +437,7 @@ UnitAI* GetAI_npc_precious_the_devourer(Creature* pCreature)
 ## npc_simone_seductress
 ######*/
 
+// npc_simone_seductressAI NPC 脚本 AI
 struct npc_simone_seductressAI : public ScriptedAI
 {
     npc_simone_seductressAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -446,7 +457,7 @@ struct npc_simone_seductressAI : public ScriptedAI
 
     uint32 m_uiDespawn_Timer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_creature->SetVisibility(VISIBILITY_ON);
 
@@ -494,7 +505,7 @@ struct npc_simone_seductressAI : public ScriptedAI
         Reset();
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         if (Creature* pPrecious = m_creature->GetMap()->GetCreature(m_preciousGuid))
         {
@@ -577,14 +588,14 @@ struct npc_simone_seductressAI : public ScriptedAI
 
     void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
-        if (pSpell && pSpell->Id == 14280)   // Viper Sting (Rank 3)
+        if (pSpell && pSpell->Id == 14280)   // Viper Sting (Rank 3) (说明)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SILENCE, CAST_TRIGGERED) == CAST_OK)
                 DoScriptText(EMOTE_SILENCE, m_creature);
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_uiDespawn_Timer < uiDiff)
         {
@@ -647,7 +658,7 @@ struct npc_simone_seductressAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_simone_seductress(Creature* pCreature)
+UnitAI* GetAI_npc_simone_seductress(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_simone_seductressAI(pCreature);
 }
@@ -656,6 +667,7 @@ UnitAI* GetAI_npc_simone_seductress(Creature* pCreature)
 ## npc_simone_the_inconspicuous
 ######*/
 
+// npc_simone_the_inconspicuousAI NPC 脚本 AI
 struct npc_simone_the_inconspicuousAI : public ScriptedAI
 {
     npc_simone_the_inconspicuousAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -667,7 +679,7 @@ struct npc_simone_the_inconspicuousAI : public ScriptedAI
 
     ObjectGuid m_playerGuid;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_creature->SetRespawnDelay(35 * MINUTE);
         m_creature->SetRespawnTime(35 * MINUTE);
@@ -739,7 +751,7 @@ struct npc_simone_the_inconspicuousAI : public ScriptedAI
         m_bTransform = true;
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_bTransform)
         {
@@ -778,7 +790,7 @@ struct npc_simone_the_inconspicuousAI : public ScriptedAI
     }
 };
 
-bool GossipHello_npc_simone_the_inconspicuous(Player* player, Creature* creature)
+bool GossipHello_npc_simone_the_inconspicuous(Player* player, Creature* creature) // 对话交互问候处理
 {
     player->PrepareGossipMenu(creature, creature->GetDefaultGossipMenuId());
     if (player->GetQuestStatus(QUEST_STAVE_OF_THE_ANCIENTS) == QUEST_STATUS_INCOMPLETE || player->IsGameMaster())
@@ -796,12 +808,12 @@ bool GossipSelect_npc_simone_the_inconspicuous(Player* pPlayer, Creature* pCreat
     return true;
 }
 
-UnitAI* GetAI_npc_simone_the_inconspicuous(Creature* pCreature)
+UnitAI* GetAI_npc_simone_the_inconspicuous(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_simone_the_inconspicuousAI(pCreature);
 }
 
-void AddSC_ungoro_crater()
+void AddSC_ungoro_crater() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_ame01";

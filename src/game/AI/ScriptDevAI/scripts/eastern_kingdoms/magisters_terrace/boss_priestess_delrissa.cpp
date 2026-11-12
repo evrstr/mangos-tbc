@@ -21,31 +21,34 @@ SDComment:
 SDCategory: Magister's Terrace
 EndScriptData */
 
+// 女祭司德莉希亚（Priestess Delrissa）3号首领战 AI（竞技场风格队伍，四名随机随从）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "magisters_terrace.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Delrissa
 {
-    SAY_AGGRO                   = -1585012,
-    SAY_DEATH                   = -1585022,
+    SAY_AGGRO                   = -1585012,                 // 开战 台词广播 ID
+    SAY_DEATH                   = -1585022,                 // 死亡 台词广播 ID
 
-    SPELL_HEALING_POTION        = 15503,
-    SPELL_DISPEL_MAGIC          = 27609,
-    SPELL_MEDALLION             = 46227,
-    SPELL_FLASH_HEAL            = 17843,
-    SPELL_SHADOW_WORD_PAIN      = 14032,
-    SPELL_SHADOW_WORD_PAIN_H    = 15654,
-    SPELL_SCREAM                = 27610,
-    SPELL_SHIELD                = 44175,
-    SPELL_SHIELD_H              = 46193,
-    SPELL_RENEW                 = 44174,
-    SPELL_RENEW_H               = 46192,
+    SPELL_HEALING_POTION        = 15503,                    // 治疗potion 法术 ID
+    SPELL_DISPEL_MAGIC          = 27609,                    // dispelmagic 法术 ID
+    SPELL_MEDALLION             = 46227,                    // medallion 法术 ID
+    SPELL_FLASH_HEAL            = 17843,                    // flash治疗 法术 ID
+    SPELL_SHADOW_WORD_PAIN      = 14032,                    // 暗影wordpain 法术 ID
+    SPELL_SHADOW_WORD_PAIN_H    = 15654,                    // 暗影wordpainh 法术 ID
+    SPELL_SCREAM                = 27610,                    // scream 法术 ID
+    SPELL_SHIELD                = 44175,                    // 护盾 法术 ID
+    SPELL_SHIELD_H              = 46193,                    // 护盾h 法术 ID
+    SPELL_RENEW                 = 44174,                    // renew 法术 ID
+    SPELL_RENEW_H               = 46192,                    // renewh 法术 ID
 
-    SPELL_PERMANENT_FEIGN_DEATH = 29266,
-    SPELL_SUICIDE               = 3617,
+    SPELL_PERMANENT_FEIGN_DEATH = 29266,                    // permanentfeign死亡 法术 ID
+    SPELL_SUICIDE               = 3617,                     // 自杀 法术 ID
 
-    MAX_COMPANIONS              = 8,
+    MAX_COMPANIONS              = 8,                        // companions 标识 ID
 };
 
 static const int32 aPlayerDeath[] = { -1585017, -1585018, -1585019, -1585020, -1585021};
@@ -59,6 +62,7 @@ static const float aLackeyLocations[MAX_DELRISSA_ADDS][4] =
     {129.988f, 17.2355f, -19.921f, 4.98f},
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum CommonActions
 {
     COMMON_RETARGET,
@@ -133,9 +137,10 @@ struct priestess_commonAI : public CombatAI
 ## boss_priestess_delrissa
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum DelrissaActions
 {
-    DELRISSA_HEAL = COMMON_ACTION_MAX,
+    DELRISSA_HEAL = COMMON_ACTION_MAX,                      // 治疗 标识 ID
     DELRISSA_RENEW,
     DELRISSA_SHIELD,
     DELRISSA_SHADOW_WORD_PAIN,
@@ -144,6 +149,7 @@ enum DelrissaActions
     DELRISSA_ACTION_MAX,
 };
 
+// 首领战 AI：德莉希亚（priestess_delrissa）
 struct boss_priestess_delrissaAI : public priestess_commonAI
 {
     boss_priestess_delrissaAI(Creature* creature) : priestess_commonAI(creature, DELRISSA_ACTION_MAX)
@@ -161,6 +167,7 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
     uint8 m_playersKilled;
     uint32 m_summonsKilled;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -174,6 +181,7 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
         SetDeathPrevention(true);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -195,30 +203,30 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
             m_creature->CastSpell(nullptr, SPELL_SUICIDE, TRIGGERED_OLD_TRIGGERED);
     }
 
-    // Summon four random adds to help during the fight
+    // Summon four random adds to help during the fight (召唤 four random adds to help during the fight)
     void DoInitializeCompanions()
     {
         // can be called if creature are dead, so avoid
         if (!m_creature->IsAlive())
             return;
 
-        // it's empty, so first time
+        // it's empty, so first time (容器为空，初次初始化)
         if (m_vuiLackeyEnties.empty())
         {
-            // pre-allocate size for speed
+            // pre-allocate size for speed (预分配容器大小以提高效率)
             m_vuiLackeyEnties.resize(MAX_COMPANIONS);
 
-            // fill vector array with entries from creature array
+            // fill vector array with entries from creature array (使用生物条目填充数组)
             for (uint8 i = 0; i < MAX_COMPANIONS; ++i)
                 m_vuiLackeyEnties[i] = aDelrissaLackeys[i];
 
             std::shuffle(m_vuiLackeyEnties.begin(), m_vuiLackeyEnties.end(), *GetRandomGenerator());
 
-            // Summon the 4 entries
+            // Summon the 4 entries (召唤这 4个指定条目)
             for (uint8 i = 0; i < MAX_DELRISSA_ADDS; ++i)
                 m_creature->SummonCreature(m_vuiLackeyEnties[i], aLackeyLocations[i][0], aLackeyLocations[i][1], aLackeyLocations[i][2], aLackeyLocations[i][3], TEMPSPAWN_CORPSE_TIMED_DESPAWN, 7000);
         }
-        // Resummon the killed adds
+        // Resummon the killed adds (重新召唤已死亡的小怪)
         else
         {
             if (!m_instance)
@@ -226,7 +234,7 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
 
             for (uint8 i = 0; i < MAX_DELRISSA_ADDS; ++i)
             {
-                // If we already have the creature on the map, then don't summon it
+                // If we already have the creature on the map, then don't summon it (若场景中已存在该生物则不再重复召唤)
                 if (Creature* creature = m_instance->GetSingleCreatureFromStorage(m_vuiLackeyEnties[i], true))
                     if (creature->IsAlive())
                         continue;
@@ -236,6 +244,7 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
         }
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* victim) override
     {
         if (victim->GetTypeId() != TYPEID_PLAYER)
@@ -244,7 +253,7 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
         DoScriptText(aPlayerDeath[m_playersKilled], m_creature);
         ++m_playersKilled;
 
-        // reset counter
+        // reset counter (重置counter)
         if (m_playersKilled == 5)
             m_playersKilled = 0;
     }
@@ -318,9 +327,10 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
 ## priestess_companion_common
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum CompanionActions
 {
-    COMPANION_POTION = COMMON_ACTION_MAX,
+    COMPANION_POTION = COMMON_ACTION_MAX,                   // potion 标识 ID
     COMPANION_ACTION_MAX,
 };
 
@@ -331,6 +341,7 @@ struct priestess_companion_commonAI : public priestess_commonAI
         AddTimerlessCombatAction(COMPANION_POTION, true);
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* victim) override
     {
         if (!m_instance)
@@ -340,6 +351,7 @@ struct priestess_companion_commonAI : public priestess_commonAI
             delrissa->AI()->KilledUnit(victim);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         priestess_commonAI::EnterEvadeMode();
@@ -363,25 +375,27 @@ struct priestess_companion_commonAI : public priestess_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Kagani
 {
-    SPELL_KIDNEY_SHOT       = 27615,
-    SPELL_GOUGE             = 12540,
-    SPELL_KICK              = 27613,
-    SPELL_VANISH            = 44290,
-    SPELL_BACKSTAB          = 15657,
-    SPELL_BACKSTAB_H        = 15582,
-    SPELL_EVISCERATE        = 27611,
-    SPELL_EVISCERATE_H      = 46189,
+    SPELL_KIDNEY_SHOT       = 27615,                        // kidneyshot 法术 ID
+    SPELL_GOUGE             = 12540,                        // gouge 法术 ID
+    SPELL_KICK              = 27613,                        // kick 法术 ID
+    SPELL_VANISH            = 44290,                        // vanish 法术 ID
+    SPELL_BACKSTAB          = 15657,                        // backstab 法术 ID
+    SPELL_BACKSTAB_H        = 15582,                        // backstabh 法术 ID
+    SPELL_EVISCERATE        = 27611,                        // eviscerate 法术 ID
+    SPELL_EVISCERATE_H      = 46189,                        // eviscerateh 法术 ID
 };
 
 /*######
 ## npc_kagani_nightstrike - Rogue
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KaganiActions
 {
-    KAGANI_GOUGE = COMPANION_ACTION_MAX,
+    KAGANI_GOUGE = COMPANION_ACTION_MAX,                    // gouge 标识 ID
     KAGANI_KICK,
     KAGANI_VANISH,
     KAGANI_EVISCERATE,
@@ -391,6 +405,7 @@ enum KaganiActions
     KAGANI_VANISH_END,
 };
 
+// 随从/NPC AI：nightstrike（kagani_nightstrike）
 struct npc_kagani_nightstrikeAI : public priestess_companion_commonAI
 {
     npc_kagani_nightstrikeAI(Creature* creature) : priestess_companion_commonAI(creature, KAGANI_ACTION_MAX)
@@ -408,6 +423,7 @@ struct npc_kagani_nightstrikeAI : public priestess_companion_commonAI
         });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         priestess_companion_commonAI::Reset();
@@ -462,29 +478,31 @@ struct npc_kagani_nightstrikeAI : public priestess_companion_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Ellrys
 {
-    SPELL_IMMOLATE              = 44267,
-    SPELL_IMMOLATE_H            = 46191,
-    SPELL_SHADOW_BOLT           = 12471,
-    SPELL_SHADOW_BOLT_H         = 15232,
-    SPELL_SEED_OF_CORRUPTION    = 44141,
-    SPELL_CURSE_OF_AGONY        = 14875,
-    SPELL_CURSE_OF_AGONY_H      = 46190,
-    SPELL_FEAR                  = 38595,
-    SPELL_DEATH_COIL            = 44142,
-    SPELL_SUMMON_IMP            = 44163,
+    SPELL_IMMOLATE              = 44267,                    // 献祭 法术 ID
+    SPELL_IMMOLATE_H            = 46191,                    // 献祭h 法术 ID
+    SPELL_SHADOW_BOLT           = 12471,                    // 暗影箭 法术 ID
+    SPELL_SHADOW_BOLT_H         = 15232,                    // 暗影箭h 法术 ID
+    SPELL_SEED_OF_CORRUPTION    = 44141,                    // seedof腐蚀 法术 ID
+    SPELL_CURSE_OF_AGONY        = 14875,                    // 诅咒ofagony 法术 ID
+    SPELL_CURSE_OF_AGONY_H      = 46190,                    // 诅咒ofagonyh 法术 ID
+    SPELL_FEAR                  = 38595,                    // 恐惧 法术 ID
+    SPELL_DEATH_COIL            = 44142,                    // 死亡coil 法术 ID
+    SPELL_SUMMON_IMP            = 44163,                    // 召唤imp 法术 ID
 
-    NPC_FIZZLE                  = 24656,
+    NPC_FIZZLE                  = 24656,                    // fizzle Entry ID
 };
 
 /*######
 ## npc_ellrys_duskhallow - Warlock
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum EllrysActions
 {
-    ELLRYS_IMMOLATE = COMPANION_ACTION_MAX,
+    ELLRYS_IMMOLATE = COMPANION_ACTION_MAX,                 // 献祭 标识 ID
     ELLRYS_SHADOWBOLT,
     ELLRYS_SEED_OF_CORRUPTION,
     ELLRYS_CURSE_OF_AGONY,
@@ -493,6 +511,7 @@ enum EllrysActions
     ELLRYS_ACTION_MAX,
 };
 
+// 随从/NPC AI：duskhallow（ellrys_duskhallow）
 struct npc_ellrys_duskhallowAI : public priestess_companion_commonAI
 {
     npc_ellrys_duskhallowAI(Creature* creature) : priestess_companion_commonAI(creature, ELLRYS_ACTION_MAX)
@@ -515,6 +534,7 @@ struct npc_ellrys_duskhallowAI : public priestess_companion_commonAI
         DoCastSpellIfCan(nullptr, SPELL_SUMMON_IMP);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         priestess_companion_commonAI::JustReachedHome();
@@ -523,6 +543,7 @@ struct npc_ellrys_duskhallowAI : public priestess_companion_commonAI
             DoCastSpellIfCan(nullptr, SPELL_SUMMON_IMP);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         m_spawns.push_back(summoned->GetObjectGuid());
@@ -565,27 +586,30 @@ struct npc_ellrys_duskhallowAI : public priestess_companion_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Eramas
 {
-    SPELL_KNOCKDOWN             = 11428,
-    SPELL_KNOCKDOWN_H           = 46183,
-    SPELL_SNAP_KICK             = 46182,
-    SPELL_FISTS_OF_ARCANE_FURY  = 44118,
+    SPELL_KNOCKDOWN             = 11428,                    // 击倒 法术 ID
+    SPELL_KNOCKDOWN_H           = 46183,                    // 击倒h 法术 ID
+    SPELL_SNAP_KICK             = 46182,                    // snapkick 法术 ID
+    SPELL_FISTS_OF_ARCANE_FURY  = 44118,                    // fistsof奥术fury 法术 ID
 
-    SPELL_DUAL_WEILD            = 42459,
+    SPELL_DUAL_WEILD            = 42459,                    // dualweild 法术 ID
 };
 
 /*######
 ## npc_eramas_brightblaze - Monk
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum EramasActions
 {
-    ERAMAS_KNOCKDOWN = COMPANION_ACTION_MAX,
+    ERAMAS_KNOCKDOWN = COMPANION_ACTION_MAX,                // 击倒 标识 ID
     ERAMAS_KICK,
     ERAMAS_ACTION_MAX,
 };
 
+// 随从/NPC AI：brightblaze（eramas_brightblaze）
 struct npc_eramas_brightblazeAI : public priestess_companion_commonAI
 {
     npc_eramas_brightblazeAI(Creature* creature) : priestess_companion_commonAI(creature, ERAMAS_ACTION_MAX)
@@ -594,6 +618,7 @@ struct npc_eramas_brightblazeAI : public priestess_companion_commonAI
         AddCombatAction(ERAMAS_KICK, 0, 1000);
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         priestess_companion_commonAI::Reset();
@@ -618,29 +643,31 @@ struct npc_eramas_brightblazeAI : public priestess_companion_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Yazzai
 {
-    SPELL_POLYMORPH         = 13323,
-    SPELL_ICE_BLOCK         = 27619,
-    SPELL_BLIZZARD          = 44178,
-    SPELL_BLIZZARD_H        = 46195,
-    SPELL_ICE_LANCE         = 44176,
-    SPELL_ICE_LANCE_H       = 46194,
-    SPELL_CONE_OF_COLD      = 12611,
-    SPELL_CONE_OF_COLD_H    = 38384,
-    SPELL_FROSTBOLT         = 15043,
-    SPELL_FROSTBOLT_H       = 15530,
-    SPELL_BLINK             = 14514,
-    SPELL_FROST_NOVA        = 44177,
+    SPELL_POLYMORPH         = 13323,                        // polymorph 法术 ID
+    SPELL_ICE_BLOCK         = 27619,                        // iceblock 法术 ID
+    SPELL_BLIZZARD          = 44178,                        // 暴风雪 法术 ID
+    SPELL_BLIZZARD_H        = 46195,                        // 暴风雪h 法术 ID
+    SPELL_ICE_LANCE         = 44176,                        // icelance 法术 ID
+    SPELL_ICE_LANCE_H       = 46194,                        // icelanceh 法术 ID
+    SPELL_CONE_OF_COLD      = 12611,                        // coneofcold 法术 ID
+    SPELL_CONE_OF_COLD_H    = 38384,                        // coneofcoldh 法术 ID
+    SPELL_FROSTBOLT         = 15043,                        // frostbolt 法术 ID
+    SPELL_FROSTBOLT_H       = 15530,                        // frostbolth 法术 ID
+    SPELL_BLINK             = 14514,                        // blink 法术 ID
+    SPELL_FROST_NOVA        = 44177,                        // 冰霜新星 法术 ID
 };
 
 /*######
 ## npc_yazzai - Mage
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum YazzaiActions
 {
-    YAZZAI_POLYMORPH = COMPANION_ACTION_MAX,
+    YAZZAI_POLYMORPH = COMPANION_ACTION_MAX,                // polymorph 标识 ID
     YAZZAI_FROST_NOVA,
     YAZZAI_ICE_BLOCK,
     YAZZAI_BLIZZARD,
@@ -651,6 +678,7 @@ enum YazzaiActions
     YAZZAI_ACTION_MAX,
 };
 
+// 随从/NPC AI：标识 ID（yazzai）
 struct npc_yazzaiAI : public priestess_companion_commonAI
 {
     npc_yazzaiAI(Creature* creature) : priestess_companion_commonAI(creature, YAZZAI_ACTION_MAX)
@@ -729,24 +757,26 @@ struct npc_yazzaiAI : public priestess_companion_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Salaris
 {
-    SPELL_INTERCEPT_STUN        = 27577,
-    SPELL_DISARM                = 27581,
-    SPELL_PIERCING_HOWL         = 23600,
-    SPELL_FRIGHTENING_SHOUT     = 19134,
-    SPELL_HAMSTRING             = 27584,
-    SPELL_BATTLE_SHOUT          = 27578,
-    SPELL_MORTAL_STRIKE         = 44268
+    SPELL_INTERCEPT_STUN        = 27577,                    // intercept击晕 法术 ID
+    SPELL_DISARM                = 27581,                    // 缴械 法术 ID
+    SPELL_PIERCING_HOWL         = 23600,                    // piercinghowl 法术 ID
+    SPELL_FRIGHTENING_SHOUT     = 19134,                    // frighteningshout 法术 ID
+    SPELL_HAMSTRING             = 27584,                    // hamstring 法术 ID
+    SPELL_BATTLE_SHOUT          = 27578,                    // battleshout 法术 ID
+    SPELL_MORTAL_STRIKE         = 44268                     // mortal打击 法术 ID
 };
 
 /*######
 ## npc_warlord_salaris - Warrior
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SalarisActions
 {
-    SALARIS_INTERCEPT_STUN = COMPANION_ACTION_MAX,
+    SALARIS_INTERCEPT_STUN = COMPANION_ACTION_MAX,          // intercept击晕 标识 ID
     SALARIS_DISARM,
     SALARIS_PIERCING_HOWL,
     SALARIS_FRIGHTENING_SHOUT,
@@ -756,6 +786,7 @@ enum SalarisActions
     SALARIS_ACTION_MAX,
 };
 
+// 随从/NPC AI：salaris（warlord_salaris）
 struct npc_warlord_salarisAI : public priestess_companion_commonAI
 {
     npc_warlord_salarisAI(Creature* creature) : priestess_companion_commonAI(creature, SALARIS_ACTION_MAX)
@@ -814,25 +845,27 @@ struct npc_warlord_salarisAI : public priestess_companion_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Garaxxas
 {
-    SPELL_AIMED_SHOT            = 44271,
-    SPELL_SHOOT                 = 15620,
-    SPELL_SHOOT_H               = 22907,
-    SPELL_CONCUSSIVE_SHOT       = 27634,
-    SPELL_MULTI_SHOT            = 31942,
-    SPELL_MULTI_SHOT_H          = 44285,
-    SPELL_WING_CLIP             = 44286,
-    SPELL_FREEZING_TRAP         = 44136,
+    SPELL_AIMED_SHOT            = 44271,                    // aimedshot 法术 ID
+    SPELL_SHOOT                 = 15620,                    // shoot 法术 ID
+    SPELL_SHOOT_H               = 22907,                    // shooth 法术 ID
+    SPELL_CONCUSSIVE_SHOT       = 27634,                    // concussiveshot 法术 ID
+    SPELL_MULTI_SHOT            = 31942,                    // multishot 法术 ID
+    SPELL_MULTI_SHOT_H          = 44285,                    // multishoth 法术 ID
+    SPELL_WING_CLIP             = 44286,                    // 翼击clip 法术 ID
+    SPELL_FREEZING_TRAP         = 44136,                    // freezingtrap 法术 ID
 };
 
 /*######
 ## npc_garaxxas - Hunter
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GaraxxasActions
 {
-    GARAXXAS_AIMED_SHOT = COMPANION_ACTION_MAX,
+    GARAXXAS_AIMED_SHOT = COMPANION_ACTION_MAX,             // aimedshot 标识 ID
     GARAXXAS_SHOOT,
     GARAXXAS_CONCUSSIVE_SHOT,
     GARAXXAS_MULTI_SHOT,
@@ -841,6 +874,7 @@ enum GaraxxasActions
     GARAXXAS_ACTION_MAX,
 };
 
+// 随从/NPC AI：标识 ID（garaxxas）
 struct npc_garaxxasAI : public priestess_companion_commonAI
 {
     npc_garaxxasAI(Creature* creature) : priestess_companion_commonAI(creature, GARAXXAS_ACTION_MAX)
@@ -858,6 +892,7 @@ struct npc_garaxxasAI : public priestess_companion_commonAI
 
     GuidVector m_traps;
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         priestess_companion_commonAI::Reset();
@@ -873,6 +908,7 @@ struct npc_garaxxasAI : public priestess_companion_commonAI
         m_traps.push_back(summoned->GetObjectGuid());
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         priestess_companion_commonAI::JustDied(killer);
@@ -923,26 +959,28 @@ struct npc_garaxxasAI : public priestess_companion_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Apoko
 {
-    SPELL_WAR_STOMP             = 46026,
-    SPELL_PURGE                 = 27626,
-    SPELL_LESSER_HEALING_WAVE   = 44256,
-    SPELL_LESSER_HEALING_WAVE_H = 46181,
-    SPELL_FROST_SHOCK           = 21401,
-    SPELL_FROST_SHOCK_H         = 46180,
-    SPELL_WINDFURY_TOTEM        = 27621,
-    SPELL_FIRE_NOVA_TOTEM       = 44257,
-    SPELL_EARTHBIND_TOTEM       = 15786,
+    SPELL_WAR_STOMP             = 46026,                    // warstomp 法术 ID
+    SPELL_PURGE                 = 27626,                    // purge 法术 ID
+    SPELL_LESSER_HEALING_WAVE   = 44256,                    // lesser治疗wave 法术 ID
+    SPELL_LESSER_HEALING_WAVE_H = 46181,                    // lesser治疗waveh 法术 ID
+    SPELL_FROST_SHOCK           = 21401,                    // 冰霜震击 法术 ID
+    SPELL_FROST_SHOCK_H         = 46180,                    // 冰霜震击h 法术 ID
+    SPELL_WINDFURY_TOTEM        = 27621,                    // windfury图腾 法术 ID
+    SPELL_FIRE_NOVA_TOTEM       = 44257,                    // 火焰新星图腾 法术 ID
+    SPELL_EARTHBIND_TOTEM       = 15786,                    // earthbind图腾 法术 ID
 };
 
 /*######
 ## npc_apoko - Shaman
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ApokoActions
 {
-    APOKO_EARTHBIND_TOTEM = COMPANION_ACTION_MAX,
+    APOKO_EARTHBIND_TOTEM = COMPANION_ACTION_MAX,           // earthbind图腾 标识 ID
     APOKO_FIRE_NOVA_TOTEM,
     APOKO_WINDFURY_TOTEM,
     APOKO_WAR_STOMP,
@@ -952,6 +990,7 @@ enum ApokoActions
     APOKO_ACTION_MAX,
 };
 
+// 随从/NPC AI：标识 ID（apoko）
 struct npc_apokoAI : public priestess_companion_commonAI
 {
     npc_apokoAI(Creature* creature) : priestess_companion_commonAI(creature, APOKO_ACTION_MAX)
@@ -967,11 +1006,13 @@ struct npc_apokoAI : public priestess_companion_commonAI
 
     GuidVector m_spawns;
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         DespawnGuids(m_spawns);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         m_spawns.push_back(summoned->GetObjectGuid());
@@ -1017,30 +1058,32 @@ struct npc_apokoAI : public priestess_companion_commonAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Zelfan
 {
-    SPELL_GOBLIN_DRAGON_GUN         = 44272,
-    SPELL_GOBLIN_DRAGON_GUN_CONE    = 44273,
-    SPELL_GOBLIN_DRAGON_GUN_H       = 46185,
-    SPELL_GOBLIN_DRAGON_GUN_CONE_H  = 46186,
-    SPELL_ROCKET_LAUNCH             = 44137,
-    SPELL_ROCKET_LAUNCH_H           = 46187,
-    SPELL_RECOMBOBULATE             = 44274,
-    SPELL_HIGH_EXPLOSIVE_SHEEP      = 44276,
-    SPELL_FEL_IRON_BOMB             = 46024,
-    SPELL_FEL_IRON_BOMB_H           = 46184,
+    SPELL_GOBLIN_DRAGON_GUN         = 44272,                // goblin巨龙gun 法术 ID
+    SPELL_GOBLIN_DRAGON_GUN_CONE    = 44273,                // goblin巨龙guncone 法术 ID
+    SPELL_GOBLIN_DRAGON_GUN_H       = 46185,                // goblin巨龙gunh 法术 ID
+    SPELL_GOBLIN_DRAGON_GUN_CONE_H  = 46186,                // goblin巨龙gunconeh 法术 ID
+    SPELL_ROCKET_LAUNCH             = 44137,                // 火箭发射 法术 ID
+    SPELL_ROCKET_LAUNCH_H           = 46187,                // 火箭发射h 法术 ID
+    SPELL_RECOMBOBULATE             = 44274,                // recombobulate 法术 ID
+    SPELL_HIGH_EXPLOSIVE_SHEEP      = 44276,                // highexplosivesheep 法术 ID
+    SPELL_FEL_IRON_BOMB             = 46024,                // 魔能黑铁炸弹 法术 ID
+    SPELL_FEL_IRON_BOMB_H           = 46184,                // 魔能黑铁炸弹h 法术 ID
 
     // sheep
-    SPELL_SUICIDE_TIMER         = 8327,
+    SPELL_SUICIDE_TIMER         = 8327,                     // 自杀计时器 法术 ID
 };
 
 /*######
 ## npc_zelfan - Engineer
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ZelfanActions
 {
-    ZELFAN_GOBLIN_DRAGON_GUN = COMPANION_ACTION_MAX,
+    ZELFAN_GOBLIN_DRAGON_GUN = COMPANION_ACTION_MAX,        // goblin巨龙gun 标识 ID
     ZELFAN_ROCKET_LAUNCH,
     ZELFAN_RECOMBOBULATE,
     ZELFAN_HIGH_EXPLOSIVE_SHEEP,
@@ -1048,6 +1091,7 @@ enum ZelfanActions
     ZELFAN_ACTIONS_MAX,
 };
 
+// 随从/NPC AI：标识 ID（zelfan）
 struct npc_zelfanAI : public priestess_companion_commonAI
 {
     npc_zelfanAI(Creature* creature) : priestess_companion_commonAI(creature, ZELFAN_ACTIONS_MAX)
@@ -1061,11 +1105,13 @@ struct npc_zelfanAI : public priestess_companion_commonAI
 
     GuidVector m_spawns;
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         DespawnGuids(m_spawns);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         m_spawns.push_back(summoned->GetObjectGuid());
@@ -1116,6 +1162,7 @@ struct npc_zelfanAI : public priestess_companion_commonAI
     }
 };
 
+// 注册并载入脚本模块：boss_priestess_delrissa
 void AddSC_boss_priestess_delrissa()
 {
     Script* pNewScript = new Script;

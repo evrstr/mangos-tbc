@@ -21,6 +21,8 @@ SDComment: Vanish spell is replaced by workaround; Timers
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 高阶祭司阿罗克（High Priestess Arlokk）黑豹祭司首领战 AI（消失潜行、给玩家标记印记与召唤黑豹狂潮）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
@@ -31,34 +33,36 @@ npc_zulian_prowler
 go_gong_of_bethekk
 EndContentData */
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1309011,
-    SAY_FEAST_PANTHER           = -1309012,
-    SAY_DEATH                   = -1309013,
+    SAY_AGGRO                   = -1309011,                 // 开战 台词广播 ID
+    SAY_FEAST_PANTHER           = -1309012,                 // feastpanther 台词广播 ID
+    SAY_DEATH                   = -1309013,                 // 死亡 台词广播 ID
 
-    SPELL_SHADOW_WORD_PAIN      = 24212,
-    SPELL_GOUGE                 = 12540,
-    SPELL_MARK_ARLOKK           = 24210,
-    SPELL_RAVAGE                = 24213,
-    SPELL_TRASH                 = 3391,
-    SPELL_WHIRLWIND             = 24236,
-    SPELL_PANTHER_TRANSFORM     = 24190,
-    SPELL_SUMMON_ZULIAN_PROWLERS = 24247,
-    SPELL_HATE_TO_ZERO          = 20538,
+    SPELL_SHADOW_WORD_PAIN      = 24212,                    // 暗影wordpain 法术 ID
+    SPELL_GOUGE                 = 12540,                    // gouge 法术 ID
+    SPELL_MARK_ARLOKK           = 24210,                    // 印记阿罗克 法术 ID
+    SPELL_RAVAGE                = 24213,                    // ravage 法术 ID
+    SPELL_TRASH                 = 3391,                     // trash 法术 ID
+    SPELL_WHIRLWIND             = 24236,                    // 旋风斩 法术 ID
+    SPELL_PANTHER_TRANSFORM     = 24190,                    // panther变形 法术 ID
+    SPELL_SUMMON_ZULIAN_PROWLERS = 24247,                   // 召唤zulianprowlers 法术 ID
+    SPELL_HATE_TO_ZERO          = 20538,                    // hatetozero 法术 ID
 
-    SPELL_VANISH_TELEPORT       = 24228,
-    SPELL_VANISH                = 24223,
-    SPELL_SUPER_INVIS           = 24235,
+    SPELL_VANISH_TELEPORT       = 24228,                    // vanish传送 法术 ID
+    SPELL_VANISH                = 24223,                    // vanish 法术 ID
+    SPELL_SUPER_INVIS           = 24235,                    // superinvis 法术 ID
 
-    SPELL_TRANSFORM_VISUAL      = 24085,
+    SPELL_TRANSFORM_VISUAL      = 24085,                    // 变形视觉特效 法术 ID
 
-    SPELL_SNEAK                 = 22766,
+    SPELL_SNEAK                 = 22766,                    // sneak 法术 ID
 
-    SPELL_LIST_PHASE_1 = 1451501,
-    SPELL_LIST_PHASE_2 = 1451502,
+    SPELL_LIST_PHASE_1 = 1451501,                           // list阶段1 法术 ID
+    SPELL_LIST_PHASE_2 = 1451502,                           // list阶段2 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ArlokkActions
 {
     ARLOKK_PHASE_TRANSITION,
@@ -67,6 +71,7 @@ enum ArlokkActions
     ARLOKK_INVIS_TIMER,
 };
 
+// 首领战 AI：标识 ID（arlokk）
 struct boss_arlokkAI : public CombatAI
 {
     boss_arlokkAI(Creature* creature) : CombatAI(creature, ARLOKK_ACTION_MAX), m_instance(static_cast<instance_zulgurub*>(creature->GetInstanceData()))
@@ -94,8 +99,9 @@ struct boss_arlokkAI : public CombatAI
 
     GuidList m_lProwlerGUIDList;
 
-    bool m_bIsPhaseTwo;
+    bool m_bIsPhaseTwo;                                     // IsPhaseTwo 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -120,6 +126,7 @@ struct boss_arlokkAI : public CombatAI
             m_pTrigger2->CastSpell(m_pTrigger2, SPELL_SUMMON_ZULIAN_PROWLERS, TRIGGERED_NONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -200,6 +207,7 @@ struct boss_arlokkAI : public CombatAI
         }
     }
 
+    // 施法事件回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* target) override
     {
         if (spellInfo->Id == SPELL_MARK_ARLOKK)
@@ -207,6 +215,7 @@ struct boss_arlokkAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：prowler（zulian_prowler）
 struct npc_zulian_prowlerAI : public ScriptedAI
 {
     npc_zulian_prowlerAI(Creature* creature) : ScriptedAI(creature), m_bMoveToAid(creature->IsTemporarySummon())
@@ -216,8 +225,9 @@ struct npc_zulian_prowlerAI : public ScriptedAI
 
     GuidList m_lProwlerGUIDList;
 
-    bool m_bMoveToAid;
+    bool m_bMoveToAid;                                      // MoveToAid 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
     void JustRespawned() override
@@ -268,6 +278,7 @@ bool GOUse_go_gong_of_bethekk(Player* /*pPlayer*/, GameObject* pGo)
     return false;
 }
 
+// 法术脚本逻辑实现：标识 ID（ArlokkVanish）
 struct ArlokkVanish : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -284,6 +295,7 @@ struct ArlokkVanish : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_arlokk
 void AddSC_boss_arlokk()
 {
     Script* pNewScript = new Script;

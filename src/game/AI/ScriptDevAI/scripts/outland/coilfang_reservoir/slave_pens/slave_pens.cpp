@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Coilfang Resevoir, Slave Pens
 EndScriptData */
 
+// 奴隶围栏副本数据脚本实现
+/* 遭遇战概述：
+ * 维护奴隶围栏地下城进度与门禁状态。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "slave_pens.h"
 #include "World/WorldStateDefines.h"
@@ -95,6 +100,7 @@ void instance_slave_pens::Update(const uint32 diff)
 ## at_naturalist_bite
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AREATRIGGER = -1547000,
@@ -119,6 +125,7 @@ bool AreaTrigger_at_naturalist_bite(Player* player, AreaTriggerEntry const* /*pA
     return true;
 }
 
+// NPC 对话开始交互回调
 bool GossipHello_npc_naturalist_bite(Player* player, Creature* creature)
 {
     // custom code required because it utilizes two entries
@@ -129,12 +136,14 @@ bool GossipHello_npc_naturalist_bite(Player* player, Creature* creature)
     return true;
 }
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_LIGHTNING_CLOUD       = 32193,
     SPELL_LIGHTNING_CLOUD_H     = 37665,
 };
 // 32173 EntanglingRoots
+// EntanglingRoots 法术脚本
 struct EntanglingRoots : public SpellScript
 {
     void OnSuccessfulFinish(Spell* spell) const override
@@ -153,6 +162,7 @@ struct EntanglingRoots : public SpellScript
 };
 
 
+// 注册 instance_slave_pens 脚本
 void AddSC_instance_slave_pens()
 {
     Script* pNewScript = new Script;

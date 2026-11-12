@@ -23,10 +23,11 @@
 INSTANTIATE_SINGLETON_1(AllianceChannelMgr);
 INSTANTIATE_SINGLETON_1(HordeChannelMgr);
 
+/// 根据阵营或跨阵营配置获取频道管理器单例
 ChannelMgr* channelMgr(Team team)
 {
     if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHANNEL))
-        return &MaNGOS::Singleton<AllianceChannelMgr>::Instance();        // cross-faction
+        return &MaNGOS::Singleton<AllianceChannelMgr>::Instance();        // cross-faction | 跨阵营频道互通模式
 
     if (team == ALLIANCE)
         return &MaNGOS::Singleton<AllianceChannelMgr>::Instance();
@@ -36,6 +37,7 @@ ChannelMgr* channelMgr(Team team)
     return nullptr;
 }
 
+/// 析构：释放所有已管理的 Channel 对象
 ChannelMgr::~ChannelMgr()
 {
     for (auto& channel : channels)
@@ -44,6 +46,7 @@ ChannelMgr::~ChannelMgr()
     channels.clear();
 }
 
+/// 获取或新建聊天频道（统一转换为小写宽字符串实现大小写无关匹配）
 Channel* ChannelMgr::GetJoinChannel(const std::string& name, uint32 channel_id)
 {
     std::wstring wname;
@@ -60,6 +63,7 @@ Channel* ChannelMgr::GetJoinChannel(const std::string& name, uint32 channel_id)
     return channels[wname];
 }
 
+/// 查询频道；找不到时按 pkt 标志决定是否回发 CHAT_NOT_MEMBER_NOTICE
 Channel* ChannelMgr::GetChannel(const std::string& name, Player* p, bool pkt)
 {
     std::wstring wname;
@@ -82,6 +86,7 @@ Channel* ChannelMgr::GetChannel(const std::string& name, Player* p, bool pkt)
     return i->second;
 }
 
+/// 当频道内无成员且不是 DBC 常驻频道时，销毁空频道释放内存
 void ChannelMgr::LeftChannel(const std::string& name)
 {
     std::wstring wname;

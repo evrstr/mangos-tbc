@@ -18,7 +18,7 @@
 #define WER_SMALL_BUFFER_SIZE 1024
 #define WER_LARGE_BUFFER_SIZE WER_SMALL_BUFFER_SIZE * 16
 
-enum BasicType                                              // Stolen from CVCONST.H in the DIA 2.0 SDK
+enum BasicType                                              // Stolen from CVCONST.H in the DIA 2.0 SDK | 基础符号类型枚举（源自 DIA 2.0 SDK 的 CVCONST.H）
 {
     btNoType = 0,
     btVoid = 1,
@@ -43,7 +43,7 @@ enum BasicType                                              // Stolen from CVCON
     btStdString = 101
 };
 
-enum DataKind                                              // Stolen from CVCONST.H in the DIA 2.0 SDK
+enum DataKind                                              // Stolen from CVCONST.H in the DIA 2.0 SDK | 符号数据分类枚举（源自 DIA 2.0 SDK 的 CVCONST.H）
 {
     DataIsUnknown,
     DataIsLocal,
@@ -132,6 +132,7 @@ struct SymbolDetail
     bool HasChildren;
 };
 
+/// Windows 崩溃异常捕获与报告生成器：捕获未处理异常、生成 minidump 与调用栈/局部变量文本报告
 class WheatyExceptionReport
 {
     public:
@@ -139,21 +140,23 @@ class WheatyExceptionReport
         WheatyExceptionReport();
         ~WheatyExceptionReport();
 
-        // entry point where control comes on an unhandled exception
+        // entry point where control comes on an unhandled exception | 未处理异常的顶层过滤回调入口
         static LONG WINAPI WheatyUnhandledExceptionFilter(
             PEXCEPTION_POINTERS pExceptionInfo);
 
+        /// CRT 非法参数回调：主动触发访问违例异常以便统一生成崩溃报告
         static void __cdecl WheatyCrtHandler(wchar_t const* expression, wchar_t const* function, wchar_t const* file, unsigned int line, uintptr_t pReserved);
 
+        /// 遍历并输出当前进程所有其他线程的调用栈
         static void printTracesForAllThreads(bool);
     private:
-        // where report info is extracted and generated
+        // where report info is extracted and generated | 提取异常、系统信息与调用栈并写入报告文件
         static void GenerateExceptionReport(PEXCEPTION_POINTERS pExceptionInfo);
         static void PrintSystemInfo();
         static BOOL _GetWindowsVersion(TCHAR* szVersion, DWORD cntMax);
         static BOOL _GetProcessorName(TCHAR* sProcessorName, DWORD maxcount);
 
-        // Helper functions
+        // Helper functions | 异常码解析、逻辑地址映射与符号格式化辅助函数
         static LPCTSTR GetExceptionString(DWORD dwCode);
         static BOOL GetLogicalAddress(PVOID addr, PTSTR szModule, DWORD len,
             DWORD& section, DWORD_PTR& offset);
@@ -176,7 +179,7 @@ class WheatyExceptionReport
         static bool StoreSymbol(DWORD type , DWORD_PTR offset);
         static void ClearSymbols();
 
-        // Variables used by the class
+        // Variables used by the class | 崩溃报告输出文件名、旧过滤器及 DbgHelp 运行时状态变量
         static TCHAR m_szLogFileName[MAX_PATH];
         static TCHAR m_szDumpFileName[MAX_PATH];
         static LPTOP_LEVEL_EXCEPTION_FILTER m_previousFilter;
@@ -197,5 +200,5 @@ class WheatyExceptionReport
 
 };
 
-extern WheatyExceptionReport g_WheatyExceptionReport;       //  global instance of class
+extern WheatyExceptionReport g_WheatyExceptionReport;       //  global instance of class | 全局异常捕获器实例
 #endif                                                      // _WHEATYEXCEPTIONREPORT_

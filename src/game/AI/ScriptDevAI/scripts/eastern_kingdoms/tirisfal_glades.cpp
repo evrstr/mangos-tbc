@@ -21,6 +21,8 @@ SDComment: Quest support: 590, 1819
 SDCategory: Tirisfal Glades
 EndScriptData */
 
+// 提瑞斯法林地（Tirisfal Glades）被遗忘者新手区域任务脚本
+
 /* ContentData
 go_mausoleum_door
 go_mausoleum_trigger
@@ -34,12 +36,13 @@ EndContentData */
 ## go_mausoleum_trigger
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_ULAG      = 1819,
-    NPC_ULAG        = 6390,
-    GO_TRIGGER      = 104593,
-    GO_DOOR         = 176594
+    QUEST_ULAG      = 1819,                                 // ulag 任务 ID
+    NPC_ULAG        = 6390,                                 // ulag Entry ID
+    GO_TRIGGER      = 104593,                               // 触发 游戏对象 Entry ID
+    GO_DOOR         = 176594                                // 门 游戏对象 Entry ID
 };
 
 bool GOUse_go_mausoleum_door(Player* pPlayer, GameObject* /*pGo*/)
@@ -57,6 +60,7 @@ bool GOUse_go_mausoleum_door(Player* pPlayer, GameObject* /*pGo*/)
     return false;
 }
 
+// 游戏对象使用交互回调：go_mausoleum_trigger
 bool GOUse_go_mausoleum_trigger(Player* pPlayer, GameObject* pGo)
 {
     if (pPlayer->GetQuestStatus(QUEST_ULAG) != QUEST_STATUS_INCOMPLETE)
@@ -76,14 +80,16 @@ bool GOUse_go_mausoleum_trigger(Player* pPlayer, GameObject* pGo)
 ## npc_calvin_montague
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_COMPLETE        = -1000356,
+    SAY_COMPLETE        = -1000356,                         // complete 台词广播 ID
     SD_SPELL_DRINK      = 2639,                             // possibly not correct spell (but iconId is correct)
-    QUEST_590           = 590,
-    FACTION_HOSTILE     = 168
+    QUEST_590           = 590,                              // 590 任务 ID
+    FACTION_HOSTILE     = 168                               // hostile 阵营 ID
 };
 
+// 随从/NPC AI：montague（calvin_montague）
 struct npc_calvin_montagueAI : public ScriptedAI
 {
     npc_calvin_montagueAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -91,10 +97,11 @@ struct npc_calvin_montagueAI : public ScriptedAI
         Reset();
     }
 
-    uint32 m_uiPhase;
-    uint32 m_uiPhaseTimer;
-    ObjectGuid m_playerGuid;
+    uint32 m_uiPhase;                                       // 战斗阶段标识
+    uint32 m_uiPhaseTimer;                                  // Phase 技能计时器
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiPhase = 0;
@@ -120,6 +127,7 @@ struct npc_calvin_montagueAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiPhase)
@@ -156,15 +164,17 @@ struct npc_calvin_montagueAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_calvin_montague
 UnitAI* GetAI_npc_calvin_montague(Creature* pCreature)
 {
     return new npc_calvin_montagueAI(pCreature);
 }
 
+// 任务接取回调函数：npc_calvin_montague
 bool QuestAccept_npc_calvin_montague(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_590)
@@ -176,6 +186,7 @@ bool QuestAccept_npc_calvin_montague(Player* pPlayer, Creature* pCreature, const
     return true;
 }
 
+// 注册并载入脚本模块：tirisfal_glades
 void AddSC_tirisfal_glades()
 {
     Script* pNewScript = new Script;

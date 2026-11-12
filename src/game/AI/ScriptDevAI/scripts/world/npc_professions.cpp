@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Npc_Professions
 SD%Complete: 90
-SDComment: Provides learn/unlearn/relearn options for profession specializations. Not supported: Unlearn engineering, re-learn engineering
+SDComment: Provides learn/unlearn/relearn options for profession specializations. Not supported: Unlearn engineering, re-learn engineering (专业分支学习、遗忘与重选 NPC 对话脚本)
 SDCategory: NPCs
 EndScriptData */
 
@@ -35,7 +35,7 @@ there is no difference here (except that default text is chosen with `gameobject
 */
 
 /*###
-# generic defines
+# generic defines (通用对话标识定义)
 ###*/
 
 #define GOSSIP_SENDER_LEARN         50
@@ -43,7 +43,7 @@ there is no difference here (except that default text is chosen with `gameobject
 #define GOSSIP_SENDER_CHECK         52
 
 /*###
-# gossip item and box texts
+# gossip item and box texts (对话选项与二次确认弹窗文本定义)
 ###*/
 
 #define GOSSIP_UNLEARN_DRAGON		"I wish to unlearn my Dragonscale Leatherworking specialization!"
@@ -58,9 +58,10 @@ there is no difference here (except that default text is chosen with `gameobject
 #define BOX_UNLEARN_TRIBAL			"Do you really want to unlearn your Tribal Leatherworking specialization and lose all associated recipes?\n"
 #define GOSSIP_LEARN_TRIBAL			"Please teach me how to become a Tribal leatherworker."
 
+// 专精法术编号枚举
 enum SpecializationSpells
 {
-    /* Leatherworking */
+    /* Leatherworking (制皮：龙鳞、元素、部族) */
     S_DRAGON                = 10656,
     S_ELEMENTAL             = 10658,
     S_TRIBAL                = 10660,
@@ -71,7 +72,7 @@ enum SpecializationSpells
     S_UNLEARN_ELEMENTAL     = 36328,
     S_UNLEARN_TRIBAL        = 36433,
 
-    /* Tailoring */
+    /* Tailoring (裁缝：魔焰、月布、暗纹) */
     S_SPELLFIRE             = 26797,
     S_MOONCLOTH             = 26798,
     S_SHADOWEAVE            = 26801,
@@ -83,9 +84,10 @@ enum SpecializationSpells
     S_UNLEARN_SHADOWEAVE    = 41559,
 };
 
+// 专精初始任务枚举
 enum SpecializationQuests
 {
-    /* Leatherworking */
+    /* Leatherworking (制皮初始任务) */
     Q_DRAGON_ALLY           = 5141,
     Q_DRAGON_HORDE          = 5145,
     Q_ELEMENTAL_ALLY        = 5144,
@@ -94,9 +96,10 @@ enum SpecializationQuests
     Q_TRIBAL_HORDE          = 5148,
 };
 
+// 专精训练师 NPC 编号枚举
 enum SpecializationTrainers
 {
-    /* Leatherworking */
+    /* Leatherworking (制皮训练师) */
     N_TRAINER_DRAGON1       = 7866,		// Peter Galen
     N_TRAINER_DRAGON2       = 7867,		// Thorkaf Dragoneye
     N_TRAINER_ELEMENTAL1    = 7868,		// Sarah Tanner
@@ -106,7 +109,7 @@ enum SpecializationTrainers
 };
 
 /*###
-# formulas to calculate unlearning cost
+# formulas to calculate unlearning cost (计算遗忘专精所需金币费用)
 ###*/
 
 int32 GetUnlearnCostMedium(Player* pPlayer)                 // blacksmith, leatherwork
@@ -122,9 +125,10 @@ int32 GetUnlearnCostMedium(Player* pPlayer)                 // blacksmith, leath
 
 
 /*###
-# unlearning related profession spells
+# unlearning related profession spells (遗忘专精关联处理函数)
 ###*/
 
+// 检查玩家身上是否装备了该专精限定装备（若装备中则阻止遗忘）
 bool EquippedOk(Player* pPlayer, uint32 spellId)
 {
     SpellEntry const* spell = GetSpellStore()->LookupEntry<SpellEntry>(spellId);
@@ -152,6 +156,7 @@ bool EquippedOk(Player* pPlayer, uint32 spellId)
     return true;
 }
 
+// 遗忘专精时移除玩家已学会的对应专属配方
 void ProfessionUnlearnSpells(Player* pPlayer, uint32 type)
 {
     switch (type)
@@ -199,9 +204,10 @@ void ProfessionUnlearnSpells(Player* pPlayer, uint32 type)
 }
 
 /*###
-# start menues leatherworking
+# start menues leatherworking (制皮专精对话与操作逻辑)
 ###*/
 
+// 判定玩家是否具备重新选择制皮专精的资格
 bool IsEligibleSpecializeLW(Player* pPlayer)
 {
     // Allow re-learn specialization as long as player is not specialized currently and has completed any specialization quest
@@ -216,6 +222,7 @@ bool IsEligibleSpecializeLW(Player* pPlayer)
     return false;
 }
 
+// 制皮训练师对话问候回调：等级满 40 且技能达 225 时展示学习/遗忘专精选项
 bool GossipHello_npc_prof_leather(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
@@ -269,6 +276,7 @@ bool GossipHello_npc_prof_leather(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
+// 处理制皮训练师专精遗忘（扣费、遗忘专属法术、移除配方）或重学
 void SendActionMenu_npc_prof_leather(Player* pPlayer, Creature* pCreature, uint32 uiAction)
 {
     switch (uiAction)
@@ -343,6 +351,7 @@ void SendActionMenu_npc_prof_leather(Player* pPlayer, Creature* pCreature, uint3
     }
 }
 
+// 制皮训练师对话选项选择入口
 bool GossipSelect_npc_prof_leather(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
 {
     switch (uiSender)
@@ -372,6 +381,7 @@ return true;
 #
 ###*/
 
+// 注册专业分支训练师脚本
 void AddSC_npc_professions()
 {
     Script* pNewScript = new Script;

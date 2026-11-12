@@ -18,3 +18,5 @@
 
 #include "LFG/LFGMgr.h"
 
+// LFG 管理器占位源文件（核心匹配与队列逻辑见 LFGQueue.cpp）
+

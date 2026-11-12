@@ -20,14 +20,16 @@
 
 class BattleGround;
 
+// 全竞技场统一模板积分记录类
 class BattleGroundAAScore : public BattleGroundScore
 {
     public:
         BattleGroundAAScore() {};
         virtual ~BattleGroundAAScore() {};
-        // TODO fix me
+        // TODO fix me (待补充通用竞技场积分扩展)
 };
 
+// 全竞技场统一模板类（用于排队界面汇总所有竞技场入口）
 class BattleGroundAA : public BattleGround
 {
         friend class BattleGroundMgr;
@@ -35,7 +37,7 @@ class BattleGroundAA : public BattleGround
     public:
         BattleGroundAA();
 
-        /* inherited from BattlegroundClass */
+        /* inherited from BattlegroundClass (继承自 BattleGround 的玩家加入接口) */
         virtual void AddPlayer(Player* plr) override;
 };
 #endif

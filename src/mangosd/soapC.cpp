@@ -23,6 +23,7 @@ SOAP_SOURCE_STAMP("@(#) soapC.cpp ver 2.8.55 2017-10-31 00:08:52 GMT")
 
 #ifndef WITH_NOGLOBAL
 
+/// 读取并反序列化 SOAP-ENV:Header
 SOAP_FMAC3 int SOAP_FMAC4 soap_getheader(struct soap* soap)
 {
     soap->part = SOAP_IN_HEADER;
@@ -31,6 +32,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_getheader(struct soap* soap)
     return soap->header == nullptr;
 }
 
+/// 输出并序列化 SOAP-ENV:Header
 SOAP_FMAC3 int SOAP_FMAC4 soap_putheader(struct soap* soap)
 {
     if (soap->version && soap->header)
@@ -43,12 +45,14 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_putheader(struct soap* soap)
     return SOAP_OK;
 }
 
+/// 标记序列化 SOAP Header 内的多引用节点
 SOAP_FMAC3 void SOAP_FMAC4 soap_serializeheader(struct soap* soap)
 {
     if (soap->version && soap->header)
         soap_serialize_SOAP_ENV__Header(soap, soap->header);
 }
 
+/// 按需分配并初始化 soap->header 结构体
 SOAP_FMAC3 void SOAP_FMAC4 soap_header(struct soap* soap)
 {
     if (soap->header == nullptr)
@@ -58,6 +62,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_header(struct soap* soap)
     }
 }
 
+/// 按需分配并初始化 soap->fault 结构体（兼容 SOAP 1.1 与 1.2）
 SOAP_FMAC3 void SOAP_FMAC4 soap_fault(struct soap* soap)
 {
     if (soap->fault == nullptr)
@@ -79,6 +84,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_fault(struct soap* soap)
     }
 }
 
+/// 序列化 SOAP Fault 错误对象
 SOAP_FMAC3 void SOAP_FMAC4 soap_serializefault(struct soap* soap)
 {
     soap_fault(soap);
@@ -86,6 +92,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_serializefault(struct soap* soap)
         soap_serialize_SOAP_ENV__Fault(soap, soap->fault);
 }
 
+/// 输出 SOAP-ENV:Fault XML 元素
 SOAP_FMAC3 int SOAP_FMAC4 soap_putfault(struct soap* soap)
 {
     if (soap->fault)
@@ -93,11 +100,13 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_putfault(struct soap* soap)
     return SOAP_OK;
 }
 
+/// 读取并解析 SOAP-ENV:Fault XML 元素
 SOAP_FMAC3 int SOAP_FMAC4 soap_getfault(struct soap* soap)
 {
     return (soap->fault = soap_get_SOAP_ENV__Fault(soap, nullptr, "SOAP-ENV:Fault", nullptr)) == nullptr;
 }
 
+/// 获取或创建 SOAP faultcode 字段指针
 SOAP_FMAC3 const char** SOAP_FMAC4 soap_faultcode(struct soap* soap)
 {
     soap_fault(soap);
@@ -173,6 +182,7 @@ SOAP_FMAC3 const char* SOAP_FMAC4 soap_check_faultdetail(struct soap* soap)
 
 #endif
 
+/// 读取独立的多引用 XML 元素
 #ifndef WITH_NOIDREF
 SOAP_FMAC3 int SOAP_FMAC4 soap_getindependent(struct soap* soap)
 {
@@ -195,6 +205,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_getindependent(struct soap* soap)
 #ifdef __cplusplus
 extern "C" {
 #endif
+/// 按标签或类型动态反序列化一个 SOAP XML 元素
 SOAP_FMAC3 void* SOAP_FMAC4 soap_getelement(struct soap* soap, int* type)
 {
     (void)type;
@@ -278,6 +289,7 @@ SOAP_FMAC3 void* SOAP_FMAC4 soap_getelement(struct soap* soap, int* type)
 }
 #endif
 
+/// 跳过/忽略未识别的非强制 SOAP XML 元素
 SOAP_FMAC3 int SOAP_FMAC4 soap_ignore_element(struct soap* soap)
 {
     if (!soap_peek_element(soap))
@@ -306,6 +318,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_ignore_element(struct soap* soap)
     return soap->error;
 }
 
+/// 输出独立的多引用 XML 元素
 #ifndef WITH_NOIDREF
 SOAP_FMAC3 int SOAP_FMAC4 soap_putindependent(struct soap* soap)
 {
@@ -322,6 +335,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_putindependent(struct soap* soap)
 #ifdef __cplusplus
 extern "C" {
 #endif
+/// 按类型 ID 输出一个 SOAP XML 元素
 SOAP_FMAC3 int SOAP_FMAC4 soap_putelement(struct soap* soap, const void* ptr, const char* tag, int id, int type)
 {
     (void)tag;
@@ -343,7 +357,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_putelement(struct soap* soap, const void* ptr, co
             return soap_out_string(soap, tag, id, (char* const*)(void*)&ptr, "xsd:string");
     }
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_putelement '%s' failed for type %d in soapC.cpp\n", tag ? tag : "", type));
-    return soap->error = SOAP_TYPE; /* unknown type to serialize */
+    return soap->error = SOAP_TYPE; /* unknown type to serialize | 未知的待序列化类型 */
 }
 #ifdef __cplusplus
 }
@@ -354,9 +368,10 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_putelement(struct soap* soap, const void* ptr, co
 #ifdef __cplusplus
 extern "C" {
 #endif
+/// 标记元素及其内部成员指针的序列化引用计数
 SOAP_FMAC3 void SOAP_FMAC4 soap_markelement(struct soap* soap, const void* ptr, int type)
 {
-    (void)soap; (void)ptr; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)ptr; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     switch (type)
     {
         case SOAP_TYPE_ns1__executeCommand:
@@ -387,7 +402,7 @@ extern "C" {
 
 SOAP_FMAC3 void* SOAP_FMAC4 soap_dupelement(struct soap* soap, const void* ptr, int type)
 {
-    (void)soap; (void)ptr; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)ptr; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     return nullptr;
 }
 #ifdef __cplusplus
@@ -400,12 +415,13 @@ extern "C" {
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_delelement(const void* ptr, int type)
 {
-    (void)ptr; (void)type; /* appease -Wall -Werror */
+    (void)ptr; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 }
 #ifdef __cplusplus
 }
 #endif
 
+/// 按类型 ID 动态分配并构造对应的 SOAP 结构体实例
 SOAP_FMAC3 void* SOAP_FMAC4 soap_instantiate(struct soap* soap, int t, const char* type, const char* arrayType, size_t* n)
 {
     (void)type;
@@ -439,6 +455,7 @@ SOAP_FMAC3 void* SOAP_FMAC4 soap_instantiate(struct soap* soap, int t, const cha
     return nullptr;
 }
 
+/// 释放 gSOAP 生命周期链表中的已分配对象
 SOAP_FMAC3 int SOAP_FMAC4 soap_fdelete(struct soap_clist* p)
 {
     switch (p->type)
@@ -503,12 +520,12 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_fdelete(struct soap_clist* p)
 
 #ifdef WIN32
 #pragma warning(push)
-// do not warn on switch w/o cases
+// do not warn on switch w/o cases | 禁止对无 case 分支的 switch 语句发出警告
 #pragma warning(disable:4065)
 #endif
 SOAP_FMAC3 int SOAP_FMAC4 soap_fbase(int t, int b)
 {
-    (void)t; (void)b; /* appease -Wall -Werror */
+    (void)t; (void)b; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     return 0;
 }
 #ifdef WIN32
@@ -518,12 +535,13 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_fbase(int t, int b)
 #ifndef WITH_NOIDREF
 #ifdef WIN32
 #pragma warning(push)
-// do not warn on switch w/o cases
+// do not warn on switch w/o cases | 禁止对无 case 分支的 switch 语句发出警告
 #pragma warning(disable:4065)
 #endif
+/// 将前向引用的结构体副本插入（赋值）到目标位置
 SOAP_FMAC3 void SOAP_FMAC4 soap_finsert(struct soap* soap, int t, int tt, void* p, size_t index, const void* q, void** x)
 {
-    (void)soap; (void)t; (void)p; (void)index; (void)q; (void)x; /* appease -Wall -Werror */
+    (void)soap; (void)t; (void)p; (void)index; (void)q; (void)x; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     switch (tt)
     {
         case SOAP_TYPE_ns1__executeCommandResponse:
@@ -573,6 +591,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_finsert(struct soap* soap, int t, int tt, void* 
 #endif
 #endif
 
+/// xsd:byte 类型序列化与反序列化函数组
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_byte(struct soap* soap, const char* tag, int id, const char* a, const char* type)
 {
     return soap_outbyte(soap, tag, id, a, type, SOAP_TYPE_byte);
@@ -607,6 +626,7 @@ SOAP_FMAC3 char* SOAP_FMAC4 soap_get_byte(struct soap* soap, char* p, const char
     return p;
 }
 
+/// xsd:int 类型序列化与反序列化函数组
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_int(struct soap* soap, const char* tag, int id, const int* a, const char* type)
 {
     return soap_outint(soap, tag, id, a, type, SOAP_TYPE_int);
@@ -643,9 +663,10 @@ SOAP_FMAC3 int* SOAP_FMAC4 soap_get_int(struct soap* soap, int* p, const char* t
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Fault 结构体序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Fault(struct soap* soap, struct SOAP_ENV__Fault* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     soap_default__QName(soap, &a->faultcode);
     soap_default_string(soap, &a->faultstring);
     soap_default_string(soap, &a->faultactor);
@@ -659,7 +680,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Fault(struct soap* soap, struc
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Fault(struct soap* soap, const struct SOAP_ENV__Fault* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     soap_serialize__QName(soap, (char* const*)&a->faultcode);
     soap_serialize_string(soap, (char* const*)&a->faultstring);
@@ -676,7 +697,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Fault(struct soap* soap, con
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_SOAP_ENV__Fault(struct soap* soap, const char* tag, int id, const struct SOAP_ENV__Fault* a, const char* type)
 {
     const char* soap_tmp_faultcode = soap_QName2s(soap, a->faultcode);
-    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE_SOAP_ENV__Fault), type))
         return soap->error;
     if (soap_out__QName(soap, "faultcode", -1, (char* const*)(void*)&soap_tmp_faultcode, ""))
@@ -816,7 +837,7 @@ SOAP_FMAC3 struct SOAP_ENV__Fault* SOAP_FMAC4 soap_in_SOAP_ENV__Fault(struct soa
 SOAP_FMAC1 struct SOAP_ENV__Fault* SOAP_FMAC2 soap_instantiate_SOAP_ENV__Fault(struct soap* soap, int n, const char* type, const char* arrayType, size_t* size)
 {
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_instantiate_SOAP_ENV__Fault(%p, %d, %s, %s)\n", (void*)soap, n, type ? type : "", arrayType ? arrayType : ""));
-    (void)type; (void)arrayType; /* appease -Wall -Werror */
+    (void)type; (void)arrayType; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     struct SOAP_ENV__Fault* p;
     size_t k = sizeof(struct SOAP_ENV__Fault);
     if (n < 0)
@@ -854,15 +875,16 @@ SOAP_FMAC3 struct SOAP_ENV__Fault* SOAP_FMAC4 soap_get_SOAP_ENV__Fault(struct so
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Reason 结构体序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Reason(struct soap* soap, struct SOAP_ENV__Reason* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     soap_default_string(soap, &a->SOAP_ENV__Text);
 }
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Reason(struct soap* soap, const struct SOAP_ENV__Reason* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     soap_serialize_string(soap, (char* const*)&a->SOAP_ENV__Text);
 #endif
@@ -870,7 +892,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Reason(struct soap* soap, co
 
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_SOAP_ENV__Reason(struct soap* soap, const char* tag, int id, const struct SOAP_ENV__Reason* a, const char* type)
 {
-    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE_SOAP_ENV__Reason), type))
         return soap->error;
     if (soap->lang)
@@ -924,7 +946,7 @@ SOAP_FMAC3 struct SOAP_ENV__Reason* SOAP_FMAC4 soap_in_SOAP_ENV__Reason(struct s
 SOAP_FMAC1 struct SOAP_ENV__Reason* SOAP_FMAC2 soap_instantiate_SOAP_ENV__Reason(struct soap* soap, int n, const char* type, const char* arrayType, size_t* size)
 {
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_instantiate_SOAP_ENV__Reason(%p, %d, %s, %s)\n", (void*)soap, n, type ? type : "", arrayType ? arrayType : ""));
-    (void)type; (void)arrayType; /* appease -Wall -Werror */
+    (void)type; (void)arrayType; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     struct SOAP_ENV__Reason* p;
     size_t k = sizeof(struct SOAP_ENV__Reason);
     if (n < 0)
@@ -962,9 +984,10 @@ SOAP_FMAC3 struct SOAP_ENV__Reason* SOAP_FMAC4 soap_get_SOAP_ENV__Reason(struct 
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Detail 结构体序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Detail(struct soap* soap, struct SOAP_ENV__Detail* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     a->__any = nullptr;
     a->__type = 0;
     a->fault = nullptr;
@@ -972,7 +995,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Detail(struct soap* soap, stru
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Detail(struct soap* soap, const struct SOAP_ENV__Detail* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     soap_markelement(soap, a->fault, a->__type);
 #endif
@@ -980,7 +1003,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Detail(struct soap* soap, co
 
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_SOAP_ENV__Detail(struct soap* soap, const char* tag, int id, const struct SOAP_ENV__Detail* a, const char* type)
 {
-    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE_SOAP_ENV__Detail), type))
         return soap->error;
     soap_outliteral(soap, "-any", (char* const*)&a->__any, nullptr);
@@ -1042,7 +1065,7 @@ SOAP_FMAC3 struct SOAP_ENV__Detail* SOAP_FMAC4 soap_in_SOAP_ENV__Detail(struct s
 SOAP_FMAC1 struct SOAP_ENV__Detail* SOAP_FMAC2 soap_instantiate_SOAP_ENV__Detail(struct soap* soap, int n, const char* type, const char* arrayType, size_t* size)
 {
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_instantiate_SOAP_ENV__Detail(%p, %d, %s, %s)\n", (void*)soap, n, type ? type : "", arrayType ? arrayType : ""));
-    (void)type; (void)arrayType; /* appease -Wall -Werror */
+    (void)type; (void)arrayType; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     struct SOAP_ENV__Detail* p;
     size_t k = sizeof(struct SOAP_ENV__Detail);
     if (n < 0)
@@ -1080,16 +1103,17 @@ SOAP_FMAC3 struct SOAP_ENV__Detail* SOAP_FMAC4 soap_get_SOAP_ENV__Detail(struct 
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Code 结构体序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Code(struct soap* soap, struct SOAP_ENV__Code* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     soap_default__QName(soap, &a->SOAP_ENV__Value);
     a->SOAP_ENV__Subcode = nullptr;
 }
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Code(struct soap* soap, const struct SOAP_ENV__Code* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     soap_serialize__QName(soap, (char* const*)&a->SOAP_ENV__Value);
     soap_serialize_PointerToSOAP_ENV__Code(soap, &a->SOAP_ENV__Subcode);
@@ -1099,7 +1123,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Code(struct soap* soap, cons
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_SOAP_ENV__Code(struct soap* soap, const char* tag, int id, const struct SOAP_ENV__Code* a, const char* type)
 {
     const char* soap_tmp_SOAP_ENV__Value = soap_QName2s(soap, a->SOAP_ENV__Value);
-    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE_SOAP_ENV__Code), type))
         return soap->error;
     if (soap_out__QName(soap, "SOAP-ENV:Value", -1, (char* const*)(void*)&soap_tmp_SOAP_ENV__Value, ""))
@@ -1162,7 +1186,7 @@ SOAP_FMAC3 struct SOAP_ENV__Code* SOAP_FMAC4 soap_in_SOAP_ENV__Code(struct soap*
 SOAP_FMAC1 struct SOAP_ENV__Code* SOAP_FMAC2 soap_instantiate_SOAP_ENV__Code(struct soap* soap, int n, const char* type, const char* arrayType, size_t* size)
 {
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_instantiate_SOAP_ENV__Code(%p, %d, %s, %s)\n", (void*)soap, n, type ? type : "", arrayType ? arrayType : ""));
-    (void)type; (void)arrayType; /* appease -Wall -Werror */
+    (void)type; (void)arrayType; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     struct SOAP_ENV__Code* p;
     size_t k = sizeof(struct SOAP_ENV__Code);
     if (n < 0)
@@ -1200,21 +1224,22 @@ SOAP_FMAC3 struct SOAP_ENV__Code* SOAP_FMAC4 soap_get_SOAP_ENV__Code(struct soap
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Header 结构体序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Header(struct soap* soap, struct SOAP_ENV__Header* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 }
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_SOAP_ENV__Header(struct soap* soap, const struct SOAP_ENV__Header* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
 #endif
 }
 
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_SOAP_ENV__Header(struct soap* soap, const char* tag, int id, const struct SOAP_ENV__Header* a, const char* type)
 {
-    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE_SOAP_ENV__Header), type))
         return soap->error;
     return soap_element_end_out(soap, tag);
@@ -1255,7 +1280,7 @@ SOAP_FMAC3 struct SOAP_ENV__Header* SOAP_FMAC4 soap_in_SOAP_ENV__Header(struct s
 SOAP_FMAC1 struct SOAP_ENV__Header* SOAP_FMAC2 soap_instantiate_SOAP_ENV__Header(struct soap* soap, int n, const char* type, const char* arrayType, size_t* size)
 {
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_instantiate_SOAP_ENV__Header(%p, %d, %s, %s)\n", (void*)soap, n, type ? type : "", arrayType ? arrayType : ""));
-    (void)type; (void)arrayType; /* appease -Wall -Werror */
+    (void)type; (void)arrayType; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     struct SOAP_ENV__Header* p;
     size_t k = sizeof(struct SOAP_ENV__Header);
     if (n < 0)
@@ -1291,15 +1316,16 @@ SOAP_FMAC3 struct SOAP_ENV__Header* SOAP_FMAC4 soap_get_SOAP_ENV__Header(struct 
 
 #endif
 
+/// ns1__executeCommand 请求结构体序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_ns1__executeCommand(struct soap* soap, struct ns1__executeCommand* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     soap_default_string(soap, &a->command);
 }
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_ns1__executeCommand(struct soap* soap, const struct ns1__executeCommand* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     soap_serialize_string(soap, (char* const*)&a->command);
 #endif
@@ -1307,7 +1333,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_ns1__executeCommand(struct soap* soap,
 
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_ns1__executeCommand(struct soap* soap, const char* tag, int id, const struct ns1__executeCommand* a, const char* type)
 {
-    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE_ns1__executeCommand), type))
         return soap->error;
     if (soap_out_string(soap, "command", -1, (char* const*)&a->command, ""))
@@ -1359,7 +1385,7 @@ SOAP_FMAC3 struct ns1__executeCommand* SOAP_FMAC4 soap_in_ns1__executeCommand(st
 SOAP_FMAC1 struct ns1__executeCommand* SOAP_FMAC2 soap_instantiate_ns1__executeCommand(struct soap* soap, int n, const char* type, const char* arrayType, size_t* size)
 {
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_instantiate_ns1__executeCommand(%p, %d, %s, %s)\n", (void*)soap, n, type ? type : "", arrayType ? arrayType : ""));
-    (void)type; (void)arrayType; /* appease -Wall -Werror */
+    (void)type; (void)arrayType; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     struct ns1__executeCommand* p;
     size_t k = sizeof(struct ns1__executeCommand);
     if (n < 0)
@@ -1393,15 +1419,16 @@ SOAP_FMAC3 struct ns1__executeCommand* SOAP_FMAC4 soap_get_ns1__executeCommand(s
     return p;
 }
 
+/// ns1__executeCommandResponse 响应结构体序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_ns1__executeCommandResponse(struct soap* soap, struct ns1__executeCommandResponse* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     a->result = nullptr;
 }
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_ns1__executeCommandResponse(struct soap* soap, const struct ns1__executeCommandResponse* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     soap_serialize_PointerTostring(soap, &a->result);
 #endif
@@ -1409,7 +1436,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_ns1__executeCommandResponse(struct soa
 
 SOAP_FMAC3 int SOAP_FMAC4 soap_out_ns1__executeCommandResponse(struct soap* soap, const char* tag, int id, const struct ns1__executeCommandResponse* a, const char* type)
 {
-    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror */
+    (void)soap; (void)tag; (void)id; (void)a; (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE_ns1__executeCommandResponse), type))
         return soap->error;
     if (soap_out_PointerTostring(soap, "result", -1, &a->result, ""))
@@ -1461,7 +1488,7 @@ SOAP_FMAC3 struct ns1__executeCommandResponse* SOAP_FMAC4 soap_in_ns1__executeCo
 SOAP_FMAC1 struct ns1__executeCommandResponse* SOAP_FMAC2 soap_instantiate_ns1__executeCommandResponse(struct soap* soap, int n, const char* type, const char* arrayType, size_t* size)
 {
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "soap_instantiate_ns1__executeCommandResponse(%p, %d, %s, %s)\n", (void*)soap, n, type ? type : "", arrayType ? arrayType : ""));
-    (void)type; (void)arrayType; /* appease -Wall -Werror */
+    (void)type; (void)arrayType; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     struct ns1__executeCommandResponse* p;
     size_t k = sizeof(struct ns1__executeCommandResponse);
     if (n < 0)
@@ -1497,9 +1524,10 @@ SOAP_FMAC3 struct ns1__executeCommandResponse* SOAP_FMAC4 soap_get_ns1__executeC
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Reason* 指针类型序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerToSOAP_ENV__Reason(struct soap* soap, struct SOAP_ENV__Reason* const* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     if (!soap_reference(soap, *a, SOAP_TYPE_SOAP_ENV__Reason))
         soap_serialize_SOAP_ENV__Reason(soap, *a);
@@ -1516,7 +1544,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_out_PointerToSOAP_ENV__Reason(struct soap* soap, 
 
 SOAP_FMAC3 struct SOAP_ENV__Reason** SOAP_FMAC4 soap_in_PointerToSOAP_ENV__Reason(struct soap* soap, const char* tag, struct SOAP_ENV__Reason** a, const char* type)
 {
-    (void)type; /* appease -Wall -Werror */
+    (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_in(soap, tag, 1, nullptr))
         return nullptr;
     if (!a)
@@ -1557,9 +1585,10 @@ SOAP_FMAC3 struct SOAP_ENV__Reason** SOAP_FMAC4 soap_get_PointerToSOAP_ENV__Reas
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Detail* 指针类型序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerToSOAP_ENV__Detail(struct soap* soap, struct SOAP_ENV__Detail* const* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     if (!soap_reference(soap, *a, SOAP_TYPE_SOAP_ENV__Detail))
         soap_serialize_SOAP_ENV__Detail(soap, *a);
@@ -1576,7 +1605,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_out_PointerToSOAP_ENV__Detail(struct soap* soap, 
 
 SOAP_FMAC3 struct SOAP_ENV__Detail** SOAP_FMAC4 soap_in_PointerToSOAP_ENV__Detail(struct soap* soap, const char* tag, struct SOAP_ENV__Detail** a, const char* type)
 {
-    (void)type; /* appease -Wall -Werror */
+    (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_in(soap, tag, 1, nullptr))
         return nullptr;
     if (!a)
@@ -1617,9 +1646,10 @@ SOAP_FMAC3 struct SOAP_ENV__Detail** SOAP_FMAC4 soap_get_PointerToSOAP_ENV__Deta
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Code* 指针类型序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerToSOAP_ENV__Code(struct soap* soap, struct SOAP_ENV__Code* const* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     if (!soap_reference(soap, *a, SOAP_TYPE_SOAP_ENV__Code))
         soap_serialize_SOAP_ENV__Code(soap, *a);
@@ -1639,7 +1669,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_out_PointerToSOAP_ENV__Code(struct soap* soap, co
 
 SOAP_FMAC3 struct SOAP_ENV__Code** SOAP_FMAC4 soap_in_PointerToSOAP_ENV__Code(struct soap* soap, const char* tag, struct SOAP_ENV__Code** a, const char* type)
 {
-    (void)type; /* appease -Wall -Werror */
+    (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_in(soap, tag, 1, nullptr))
         return nullptr;
     if (!a)
@@ -1678,9 +1708,10 @@ SOAP_FMAC3 struct SOAP_ENV__Code** SOAP_FMAC4 soap_get_PointerToSOAP_ENV__Code(s
 
 #endif
 
+/// char** 指针类型序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerTostring(struct soap* soap, char** const* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     if (!soap_reference(soap, *a, SOAP_TYPE_string))
         soap_serialize_string(soap, *a);
@@ -1697,7 +1728,7 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_out_PointerTostring(struct soap* soap, const char
 
 SOAP_FMAC3 char*** SOAP_FMAC4 soap_in_PointerTostring(struct soap* soap, const char* tag, char** *a, const char* type)
 {
-    (void)type; /* appease -Wall -Werror */
+    (void)type; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
     if (soap_element_begin_in(soap, tag, 1, nullptr))
         return nullptr;
     if (!a)
@@ -1734,9 +1765,10 @@ SOAP_FMAC3 char*** SOAP_FMAC4 soap_get_PointerTostring(struct soap* soap, char**
     return p;
 }
 
+/// xsd:QName 类型序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize__QName(struct soap* soap, char* const* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     (void)soap_reference(soap, *a, SOAP_TYPE__QName);
 #endif
@@ -1768,9 +1800,10 @@ SOAP_FMAC3 char** SOAP_FMAC4 soap_get__QName(struct soap* soap, char** p, const 
     return p;
 }
 
+/// xsd:string 字符串类型序列化与反序列化函数组
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_string(struct soap* soap, char* const* a)
 {
-    (void)soap; (void)a; /* appease -Wall -Werror */
+    (void)soap; (void)a; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifndef WITH_NOIDREF
     (void)soap_reference(soap, *a, SOAP_TYPE_string);
 #endif
@@ -1815,4 +1848,4 @@ SOAP_FMAC3 char** SOAP_FMAC4 soap_get_string(struct soap* soap, char** p, const 
 #pragma option pop
 #endif
 
-/* End of soapC.cpp */
+/* End of soapC.cpp | soapC.cpp 文件结束 */

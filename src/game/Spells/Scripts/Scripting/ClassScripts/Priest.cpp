@@ -20,7 +20,7 @@
 #include "Spells/SpellAuras.h"
 #include "Spells/SpellMgr.h"
 
-// 27827 - Spirit of Redemption
+// 27827 - Spirit of Redemption (救赎之魂死亡治疗：治疗量设为施法者最大生命值)
 struct SpiritOfRedemptionHeal : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -35,7 +35,7 @@ enum
     SPELL_PLAYER_CONSUME_MAGIC = 32676,
 };
 
-// 32676 - Consume Magic
+// 32676 - Consume Magic (吞噬魔法：消耗施法者自身一个牧师正面非被动光环以换取法力)
 struct ConsumeMagic : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool strict) const override
@@ -70,7 +70,7 @@ struct ConsumeMagic : public SpellScript
     }
 };
 
-// 10060 - Power Infusion
+// 10060 - Power Infusion (能量灌注：与奥术强化 12042 互斥，目标已有奥术强化则失败)
 struct PowerInfusion : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool/* strict*/) const override
@@ -85,7 +85,7 @@ struct PowerInfusion : public SpellScript
     }
 };
 
-// 32379 - Shadow Word: Death
+// 32379 - Shadow Word: Death (暗言术：灭：反伤需计入吸收部分但尊重减伤与部分抵抗)
 struct ShadowWordDeath : public SpellScript
 {
     void OnHit(Spell* spell, SpellMissInfo /*missInfo*/) const override
@@ -96,7 +96,7 @@ struct ShadowWordDeath : public SpellScript
     }
 };
 
-// 15268 - Blackout
+// 15268 - Blackout (昏厥：仅由暗影伤害或周期性伤害触发，治疗及无伤害技能不触发)
 struct Blackout : public AuraScript
 {
     bool OnCheckProc(Aura* /*aura*/, ProcExecutionData& data) const override
@@ -107,7 +107,7 @@ struct Blackout : public AuraScript
     }
 };
 
-// 28376 - Shadowguard
+// 28376 - Shadowguard (暗影守卫：受击时依据自身暗影守卫光环等级对攻击者施放反击暗影伤害)
 struct Shadowguard : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -135,10 +135,10 @@ struct Shadowguard : public SpellScript
 
 enum
 {
-    MANA_LEECH_PASSIVE = 28305,
+    MANA_LEECH_PASSIVE = 28305,                             // 暗影魔攻击回蓝被动光环
 };
 
-// 34433 - Shadowfiend
+// 34433 - Shadowfiend (暗影魔：召唤后挂上回蓝被动并立即攻击施法指定目标)
 struct Shadowfiend : public SpellScript
 {
     void OnSummon(Spell* spell, Creature* summon) const override
@@ -148,7 +148,7 @@ struct Shadowfiend : public SpellScript
     }
 };
 
-// 33076 - Prayer of Mending
+// 33076 - Prayer of Mending (愈合祷言：施法前比对已有愈合祷言治疗量防止覆盖更强版本，并应用治疗加成)
 struct PrayerOfMending : public SpellScript
 {
     // not needed in wotlk
@@ -183,10 +183,10 @@ struct PrayerOfMending : public SpellScript
 
 enum
 {
-    SPELL_PAIN_SUPPRESSION_THREAT_REDUCTION = 44416,
+    SPELL_PAIN_SUPPRESSION_THREAT_REDUCTION = 44416,        // 痛苦压制附带的威胁降低光环
 };
 
-// 33206 - Pain Suppression
+// 33206 - Pain Suppression (痛苦压制：生效时附加降低 5% 威胁值的子光环)
 struct PainSuppression : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -196,14 +196,14 @@ struct PainSuppression : public AuraScript
     }
 };
 
-// 17 - Power Word: Shield
+// 17 - Power Word: Shield (真言术：盾：检查反射护盾天赋并在吸收时按比例反射伤害)
 struct PowerWordShieldPriest : public AuraScript
 {
     void OnAbsorb(Aura* aura, int32& currentAbsorb, int32& remainingDamage, uint32& reflectedSpellId, int32& reflectDamage, bool& /*preventedDeath*/, bool& /*dropCharge*/, DamageEffectType /*damageType*/) const override
     {
         Unit* caster = aura->GetTarget();
         Unit::AuraList const& vOverRideCS = caster->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
-        for (auto k : vOverRideCS) // 33201 - Reflective Shield
+        for (auto k : vOverRideCS) // 33201 - Reflective Shield (反射护盾天赋)
         {
             switch (k->GetModifier()->m_miscvalue)
             {
@@ -225,7 +225,7 @@ struct PowerWordShieldPriest : public AuraScript
     }
 };
 
-// 527, 988 - Dispel Magic
+// 527, 988 - Dispel Magic (驱散魔法：对友方施放时产生的威胁值系数减半)
 struct DispelMagicPriest : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -234,6 +234,7 @@ struct DispelMagicPriest : public SpellScript
     }
 };
 
+// 注册牧师职业法术脚本
 void LoadPriestScripts()
 {
     RegisterSpellScript<ConsumeMagic>("spell_consume_magic");

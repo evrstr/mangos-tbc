@@ -25,6 +25,7 @@
 #include "Maps/MapManager.h"
 #include <algorithm>
 
+// 从 DBC 读取所有运输载具动画节点并按时间段登记
 void TransportMgr::LoadTransportAnimationAndRotation()
 {
     for (uint32 i = 0; i < sTransportAnimationStore.GetNumRows(); ++i)
@@ -32,6 +33,7 @@ void TransportMgr::LoadTransportAnimationAndRotation()
             AddPathNodeToTransport(anim->TransportEntry, anim->TimeSeg, anim);
 }
 
+// 按游戏对象 Entry 查找已生成的运输载具航线模板
 TransportTemplate* TransportMgr::GetTransportTemplate(uint32 entry)
 {
     auto itr = m_transportTemplates.find(entry);
@@ -41,6 +43,7 @@ TransportTemplate* TransportMgr::GetTransportTemplate(uint32 entry)
     return nullptr;
 }
 
+// 遍历游戏对象存储，为所有 MO_TRANSPORT 类型的载具预生成航线关键帧与样条
 void TransportMgr::LoadTransportTemplates()
 {
     for (uint32 entry = 1; entry <= sGOStorage.GetMaxEntry(); ++entry)
@@ -56,6 +59,7 @@ void TransportMgr::LoadTransportTemplates()
     }
 }
 
+// 自定义 Catmull-Rom 样条初始化器，用于计算路径切线导数以确定载具初始朝向
 class SplineRawInitializer
 {
     public:
@@ -73,6 +77,7 @@ class SplineRawInitializer
         Movement::PointsArray& _points;
 };
 
+// 根据 TaxiPath 航线数据为运输载具生成关键帧、分段样条曲线以及加减速/停靠时间表
 bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemplate& transportTemplate)
 {
     uint32 pathid = goinfo->moTransport.taxiPathId;
@@ -88,6 +93,7 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
         allPoints.push_back(G3D::Vector3(path[i]->x, path[i]->y, path[i]->z));
 
     // Add extra points to allow derivative calculations for all path nodes
+    // 在首尾插入辅助外插控制点，确保首尾路径节点也能计算 Catmull-Rom 导数
     allPoints.insert(allPoints.begin(), allPoints.front().lerp(allPoints[1], -0.2f));
     allPoints.push_back(allPoints.back().lerp(allPoints[allPoints.size() - 2], -0.2f));
     allPoints.push_back(allPoints.back().lerp(allPoints[allPoints.size() - 2], -1.0f));
@@ -136,6 +142,7 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
         transportTemplate.inInstance = sMapStore.LookupEntry(*transportTemplate.mapsUsed.begin())->Instanceable();
 
     // last to first is always "teleport", even for closed paths
+    // 末帧回到首帧始终标记为传送跳转（即使闭合航线亦然）
     keyFrames.back().Teleport = true;
 
     float const speed = float(goinfo->moTransport.moveSpeed);
@@ -148,7 +155,7 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
     int32 firstStop = -1;
     int32 lastStop = -1;
 
-    // first cell is arrived at by teleportation :S
+    // first cell is arrived at by teleportation :S (首节点视为通过传送到达，与上一帧距离为 0)
     keyFrames[0].DistFromPrev = 0;
     keyFrames[0].Index = 1;
     if (keyFrames[0].IsStopFrame())
@@ -159,6 +166,7 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
 
     // find the rest of the distances between key points
     // Every path segment has its own spline
+    // 按传送跳转断点分段构建样条曲线，并计算各关键帧之间的弧长距离
     size_t start = 0;
     for (size_t i = 1; i < keyFrames.size(); ++i)
     {
@@ -205,6 +213,7 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
     // at stopping keyframes, we define distSinceStop == 0,
     // and distUntilStop is to the next stopping keyframe.
     // this is required to properly handle cases of two stopping frames in a row (yes they do exist)
+    // 在停靠帧处令 distSinceStop == 0，distUntilStop 表示到下一停靠帧的剩余距离（用于兼容连续停靠帧）
     float tmpDist = 0.0f;
     for (size_t i = 0; i < keyFrames.size(); ++i)
     {
@@ -229,32 +238,32 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
     for (auto& keyFrame : keyFrames)
     {
         float total_dist = keyFrame.DistSinceStop + keyFrame.DistUntilStop;
-        if (total_dist < 2 * accel_dist) // won't reach full speed
+        if (total_dist < 2 * accel_dist) // won't reach full speed (短航段无法加速到极速：先匀加速后直接匀减速)
         {
-            if (keyFrame.DistSinceStop < keyFrame.DistUntilStop) // is still accelerating
+            if (keyFrame.DistSinceStop < keyFrame.DistUntilStop) // is still accelerating (仍处于加速前半段)
             {
-                // calculate accel+brake time for this short segment
+                // calculate accel+brake time for this short segment (计算短航段加速+减速总时长)
                 float segment_time = 2.0f * sqrt((keyFrame.DistUntilStop + keyFrame.DistSinceStop) / accel);
-                // substract acceleration time
+                // substract acceleration time (减去已加速耗时得到到达下一停靠点的剩余时间)
                 keyFrame.TimeTo = segment_time - sqrt(2 * keyFrame.DistSinceStop / accel);
             }
-            else // slowing down
+            else // slowing down (处于减速阶段)
                 keyFrame.TimeTo = sqrt(2 * keyFrame.DistUntilStop / accel);
         }
-        else if (keyFrame.DistSinceStop < accel_dist) // still accelerating (but will reach full speed)
+        else if (keyFrame.DistSinceStop < accel_dist) // still accelerating (but will reach full speed) (长航段加速阶段，后续能达到巡航极速)
         {
-            // calculate accel + cruise + brake time for this long segment
+            // calculate accel + cruise + brake time for this long segment (计算长航段加速+巡航+减速总时长)
             float segment_time = (keyFrame.DistUntilStop + keyFrame.DistSinceStop) / speed + (speed / accel);
-            // substract acceleration time
+            // substract acceleration time (减去已加速时间)
             keyFrame.TimeTo = segment_time - sqrt(2 * keyFrame.DistSinceStop / accel);
         }
-        else if (keyFrame.DistUntilStop < accel_dist) // already slowing down (but reached full speed)
+        else if (keyFrame.DistUntilStop < accel_dist) // already slowing down (but reached full speed) (长航段减速进站阶段)
             keyFrame.TimeTo = sqrt(2 * keyFrame.DistUntilStop / accel);
-        else // at full speed
+        else // at full speed (巡航极速阶段)
             keyFrame.TimeTo = (keyFrame.DistUntilStop / speed) + (0.5f * speed / accel);
     }
 
-    // calculate tFrom times from tTo times
+    // calculate tFrom times from tTo times (根据 TimeTo 反向推算自上一停靠点出发以来的累计时间 TimeFrom)
     float segmentTime = 0.0f;
     for (size_t i = 0; i < keyFrames.size(); ++i)
     {
@@ -264,7 +273,7 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
         keyFrames[j].TimeFrom = segmentTime - keyFrames[j].TimeTo;
     }
 
-    // calculate path times
+    // calculate path times (计算整个航线周期内每个关键帧的绝对到达/离港毫秒时间戳)
     keyFrames[0].ArriveTime = 0;
     float curPathTime = 0.0f;
     if (keyFrames[0].IsStopFrame())
@@ -295,6 +304,7 @@ bool TransportMgr::GenerateWaypoints(GameObjectInfo const* goinfo, TransportTemp
     keyFrames.back().NextArriveTime = keyFrames.back().DepartureTime;
     // the client destroys a transport by itself after a while, refresh is needed mid course
     // Feathermoon 303 & Teldrassil 293 ferries
+    // 客户端会在航行一段时间后自动销毁长途载具，因此羽月要塞(303)和泰达希尔(293)渡船需在中途刷新
     if (pathId == 303 || pathId == 293)
         keyFrames[12].Update = true;
     transportTemplate.pathTime = keyFrames.back().DepartureTime;

@@ -49,7 +49,7 @@ namespace Movement
     SplineBase::InitMethtod SplineBase::initializers[SplineBase::ModesEnd] =
     {
         //&SplineBase::InitLinear,
-        &SplineBase::InitCatmullRom,    // we should use catmullrom initializer even for linear mode! (client's internal structure limitation)
+        &SplineBase::InitCatmullRom,    // we should use catmullrom initializer even for linear mode! (client's internal structure limitation) (线性模式也复用 Catmull-Rom 布局以兼容客户端内部结构)
         &SplineBase::InitCatmullRom,
         &SplineBase::InitBezier3,
         (InitMethtod)& SplineBase::UninitializedSpline,
@@ -59,12 +59,14 @@ namespace Movement
     #pragma region evaluation methtods
 
     using G3D::Matrix4;
+    // Catmull-Rom 样条 4x4 基矩阵
     static const Matrix4 s_catmullRomCoeffs(
         -0.5f, 1.5f, -1.5f, 0.5f,
         1.f, -2.5f, 2.f, -0.5f,
         -0.5f, 0.f,  0.5f, 0.f,
         0.f,  1.f,  0.f,  0.f);
 
+    // 三次 Bezier 曲线 4x4 基矩阵
     static const Matrix4 s_Bezier3Coeffs(
         -1.f,  3.f, -3.f, 1.f,
         3.f, -6.f,  3.f, 0.f,
@@ -95,6 +97,7 @@ namespace Movement
         position.z = z;
     }*/
 
+    /// 矩阵形式计算三次多项式曲线位置：P(t) = [t^3, t^2, t, 1] * M * V
     inline void C_Evaluate(const Vector3* vertice, float t, const Matrix4& matr, Vector3& result)
     {
         Vector4 tvec(t * t * t, t * t, t, 1.f);
@@ -104,6 +107,7 @@ namespace Movement
                  + vertice[2] * weights[2] + vertice[3] * weights[3];
     }
 
+    /// 矩阵形式计算三次多项式曲线一阶导数：P'(t) = [3t^2, 2t, 1, 0] * M * V
     inline void C_Evaluate_Derivative(const Vector3* vertice, float t, const Matrix4& matr, Vector3& result)
     {
         Vector4 tvec(3.f * t * t, 2.f * t, 1.f, 0.f);
@@ -217,6 +221,7 @@ namespace Movement
         (this->*initializers[m_mode])(controls, count, cyclic, cyclic_point);
     }
 
+    /// 线性初始化：在末尾补充虚拟终点
     void SplineBase::InitLinear(const Vector3* controls, index_type count, bool isCyclic, index_type cyclic_point)
     {
         MANGOS_ASSERT(count >= 2);
@@ -228,6 +233,7 @@ namespace Movement
 
         // first and last two indexes are space for special 'virtual points'
         // these points are required for proper C_Evaluate and C_Evaluate_Derivative methtod work
+        // 首尾预留虚拟辅助控制点，确保 C_Evaluate 与 C_Evaluate_Derivative 四点窗口不越界
         if (isCyclic)
             points[count] = controls[cyclic_point];
         else
@@ -237,6 +243,7 @@ namespace Movement
         index_hi = isCyclic ? count : (count - 1);
     }
 
+    /// Catmull-Rom 初始化：在首部加 1 个虚拟控制点，尾部加 1（非循环）或 2（循环）个虚拟控制点
     void SplineBase::InitCatmullRom(const Vector3* controls, index_type count, bool isCyclic, index_type cyclic_point)
     {
         const int real_size = count + (isCyclic ? (1 + 2) : (1 + 1));
@@ -250,6 +257,7 @@ namespace Movement
 
         // first and last two indexes are space for special 'virtual points'
         // these points are required for proper C_Evaluate and C_Evaluate_Derivative methtod work
+        // 首尾填充虚拟控制点（非循环首点反向外推、尾点重复；循环路径按 cyclic_point 闭合衔接）
         if (isCyclic)
         {
             if (cyclic_point == 0)

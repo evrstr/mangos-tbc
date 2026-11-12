@@ -42,21 +42,22 @@
 #include "playerbot/RandomPlayerbotMgr.h"
 #endif
 
+/// 校验聊天消息长度、不可见控制字符与链接转义序列安全性
 bool WorldSession::CheckChatMessage(std::string& msg, bool addon/* = false*/)
 {
-    // check max length: as of 2.3.x+ no longer disconnects, silently truncates to 255 (wowwiki)
+    // check max length: as of 2.3.x+ no longer disconnects, silently truncates to 255 (wowwiki) | 检查最大长度：2.3.x 起不再踢线，而是静默截断至 255 字节
     if (msg.length() > 255)
         utf8limit(msg, 255);
 
-    // skip remaining checks for addon messages or higher sec level accounts
+    // skip remaining checks for addon messages or higher sec level accounts | 插件消息或高权限账号跳过后续过滤检查
     if (addon || GetSecurity() > SEC_PLAYER)
         return true;
 
-    // strip invisible characters for non-addon messages
+    // strip invisible characters for non-addon messages | 非插件消息剥离不可见字符防止伪造消息
     if (sWorld.getConfig(CONFIG_BOOL_CHAT_FAKE_MESSAGE_PREVENTING))
         stripLineInvisibleChars(msg);
 
-    // check links
+    // check links | 严格检查聊天中的颜色/超链接转义序列合法性
     if (sWorld.getConfig(CONFIG_UINT32_CHAT_STRICT_LINK_CHECKING_SEVERITY))
     {
         if (!ChatHandler::CheckEscapeSequences(msg.c_str()))
@@ -73,6 +74,7 @@ bool WorldSession::CheckChatMessage(std::string& msg, bool addon/* = false*/)
     return true;
 }
 
+/// 处理客户端聊天消息主封包 (CMSG_MESSAGECHAT)：校验语言、禁言与 GM 命令并按频道类型分发
 void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 {
     uint32 type;
@@ -89,7 +91,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
     DEBUG_LOG("CHAT: packet received. type %u, lang %u", type, lang);
 
-    // prevent talking at unknown language (cheating)
+    // prevent talking at unknown language (cheating) | 校验语言 ID 合法性及角色是否已掌握对应语言技能或理解光环（防作弊）
     LanguageDesc const* langDesc = GetLanguageDescByID(lang);
     if (!langDesc)
     {
@@ -98,7 +100,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
     }
     if (langDesc->skill_id != 0 && !_player->HasSkill(langDesc->skill_id))
     {
-        // also check SPELL_AURA_COMPREHEND_LANGUAGE (client offers option to speak in that language)
+        // also check SPELL_AURA_COMPREHEND_LANGUAGE (client offers option to speak in that language) | 同时检查语言理解光环（客户端允许使用该光环对应的语言发言）
         Unit::AuraList const& langAuras = _player->GetAurasByType(SPELL_AURA_COMPREHEND_LANGUAGE);
         bool foundAura = false;
         for (auto langAura : langAuras)
@@ -118,19 +120,19 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
     if (lang == LANG_ADDON)
     {
-        // Disabled addon channel?
+        // Disabled addon channel? | 服务器是否关闭了插件通信频道
         if (!sWorld.getConfig(CONFIG_BOOL_ADDON_CHANNEL))
             return;
     }
-    // LANG_ADDON should not be changed nor be affected by flood control
+    // LANG_ADDON should not be changed nor be affected by flood control | 插件频道不改写语言且不受刷屏频率控制
     else
     {
-        // send in universal language if player in .gmon mode (ignore spell effects)
+        // send in universal language if player in .gmon mode (ignore spell effects) | GM 模式下强制使用通用语且忽略语言变更光环
         if (_player->IsGameMaster())
             lang = LANG_UNIVERSAL;
         else
         {
-            // send in universal language in two side iteration allowed mode
+            // send in universal language in two side iteration allowed mode | 若开启跨阵营聊天互通则统一使用通用语
             if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHAT))
                 lang = LANG_UNIVERSAL;
             else
@@ -141,20 +143,20 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                     case CHAT_MSG_RAID:
                     case CHAT_MSG_RAID_LEADER:
                     case CHAT_MSG_RAID_WARNING:
-                        // allow two side chat at group channel if two side group allowed
+                        // allow two side chat at group channel if two side group allowed | 开启跨阵营组队时允许队伍/团队内使用通用语
                         if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
                             lang = LANG_UNIVERSAL;
                         break;
                     case CHAT_MSG_GUILD:
                     case CHAT_MSG_OFFICER:
-                        // allow two side chat at guild channel if two side guild allowed
+                        // allow two side chat at guild channel if two side guild allowed | 开启跨阵营公会时允许公会内使用通用语
                         if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GUILD))
                             lang = LANG_UNIVERSAL;
                         break;
                 }
             }
 
-            // but overwrite it by SPELL_AURA_MOD_LANGUAGE auras (only single case used)
+            // but overwrite it by SPELL_AURA_MOD_LANGUAGE auras (only single case used) | 若存在强制变语光环（如变熊/醉酒等）则覆盖语言类型
             Unit::AuraList const& ModLangAuras = _player->GetAurasByType(SPELL_AURA_MOD_LANGUAGE);
             if (!ModLangAuras.empty())
                 lang = ModLangAuras.front()->GetModifier()->m_miscvalue;
@@ -201,7 +203,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 sRandomPlayerbotMgr.HandleCommand(type, msg, *_player, "", GetPlayer()->GetTeam(), lang);
             }
 
-            // apply to own bots
+            // apply to own bots | 转发给玩家自身控制的机器人
             if (_player->GetPlayerbotMgr())
             {
                 _player->GetPlayerbotMgr()->HandleCommand(type, msg, lang);
@@ -236,7 +238,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             std::string to, msg;
             recv_data >> to;
 
-            // WHISPER channel is available for addons since 2.1.0
+            // WHISPER channel is available for addons since 2.1.0 | 2.1.0 起插件消息也允许使用密语频道
             if (lang == LANG_ADDON)
                 recv_data.read(msg , false);
             else
@@ -302,7 +304,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 GetPlayer()->m_speakCount = 0;
             }
 
-            if (msg.find("BOT\t") != 0) //These are spoofed SendAddonMessage with channel "WHISPER".
+            if (msg.find("BOT\t") != 0) //These are spoofed SendAddonMessage with channel "WHISPER". | 过滤以 "BOT\t" 开头的伪造密语插件控制指令
 #endif
 
             GetPlayer()->Whisper(msg, lang, player->GetObjectGuid());
@@ -329,8 +331,8 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             if (!CheckChatMessage(msg, (lang == LANG_ADDON)))
                 return;
 
-            // if player is in battleground, party chat is sent only to members of normal group
-            // battleground raid is always in Player->GetGroup(), never in GetOriginalGroup()
+            // if player is in battleground, party chat is sent only to members of normal group | 若玩家在战场团队中，小队聊天仅发送给原始普通小队成员
+            // battleground raid is always in Player->GetGroup(), never in GetOriginalGroup() | 战场团队始终位于 GetGroup()，原始队伍位于 GetOriginalGroup()
             Group* group = _player->GetGroup();
 
             if (group && group->IsBattleGroup())
@@ -633,7 +635,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                         m_anticheat->Channel(msg);
 
 #ifdef ENABLE_PLAYERBOTS
-                    // if GM apply to all random bots
+                    // if GM apply to all random bots | 若为 GM 则向全体随机机器人分发命令
                     if (GetSecurity() > SEC_PLAYER && GetPlayer()->IsGameMaster())
                     {
                         sRandomPlayerbotMgr.HandleCommand(type, msg, *_player, "", TEAM_BOTH_ALLOWED, lang);
@@ -643,7 +645,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                         sRandomPlayerbotMgr.HandleCommand(type, msg, *_player, "", GetPlayer()->GetTeam(), lang);
                     }
 
-                    // apply to own bots
+                    // apply to own bots | 若为综合/本地防务等标志频道，转发给自身控制机器人
                     if (_player->GetPlayerbotMgr() && chn->GetFlags() & 0x18)
                     {
                         _player->GetPlayerbotMgr()->HandleCommand(type, msg, lang);
@@ -661,16 +663,16 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             const bool flagged = (type == CHAT_MSG_AFK ? _player->isAFK() : _player->isDND());
 
-            if (flagged)                            // Already flagged
+            if (flagged)                            // Already flagged | 已处于离开/请勿打扰状态
             {
-                if (msg.empty())                    // Remove flag
+                if (msg.empty())                    // Remove flag | 空消息表示取消状态标记
                 {
                     if (type == CHAT_MSG_AFK)
                         _player->ToggleAFK();
                     else
                         _player->ToggleDND();
                 }
-                else                                // Update message
+                else                                // Update message | 非空消息则更新自动回复文本
                 {
                     if (!CheckChatMessage(msg))
                         msg = GetMangosString(type == CHAT_MSG_AFK ? LANG_PLAYER_AFK_DEFAULT : LANG_PLAYER_DND_DEFAULT);
@@ -680,7 +682,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                     _player->autoReplyMsg = msg;
                 }
             }
-            else                                    // New AFK/DND mode
+            else                                    // New AFK/DND mode | 新开启离开/请勿打扰状态（互斥切换）
             {
                 if (msg.empty() || !CheckChatMessage(msg))
                     msg = GetMangosString(type == CHAT_MSG_AFK ? LANG_PLAYER_AFK_DEFAULT : LANG_PLAYER_DND_DEFAULT);
@@ -713,6 +715,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理客户端单次动作表情请求 (CMSG_EMOTE)
 void WorldSession::HandleEmoteOpcode(WorldPacket& recv_data)
 {
     uint32 emote;
@@ -721,7 +724,7 @@ void WorldSession::HandleEmoteOpcode(WorldPacket& recv_data)
     if (!GetPlayer()->IsAlive() || GetPlayer()->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREVENT_ANIM))
         return;
 
-    // restrict to the only emotes hardcoded in client
+    // restrict to the only emotes hardcoded in client | 仅允许客户端硬编码触发的表情动作
     if (emote != EMOTE_ONESHOT_NONE && emote != EMOTE_ONESHOT_WAVE)
         return;
 
@@ -731,6 +734,7 @@ void WorldSession::HandleEmoteOpcode(WorldPacket& recv_data)
 
 namespace MaNGOS
 {
+    /// 文本表情数据包本地化构建器
     class EmoteChatBuilder
     {
         public:
@@ -761,6 +765,7 @@ namespace MaNGOS
     };
 }                                                           // namespace MaNGOS
 
+/// 处理客户端文本表情请求 (CMSG_TEXT_EMOTE)：播放动画、按视野范围广播并通知目标 AI
 void WorldSession::HandleTextEmoteOpcode(WorldPacket& recv_data)
 {
     uint32 textEmote, emoteNum;
@@ -808,11 +813,12 @@ void WorldSession::HandleTextEmoteOpcode(WorldPacket& recv_data)
     MaNGOS::CameraDistWorker<MaNGOS::LocalizedPacketDo<MaNGOS::EmoteChatBuilder > > emote_worker(GetPlayer(), sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_TEXTEMOTE), emote_do);
     Cell::VisitWorldObjects(GetPlayer(), emote_worker, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_TEXTEMOTE));
 
-    // Send scripted event call
+    // Send scripted event call | 通知目标单位的脚本 AI 响应表情交互
     if (unit && unit->AI())
         unit->AI()->ReceiveEmote(GetPlayer(), textEmote);
 }
 
+/// 处理玩家屏蔽对方聊天通知封包 (CMSG_CHAT_IGNORED)
 void WorldSession::HandleChatIgnoredOpcode(WorldPacket& recv_data)
 {
     ObjectGuid iguid;
@@ -820,7 +826,7 @@ void WorldSession::HandleChatIgnoredOpcode(WorldPacket& recv_data)
     // DEBUG_LOG("WORLD: Received opcode CMSG_CHAT_IGNORED");
 
     recv_data >> iguid;
-    recv_data >> unk;                                       // probably related to spam reporting
+    recv_data >> unk;                                       // probably related to spam reporting | 疑似与垃圾信息举报相关
 
     Player* player = sObjectMgr.GetPlayer(iguid);
     if (!player || !player->GetSession())
@@ -831,6 +837,7 @@ void WorldSession::HandleChatIgnoredOpcode(WorldPacket& recv_data)
     player->GetSession()->SendPacket(data);
 }
 
+/// 向客户端发送“未找到玩家”提示封包
 void WorldSession::SendPlayerNotFoundNotice(const std::string& name) const
 {
     WorldPacket data(SMSG_CHAT_PLAYER_NOT_FOUND, name.size() + 1);
@@ -838,12 +845,14 @@ void WorldSession::SendPlayerNotFoundNotice(const std::string& name) const
     SendPacket(data);
 }
 
+/// 向客户端发送“敌对阵营无法密语”提示封包
 void WorldSession::SendWrongFactionNotice() const
 {
     WorldPacket data(SMSG_CHAT_WRONG_FACTION, 0);
     SendPacket(data);
 }
 
+/// 向客户端发送聊天受限提示封包
 void WorldSession::SendChatRestrictedNotice(ChatRestrictionType restriction) const
 {
     WorldPacket data(SMSG_CHAT_RESTRICTED, 1);

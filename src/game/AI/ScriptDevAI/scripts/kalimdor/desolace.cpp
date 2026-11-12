@@ -21,6 +21,10 @@ SDComment: Quest support: 1440, 5561, 5821, 5943, 6132
 SDCategory: Desolace
 EndScriptData */
 
+/**
+ * 凄凉之地 (Desolace) 半人马阵营与任务 NPC 脚本
+ */
+
 /* ContentData
 npc_aged_dying_ancient_kodo
 npc_dalinda_malem
@@ -35,35 +39,37 @@ EndContentData */
 ## npc_aged_dying_ancient_kodo
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_SMEED_HOME_1                = -1000348,
-    SAY_SMEED_HOME_2                = -1000349,
-    SAY_SMEED_HOME_3                = -1000350,
+    SAY_SMEED_HOME_1                = -1000348,             // 剧情台词/喊话文本 ID
+    SAY_SMEED_HOME_2                = -1000349,             // 剧情台词/喊话文本 ID
+    SAY_SMEED_HOME_3                = -1000350,             // 剧情台词/喊话文本 ID
 
-    QUEST_KODO                      = 5561,
+    QUEST_KODO                      = 5561,                 // 任务 ID
 
-    NPC_SMEED                       = 11596,
-    NPC_AGED_KODO                   = 4700,
-    NPC_DYING_KODO                  = 4701,
-    NPC_ANCIENT_KODO                = 4702,
-    NPC_TAMED_KODO                  = 11627,
+    NPC_SMEED                       = 11596,                // NPC 条目 ID
+    NPC_AGED_KODO                   = 4700,                 // NPC 条目 ID
+    NPC_DYING_KODO                  = 4701,                 // NPC 条目 ID
+    NPC_ANCIENT_KODO                = 4702,                 // NPC 条目 ID
+    NPC_TAMED_KODO                  = 11627,                // NPC 条目 ID
 
-    SPELL_KODO_KOMBO_ITEM           = 18153,
-    SPELL_KODO_KOMBO_PLAYER_BUFF    = 18172,                // spells here have unclear function, but using them at least for visual parts and checks
-    SPELL_KODO_KOMBO_DESPAWN_BUFF   = 18377,
-    SPELL_KODO_KOMBO_GOSSIP         = 18362,
-    SPELL_KODO_KOMBOBULATOR         = 18793,                // spell only exists in classic dbc, used by kodo on player after gossip menu is used
-    SPELL_KODO_DESPAWN              = 22970,                // spell only exists in classic dbc, used by kodo during following?
+    SPELL_KODO_KOMBO_ITEM           = 18153,                // 技能法术 ID
+    SPELL_KODO_KOMBO_PLAYER_BUFF    = 18172,                // spells here have unclear function, but using them at least for visual parts and checks (说明)
+    SPELL_KODO_KOMBO_DESPAWN_BUFF   = 18377,                // 技能法术 ID
+    SPELL_KODO_KOMBO_GOSSIP         = 18362,                // 技能法术 ID
+    SPELL_KODO_KOMBOBULATOR         = 18793,                // spell only exists in classic dbc, used by kodo on player after gossip menu is used (说明)
+    SPELL_KODO_DESPAWN              = 22970,                // spell only exists in classic dbc, used by kodo during following? (说明)
 };
 
+// npc_aged_dying_ancient_kodoAI NPC 脚本 AI
 struct npc_aged_dying_ancient_kodoAI : public ScriptedAI
 {
     npc_aged_dying_ancient_kodoAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
     uint32 m_uiDespawnTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiDespawnTimer = 0;
     }
@@ -84,7 +90,7 @@ struct npc_aged_dying_ancient_kodoAI : public ScriptedAI
                     case 2: DoScriptText(SAY_SMEED_HOME_3, pWho); break;
                 }
 
-                // spell have no implemented effect (dummy), so useful to notify spellHit
+                // spell have no implemented effect (dummy), so useful to notify spellHit (说明)
                 m_creature->CastSpell(m_creature, SPELL_KODO_KOMBO_GOSSIP, TRIGGERED_OLD_TRIGGERED);
             }
         }
@@ -100,9 +106,9 @@ struct npc_aged_dying_ancient_kodoAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 diff) override
+    void UpdateAI(const uint32 diff) override               // AI 核心帧更新处理
     {
-        // timer should always be == 0 unless we already updated entry of creature. Then not expect this updated to ever be in combat.
+        // timer should always be == 0 unless we already updated entry of creature. Then not expect this updated to ever be in combat. (说明)
         if (m_uiDespawnTimer && m_uiDespawnTimer <= diff)
         {
             if (!m_creature->GetVictim() && m_creature->IsAlive())
@@ -122,12 +128,12 @@ struct npc_aged_dying_ancient_kodoAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_aged_dying_ancient_kodo(Creature* pCreature)
+UnitAI* GetAI_npc_aged_dying_ancient_kodo(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_aged_dying_ancient_kodoAI(pCreature);
 }
 
-// 18153 - Kodo Kombobulator
+// 18153 - Kodo Kombobulator (法术 18153 - Kodo Kombobulator)
 struct KodoKombobulator : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -158,11 +164,11 @@ struct KodoKombobulator : public SpellScript
     }
 };
 
-bool GossipHello_npc_aged_dying_ancient_kodo(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_aged_dying_ancient_kodo(Player* pPlayer, Creature* pCreature) // 对话交互问候处理
 {
     if (pPlayer->HasAura(SPELL_KODO_KOMBO_PLAYER_BUFF) && pCreature->HasAura(SPELL_KODO_KOMBO_DESPAWN_BUFF))
     {
-        // the expected quest objective
+        // the expected quest objective (任务)
         pPlayer->TalkedToCreature(pCreature->GetEntry(), pCreature->GetObjectGuid());
 
         pPlayer->RemoveAurasDueToSpell(SPELL_KODO_KOMBO_PLAYER_BUFF);
@@ -178,11 +184,13 @@ bool GossipHello_npc_aged_dying_ancient_kodo(Player* pPlayer, Creature* pCreatur
 ## npc_dalinda_malem
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_RETURN_TO_VAHLARRIEL  = 1440,
+    QUEST_RETURN_TO_VAHLARRIEL  = 1440,                     // 任务 ID
 };
 
+// npc_dalinda_malemAI NPC 脚本 AI
 struct npc_dalinda_malemAI : public npc_escortAI
 {
     npc_dalinda_malemAI(Creature* m_creature) : npc_escortAI(m_creature)
@@ -191,14 +199,14 @@ struct npc_dalinda_malemAI : public npc_escortAI
         Reset();
     }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void JustStartedEscort() override
     {
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         if (uiPointId == 18)
         {
@@ -208,18 +216,18 @@ struct npc_dalinda_malemAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_dalinda_malem(Creature* pCreature)
+UnitAI* GetAI_npc_dalinda_malem(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_dalinda_malemAI(pCreature);
 }
 
-bool QuestAccept_npc_dalinda_malem(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_dalinda_malem(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_RETURN_TO_VAHLARRIEL)
     {
         if (npc_dalinda_malemAI* pEscortAI = dynamic_cast<npc_dalinda_malemAI*>(pCreature->AI()))
         {
-            // TODO This faction change needs confirmation, also possible that we need to drop her PASSIVE flag
+            // TODO This faction change needs confirmation, also possible that we need to drop her PASSIVE flag (说明)
             pCreature->SetFactionTemporary(FACTION_ESCORT_A_NEUTRAL_PASSIVE, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_TOGGLE_IMMUNE_TO_NPC);
             pEscortAI->Start(false, pPlayer, pQuest);
         }
@@ -231,30 +239,31 @@ bool QuestAccept_npc_dalinda_malem(Player* pPlayer, Creature* pCreature, const Q
 ## npc_melizza_brimbuzzle
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_GET_ME_OUT_OF_HERE    = 6132,
+    QUEST_GET_ME_OUT_OF_HERE    = 6132,                     // 任务 ID
 
-    GO_MELIZZAS_CAGE            = 177706,
+    GO_MELIZZAS_CAGE            = 177706,                   // 游戏对象条目 ID
 
-    SAY_MELIZZA_START           = -1000784,
-    SAY_MELIZZA_FINISH          = -1000785,
-    SAY_MELIZZA_1               = -1000786,
-    SAY_MELIZZA_2               = -1000787,
-    SAY_MELIZZA_3               = -1000788,
+    SAY_MELIZZA_START           = -1000784,                 // 剧情台词/喊话文本 ID
+    SAY_MELIZZA_FINISH          = -1000785,                 // 剧情台词/喊话文本 ID
+    SAY_MELIZZA_1               = -1000786,                 // 剧情台词/喊话文本 ID
+    SAY_MELIZZA_2               = -1000787,                 // 剧情台词/喊话文本 ID
+    SAY_MELIZZA_3               = -1000788,                 // 剧情台词/喊话文本 ID
 
-    SAY_HORNIZZ_1               = -1010030,
-    SAY_HORNIZZ_2               = -1010031,
+    SAY_HORNIZZ_1               = -1010030,                 // 剧情台词/喊话文本 ID
+    SAY_HORNIZZ_2               = -1010031,                 // 剧情台词/喊话文本 ID
 
-    NPC_MARAUDINE_MARAUDER      = 4659,
-    NPC_MARAUDINE_BONEPAW       = 4660,
-    NPC_MARAUDINE_WRANGLER      = 4655,
+    NPC_MARAUDINE_MARAUDER      = 4659,                     // NPC 条目 ID
+    NPC_MARAUDINE_BONEPAW       = 4660,                     // NPC 条目 ID
+    NPC_MARAUDINE_WRANGLER      = 4655,                     // NPC 条目 ID
 
-    NPC_MELIZZA                 = 12277,
-    // NPC_HORNIZZ                 = 6019,
+    NPC_MELIZZA                 = 12277,                    // NPC 条目 ID
+    // NPC_HORNIZZ                 = 6019, (说明)
 
-    POINT_ID_QUEST_COMPLETE     = 1,
-    POINT_ID_EVENT_COMPLETE     = 2,
+    POINT_ID_QUEST_COMPLETE     = 1,                        // 路径点 ID
+    POINT_ID_EVENT_COMPLETE     = 2,                        // 路径点 ID
 
     MAX_MARAUDERS               = 2,
     MAX_WRANGLERS               = 3,
@@ -287,6 +296,7 @@ static const SummonLocation aMarauderSpawn[] =
 
 static const SummonLocation wranglerSpawn = { -1393.194f, 2429.465f, 88.689f };
 
+// npc_melizza_brimbuzzleAI NPC 脚本 AI
 struct npc_melizza_brimbuzzleAI : public npc_escortAI, private DialogueHelper
 {
     npc_melizza_brimbuzzleAI(Creature* m_creature) : npc_escortAI(m_creature),
@@ -295,7 +305,7 @@ struct npc_melizza_brimbuzzleAI : public npc_escortAI, private DialogueHelper
         Reset();
     }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void JustStartedEscort() override
     {
@@ -315,7 +325,7 @@ struct npc_melizza_brimbuzzleAI : public npc_escortAI, private DialogueHelper
         return nullptr;
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -330,7 +340,7 @@ struct npc_melizza_brimbuzzleAI : public npc_escortAI, private DialogueHelper
                 {
                     for (uint8 j = 0; j < MAX_MARAUDERS; ++j)
                     {
-                        // Summon 2 Marauders on each point
+                        // Summon 2 Marauders on each point (召唤)
                         float fX, fY, fZ;
                         m_creature->GetRandomPoint(i.m_fX, i.m_fY, i.m_fZ, 7.0f, fX, fY, fZ);
                         m_creature->SummonCreature(NPC_MARAUDINE_MARAUDER, fX, fY, fZ, 0.0f, TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -385,7 +395,7 @@ struct npc_melizza_brimbuzzleAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         DialogueUpdate(uiDiff);
 
@@ -396,12 +406,12 @@ struct npc_melizza_brimbuzzleAI : public npc_escortAI, private DialogueHelper
     }
 };
 
-UnitAI* GetAI_npc_melizza_brimbuzzle(Creature* pCreature)
+UnitAI* GetAI_npc_melizza_brimbuzzle(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_melizza_brimbuzzleAI(pCreature);
 }
 
-bool QuestAccept_npc_melizza_brimbuzzle(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_melizza_brimbuzzle(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_GET_ME_OUT_OF_HERE)
     {
@@ -416,15 +426,16 @@ bool QuestAccept_npc_melizza_brimbuzzle(Player* pPlayer, Creature* pCreature, co
 ## npc_cork_gizelton
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    NPC_CORK_GIZELTON = 11625,
-    NPC_RIGGER_GIZELTON = 11626,
-    NPC_VENDOR_TRON = 12245,
-    NPC_SUPER_SELLER = 12246,
+    NPC_CORK_GIZELTON = 11625,                              // NPC 条目 ID
+    NPC_RIGGER_GIZELTON = 11626,                            // NPC 条目 ID
+    NPC_VENDOR_TRON = 12245,                                // NPC 条目 ID
+    NPC_SUPER_SELLER = 12246,                               // NPC 条目 ID
 
-    QUEST_BODYGUARD_TO_HIRE = 5821,
-    QUEST_GIZELTON_CARAVAN = 5943,
+    QUEST_BODYGUARD_TO_HIRE = 5821,                         // 任务 ID
+    QUEST_GIZELTON_CARAVAN = 5943,                          // 任务 ID
 
     WAYPOINT_PATH_ID = 19019,
     PATH_ID_CORK_GIZELTON = 11625,
@@ -432,9 +443,10 @@ enum
     WAYPOINT_PATH_POINT_AFTER_ESCORT_1 = 33,
     WAYPOINT_PATH_POINT_AFTER_ESCORT_2 = 100,
 
-    GIZELTON_TIMER_AFTER_FAIL = 60 * IN_MILLISECONDS, // forced despawn when one of the member die even if still in combat
+    GIZELTON_TIMER_AFTER_FAIL = 60 * IN_MILLISECONDS, // forced despawn when one of the member die even if still in combat (说明)
 };
 
+// npc_cork_gizeltonAI NPC 脚本 AI
 struct npc_cork_gizeltonAI : public npc_escortAI
 {
     npc_cork_gizeltonAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -444,7 +456,7 @@ struct npc_cork_gizeltonAI : public npc_escortAI
     bool ScriptDone = false;
     bool SouthQuest = false;
 
-    void Reset() override {   }
+    void Reset() override {   }                             // 重置战斗状态与计时器
 
     void MakeQuestFailAndClean()
     {
@@ -452,7 +464,7 @@ struct npc_cork_gizeltonAI : public npc_escortAI
         if (!player)
             return;
 
-        // Handle all players in group (if they took quest)
+        // Handle all players in group (if they took quest) (说明)
         if (Group* pGroup = player->GetGroup())
         {
             for (GroupReference* pRef = pGroup->GetFirstMember(); pRef != nullptr; pRef = pRef->next())
@@ -477,7 +489,7 @@ struct npc_cork_gizeltonAI : public npc_escortAI
         m_creature->GetCreatureGroup()->Despawn();
     }
 
-    void UpdateEscortAI(const uint32 diff) override
+    void UpdateEscortAI(const uint32 diff) override         // 护送 AI 帧更新处理
     {
         npc_escortAI::UpdateEscortAI(diff);
 
@@ -495,7 +507,7 @@ struct npc_cork_gizeltonAI : public npc_escortAI
         ScriptDone = true;
     }
 
-    void WaypointReached(uint32 pointId) override
+    void WaypointReached(uint32 pointId) override           // 到达指定路径点回调
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
             return;
@@ -509,31 +521,31 @@ struct npc_cork_gizeltonAI : public npc_escortAI
                 {
                     if (player && player->GetQuestStatus(QUEST_BODYGUARD_TO_HIRE) == QUEST_STATUS_INCOMPLETE)
                     {
-                        // Award quest credit
+                        // Award quest credit (给予任务完成进度)
                         player->RewardPlayerAndGroupAtEventExplored(QUEST_BODYGUARD_TO_HIRE, m_creature);
                     }
                     m_creature->GetMotionMaster()->Clear(false, true);
                     m_creature->GetMotionMaster()->MoveWaypoint(WAYPOINT_PATH_ID, PATH_FROM_WAYPOINT_PATH);
                     m_creature->GetMotionMaster()->SetNextWaypoint(WAYPOINT_PATH_POINT_AFTER_ESCORT_1);
                     m_creature->SetWalk(false);
-                    End(); // normal movement resumes - caravan doesnt despawn - it loops through zone                    
+                    End(); // normal movement resumes - caravan doesnt despawn - it loops through zone (说明)
                    
                 }
                 break;
-                // The second escort quest is also handled by NPC Cork though it is given by NPC Rigger
+                // The second escort quest is also handled by NPC Cork though it is given by NPC Rigger (说明)
             case 21:
                 if (SouthQuest)
                 {
                     if (player && player->GetQuestStatus(QUEST_GIZELTON_CARAVAN) == QUEST_STATUS_INCOMPLETE)
                     {
-                        // Award quest credit
+                        // Award quest credit (给予任务完成进度)
                         player->RewardPlayerAndGroupAtEventExplored(QUEST_GIZELTON_CARAVAN, m_creature);
                     }
                     m_creature->GetMotionMaster()->Clear(false, true);
                     m_creature->GetMotionMaster()->MoveWaypoint(WAYPOINT_PATH_ID, PATH_FROM_WAYPOINT_PATH);
                     m_creature->GetMotionMaster()->SetNextWaypoint(WAYPOINT_PATH_POINT_AFTER_ESCORT_2);
                     m_creature->SetWalk(false);
-                    End(); // normal movement resumes - caravan doesnt despawn - it loops through zone
+                    End(); // normal movement resumes - caravan doesnt despawn - it loops through zone (说明)
                     SouthQuest = false;                                    
                 }
                 break;
@@ -553,12 +565,12 @@ struct npc_cork_gizeltonAI : public npc_escortAI
     }
 };
 
-bool QuestAccept_npc_cork_gizelton(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_cork_gizelton(Player* player, Creature* creature, const Quest* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_BODYGUARD_TO_HIRE)
     {
         if (npc_cork_gizeltonAI* escortAI = dynamic_cast<npc_cork_gizeltonAI*>(creature->AI()))
-            escortAI->Start(false, player, quest, false, false, PATH_ID_CORK_GIZELTON); // Note: Escort path use other coords then normal path
+            escortAI->Start(false, player, quest, false, false, PATH_ID_CORK_GIZELTON); // Note: Escort path use other coords then normal path (说明)
     }
     return true;
 }
@@ -567,47 +579,50 @@ bool QuestAccept_npc_cork_gizelton(Player* player, Creature* creature, const Que
 ## npc_rigger_gizelton
 ######*/
 
+// npc_rigger_gizeltonAI NPC 脚本 AI
 struct npc_rigger_gizeltonAI : public ScriptedAI
 {
     npc_rigger_gizeltonAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 };
 
-bool QuestAccept_npc_rigger_gizelton(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_rigger_gizelton(Player* player, Creature* creature, const Quest* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_GIZELTON_CARAVAN)
     {
-        // Now the quest is accepted, tell NPC Cork what player took it so it can handle quest credit/failure
-        // because NPC Cork will handle both escort quests
+        // Now the quest is accepted, tell NPC Cork what player took it so it can handle quest credit/failure (说明)
+        // because NPC Cork will handle both escort quests (说明)
         if (Creature* cork = GetClosestCreatureWithEntry(creature, NPC_CORK_GIZELTON, 100.0f))
             if (npc_cork_gizeltonAI* corkAI = dynamic_cast<npc_cork_gizeltonAI*>(cork->AI()))
-                corkAI->StartRiggerEscort(player);               // Note: Escort path use other coords then normal path
+                corkAI->StartRiggerEscort(player);               // Note: Escort path use other coords then normal path (说明)
     }
     return true;
 }
 
+// 常量与事件枚举
 enum
 {
-    SPELL_CURSE_OF_MAGRAMI = 18159,
-    SPELL_GHOST_SPAWN_IN   = 17321,
-    SPELL_BLUE_AURA        = 17327,
-    SPELL_GREEN_AURA       = 18951,
-    SPELL_CHILLING_TOUCH   = 18146,
+    SPELL_CURSE_OF_MAGRAMI = 18159,                         // 技能法术：诅咒
+    SPELL_GHOST_SPAWN_IN   = 17321,                         // 技能法术 ID
+    SPELL_BLUE_AURA        = 17327,                         // 技能法术 ID
+    SPELL_GREEN_AURA       = 18951,                         // 技能法术 ID
+    SPELL_CHILLING_TOUCH   = 18146,                         // 技能法术 ID
 
-    FACTION_HOSTILE        = 16,
+    FACTION_HOSTILE        = 16,                            // 阵营 ID
 
-    SAY_EMOTE_1            = -1001226,
-    SAY_EMOTE_2            = -1001227,
+    SAY_EMOTE_1            = -1001226,                      // 剧情台词/喊话文本 ID
+    SAY_EMOTE_2            = -1001227,                      // 剧情台词/喊话文本 ID
 };
 
+// npc_magrami_spectre NPC 脚本 AI
 struct npc_magrami_spectre : public ScriptedAI
 {
     npc_magrami_spectre(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
     uint32 m_uiCurseTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiCurseTimer = 4000;
     }
@@ -629,7 +644,7 @@ struct npc_magrami_spectre : public ScriptedAI
         }
     }
 
-    void MovementInform(uint32 uiMovementType, uint32 uiData) override
+    void MovementInform(uint32 uiMovementType, uint32 uiData) override    // 移动节点到达通知
     {
         if (uiMovementType == POINT_MOTION_TYPE)
         {
@@ -645,7 +660,7 @@ struct npc_magrami_spectre : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
@@ -665,12 +680,12 @@ struct npc_magrami_spectre : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_magrami_spectre(Creature* pCreature)
+UnitAI* GetAI_npc_magrami_spectre(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_magrami_spectre(pCreature);
 }
 
-void AddSC_desolace()
+void AddSC_desolace() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_aged_dying_ancient_kodo";

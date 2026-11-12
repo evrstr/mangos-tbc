@@ -21,7 +21,7 @@
 
 #include "Common.h"
 
-// Normal assert.
+// Normal assert. | 致命错误断言：条件不成立时打印诊断信息并立即中止进程以保护数据完整性
 #define WPError(CONDITION) \
 if (!(CONDITION)) \
 { \
@@ -32,7 +32,7 @@ recompile the software in debug mode to get more details.\n\n%s(): %s\n", __FUNC
     std::abort(); \
 }
 
-// Just warn.
+// Just warn. | 非致命断言警告：仅向标准输出打印告警位置与条件表达式
 #define WPWarning(CONDITION) \
 if (!(CONDITION)) \
 { \
@@ -43,7 +43,7 @@ if (!(CONDITION)) \
 #ifdef MANGOS_DEBUG
 #  define MANGOS_ASSERT WPError
 #else
-#  define MANGOS_ASSERT WPError                             // Error even if in release mode.
+#  define MANGOS_ASSERT WPError                             // Error even if in release mode. | Release 模式下同样启用严格断言检查
 #endif
 
 #endif

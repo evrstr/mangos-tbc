@@ -35,6 +35,7 @@ GuildMgr::~GuildMgr()
 {
 }
 
+/// 注册新公会并绑定弱引用追踪指针
 void GuildMgr::AddGuild(Guild* guild)
 {
     MaNGOS::unique_trackable_ptr<Guild>& ptr = m_GuildMap[guild->GetId()];
@@ -42,11 +43,13 @@ void GuildMgr::AddGuild(Guild* guild)
     guild->SetWeakPtr(ptr);
 }
 
+/// 移除并销毁指定 ID 的公会
 void GuildMgr::RemoveGuild(uint32 guildId)
 {
     m_GuildMap.erase(guildId);
 }
 
+/// 按公会 ID 查找公会
 Guild* GuildMgr::GetGuildById(uint32 guildId) const
 {
     GuildMap::const_iterator itr = m_GuildMap.find(guildId);
@@ -83,6 +86,7 @@ std::string GuildMgr::GetGuildNameById(uint32 guildId) const
     return "";
 }
 
+/// 启动时批量加载所有公会、职级、成员、银行权限、日志与银行物品
 void GuildMgr::LoadGuilds()
 {
     uint32 count = 0;

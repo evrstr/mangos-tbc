@@ -21,35 +21,39 @@ SDComment: Dummy spells used during the transformation may need further research
 SDCategory: Blackrock Spire
 EndScriptData */
 
+// 烈焰卫士艾博希尔（Pyroguard Emberseer）首领战 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackrock_spire.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // Intro emote/say
-    EMOTE_NEAR              = -1229001,
-    EMOTE_FULL              = -1229002,
-    SAY_FREE                = -1229003,
+    // Intro emote/say (开场表情与台词)
+    EMOTE_NEAR              = -1229001,                     // near 表情动作 ID
+    EMOTE_FULL              = -1229002,                     // full 表情动作 ID
+    SAY_FREE                = -1229003,                     // 释放 台词广播 ID
 
-    MAX_GROWING_STACKS      = 20,
+    MAX_GROWING_STACKS      = 20,                           // growingstacks 标识 ID
 
-    // Intro spells
-    SPELL_ENCAGE_EMBERSEER  = 15281,                        // cast by Blackhand Incarcerator
+    // Intro spells (开场仪式法术)
+    SPELL_ENCAGE_EMBERSEER  = 15281,                        // cast by Blackhand Incarcerator (黑手监禁者施放)
 
-    SPELL_FIRE_SHIELD       = 13377,
-    SPELL_DESPAWN_EMBERSEER = 16078,                        // not sure what's the purpose of this
-    SPELL_FREEZE_ANIM       = 16245,                        // not sure what's the purpose of this
-    SPELL_FULL_STRENGHT     = 16047,
-    SPELL_GROWING           = 16049,                        // stacking aura
-    SPELL_BONUS_DAMAGE      = 16534,                        // triggered on full grow
-    SPELL_TRANSFORM         = 16052,
+    SPELL_FIRE_SHIELD       = 13377,                        // 火焰护盾 法术 ID
+    SPELL_DESPAWN_EMBERSEER = 16078,                        // not sure what's the purpose of this (用途待进一步确认)
+    SPELL_FREEZE_ANIM       = 16245,                        // not sure what's the purpose of this (用途待进一步确认)
+    SPELL_FULL_STRENGHT     = 16047,                        // fullstrenght 法术 ID
+    SPELL_GROWING           = 16049,                        // stacking aura (叠加层数光环)
+    SPELL_BONUS_DAMAGE      = 16534,                        // triggered on full grow (体型完全成长时触发)
+    SPELL_TRANSFORM         = 16052,                        // 变形 法术 ID
 
-    // Combat spells
-    SPELL_FIRENOVA          = 23462,
-    SPELL_FLAMEBUFFET       = 23341,
-    SPELL_PYROBLAST         = 20228                         // guesswork, but best fitting in spells-area, was 17274 (has mana cost)
+    // Combat spells (战斗技能法术)
+    SPELL_FIRENOVA          = 23462,                        // firenova 法术 ID
+    SPELL_FLAMEBUFFET       = 23341,                        // flamebuffet 法术 ID
+    SPELL_PYROBLAST         = 20228                         // guesswork, but best fitting in spells-area, was 17274 (has mana cost) (推测参数，最匹配的无蓝耗法术)
 };
 
+// 首领战 AI：艾博希尔（pyroguard_emberseer）
 struct boss_pyroguard_emberseerAI : public ScriptedAI
 {
     boss_pyroguard_emberseerAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -60,12 +64,13 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
 
     instance_blackrock_spire* m_pInstance;
 
-    uint32 m_uiEncageTimer;
-    uint32 m_uiFireNovaTimer;
-    uint32 m_uiFlameBuffetTimer;
-    uint32 m_uiPyroBlastTimer;
+    uint32 m_uiEncageTimer;                                 // Encage 技能计时器
+    uint32 m_uiFireNovaTimer;                               // FireNova 技能计时器
+    uint32 m_uiFlameBuffetTimer;                            // FlameBuffet 技能计时器
+    uint32 m_uiPyroBlastTimer;                              // PyroBlast 技能计时器
     uint8 m_uiGrowingStacks;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiEncageTimer         = 10000;
@@ -86,6 +91,7 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
             m_pInstance->SetData(TYPE_EMBERSEER, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_pInstance)
@@ -115,7 +121,7 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
             DoCastSpellIfCan(m_creature, SPELL_BONUS_DAMAGE, CAST_TRIGGERED);
             DoCastSpellIfCan(m_creature, SPELL_TRANSFORM, CAST_TRIGGERED);
 
-            // activate all runes
+            // activate all runes (激活all符文)
             if (m_pInstance)
             {
                 m_pInstance->DoUseEmberseerRunes();
@@ -128,6 +134,7 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         // Cast Encage spell on OOC timer
@@ -156,11 +163,11 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
                 m_uiEncageTimer -= uiDiff;
         }
 
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        // FireNova Timer
+        // FireNova Timer (FireNova计时器)
         if (m_uiFireNovaTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_FIRENOVA) == CAST_OK)
@@ -169,7 +176,7 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
         else
             m_uiFireNovaTimer -= uiDiff;
 
-        // FlameBuffet Timer
+        // FlameBuffet Timer (FlameBuffet计时器)
         if (m_uiFlameBuffetTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_FLAMEBUFFET) == CAST_OK)
@@ -178,7 +185,7 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
         else
             m_uiFlameBuffetTimer -= uiDiff;
 
-        // PyroBlast Timer
+        // PyroBlast Timer (炎爆术计时器)
         if (m_uiPyroBlastTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
@@ -190,15 +197,17 @@ struct boss_pyroguard_emberseerAI : public ScriptedAI
         else
             m_uiPyroBlastTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_pyroguard_emberseer
 UnitAI* GetAI_boss_pyroguard_emberseer(Creature* pCreature)
 {
     return new boss_pyroguard_emberseerAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_pyroguard_emberseer
 void AddSC_boss_pyroguard_emberseer()
 {
     Script* pNewScript = new Script;

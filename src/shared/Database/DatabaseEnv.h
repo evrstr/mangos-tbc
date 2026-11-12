@@ -26,6 +26,7 @@
 #include "Database/Field.h"
 #include "Database/QueryResult.h"
 
+// 根据编译后端选择对应的数据库实现及 SQL 方言宏 | Select database backend implementation and SQL dialect macros
 #ifdef DO_POSTGRESQL
 #include "Database/QueryResultPostgre.h"
 #include "Database/Database.h"
@@ -70,6 +71,7 @@ typedef DatabaseMysql DatabaseType;
 #define _FROM_UNIXTIME_(X) "FROM_UNIXTIME(" X ")"
 #endif
 
+// 全局数据库实例声明 | Global database instances
 extern DatabaseType WorldDatabase;
 extern DatabaseType CharacterDatabase;
 extern DatabaseType LoginDatabase;

@@ -43,6 +43,7 @@ OutdoorPvPTF::OutdoorPvPTF() : OutdoorPvP(),
         i = TEAM_NONE;
 }
 
+// 填充泰罗卡森林五座灵魂塔及区域锁定倒计时的初始世界状态
 void OutdoorPvPTF::FillInitialWorldStates(WorldPacket& data, uint32& count)
 {
     FillInitialWorldState(data, count, m_zoneWorldState, WORLD_STATE_ADD);
@@ -64,6 +65,7 @@ void OutdoorPvPTF::FillInitialWorldStates(WorldPacket& data, uint32& count)
     }
 }
 
+// 玩家离开泰罗卡森林时移除灵魂塔相关世界状态 UI
 void OutdoorPvPTF::SendRemoveWorldStates(Player* player)
 {
     player->SendUpdateWorldState(m_zoneWorldState, WORLD_STATE_REMOVE);
@@ -72,26 +74,29 @@ void OutdoorPvPTF::SendRemoveWorldStates(Player* player)
         player->SendUpdateWorldState(i, WORLD_STATE_REMOVE);
 }
 
+// 玩家进入泰罗卡森林或奥金顿副本时施加“奥金顿的祝福”增益
 void OutdoorPvPTF::HandlePlayerEnterZone(Player* player, bool isMainZone)
 {
     OutdoorPvP::HandlePlayerEnterZone(player, isMainZone);
 
-    // remove the buff from the player first because there are some issues at relog
+    // remove the buff from the player first because there are some issues at relog (先移除旧光环避免重连残留)
     player->RemoveAurasDueToSpell(SPELL_AUCHINDOUN_BLESSING);
 
-    // Handle the buffs
+    // Handle the buffs (若己方阵营当前控制该区域则施加增益)
     if (player->GetTeam() == m_zoneOwner)
         player->CastSpell(player, SPELL_AUCHINDOUN_BLESSING, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 玩家离开区域时移除“奥金顿的祝福”增益
 void OutdoorPvPTF::HandlePlayerLeaveZone(Player* player, bool isMainZone)
 {
-    // remove the buff from the player
+    // remove the buff from the player (移除奥金顿的祝福光环)
     player->RemoveAurasDueToSpell(SPELL_AUCHINDOUN_BLESSING);
 
     OutdoorPvP::HandlePlayerLeaveZone(player, isMainZone);
 }
 
+// 游戏对象创建时记录五座灵魂塔战旗 GUID 并设置初始 ArtKit
 void OutdoorPvPTF::HandleGameObjectCreate(GameObject* go)
 {
     OutdoorPvP::HandleGameObjectCreate(go);
@@ -121,6 +126,7 @@ void OutdoorPvPTF::HandleGameObjectCreate(GameObject* go)
     }
 }
 
+// 灵魂塔占领完成时为范围内的获胜阵营玩家推进日常任务进度
 void OutdoorPvPTF::HandleObjectiveComplete(uint32 eventId, const std::list<Player*>& players, Team team)
 {
     for (const auto& terokkarTowerEvent : terokkarTowerEvents)
@@ -140,7 +146,7 @@ void OutdoorPvPTF::HandleObjectiveComplete(uint32 eventId, const std::list<Playe
     }
 }
 
-// process the capture events
+// process the capture events (分发五座灵魂塔占领/中立化事件并发送防卫通告)
 bool OutdoorPvPTF::HandleEvent(uint32 eventId, Object* source, Object* /*target*/)
 {
     if (!source->IsGameObject())
@@ -156,17 +162,18 @@ bool OutdoorPvPTF::HandleEvent(uint32 eventId, Object* source, Object* /*target*
                 if (terokkarTowerEvents[i][j].eventEntry == eventId)
                 {
                     // prevent processing if the owner did not change (happens if progress event is called after contest event)
+                    // (若归属阵营未发生变化则忽略重复事件)
                     if (terokkarTowerEvents[i][j].team != m_towerOwner[i])
                     {
                         sWorld.SendDefenseMessage(ZONE_ID_TEROKKAR_FOREST, terokkarTowerEvents[i][j].defenseMessage);
 
                         return ProcessCaptureEvent(go, i, terokkarTowerEvents[i][j].team, terokkarTowerEvents[i][j].worldState);
                     }
-                    // no need to iterate other events or towers
+                    // no need to iterate other events or towers (已匹配哨塔与事件，提前返回)
                     return false;
                 }
             }
-            // no need to iterate other towers
+            // no need to iterate other towers (已匹配哨塔但无匹配事件)
             return false;
         }
     }
@@ -174,50 +181,51 @@ bool OutdoorPvPTF::HandleEvent(uint32 eventId, Object* source, Object* /*target*
     return false;
 }
 
+// 处理灵魂塔占领：若某阵营同时控制全部 5 座灵魂塔，则锁定区域 6 小时并激活全区增益
 bool OutdoorPvPTF::ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team, uint32 newWorldState)
 {
     if (team == ALLIANCE)
     {
-        // update banner
+        // update banner (将塔旗视觉切换为联盟)
         SetBannerVisual(go, CAPTURE_ARTKIT_ALLIANCE, CAPTURE_ANIM_ALLIANCE);
 
-        // update tower count
+        // update tower count (联盟塔数 +1)
         ++m_towersAlliance;
 
-        // if all towers are captured then process event
+        // if all towers are captured then process event (占领全部 5 座塔则触发区域锁定)
         if (m_towersAlliance == MAX_TF_TOWERS)
         {
             LockZone(go, towerId, team, newWorldState);
             return true;
         }
 
-        // update tower count world state
+        // update tower count world state (更新联盟塔数世界状态)
         SendUpdateWorldState(WORLD_STATE_TF_TOWER_COUNT_A, m_towersAlliance);
     }
     else if (team == HORDE)
     {
-        // update banner
+        // update banner (将塔旗视觉切换为部落)
         SetBannerVisual(go, CAPTURE_ARTKIT_HORDE, CAPTURE_ANIM_HORDE);
 
-        // update tower count
+        // update tower count (部落塔数 +1)
         ++m_towersHorde;
 
-        // if all towers are captured then process event
+        // if all towers are captured then process event (占领全部 5 座塔则触发区域锁定)
         if (m_towersHorde == MAX_TF_TOWERS)
         {
             LockZone(go, towerId, team, newWorldState);
             return true;
         }
 
-        // update tower count world state
+        // update tower count world state (更新部落塔数世界状态)
         SendUpdateWorldState(WORLD_STATE_TF_TOWER_COUNT_H, m_towersHorde);
     }
     else
     {
-        // update banner
+        // update banner (将塔旗视觉切换为中立)
         SetBannerVisual(go, CAPTURE_ARTKIT_NEUTRAL, CAPTURE_ANIM_NEUTRAL);
 
-        // update tower count
+        // update tower count (递减原占领阵营控制塔数)
         if (m_towerOwner[towerId] == ALLIANCE)
         {
             --m_towersAlliance;
@@ -230,19 +238,19 @@ bool OutdoorPvPTF::ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team
         }
     }
 
-    // update tower state
+    // update tower state (切换该塔的 UI 世界状态图标)
     SendUpdateWorldState(m_towerWorldState[towerId], WORLD_STATE_REMOVE);
     m_towerWorldState[towerId] = newWorldState;
     SendUpdateWorldState(m_towerWorldState[towerId], WORLD_STATE_ADD);
 
-    // update capture point owner
+    // update capture point owner (更新该塔归属阵营)
     m_towerOwner[towerId] = team;
 
-    // the are no DB exceptions in this case
+    // the are no DB exceptions in this case (无需额外 DB 脚本)
     return true;
 }
 
-// Handle the zone lock when the timer is activated
+// Handle the zone lock when the timer is activated (全部灵魂塔被单一阵营控制时锁定区域、开启 6 小时倒计时并施加祝福)
 void OutdoorPvPTF::LockZone(GameObject* go, uint32 towerId, Team team, uint32 newWorldState)
 {
     SendUpdateWorldState(m_zoneWorldState, WORLD_STATE_REMOVE);
@@ -255,32 +263,32 @@ void OutdoorPvPTF::LockZone(GameObject* go, uint32 towerId, Team team, uint32 ne
     m_zoneOwner = team;
     BuffTeam(team, SPELL_AUCHINDOUN_BLESSING);
 
-    // lock the towers
+    // lock the towers (锁定所有灵魂塔占领点使其停止争夺)
     LockTowers(go);
 
     sWorld.SendDefenseMessage(ZONE_ID_TEROKKAR_FOREST, team == ALLIANCE ? LANG_OPVP_TF_CAPTURE_ALL_TOWERS_A : LANG_OPVP_TF_CAPTURE_ALL_TOWERS_H);
 
-    // remove tower states when zone has been captured and locked
+    // remove tower states when zone has been captured and locked (锁定后隐藏单塔世界状态计数)
     for (unsigned int i : m_towerWorldState)
         SendUpdateWorldState(i, WORLD_STATE_REMOVE);
 
     m_towerWorldState[towerId] = newWorldState;
 }
 
-// Handle the zone reset when the timer expires
+// Handle the zone reset when the timer expires (6 小时锁定期满后重置五座灵魂塔为中立状态并重新开启争夺)
 void OutdoorPvPTF::UnlockZone()
 {
-    // remove buffs
+    // remove buffs (移除占领方的奥金顿祝福)
     BuffTeam(m_zoneOwner, SPELL_AUCHINDOUN_BLESSING, true);
 
     m_zoneOwner = TEAM_NONE;
 
-    // reset world states and towers
+    // reset world states and towers (切回非锁定状态 UI)
     SendUpdateWorldState(m_zoneWorldState, WORLD_STATE_REMOVE);
     m_zoneWorldState = WORLD_STATE_TF_TOWERS_CONTROLLED;
     SendUpdateWorldState(m_zoneWorldState, WORLD_STATE_ADD);
 
-    // reset tower states
+    // reset tower states (重置五座塔的世界状态为中立)
     m_towerWorldState[0] = WORLD_STATE_TF_WEST_TOWER_NEUTRAL;
     m_towerWorldState[1] = WORLD_STATE_TF_NORTH_TOWER_NEUTRAL;
     m_towerWorldState[2] = WORLD_STATE_TF_EAST_TOWER_NEUTRAL;
@@ -289,7 +297,7 @@ void OutdoorPvPTF::UnlockZone()
     for (unsigned int i : m_towerWorldState)
         SendUpdateWorldState(i, WORLD_STATE_ADD);
 
-    // update tower count
+    // update tower count (双方控制塔数归零)
     m_towersAlliance = 0;
     m_towersHorde = 0;
     SendUpdateWorldState(WORLD_STATE_TF_TOWER_COUNT_A, m_towersAlliance);
@@ -297,7 +305,7 @@ void OutdoorPvPTF::UnlockZone()
 
     for (GuidZoneMap::const_iterator itr = m_zonePlayers.begin(); itr != m_zonePlayers.end(); ++itr)
     {
-        // Find player who is in main zone (Terokkar Forest) to get correct map reference
+        // Find player who is in main zone (Terokkar Forest) to get correct map reference (查找泰罗卡森林主区域内的玩家以获取地图上下文并重置塔滑块)
         if (!itr->second)
             continue;
 
@@ -309,6 +317,7 @@ void OutdoorPvPTF::UnlockZone()
     }
 }
 
+// 推进区域锁定倒计时并在到期时解除锁定
 void OutdoorPvPTF::Update(uint32 diff)
 {
     if (m_zoneLockTimer)
@@ -321,6 +330,7 @@ void OutdoorPvPTF::Update(uint32 diff)
         else
         {
             // update timer - if OutdoorPvPMgr update timer interval needs to be lowered replace this line with the commented-out ones below
+            // (刷新客户端倒计时世界状态；若 OutdoorPvPMgr 更新频率调高可启用下方分频计时器)
             UpdateTimerWorldState();
 
             /*if (m_zoneUpdateTimer < diff)
@@ -339,7 +349,7 @@ void OutdoorPvPTF::Update(uint32 diff)
 
 void OutdoorPvPTF::UpdateTimerWorldState()
 {
-    // Calculate time
+    // Calculate time (计算倒计时各位数字并下发世界状态)
     uint32 firstDigit, secondDigit, hoursLeft;
     CalculateTimerWorldStateValues(firstDigit, secondDigit, hoursLeft);
 
@@ -357,7 +367,7 @@ void OutdoorPvPTF::CalculateTimerWorldStateValues(uint32& firstDigit, uint32& se
     secondDigit = minutesLeft - firstDigit * 10;
 }
 
-// Handle the Terokkar towers lock during the update timer
+// Handle the Terokkar towers lock during the update timer (锁定五座灵魂塔占领点；若网格未加载则写入滑块持久化状态)
 void OutdoorPvPTF::LockTowers(const WorldObject* objRef)
 {
     for (uint8 i = 0; i < MAX_TF_TOWERS; ++i)
@@ -366,14 +376,14 @@ void OutdoorPvPTF::LockTowers(const WorldObject* objRef)
             go->SetLootState(GO_JUST_DEACTIVATED);
         else
         {
-            // if grid is unloaded, changing the saved slider value is enough
+            // if grid is unloaded, changing the saved slider value is enough (网格未加载时直接保存锁定滑块值)
             CapturePointSlider value(m_zoneOwner == ALLIANCE ? CAPTURE_SLIDER_ALLIANCE : CAPTURE_SLIDER_HORDE, true);
             sOutdoorPvPMgr.SetCapturePointSlider(terokkarTowers[i], value);
         }
     }
 }
 
-// Handle towers reset when the timer expires
+// Handle towers reset when the timer expires (将五座灵魂塔重置为中立并恢复可占领状态)
 void OutdoorPvPTF::ResetTowers(const WorldObject* objRef)
 {
     for (uint8 i = 0; i < MAX_TF_TOWERS; ++i)
@@ -381,12 +391,12 @@ void OutdoorPvPTF::ResetTowers(const WorldObject* objRef)
         if (GameObject* go = objRef->GetMap()->GetGameObject(m_towerBanners[i]))
         {
             go->SetCapturePointSlider(CAPTURE_SLIDER_MIDDLE, false);
-            // visual update needed because banner still has artkit from previous owner
+            // visual update needed because banner still has artkit from previous owner (重置滑块后需手动刷新中立旗帜视觉)
             SetBannerVisual(go, CAPTURE_ARTKIT_NEUTRAL, CAPTURE_ANIM_NEUTRAL);
         }
         else
         {
-            // if grid is unloaded, changing the saved slider value is enough
+            // if grid is unloaded, changing the saved slider value is enough (网格未加载时直接更新保存的滑块值)
             CapturePointSlider value(CAPTURE_SLIDER_MIDDLE, false);
             sOutdoorPvPMgr.SetCapturePointSlider(terokkarTowers[i], value);
         }

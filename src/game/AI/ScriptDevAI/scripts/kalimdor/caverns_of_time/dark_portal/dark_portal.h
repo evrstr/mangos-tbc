@@ -5,91 +5,96 @@
 #ifndef DEF_DARKPORTAL_H
 #define DEF_DARKPORTAL_H
 
+/**
+ * 开启黑暗之门 (黑色沼泽) 副本常量与状态枚举定义
+ */
+
 #include "World/WorldStateDefines.h"
 
+// 常量与事件枚举
 enum
 {
     MAX_ENCOUNTER           = 6,
     MAX_CRYSTALS            = 3,
 
-    TYPE_MEDIVH             = 0,
-    TYPE_SHIELD             = 1,
-    TYPE_TIME_RIFT          = 2,
-    TYPE_CHRONO_LORD        = 3,
-    TYPE_TEMPORUS           = 4,
-    TYPE_AEONUS             = 5,
+    TYPE_MEDIVH             = 0,                            // 首领遭遇/事件状态标识
+    TYPE_SHIELD             = 1,                            // 首领遭遇/事件状态标识
+    TYPE_TIME_RIFT          = 2,                            // 首领遭遇/事件状态标识
+    TYPE_CHRONO_LORD        = 3,                            // 首领遭遇/事件状态标识
+    TYPE_TEMPORUS           = 4,                            // 首领遭遇/事件状态标识
+    TYPE_AEONUS             = 5,                            // 首领遭遇/事件状态标识
 
-    QUEST_OPENING_PORTAL    = 10297,
-    QUEST_MASTER_TOUCH      = 9836,
+    QUEST_OPENING_PORTAL    = 10297,                        // 任务 ID
+    QUEST_MASTER_TOUCH      = 9836,                         // 任务 ID
 
-    // event controlers
-    NPC_TIME_RIFT           = 17838,
-    NPC_MEDIVH              = 15608,
+    // event controlers (事件)
+    NPC_TIME_RIFT           = 17838,                        // NPC 条目 ID
+    NPC_MEDIVH              = 15608,                        // NPC 条目 ID
 
-    // main bosses
-    NPC_CHRONO_LORD_DEJA    = 17879,
-    NPC_TEMPORUS            = 17880,
-    NPC_AEONUS              = 17881,
+    // main bosses (说明)
+    NPC_CHRONO_LORD_DEJA    = 17879,                        // NPC 条目 ID
+    NPC_TEMPORUS            = 17880,                        // NPC 条目 ID
+    NPC_AEONUS              = 17881,                        // NPC 条目 ID
 
-    // boss replacements for heroic
-    NPC_CHRONO_LORD         = 21697,
-    NPC_TIMEREAVER          = 21698,
+    // boss replacements for heroic (说明)
+    NPC_CHRONO_LORD         = 21697,                        // NPC 条目 ID
+    NPC_TIMEREAVER          = 21698,                        // NPC 条目 ID
 
-    // portal guardians
-    NPC_RIFT_KEEPER         = 21104,
-    NPC_RIFT_KEEPER_2       = 21148,
-    NPC_RIFT_LORD           = 17839,
-    NPC_RIFT_LORD_2         = 21140,
+    // portal guardians (说明)
+    NPC_RIFT_KEEPER         = 21104,                        // NPC 条目 ID
+    NPC_RIFT_KEEPER_2       = 21148,                        // NPC 条目 ID
+    NPC_RIFT_LORD           = 17839,                        // NPC 条目 ID
+    NPC_RIFT_LORD_2         = 21140,                        // NPC 条目 ID
 
-    // portal summons
-    NPC_ASSASSIN            = 17835,
-    NPC_ASSASSIN_2          = 21137,
-    NPC_WHELP               = 21818,
-    NPC_CHRONOMANCER        = 17892,
-    NPC_CHRONOMANCER_2      = 21136,
-    NPC_EXECUTIONER         = 18994,
-    NPC_EXECUTIONER_2       = 21138,
-    NPC_VANQUISHER          = 18995,
-    NPC_VANQUISHER_2        = 21139,
+    // portal summons (召唤)
+    NPC_ASSASSIN            = 17835,                        // NPC 条目 ID
+    NPC_ASSASSIN_2          = 21137,                        // NPC 条目 ID
+    NPC_WHELP               = 21818,                        // NPC 条目 ID
+    NPC_CHRONOMANCER        = 17892,                        // NPC 条目 ID
+    NPC_CHRONOMANCER_2      = 21136,                        // NPC 条目 ID
+    NPC_EXECUTIONER         = 18994,                        // NPC 条目 ID
+    NPC_EXECUTIONER_2       = 21138,                        // NPC 条目 ID
+    NPC_VANQUISHER          = 18995,                        // NPC 条目 ID
+    NPC_VANQUISHER_2        = 21139,                        // NPC 条目 ID
 
-    // additional npcs
-    NPC_COUNCIL_ENFORCER    = 17023,
-    NPC_TIME_KEEPER         = 17918,
-    NPC_SAAT                = 20201,
-    NPC_DARK_PORTAL_DUMMY   = 18625,            // cast spell 32564 on coordinates
-    NPC_DARK_PORTAL_BEAM    = 18555,            // purple beams which travel from Medivh to the Dark Portal
+    // additional npcs (说明)
+    NPC_COUNCIL_ENFORCER    = 17023,                        // NPC 条目 ID
+    NPC_TIME_KEEPER         = 17918,                        // NPC 条目 ID
+    NPC_SAAT                = 20201,                        // NPC 条目 ID
+    NPC_DARK_PORTAL_DUMMY   = 18625,            // cast spell 32564 on coordinates (法术)
+    NPC_DARK_PORTAL_BEAM    = 18555,            // purple beams which travel from Medivh to the Dark Portal (说明)
 
-    // event spells
-    SPELL_RIFT_CHANNEL      = 31387,            // Aura channeled by the Time Rifts on the Rift Keepers
+    // event spells (事件法术)
+    SPELL_RIFT_CHANNEL      = 31387,            // Aura channeled by the Time Rifts on the Rift Keepers (说明)
 
-    SPELL_BANISH_HELPER     = 31550,            // used by the main bosses to banish the time keeprs
-    SPELL_CORRUPT_AEONUS    = 37853,            // used by Aeonus to corrupt Medivh
+    SPELL_BANISH_HELPER     = 31550,            // used by the main bosses to banish the time keeprs (说明)
+    SPELL_CORRUPT_AEONUS    = 37853,            // used by Aeonus to corrupt Medivh (说明)
 
-    SPELL_ARCANE_EXPLOSION  = 32614,            // used by Dark Portal Crystal Stalker per 25% shield lost (handled in dummy effect for spell 32589)
+    SPELL_ARCANE_EXPLOSION  = 32614,            // used by Dark Portal Crystal Stalker per 25% shield lost (handled in dummy effect for spell 32589) (说明)
 
-    // cosmetic spells
-    SPELL_PORTAL_CRYSTAL    = 32564,            // summons 18553 - Dark Portal Crystal stalker
-    SPELL_BANISH_GREEN      = 32567,
-    SPELL_CRYSTAL_SHATTER   = 32589,            // used by Dark Portal Dummy to remove 1 crystal per 25% shield lost
-    SPELL_PORTAL_BEAM       = 32579,            // summons 18555 - Dark Portal Beam Invisible Stalker (serverside)
-    SPELL_TELEPORT          = 7791,             // TODO: should be casted by all summons just before they despawn on event fail
+    // cosmetic spells (法术)
+    SPELL_PORTAL_CRYSTAL    = 32564,            // summons 18553 - Dark Portal Crystal stalker (说明)
+    SPELL_BANISH_GREEN      = 32567,                        // 技能法术 ID
+    SPELL_CRYSTAL_SHATTER   = 32589,            // used by Dark Portal Dummy to remove 1 crystal per 25% shield lost (说明)
+    SPELL_PORTAL_BEAM       = 32579,            // summons 18555 - Dark Portal Beam Invisible Stalker (serverside) (说明)
+    SPELL_TELEPORT          = 7791,             // TODO: should be casted by all summons just before they despawn on event fail (说明)
 
-    // yells during the event
-    SAY_SAAT_WELCOME        = -1269019,
+    // yells during the event (事件)
+    SAY_SAAT_WELCOME        = -1269019,                     // 剧情台词/喊话文本 ID
 
-    SAY_MEDIVH_INTRO        = -1269021,
-    SAY_MEDIVH_ENTER        = -1269020,
-    SAY_MEDIVH_WIN          = -1269026,
-    SAY_MEDIVH_WEAK75       = -1269022,
-    SAY_MEDIVH_WEAK50       = -1269023,
-    SAY_MEDIVH_WEAK25       = -1269024,
-    SAY_ORCS_ENTER          = -1269027,
-    SAY_ORCS_ANSWER         = -1269028,
+    SAY_MEDIVH_INTRO        = -1269021,                     // 剧情台词/喊话文本 ID
+    SAY_MEDIVH_ENTER        = -1269020,                     // 剧情台词/喊话文本 ID
+    SAY_MEDIVH_WIN          = -1269026,                     // 剧情台词/喊话文本 ID
+    SAY_MEDIVH_WEAK75       = -1269022,                     // 剧情台词/喊话文本 ID
+    SAY_MEDIVH_WEAK50       = -1269023,                     // 剧情台词/喊话文本 ID
+    SAY_MEDIVH_WEAK25       = -1269024,                     // 剧情台词/喊话文本 ID
+    SAY_ORCS_ENTER          = -1269027,                     // 剧情台词/喊话文本 ID
+    SAY_ORCS_ANSWER         = -1269028,                     // 剧情台词/喊话文本 ID
 
     AREATRIGGER_MEDIVH      = 4288,
     AREATRIGGER_ENTER       = 4485,
 
-    // Post event steps
+    // Post event steps (事件)
     POST_EVENT_1_MEDIVH_YELL        = 1,
     POST_EVENT_2_MEDIVH_NPCFLAGS    = 2,
     POST_EVENT_3_SUMMON_ORCS_1      = 3,
@@ -97,7 +102,7 @@ enum
     POST_EVENT_5_SUMMON_ORCS_3      = 5,
     POST_EVENT_6_SUMMON_ORCS_4      = 6,
 
-    GO_DARK_PORTAL          = 185103,
+    GO_DARK_PORTAL          = 185103,                       // 游戏对象条目 ID
 };
 
 struct PortalData
@@ -113,31 +118,32 @@ static const PortalData afPortalLocation[] =
     { -1930.911f, 7183.597f, 23.00764f, 3.595378f}
 };
 
-// Dark Crystal summon location
+// Dark Crystal summon location (召唤)
 static const float fDarkPortalCrystalLoc[3] = { -2024.31f, 7127.75f, 22.65419f};
 
 static const int32 uiMedivhWeakYell[3] = {SAY_MEDIVH_WEAK75, SAY_MEDIVH_WEAK50, SAY_MEDIVH_WEAK25};
 
+// instance_dark_portal 副本数据管理脚本
 class instance_dark_portal : public ScriptedInstance
 {
     public:
         instance_dark_portal(Map* pMap);
 
-        void Initialize() override;
+        void Initialize() override;                         // 初始化副本数据与状态
 
         void OnPlayerEnter(Player* pPlayer) override;
-        void OnCreatureCreate(Creature* pCreature) override;
-        void OnObjectCreate(GameObject* pGo) override;
+        void OnCreatureCreate(Creature* pCreature) override;    // 生物创建/加载至副本地图时的回调
+        void OnObjectCreate(GameObject* pGo) override;      // 游戏对象创建/加载至副本地图时的回调
 
         void OnCreatureEnterCombat(Creature* pCreature) override;
         void OnCreatureEvade(Creature* pCreature) override;
-        void OnCreatureDeath(Creature* pCreature) override;
+        void OnCreatureDeath(Creature* pCreature) override;    // 生物在副本地图中死亡回调
 
-        void SetData(uint32 uiType, uint32 uiData) override;
-        uint32 GetData(uint32 uiType) const override;
+        void SetData(uint32 uiType, uint32 uiData) override;    // 设置自定义状态数据
+        uint32 GetData(uint32 uiType) const override;       // 获取自定义状态数据
 
-        const char* Save() const override { return m_strInstData.c_str(); }
-        void Load(const char* chrIn) override;
+        const char* Save() const override { return m_strInstData.c_str(); }    // 序列化副本进度数据供存盘
+        void Load(const char* chrIn) override;              // 反序列化并恢复副本进度数据
 
         void DoHandleAreaTrigger(uint32 uiTriggerId);
 

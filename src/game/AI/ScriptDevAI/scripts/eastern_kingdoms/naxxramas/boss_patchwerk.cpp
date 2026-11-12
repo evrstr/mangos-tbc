@@ -21,30 +21,34 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 帕奇维克（Patchwerk）构造区1号首领战 AI（仇恨打击接重坦与狂暴软狂暴秒杀机制）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO1                  = 13068,
-    SAY_AGGRO2                  = 13069,
-    SAY_SLAY                    = 13071,
-    SAY_DEATH                   = 13070,
+    SAY_AGGRO1                  = 13068,                    // aggro1 台词广播 ID
+    SAY_AGGRO2                  = 13069,                    // aggro2 台词广播 ID
+    SAY_SLAY                    = 13071,                    // 击杀 台词广播 ID
+    SAY_DEATH                   = 13070,                    // 死亡 台词广播 ID
 
-    EMOTE_GENERIC_BERSERK       = 4428,
-    EMOTE_GENERIC_ENRAGED       = 2384,
+    EMOTE_GENERIC_BERSERK       = 4428,                     // generic狂暴 表情动作 ID
+    EMOTE_GENERIC_ENRAGED       = 2384,                     // genericenraged 表情动作 ID
 
-    SPELL_HATEFULSTRIKE_PRIMER  = 28307,
-    SPELL_HATEFULSTRIKE         = 28308,
-    SPELL_ENRAGE                = 28131,
-    SPELL_BERSERK               = 26662,
-    SPELL_SLIMEBOLT             = 32309,
+    SPELL_HATEFULSTRIKE_PRIMER  = 28307,                    // hatefulstrike预备引导 法术 ID
+    SPELL_HATEFULSTRIKE         = 28308,                    // hatefulstrike 法术 ID
+    SPELL_ENRAGE                = 28131,                    // 狂暴 法术 ID
+    SPELL_BERSERK               = 26662,                    // 狂暴 法术 ID
+    SPELL_SLIMEBOLT             = 32309,                    // slimebolt 法术 ID
 
-    SPELLSET_NORMAL             = 1602801,
-    SPELLSET_BERSERK            = 1602802,
+    SPELLSET_NORMAL             = 1602801,                  // normal 标识 ID
+    SPELLSET_BERSERK            = 1602802,                  // 狂暴 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum PatchwerkActions
 {
     PATCHWERK_BERSERK_HP_CHECK,
@@ -52,6 +56,7 @@ enum PatchwerkActions
     PATCHWER_ACTIONS_MAX,
 };
 
+// 首领战 AI：标识 ID（patchwerk）
 struct boss_patchwerkAI : public BossAI
 {
     boss_patchwerkAI(Creature* creature) : BossAI(creature, PATCHWER_ACTIONS_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -61,11 +66,12 @@ struct boss_patchwerkAI : public BossAI
         AddOnDeathText(SAY_DEATH);
         AddOnAggroText(SAY_AGGRO1, SAY_AGGRO2);
         AddTimerlessCombatAction(PATCHWERK_BERSERK_HP_CHECK, true);         // Soft enrage at 5%
-        AddCombatAction(PATCHWERK_BERSERK, 7u * MINUTE * IN_MILLISECONDS);  // Basic berserk
+        AddCombatAction(PATCHWERK_BERSERK, 7u * MINUTE * IN_MILLISECONDS);  // Basic berserk (Basic狂暴)
     }
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
@@ -104,7 +110,7 @@ struct boss_patchwerkAI : public BossAI
     }
 };
 
-// 28307 - Hateful Strike Primer
+// 28307 - Hateful Strike Primer (28307 - 仇恨 打击 预备引导)
 struct HatefulStrikePrimer : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -139,6 +145,7 @@ struct HatefulStrikePrimer : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_patchwerk
 void AddSC_boss_patchwerk()
 {
     Script* newScript = new Script;

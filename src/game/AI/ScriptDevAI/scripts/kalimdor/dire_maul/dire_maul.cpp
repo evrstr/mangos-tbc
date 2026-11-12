@@ -21,6 +21,10 @@ SDComment: Quest support: 7631.
 SDCategory: Dire Maul
 EndScriptData */
 
+/**
+ * 厄运之槌：各区域首领与 NPC 脚本实现
+ */
+
 /* ContentData
 event_spells_warlock_dreadsteed
 npc_warlock_ritual_mob
@@ -34,6 +38,7 @@ EndContentData */
 ## event_spells_warlock_dreadsteed
 ######*/
 
+// 常量与事件枚举
 enum
 {
     EVENT_ID_SUMMON_JEEVEE      = 8420,
@@ -51,7 +56,7 @@ bool ProcessEventId_event_spells_warlock_dreadsteed(uint32 uiEventId, Object* pS
             {
                 if (pInstance->GetData(TYPE_DREADSTEED) == NOT_STARTED || pInstance->GetData(TYPE_DREADSTEED) == FAIL)
                 {
-                    // start event: summon the dummy infernal controller and set in progress
+                    // start event: summon the dummy infernal controller and set in progress (说明)
                     ((Player*)pSource)->SummonCreature(NPC_WARLOCK_DUMMY_INFERNAL, -37.9392f, 812.805f, -29.4525f, 4.81711f, TEMPSPAWN_DEAD_DESPAWN, 0);
 
                     // J'eevee starts on path 1 here. Path 0 is for Scholomance event
@@ -60,18 +65,18 @@ bool ProcessEventId_event_spells_warlock_dreadsteed(uint32 uiEventId, Object* pS
 
                     pInstance->SetData(TYPE_DREADSTEED, IN_PROGRESS);
 
-                    // allow the rest to be handled by dbscript
+                    // allow the rest to be handled by dbscript (说明)
                     return false;
                 }
             }
-            // summon Dreadsteed
+            // summon Dreadsteed (召唤)
             else if (uiEventId == EVENT_ID_SUMMON_DREADSTEED)
             {
                 if (pInstance->GetData(TYPE_DREADSTEED) == SPECIAL)
                 {
                     pInstance->SetData(TYPE_DREADSTEED, DONE);
 
-                    // rest is done by DBscript
+                    // rest is done by DBscript (完成)
                     return false;
                 }
             }
@@ -85,6 +90,7 @@ bool ProcessEventId_event_spells_warlock_dreadsteed(uint32 uiEventId, Object* pS
 ## TODO: find proper timings for spawns
 ######*/
 
+// 常量与事件枚举
 enum
 {
     SUMMON_WAVES_RELAY_SCRIPT_START_ID = 1450100,
@@ -92,6 +98,7 @@ enum
 
 static const float pedestalCords[3] = { -38.5f, 811.8f, -29.5f};
 
+// npc_warlock_mount_ritualAI NPC 脚本 AI
 struct npc_warlock_mount_ritualAI : public  Scripted_NoMovementAI
 {
     npc_warlock_mount_ritualAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
@@ -106,7 +113,7 @@ struct npc_warlock_mount_ritualAI : public  Scripted_NoMovementAI
     uint32 m_uiDeactivateTimer;
     GuidList m_luiSummonedMobGUIDs;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiPhase = 0;
         m_uiPhaseTimer = 48000;
@@ -119,12 +126,12 @@ struct npc_warlock_mount_ritualAI : public  Scripted_NoMovementAI
         m_pInstance->DoRespawnGameObject(m_pInstance->GetRitualSymbolGuids().at(uiIndex - 1), 900);
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         m_luiSummonedMobGUIDs.push_back(pSummoned->GetObjectGuid());
         // The spawning of the waves is handled in the DB relay scripts, the movement to the center I'm doing here because simply using a 
-        // single point in the center of the room will result in the demons floating jankily through the air because the floor is uneven.
-        // So move halfway to the pedestal with a certain Z height, then move to the atual pedestal.
+        // single point in the center of the room will result in the demons floating jankily through the air because the floor is uneven. (说明)
+        // So move halfway to the pedestal with a certain Z height, then move to the atual pedestal. (说明)
         // Maybe it'd be better to handle the spawning of the waves here too, but whatever, this works.
         pSummoned->GetMotionMaster()->MovePoint(0, (pSummoned->GetPositionX() + pedestalCords[0]) / 2.0f, (pSummoned->GetPositionY() + pedestalCords[1]) / 2.0f, -32.0f);
         pSummoned->SetRespawnCoord(pedestalCords[0], pedestalCords[1], pedestalCords[2], 0.0f);
@@ -148,9 +155,9 @@ struct npc_warlock_mount_ritualAI : public  Scripted_NoMovementAI
         pSummoned->GetMotionMaster()->MoveRandomAroundPoint(pedestalCords[0], pedestalCords[1], pedestalCords[2], 15.0f);
     }
 
-    void UpdateAI(uint32 const diff) override
+    void UpdateAI(uint32 const diff) override               // AI 核心帧更新处理
     {
-        if (m_uiPhaseTimer <= diff) // Handle spawning waves and cleanup at the end
+        if (m_uiPhaseTimer <= diff) // Handle spawning waves and cleanup at the end (说明)
         {
             switch (m_uiPhase)
             {
@@ -158,11 +165,11 @@ struct npc_warlock_mount_ritualAI : public  Scripted_NoMovementAI
                     m_pInstance->ProcessDreadsteedRitualStart();
                     m_uiPhaseTimer = 1000;
                     break;
-                case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 9: // 9 waves of demons - each spawned by relay script in DB
+                case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 9: // 9 waves of demons - each spawned by relay script in DB (说明)
                     m_uiPhaseTimer = 45000;
                     DoSummonPack(m_uiPhase - 1);
                     break;
-                case 10: // Final wave, short, make players sweat just before ending
+                case 10: // Final wave, short, make players sweat just before ending (说明)
                     m_uiPhaseTimer = 17500;
                     DoSummonPack(m_uiPhase - 1);
                     break;
@@ -187,12 +194,12 @@ struct npc_warlock_mount_ritualAI : public  Scripted_NoMovementAI
         else
             m_uiPhaseTimer -= diff;
 
-        if (m_uiDeactivateTimer <= diff) // Periodically deactivate the helping objects
+        if (m_uiDeactivateTimer <= diff) // Periodically deactivate the helping objects (说明)
         {
-            uint32 rand = urand(0, 2); // Pick one of the 3 objects to deactivate
+            uint32 rand = urand(0, 2); // Pick one of the 3 objects to deactivate (说明)
             GameObject* toBeDeactivated = nullptr;
 
-            for (int i = 0; i < 3; ++i) // Use the rand variable as a starting point, but if needed, cylce through the other objects if the chosen one is already deactivated
+            for (int i = 0; i < 3; ++i) // Use the rand variable as a starting point, but if needed, cylce through the other objects if the chosen one is already deactivated (说明)
             {
                 switch ((rand + i) % 3)
                 {
@@ -207,7 +214,7 @@ struct npc_warlock_mount_ritualAI : public  Scripted_NoMovementAI
                         break;
                 }
 
-                // instance_dire_maul.cpp handles failing the event if all objects are deactivated
+                // instance_dire_maul.cpp handles failing the event if all objects are deactivated (说明)
                 if (toBeDeactivated != nullptr && toBeDeactivated->GetLootState() == GO_ACTIVATED)
                 {
                     toBeDeactivated->ResetDoorOrButton();
@@ -245,7 +252,7 @@ struct DreadsteedQuestObjects : public GameObjectAI
         m_go->SetRespawnDelay(0);
     }
 
-    void UpdateAI(const uint32 diff) override
+    void UpdateAI(const uint32 diff) override               // AI 核心帧更新处理
     {
         if (m_uiPulseTimer)
         {
@@ -308,7 +315,7 @@ struct RitualCandleAura : public SpellScript
     }
 };
 
-// 22876 - Summon Netherwalker
+// 22876 - Summon Netherwalker (法术 22876 - Summon Netherwalker)
 struct SummonNetherWalker : public SpellScript
 {
     void OnSuccessfulFinish(Spell* spell) const override
@@ -324,7 +331,7 @@ struct SummonNetherWalker : public SpellScript
     }
 };
 
-void AddSC_dire_maul()
+void AddSC_dire_maul() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "event_spells_warlock_dreadsteed";

@@ -21,11 +21,19 @@ SDComment: Check if the split phase has some spells involved
 SDCategory: Tempest Keep, The Eye
 EndScriptData */
 
+// 大星术师索兰莉安（风暴要塞三号首领）
+/* 遭遇战概述：
+ * 大星术师索兰莉安精通星体奥术：
+ * 阶段一：星体之怒（连环弹射奥术箭）、召唤大批星术师密探助阵；
+ * 阶段二（20% 血量）：变身为巨大的虚空行者恶魔，施放恐怖的消沉恐惧与虚空狂暴。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "the_eye.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                           = 20849,
@@ -92,6 +100,7 @@ static const float fSpotlightRadius[2] = {13.0f, 25.0f};
 static const uint32 largeRadiusSpells[8] = { 33189, 33281, 33282, 33347, 33348, 33349, 33350, 33351 };
 static const uint32 smallRadiusSpells[4] = { 33352, 33353, 33354, 33355 };
 
+// Phases 相关枚举
 enum Phases
 {
     PHASE_NORMAL        = 1,
@@ -99,6 +108,7 @@ enum Phases
     PHASE_VOID          = 3,
 };
 
+// SolarianActions 相关枚举
 enum SolarianActions
 {
     SOLARIAN_PHASE_2,
@@ -115,6 +125,7 @@ enum SolarianActions
     SOLARIAN_SPLIT_PRIESTS,
 };
 
+// boss_high_astromancer_solarianAI 逻辑实现
 struct boss_high_astromancer_solarianAI : public CombatAI
 {
     boss_high_astromancer_solarianAI(Creature* creature) : CombatAI(creature, SOLARIAN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -142,6 +153,7 @@ struct boss_high_astromancer_solarianAI : public CombatAI
 
     GuidVector m_vSpotLightsGuidVector;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -158,6 +170,7 @@ struct boss_high_astromancer_solarianAI : public CombatAI
         SetCombatMovement(true);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -166,6 +179,7 @@ struct boss_high_astromancer_solarianAI : public CombatAI
             m_instance->SetData(TYPE_SOLARIAN, DONE);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
@@ -174,12 +188,14 @@ struct boss_high_astromancer_solarianAI : public CombatAI
             m_instance->SetData(TYPE_SOLARIAN, IN_PROGRESS);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SOLARIAN, FAIL);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* pSummoned) override
     {
         switch (pSummoned->GetEntry())
@@ -273,6 +289,7 @@ struct boss_high_astromancer_solarianAI : public CombatAI
         ResetCombatAction(SOLARIAN_SPLIT_PHASE, 70000);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -379,6 +396,7 @@ struct boss_high_astromancer_solarianAI : public CombatAI
     }
 };
 
+// SolarianPriestActions 相关枚举
 enum SolarianPriestActions
 {
     SOLARIAN_PRIEST_HEAL,
@@ -387,6 +405,7 @@ enum SolarianPriestActions
     SOLARIAN_PRIEST_ACTION_MAX,
 };
 
+// mob_solarium_priestAI 逻辑实现
 struct mob_solarium_priestAI : public CombatAI
 {
     mob_solarium_priestAI(Creature* creature) : CombatAI(creature, SOLARIAN_PRIEST_ACTION_MAX)
@@ -397,6 +416,7 @@ struct mob_solarium_priestAI : public CombatAI
         SetRangedMode(true, 25.f, TYPE_PROXIMITY);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -424,8 +444,10 @@ struct mob_solarium_priestAI : public CombatAI
         }
     }
 };
+// WrathOfTheAstromancer 光环脚本
 struct WrathOfTheAstromancer : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -434,8 +456,10 @@ struct WrathOfTheAstromancer : public AuraScript
     }
 };
 
+// WOTAOldMainCastAndJump 法术脚本
 struct WOTAOldMainCastAndJump : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -450,8 +474,10 @@ struct WOTAOldMainCastAndJump : public SpellScript
     }
 };
 
+// WOTAOldDOT 光环脚本
 struct WOTAOldDOT : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -459,6 +485,7 @@ struct WOTAOldDOT : public AuraScript
     }
 };
 
+// WOTAOldSearch 法术脚本
 struct WOTAOldSearch : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -467,6 +494,7 @@ struct WOTAOldSearch : public SpellScript
         spell->SetFilteringScheme(EFFECT_INDEX_0, true, SCHEME_CLOSEST);
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -477,8 +505,10 @@ struct WOTAOldSearch : public SpellScript
     }
 };
 
+// WOTAOldRemove 法术脚本
 struct WOTAOldRemove : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -490,6 +520,7 @@ struct WOTAOldRemove : public SpellScript
     }
 };
 
+// 注册 boss_high_astromancer_solarian 脚本
 void AddSC_boss_high_astromancer_solarian()
 {
     Script* pNewScript = new Script;

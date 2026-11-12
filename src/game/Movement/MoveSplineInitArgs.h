@@ -26,8 +26,9 @@ class Unit;
 
 namespace Movement
 {
-    typedef std::vector<Vector3> PointsArray;
+    typedef std::vector<Vector3> PointsArray; // 路径三维顶点数组
 
+    /// 终点朝向信息联合体（点坐标 / 目标 GUID / 朝向角度）
     union FacingInfo
     {
         struct
@@ -42,6 +43,7 @@ namespace Movement
         FacingInfo() : target(0) {}
     };
 
+    /// 构造 MoveSpline 所需的初始化参数包
     struct MoveSplineInitArgs
     {
             MoveSplineInitArgs(size_t path_capacity = 16) : path_Idx_offset(0),
@@ -50,16 +52,18 @@ namespace Movement
                 path.reserve(path_capacity);
             }
 
-            PointsArray path;
-            FacingInfo facing;
-            MoveSplineFlag flags;
-            int32 path_Idx_offset;
-            float velocity;
-            uint32 splineId;
-            float slowed;
+            PointsArray path;             // 移动路径控制点序列
+            FacingInfo facing;            // 移动结束时的朝向设置
+            MoveSplineFlag flags;         // 样条移动标志位
+            int32 path_Idx_offset;        // 路径点起始索引偏移（用于分段路径通知）
+            float velocity;               // 移动速度（为 0 时自动根据单位当前速度选取）
+            uint32 splineId;              // 分配的样条唯一 ID
+            float slowed;                 // 战斗减速系数（非 0 时按比例缩放速度）
 
             /** Returns true to show that the arguments were configured correctly and MoveSpline initialization will succeed. */
+            /// 校验参数是否合法，返回 true 表示可用于初始化 MoveSpline
             bool Validate(Unit* unit) const;
+            /// 检查非 Catmull-Rom 路径点偏移是否超出封包 11-bit 压缩范围
             bool _checkPathBounds() const;
     };
 }

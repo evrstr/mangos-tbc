@@ -30,43 +30,46 @@
 
 class Item;
 
-#define GUILD_RANKS_MIN_COUNT   5
-#define GUILD_RANKS_MAX_COUNT   10
+#define GUILD_RANKS_MIN_COUNT   5                           // 公会最少职级数（5 个基础职级）
+#define GUILD_RANKS_MAX_COUNT   10                          // 公会最多职级数（10 级）
 
 // emblem value of a guild without a tabard design: the client draws the plain tabard while one of the five is -1
+// 未设计徽章时的默认标记值（任意一项为 -1 时客户端渲染空白战袍）
 #define GUILD_EMBLEM_NONE       uint32(-1)
 
+/// 公会默认初始职级枚举（数值越小权限越高，0 为会长）
 enum GuildDefaultRanks
 {
-    // these ranks can be modified, but they cannot be deleted
+    // these ranks can be modified, but they cannot be deleted (默认职级可改名改权，不可删除)
     GR_GUILDMASTER  = 0,
     GR_OFFICER      = 1,
     GR_VETERAN      = 2,
     GR_MEMBER       = 3,
     GR_INITIATE     = 4,
-    // When promoting member server does: rank--;!
-    // When demoting member server does: rank++;!
+    // When promoting member server does: rank--;! (晋升时 rank 递减)
+    // When demoting member server does: rank++;! (降级时 rank 递增)
 };
 
+/// 公会职级权限位掩码
 enum GuildRankRights
 {
-    GR_RIGHT_EMPTY              = 0x00000040,
-    GR_RIGHT_GCHATLISTEN        = 0x00000041,
-    GR_RIGHT_GCHATSPEAK         = 0x00000042,
-    GR_RIGHT_OFFCHATLISTEN      = 0x00000044,
-    GR_RIGHT_OFFCHATSPEAK       = 0x00000048,
-    GR_RIGHT_PROMOTE            = 0x000000C0,
-    GR_RIGHT_DEMOTE             = 0x00000140,
-    GR_RIGHT_INVITE             = 0x00000050,
-    GR_RIGHT_REMOVE             = 0x00000060,
-    GR_RIGHT_SETMOTD            = 0x00001040,
-    GR_RIGHT_EPNOTE             = 0x00002040,
-    GR_RIGHT_VIEWOFFNOTE        = 0x00004040,
-    GR_RIGHT_EOFFNOTE           = 0x00008040,
-    GR_RIGHT_MODIFY_GUILD_INFO  = 0x00010040,
-    GR_RIGHT_WITHDRAW_GOLD_LOCK = 0x00020000,               // remove money withdraw capacity
-    GR_RIGHT_WITHDRAW_REPAIR    = 0x00040000,               // withdraw for repair
-    GR_RIGHT_WITHDRAW_GOLD      = 0x00080000,               // withdraw gold
+    GR_RIGHT_EMPTY              = 0x00000040,               // 基础空权限位
+    GR_RIGHT_GCHATLISTEN        = 0x00000041,               // 收听公会频道
+    GR_RIGHT_GCHATSPEAK         = 0x00000042,               // 在公会频道发言
+    GR_RIGHT_OFFCHATLISTEN      = 0x00000044,               // 收听官员频道
+    GR_RIGHT_OFFCHATSPEAK       = 0x00000048,               // 在官员频道发言
+    GR_RIGHT_PROMOTE            = 0x000000C0,               // 晋升成员
+    GR_RIGHT_DEMOTE             = 0x00000140,               // 降级成员
+    GR_RIGHT_INVITE             = 0x00000050,               // 邀请成员
+    GR_RIGHT_REMOVE             = 0x00000060,               // 移除成员
+    GR_RIGHT_SETMOTD            = 0x00001040,               // 修改今日信息（MOTD）
+    GR_RIGHT_EPNOTE             = 0x00002040,               // 编辑公共备注
+    GR_RIGHT_VIEWOFFNOTE        = 0x00004040,               // 查看官员备注
+    GR_RIGHT_EOFFNOTE           = 0x00008040,               // 编辑官员备注
+    GR_RIGHT_MODIFY_GUILD_INFO  = 0x00010040,               // 修改公会信息说明
+    GR_RIGHT_WITHDRAW_GOLD_LOCK = 0x00020000,               // remove money withdraw capacity (金币提取锁定)
+    GR_RIGHT_WITHDRAW_REPAIR    = 0x00040000,               // withdraw for repair (使用公会资金修装备)
+    GR_RIGHT_WITHDRAW_GOLD      = 0x00080000,               // withdraw gold (从公会银行提取金币)
     GR_RIGHT_ALL                = 0x000DF1FF
 };
 
@@ -205,6 +208,7 @@ inline uint32 GetGuildBankTabPrice(uint8 Index)
     }
 }
 
+/// 公会操作事件日志条目（邀请/加入/升职/降职/踢出/退会）
 struct GuildEventLogEntry
 {
     uint8  EventType;
@@ -214,6 +218,7 @@ struct GuildEventLogEntry
     uint64 TimeStamp;
 };
 
+/// 公会银行操作日志条目（存取物品、移动物品、存取金币、公款修装）
 struct GuildBankEventLogEntry
 {
     uint8  EventType;
@@ -231,6 +236,7 @@ struct GuildBankEventLogEntry
     }
 };
 
+/// 公会银行单个标签页数据（最多 GUILD_BANK_MAX_SLOTS 个物品槽位、名称、图标与公告）
 struct GuildBankTab
 {
     GuildBankTab() { memset(Slots, 0, GUILD_BANK_MAX_SLOTS * sizeof(Item*)); }
@@ -241,6 +247,7 @@ struct GuildBankTab
     std::string Text;
 };
 
+/// 物品存放槽位与数量对
 struct GuildItemPosCount
 {
     GuildItemPosCount(uint8 _slot, uint32 _count) : Slot(_slot), Count(_count) {}
@@ -252,6 +259,7 @@ struct GuildItemPosCount
 };
 typedef std::vector<GuildItemPosCount> GuildItemPosCountVec;
 
+/// 公会成员持久化与运行时统计槽位
 struct MemberSlot
 {
     void SetMemberStats(Player* player);
@@ -271,12 +279,13 @@ struct MemberSlot
     uint64 LogoutTime;
     std::string Pnote;
     std::string OFFnote;
-    uint32 BankResetTimeMoney;
-    uint32 BankRemMoney;
-    uint32 BankResetTimeTab[GUILD_BANK_MAX_TABS];
-    uint32 BankRemSlotsTab[GUILD_BANK_MAX_TABS];
+    uint32 BankResetTimeMoney;                              // 每日取款限额重置时间戳
+    uint32 BankRemMoney;                                    // 当日剩余可取金币（铜）
+    uint32 BankResetTimeTab[GUILD_BANK_MAX_TABS];           // 各银行页每日提取次数重置时间
+    uint32 BankRemSlotsTab[GUILD_BANK_MAX_TABS];            // 各银行页当日剩余提取物品格数
 };
 
+/// 公会职级定义（职级名、权限掩码、每日可提取金币及各银行页权限/每日限额）
 struct RankInfo
 {
     RankInfo(const std::string& _name, uint32 _rights, uint32 _money) : Name(_name), Rights(_rights), BankMoneyPerDay(_money)
@@ -295,6 +304,7 @@ struct RankInfo
     uint32 TabSlotPerDay[GUILD_BANK_MAX_TABS];
 };
 
+/// 公会核心实体类：管理公会创建/解散、成员/职级、徽章、广播、事件日志及公会银行
 class Guild
 {
     public:

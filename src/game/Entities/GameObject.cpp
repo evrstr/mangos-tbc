@@ -45,22 +45,26 @@
 #include <G3D/Quat.h>
 #include "Entities/Transports.h"
 
+// 判断四元数是否为单位四元数（模长近似为 1）
 bool QuaternionData::isUnit() const
 {
     return fabs(x * x + y * y + z * z + w * w - 1.0f) < 1e-5f;
 }
 
+// 将四元数转换为 ZYX 顺序欧拉角
 void QuaternionData::toEulerAnglesZYX(float& Z, float& Y, float& X) const
 {
     G3D::Matrix3(G3D::Quat(x, y, z, w)).toEulerAnglesZYX(Z, Y, X);
 }
 
+// 从 ZYX 顺序欧拉角构造旋转四元数
 QuaternionData QuaternionData::fromEulerAnglesZYX(float Z, float Y, float X)
 {
     G3D::Quat quat(G3D::Matrix3::fromEulerAnglesZYX(Z, Y, X));
     return QuaternionData(quat.x, quat.y, quat.z, quat.w);
 }
 
+// 构造函数：初始化游戏物体类型掩码、更新标志与各计时器默认值
 GameObject::GameObject() : WorldObject(),
     m_model(nullptr),
     m_captureSlider(0),
@@ -102,11 +106,13 @@ GameObject::GameObject() : WorldObject(),
     m_goGroup = nullptr;
 }
 
+// 析构函数：释放动态碰撞模型指针
 GameObject::~GameObject()
 {
     delete m_model;
 }
 
+// 工厂方法：按模板类型创建 GameObject 或电梯类交通工具 ElevatorTransport
 GameObject* GameObject::CreateGameObject(uint32 entry)
 {
     GameObjectInfo const* goinfo = ObjectMgr::GetGameObjectInfo(entry);
@@ -115,6 +121,7 @@ GameObject* GameObject::CreateGameObject(uint32 entry)
     return new GameObject;
 }
 
+// 将游戏物体注册到地图、动态碰撞树及关联陷阱，并按需标记为活跃对象
 void GameObject::AddToWorld()
 {
     ///- Register the gameobject for guid lookup
@@ -144,6 +151,7 @@ void GameObject::AddToWorld()
         SetActiveObjectState(true);
 }
 
+// 将游戏物体从地图、户外 PvP、拥有者引用及碰撞树中注销移除
 void GameObject::RemoveFromWorld()
 {
     ///- Remove the gameobject from the accessor
@@ -178,6 +186,7 @@ void GameObject::RemoveFromWorld()
     WorldObject::RemoveFromWorld();
 }
 
+// 根据模板和空间参数初始化游戏物体字段、旋转四元数、可见距离及初始交互状态
 bool GameObject::Create(uint32 dbGuid, uint32 guidlow, uint32 name_id, Map* map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState goState)
 {
     MANGOS_ASSERT(map);
@@ -317,6 +326,7 @@ bool GameObject::Create(uint32 dbGuid, uint32 guidlow, uint32 name_id, Map* map,
     return true;
 }
 
+// 游戏物体每帧主更新：驱动事件处理器与四态 LootState 状态机（未就绪/就绪/已激活/刚停用）
 void GameObject::Update(const uint32 diff)
 {
     if (GetObjectGuid().IsMOTransport())
@@ -329,7 +339,7 @@ void GameObject::Update(const uint32 diff)
 
     switch (m_lootState)
     {
-        case GO_NOT_READY:
+        case GO_NOT_READY:                                  // 状态1：尚未就绪（陷阱延迟布防、鱼漂等待上钩动画、宝箱补货）
         {
             switch (GetGoType())
             {
@@ -390,7 +400,7 @@ void GameObject::Update(const uint32 diff)
             }
             break;
         }
-        case GO_READY:
+        case GO_READY:                                      // 状态2：已就绪（处理重生/消失计时、陷阱范围索敌触发与使用次数耗尽）
         {
             if (m_respawnTime > 0)                          // timer on
             {
@@ -529,7 +539,7 @@ void GameObject::Update(const uint32 diff)
             }
             break;
         }
-        case GO_ACTIVATED:
+        case GO_ACTIVATED:                                  // 状态3：已激活（门/按钮自动复位、宝箱消失计时、陷阱重置、占领点周期结算）
         {
             switch (GetGoType())
             {
@@ -583,7 +593,7 @@ void GameObject::Update(const uint32 diff)
             }
             break;
         }
-        case GO_JUST_DEACTIVATED:
+        case GO_JUST_DEACTIVATED:                           // 状态4：刚停用（清理掉落/联动陷阱、触发消失动画并调度重生或刷怪池）
         {
             sWorldState.HandleGameObjectRevertState(this);
 
@@ -771,17 +781,20 @@ void GameObject::Update(const uint32 diff)
     WorldObject::Update(diff);
 }
 
+// 心跳回调：通知 GameObjectAI 执行周期性心跳逻辑
 void GameObject::Heartbeat()
 {
     if (AI())
         AI()->OnHeartbeat();
 }
 
+// 设置宝箱开启后的 5 分钟自动消失计时
 void GameObject::SetChestDespawn()
 {
     m_despawnTimer = GetMap()->GetCurrentClockTime() + std::chrono::minutes(5);
 }
 
+// 刷新处于已生成状态的游戏物体并重新初始化 AI
 void GameObject::Refresh()
 {
     // not refresh despawned not casted GO (despawned casted GO destroyed in all cases anyway)
@@ -795,6 +808,7 @@ void GameObject::Refresh()
     }
 }
 
+// 记录玩家对游戏物体的一次独立使用（用于召唤仪式等需多人点击的物体）
 void GameObject::AddUniqueUse(Player* player)
 {
     AddUse();
@@ -805,6 +819,7 @@ void GameObject::AddUniqueUse(Player* player)
     m_UniqueUsers.insert(player->GetObjectGuid());
 }
 
+// 删除游戏物体：播放消失动画、通知脚本与刷怪池并将其加入待移除列表
 void GameObject::Delete()
 {
     SendObjectDeSpawnAnim(GetObjectGuid());
@@ -830,6 +845,7 @@ void GameObject::Delete()
     }
 }
 
+// 按现有静态刷怪配置将游戏物体保存回数据库
 void GameObject::SaveToDB() const
 {
     // this should only be used when the gameobject has already been loaded
@@ -844,6 +860,7 @@ void GameObject::SaveToDB() const
     SaveToDB(GetMapId(), data->spawnMask);
 }
 
+// 将游戏物体坐标、旋转四元数与重生参数持久化到 world.gameobject 表
 void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask) const
 {
     const GameObjectInfo* goI = GetGOInfo();
@@ -893,6 +910,7 @@ void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask) const
     WorldDatabase.CommitTransaction();
 }
 
+// 从数据库静态刷怪表加载游戏物体，处理随机 Entry、动态 GUID、SpawnGroup 及持久化重生时间
 bool GameObject::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, uint32 forcedEntry)
 {
     GameObjectData const* data = sObjectMgr.GetGOData(dbGuid);
@@ -998,6 +1016,7 @@ struct GameObjectRespawnDeleteWorker
 };
 
 
+// 从数据库及所有地图持久化状态中删除静态游戏物体记录
 void GameObject::DeleteFromDB() const
 {
     if (!HasStaticDBSpawnData())
@@ -1015,17 +1034,20 @@ void GameObject::DeleteFromDB() const
     WorldDatabase.PExecuteLog("DELETE FROM gameobject_battleground WHERE guid = '%u'", GetDbGuid());
 }
 
+// 设置游戏物体拥有者 GUID（带拥有者的召唤物体不会默认静态重生）
 void GameObject::SetOwnerGuid(ObjectGuid guid)
 {
     m_spawnedByDefault = false;                     // all object with owner is despawned after delay
     SetGuidValue(OBJECT_FIELD_CREATED_BY, guid);
 }
 
+// 获取创建/拥有该游戏物体的 Unit 指针
 Unit* GameObject::GetOwner() const
 {
     return ObjectAccessor::GetUnit(*this, GetOwnerGuid());
 }
 
+// 获取触发生成该游戏物体的脚本发起者对象
 WorldObject* GameObject::GetSpawner() const
 {
     if (!IsInWorld())
@@ -1038,11 +1060,13 @@ WorldObject* GameObject::GetSpawner() const
         return GetMap()->GetUnit(spawnerGuid);
 }
 
+// 获取游戏物体模板信息指针
 GameObjectInfo const* GameObject::GetGOInfo() const
 {
     return m_goInfo;
 }
 
+// 获取游戏物体附加模板（ArtKit 等扩展数据）
 GameObjectTemplateAddon const* GameObject::GetTemplateAddon() const
 {
     return sObjectMgr.GetGOTemplateAddon(GetEntry());
@@ -1051,6 +1075,7 @@ GameObjectTemplateAddon const* GameObject::GetTemplateAddon() const
 /*********************************************************/
 /***                    QUEST SYSTEM                   ***/
 /*********************************************************/
+// 检查游戏物体是否可发布指定任务
 bool GameObject::HasQuest(uint32 quest_id) const
 {
     QuestRelationsMapBounds bounds = sObjectMgr.GetGOQuestRelationsMapBounds(GetEntry());
@@ -1062,6 +1087,7 @@ bool GameObject::HasQuest(uint32 quest_id) const
     return false;
 }
 
+// 检查游戏物体是否关联交还指定任务
 bool GameObject::HasInvolvedQuest(uint32 quest_id) const
 {
     QuestRelationsMapBounds bounds = sObjectMgr.GetGOQuestInvolvedRelationsMapBounds(GetEntry());
@@ -1073,6 +1099,7 @@ bool GameObject::HasInvolvedQuest(uint32 quest_id) const
     return false;
 }
 
+// 判断游戏物体是否为交通工具（电梯或船只/飞艇）
 bool GameObject::IsTransport() const
 {
     // If something is marked as a transport, don't transmit an out of range packet for it.
@@ -1081,6 +1108,7 @@ bool GameObject::IsTransport() const
     return gInfo->type == GAMEOBJECT_TYPE_TRANSPORT || gInfo->type == GAMEOBJECT_TYPE_MO_TRANSPORT;
 }
 
+// 判断游戏物体是否为跨地图大型地图交通工具（船/飞艇）
 bool GameObject::IsMoTransport() const
 {
     GameObjectInfo const* gInfo = GetGOInfo();
@@ -1088,12 +1116,14 @@ bool GameObject::IsMoTransport() const
     return gInfo->type == GAMEOBJECT_TYPE_MO_TRANSPORT;
 }
 
+// 将剩余重生时间保存到地图持久化状态
 void GameObject::SaveRespawnTime()
 {
     if (m_respawnTime > time(nullptr) && m_spawnedByDefault)
         GetMap()->GetPersistentState()->SaveGORespawnTime(GetDbGuid(), m_respawnTime);
 }
 
+// 判断游戏物体对指定玩家及观察点是否可见（含隐身/潜行陷阱侦测、位面与视距判断）
 bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool /*inVisibleList*/) const
 {
     // Not in world
@@ -1177,6 +1207,7 @@ bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoi
     return IsWithinDistInMap(viewPoint, GetVisibilityData().GetVisibilityDistance(), false);
 }
 
+// 立即触发处于等待重生状态的静态游戏物体重生
 void GameObject::Respawn()
 {
     if (m_spawnedByDefault && m_respawnTime > 0)
@@ -1186,6 +1217,7 @@ void GameObject::Respawn()
     }
 }
 
+// 判断游戏物体是否因玩家当前任务进度而激活高亮/可交互
 bool GameObject::ActivateToQuest(Player* pTarget) const
 {
     // if GO is ReqCreatureOrGoN for quest
@@ -1261,6 +1293,7 @@ bool GameObject::ActivateToQuest(Player* pTarget) const
     return false;
 }
 
+// 若模板关联了陷阱 Entry，则在同坐标召唤出联动陷阱对象
 GameObject* GameObject::SummonLinkedTrapIfAny() const
 {
     uint32 linkedEntry = GetGOInfo()->GetLinkedGameObjectEntry();
@@ -1291,6 +1324,7 @@ GameObject* GameObject::SummonLinkedTrapIfAny() const
     return linkedGO;
 }
 
+// 查找并触发附近与当前游戏物体关联的陷阱
 void GameObject::TriggerLinkedGameObject(Unit* target) const
 {
     uint32 trapEntry = GetGOInfo()->GetLinkedGameObjectEntry();
@@ -1323,6 +1357,7 @@ void GameObject::TriggerLinkedGameObject(Unit* target) const
         trapGO->Use(target);
 }
 
+// 在指定范围内查找最近的鱼群（Fishing Hole）游戏物体
 GameObject* GameObject::LookupFishingHoleAround(float range) const
 {
     GameObject* ok = nullptr;
@@ -1334,6 +1369,7 @@ GameObject* GameObject::LookupFishingHoleAround(float range) const
     return ok;
 }
 
+// 判断游戏物体当前是否启用物理碰撞（如未打开的门或未摧毁建筑开启碰撞）
 bool GameObject::IsCollisionEnabled() const
 {
     if (!IsSpawned())
@@ -1355,6 +1391,7 @@ bool GameObject::IsCollisionEnabled() const
     }
 }
 
+// 将已激活的门或按钮复位为初始就绪状态
 void GameObject::ResetDoorOrButton(Unit* user/*= nullptr*/)
 {
     if (m_lootState == GO_READY || m_lootState == GO_JUST_DEACTIVATED)
@@ -1365,6 +1402,7 @@ void GameObject::ResetDoorOrButton(Unit* user/*= nullptr*/)
     m_cooldownTime = 0;
 }
 
+// 按目标开关状态操作可开启的游戏物体（门/按钮）
 void GameObject::UseOpenableObject(bool open, uint32 withRestoreTime /*=0*/, bool useAlternativeState /*=false*/)
 {
     if (open)
@@ -1389,6 +1427,7 @@ void GameObject::UseOpenableObject(bool open, uint32 withRestoreTime /*=0*/, boo
     }
 }
 
+// 触发门或按钮切换状态并设置自动复位时间
 void GameObject::UseDoorOrButton(uint32 time_to_restore, bool alternative /* = false */)
 {
     if (m_lootState != GO_READY)
@@ -1403,6 +1442,7 @@ void GameObject::UseDoorOrButton(uint32 time_to_restore, bool alternative /* = f
     m_cooldownTime = time(nullptr) + time_to_restore;
 }
 
+// 切换门或按钮的 IN_USE 标志与客户端显示状态（Ready <-> Active）
 void GameObject::SwitchDoorOrButton(bool activate, bool alternative /* = false */)
 {
     if (activate)
@@ -1416,6 +1456,7 @@ void GameObject::SwitchDoorOrButton(bool activate, bool alternative /* = false *
         SetGoState(GO_STATE_READY);
 }
 
+// 校验玩家当前状态（战斗、坐骑、变形、免疫、锁状态）是否允许使用该游戏物体
 bool GameObject::CanUseNow(Player const* player) const
 {
     switch (GetGoType())
@@ -1471,6 +1512,7 @@ bool GameObject::CanUseNow(Player const* player) const
     return true;
 }
 
+// 响应单位对游戏物体的使用交互：按 GO 类型分发门、任务、宝箱、陷阱、椅子、钓鱼、召唤仪式及施法等逻辑
 void GameObject::Use(Unit* user, SpellEntry const* spellInfo)
 {
     // user must be provided
@@ -2050,7 +2092,7 @@ void GameObject::Use(Unit* user, SpellEntry const* spellInfo)
         onSuccess();
 }
 
-// overwrite WorldObject function for proper name localization
+// overwrite WorldObject function for proper name localization (按客户端语言索引返回本地化游戏物体名称)
 const char* GameObject::GetNameForLocaleIdx(int32 loc_idx) const
 {
     if (loc_idx >= 0)
@@ -2066,6 +2108,7 @@ const char* GameObject::GetNameForLocaleIdx(int32 loc_idx) const
     return GetName();
 }
 
+// 根据当前朝向或指定分量更新客户端朝向与四元数旋转字段
 void GameObject::UpdateRotationFields(float rotation2 /*=0.0f*/, float rotation3 /*=0.0f*/)
 {
     SetFloatValue(GAMEOBJECT_FACING, GetOrientation());
@@ -2080,6 +2123,7 @@ void GameObject::UpdateRotationFields(float rotation2 /*=0.0f*/, float rotation3
     SetFloatValue(GAMEOBJECT_ROTATION + 3, rotation3);
 }
 
+// 更新游戏物体服务端 LootState、同步碰撞树并回调 AI
 void GameObject::SetLootState(LootState state, Unit* user/*= nullptr*/)
 {
     m_lootState = state;
@@ -2090,12 +2134,14 @@ void GameObject::SetLootState(LootState state, Unit* user/*= nullptr*/)
         m_AI->OnLootStateChange(user);
 }
 
+// 设置游戏物体客户端显示状态并同步碰撞状态
 void GameObject::SetGoState(GOState state)
 {
     SetByteValue(GAMEOBJECT_STATE, 0, state);
     UpdateCollisionState();
 }
 
+// 更改显示模型 ID 并重建 VMap 碰撞模型
 void GameObject::SetDisplayId(uint32 modelId)
 {
     SetUInt32Value(GAMEOBJECT_DISPLAYID, modelId);
@@ -2103,6 +2149,7 @@ void GameObject::SetDisplayId(uint32 modelId)
     UpdateModel();
 }
 
+// 更新 VMap 动态碰撞模型、添加/移除地图模型以及重定位坐标
 void GameObject::UpdateCollisionState() const
 {
     if (!m_model || !IsInWorld())
@@ -2156,6 +2203,7 @@ void GameObject::UpdateModelPosition()
     }
 }
 
+// 获取游戏物体拾取归属权（原玩家/归属队伍/当前有效拾取者）与设置拾取归属
 Player* GameObject::GetOriginalLootRecipient() const
 {
     return m_lootRecipientGuid ? ObjectAccessor::FindPlayer(m_lootRecipientGuid) : nullptr;
@@ -2238,6 +2286,7 @@ bool GameObject::HasStaticDBSpawnData() const
     return sObjectMgr.GetGOData(GetDbGuid()) != nullptr;
 }
 
+// 设置占领点进度滑块值并推导对应的占领归属状态
 void GameObject::SetCapturePointSlider(float value, bool isLocked)
 {
     GameObjectInfo const* info = GetGOInfo();
@@ -2261,6 +2310,7 @@ void GameObject::SetCapturePointSlider(float value, bool isLocked)
         m_captureState = CAPTURE_STATE_NEUTRAL;
 }
 
+// 占领点每 5 秒周期结算：统计范围内双方人数、推送世界状态条并触发占领/争夺/中立事件
 void GameObject::TickCapturePoint()
 {
     // TODO: On retail: Ticks every 5.2 seconds. slider value increase when new player enters on tick
@@ -2447,6 +2497,7 @@ void GameObject::TickCapturePoint()
         StartEvents_Event(GetMap(), eventId, this, *capturingPlayers.begin(), true);
 }
 
+// 按游戏物体类型返回允许交互的最大距离
 float GameObject::GetInteractionDistance() const
 {
     switch (GetGoType())
@@ -2494,6 +2545,7 @@ void GameObject::SetInUse(bool use)
         SetGoState(GO_STATE_READY);
 }
 
+// 满足参与人数后完成召唤仪式：中断引导施法并由施法者对目标施放召唤法术
 void GameObject::TriggerSummoningRitual()
 {
     const GameObjectInfo* info = GetGOInfo();
@@ -2550,6 +2602,7 @@ uint32 GameObject::GetScriptId() const
     return ObjectMgr::GetGameObjectInfo(GetEntry())->ScriptId;
 }
 
+// 初始化游戏物体 AI 并在地图/副本中触发出生回调
 void GameObject::AIM_Initialize()
 {
     m_AI.reset(sScriptDevAIMgr.GetGameObjectAI(this));
@@ -2561,6 +2614,7 @@ void GameObject::AIM_Initialize()
         iData->OnObjectSpawn(this);
 }
 
+// 判断玩家是否位于游戏物体包围盒扩展交互距离内
 bool GameObject::IsAtInteractDistance(Player const* player, uint32 maxRange) const
 {
     SpellEntry const* spellInfo;
@@ -2595,6 +2649,7 @@ bool GameObject::_IsWithinDist(WorldObject const* obj, float dist2compare, bool 
     return IsAtInteractDistance(obj->GetPosition(), obj->GetCombatReach() + dist2compare, is3D);
 }
 
+// 使用游戏物体显示模型包围盒与世界旋转四元数判断坐标是否处于交互半径内
 bool GameObject::IsAtInteractDistance(Position const& pos, float radius, bool is3D) const
 {
     if (GameObjectDisplayInfoEntry const* displayInfo = m_displayInfo)
@@ -2620,6 +2675,7 @@ bool GameObject::IsAtInteractDistance(Position const& pos, float radius, bool is
     return GetDistance(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), DIST_CALC_NONE) <= (radius * radius);
 }
 
+// 查找玩家用于开启该游戏物体锁的法术（法术钥匙或开锁技能）
 SpellEntry const* GameObject::GetSpellForLock(Player const* player) const
 {
     if (!player)
@@ -2663,6 +2719,7 @@ SpellEntry const* GameObject::GetSpellForLock(Player const* player) const
     return nullptr;
 }
 
+// 计算长椅/椅子各座位沿垂直朝向线分布的坐标并返回离使用者最近的座位位置
 std::pair<float, float> GameObject::GetClosestChairSlotPosition(Unit const* user) const
 {
     float outX, outY;
@@ -2713,6 +2770,7 @@ SpellCastResult GameObject::CastSpell(Unit* temporaryCaster, Unit* Victim, uint3
     return CastSpell(temporaryCaster, Victim, sSpellTemplate.LookupEntry<SpellEntry>(spellId), triggeredFlags, castItem, triggeredByAura, originalCaster, triggeredBy);
 }
 
+// 由游戏物体（借用临时伪施法者）对目标施放法术（不能施放引导类法术）
 SpellCastResult GameObject::CastSpell(Unit* temporaryCaster, Unit* Victim, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem, Aura* triggeredByAura, ObjectGuid originalCaster, SpellEntry const* triggeredBy)
 {
     if (!spellInfo)
@@ -2781,6 +2839,7 @@ void GameObject::ClearGameObjectGroup()
     m_goGroup = nullptr;
 }
 
+// 计算下次对象更新间隔（有事件或 AI 时每帧更新，静态装饰物降低频率至 500~1000ms）
 void GameObject::UpdateNextUpdateTime()
 {
     // If we already have next update time don't reset it (movement mutation should do it)
@@ -2820,6 +2879,7 @@ const QuaternionData GameObject::GetLocalRotation() const
     return QuaternionData(GetFloatValue(GAMEOBJECT_ROTATION), GetFloatValue(GAMEOBJECT_ROTATION + 1), GetFloatValue(GAMEOBJECT_ROTATION + 2), GetFloatValue(GAMEOBJECT_ROTATION + 3));
 }
 
+// 强制立即或延迟使游戏物体消失（若模板未填重生延迟则按静态配置补充一次）
 void GameObject::ForcedDespawn(uint32 timeMSToDespawn)
 {
     if (timeMSToDespawn)

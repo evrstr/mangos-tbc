@@ -1,36 +1,52 @@
 # List of AUTHORS who contributed over time to the CMaNGOS project
 
-## Warning
+> **中文导读 / Overview**：本文件记录了历年来为 CMaNGOS（及其前身 WoW Daemon Team、MaNGOS）项目做出贡献的作者名单、项目开发历史沿革、代码署名方式（依据 Git 提交记录，含 `mangos-svn` 与 `mangos-tbc` 仓库）、第三方库作者说明，以及按字母排序的完整贡献者列表（以下保留原英文说明及完整名单）。
+
+## Warning / 免责警告
 The code of CMaNGOS is shipped as it is without any form of warranty,
 and - except for third party libraries - licensed under the GPL 2.0,
 which you can read from the file "LICENCE"
 
-## Point of current development
+CMaNGOS 代码按“现状”提供，不附带任何形式的担保；除第三方库外，均基于 GPL 2.0 许可证发布（详情请查阅 `LICENCE` / `COPYING` 文件）。
+
+## Point of current development / 当前开发地址
 The project is currently hosted at http://cmangos.net and developed under https://github.com/cmangos
 
-## History of development
+项目当前托管于 http://cmangos.net，并在 https://github.com/cmangos 下进行开发。
+
+## History of development / 项目发展历史
 Development of this project dates back to 2004, and was developed under various umbrellas over time:
 * WoW Daemon Team, 2004
 * MaNGOS project, 2005-2008, located at http://www.mangosproject.org
 * MaNGOS project, 2008-2012, located at http://getmangos.com
 * CMaNGOS project, from 2012 located at http://cmangos.net
 
-## Authorship of the code
+本项目始于 2004 年，历年来先后在以下团队与平台下发展演进：
+* WoW Daemon Team（2004）
+* MaNGOS 项目（2005-2008，http://www.mangosproject.org）
+* MaNGOS 项目（2008-2012，http://getmangos.com）
+* CMaNGOS 项目（2012 年至今，http://cmangos.net）
+
+## Authorship of the code / 代码署名说明
 Authorship is assigned for each commit within the git history, which is stored in these git repositories:
 * github.com/cmangos/mangos-svn (History from MaNGOS project from 2005-2008, originally hosted at http://mangos.svn.sourceforge.net)
 * github.com/cmangos/mangos-tbc (History since then)
 Unfortunately, we have no detailed information of the history of the WoWD project;
 if somebody can provide information, please contact us, so that we can make this history available
 
-## Exceptions with third party libraries
+代码作者归属以 Git 提交历史中的每次 commit 为准，历史记录保存在上述仓库中；早期 WoWD 项目的详细历史资料暂缺，如有知情者欢迎联系团队补充。
+
+## Exceptions with third party libraries / 第三方库例外说明
 The third party libraries have their own way of addressing authorship, and the authorship of commits importing/updating
 a third party library reflects who did the importing instead of who wrote the code within the commit.
 
 The Authors of third party libraries are not explicitly mentioned, and usually are possible to obtain from the files belonging to the third party libraries.
 
-## Authors List:
+第三方库有各自独立的作者署名方式；导入或更新第三方库的提交记录仅反映执行导入者而非库代码原作者。第三方库作者未在此处单独列出，通常可在其对应源码文件中查看。
 
-*Please inform us, if you find somebody who is missing!*
+## Authors List: / 贡献者名单：
+
+*Please inform us, if you find somebody who is missing!* / *如发现有遗漏的贡献者，请告知我们！*
 
 * WoW Daemon Team (mentioned here as one, until we have proper details)
 

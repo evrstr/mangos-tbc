@@ -21,6 +21,8 @@ SDComment: Quest support: 1393
 SDCategory: Swamp of Sorrows
 EndScriptData */
 
+// 悲伤沼泽（Swamp of Sorrows）区域杂项与失落者任务脚本
+
 /* ContentData
 npc_galen_goodward
 EndContentData */
@@ -32,33 +34,37 @@ EndContentData */
 ## npc_galen_goodward
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Galen
 {
-    QUEST_GALENS_ESCAPE     = 1393,
+    QUEST_GALENS_ESCAPE     = 1393,                         // galensescape 任务 ID
 
-    GO_GALENS_CAGE          = 37118,
+    GO_GALENS_CAGE          = 37118,                        // galenscage 游戏对象 Entry ID
 
-    SAY_PERIODIC            = -1000582,
-    SAY_QUEST_ACCEPTED      = -1000583,
-    SAY_ATTACKED_1          = -1000584,
-    SAY_ATTACKED_2          = -1000585,
-    SAY_QUEST_COMPLETE      = -1000586,
-    EMOTE_WHISPER           = -1000587,
-    EMOTE_DISAPPEAR         = -1000588
+    SAY_PERIODIC            = -1000582,                     // periodic 台词广播 ID
+    SAY_QUEST_ACCEPTED      = -1000583,                     // 任务accepted 台词广播 ID
+    SAY_ATTACKED_1          = -1000584,                     // attacked1 台词广播 ID
+    SAY_ATTACKED_2          = -1000585,                     // attacked2 台词广播 ID
+    SAY_QUEST_COMPLETE      = -1000586,                     // 任务complete 台词广播 ID
+    EMOTE_WHISPER           = -1000587,                     // whisper 表情动作 ID
+    EMOTE_DISAPPEAR         = -1000588                      // disappear 表情动作 ID
 };
 
+// 随从/NPC AI：goodward（galen_goodward）
 struct npc_galen_goodwardAI : public npc_escortAI
 {
     npc_galen_goodwardAI(Creature* creature) : npc_escortAI(creature) { Reset(); }
 
-    ObjectGuid m_galensCageGuid;
+    ObjectGuid m_galensCageGuid;                            // galensCage 实体 GUID
     uint32 m_periodicSay;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_periodicSay = 6000;
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
@@ -130,10 +136,11 @@ struct npc_galen_goodwardAI : public npc_escortAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 任务接取回调函数：npc_galen_goodward
 bool QuestAccept_npc_galen_goodward(Player* player, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_GALENS_ESCAPE)
@@ -149,11 +156,13 @@ bool QuestAccept_npc_galen_goodward(Player* player, Creature* creature, const Qu
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_galen_goodward
 UnitAI* GetAI_npc_galen_goodward(Creature* creature)
 {
     return new npc_galen_goodwardAI(creature);
 }
 
+// 注册并载入脚本模块：swamp_of_sorrows
 void AddSC_swamp_of_sorrows()
 {
     Script* newScript = new Script;

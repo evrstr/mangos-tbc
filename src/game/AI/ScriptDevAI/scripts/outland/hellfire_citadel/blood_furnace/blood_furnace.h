@@ -3,8 +3,14 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_BLOOD_FURNACE_H
+
+// 鲜血熔炉副本数据头文件
+/* 遭遇战概述：
+ * 定义鲜血熔炉牢房大门与首领枚举。
+ */
 #define DEF_BLOOD_FURNACE_H
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER                   = 3,
@@ -83,21 +89,28 @@ struct BroggokEventInfo
     bool m_bIsCellOpened;
 };
 
+// instance_blood_furnace 副本数据管理类
 class instance_blood_furnace : public ScriptedInstance
 {
     public:
         instance_blood_furnace(Map* pMap);
 
+        // 初始化副本数据与状态
         void Initialize() override;
 
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* creature) override;
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* go) override;
 
+        // 副本生物重生处理
         void OnCreatureRespawn(Creature* creature) override;
 
         void OnCreatureGroupDespawn(CreatureGroup* pGroup, Creature* pCreature) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 type, uint32 data) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 type) const override;
 
         void Update(const uint32 diff) override;

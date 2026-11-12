@@ -36,6 +36,7 @@ class Unit;
 class CreatureGroup;
 struct SpawnGroupEntry;
 
+// 刷怪组基类：管理一组共享随机刷新池、最大存活上限、世界状态条件及重生覆盖的生物或游戏对象
 class SpawnGroup
 {
     public:
@@ -44,7 +45,7 @@ class SpawnGroup
         virtual void AddObject(uint32 dbGuid, uint32 entry);
         virtual void RemoveObject(WorldObject* wo);
         uint32 GetGuidEntry(uint32 dbGuid) const;
-        virtual void Update();
+        virtual void Update(); // 检查启用状态、世界状态条件并按概率/上限补刷或消隐组内成员
         uint32 GetEligibleEntry(std::map<uint32, uint32>& existingEntries, std::map<uint32, uint32>& minEntries);
         void Spawn(bool force, bool ignoreRespawntime);
         virtual void Despawn(uint32 timeMSToDespawn = 0, uint32 forcedDespawnTime = 0) = 0;
@@ -68,14 +69,15 @@ class SpawnGroup
         SpawnGroupEntry const& m_entry;
         Map& m_map;
         std::map<uint32, uint32> m_objects;
-        std::map<uint32, uint32> m_chosenEntries; // dungeon saving for entry per dynguid
+        std::map<uint32, uint32> m_chosenEntries; // dungeon saving for entry per dynguid (副本中为动态 GUID 保存已选定的生物/物体 Entry)
         std::map<uint32, bool> m_chosenSpawns;
         int32 m_chosenSquad;
         uint32 m_objectTypeId;
         bool m_enabled;
-        TimePoint m_cooldown; // used for full wipe scenario only - data is still saved per spawn to db
+        TimePoint m_cooldown; // used for full wipe scenario only - data is still saved per spawn to db (仅用于全灭后整组同刷冷却场景；单个刷怪数据仍各自存入数据库)
 };
 
+// 生物刷怪组：扩展支持同仇恨/同脱离/同复活联动及编队（Formation）移动系统
 class CreatureGroup : public SpawnGroup
 {
     public:
@@ -114,6 +116,7 @@ struct RespawnPosition
     float x, y, z, radius;
 };
 
+// 游戏对象刷怪组：管理成组 GameObject 的刷新与消隐
 class GameObjectGroup : public SpawnGroup
 {
     public:
@@ -123,6 +126,7 @@ class GameObjectGroup : public SpawnGroup
         void Despawn(uint32 timeMSToDespawn = 0, uint32 forcedDespawnTime = 0) override;
 };
 
+// 编队槽位数据：保存单个编队成员相对领队的角度、距离及随机微调偏移
 class FormationSlotData
 {
     public:
@@ -192,6 +196,7 @@ class FormationSlotData
         SpawnGroupFormationSlotType m_slotType;
 };
 
+// 生物组编队控制数据：维护领队选举、队形切换、槽位分配、跟随者启停及随机抖动更新
 class FormationData
 {
     public:

@@ -21,64 +21,71 @@ SDComment: Timers
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：双子皇帝 (维克洛尔大帝与维克尼拉斯大帝) 魔免物免互换位置战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 常量与事件枚举
 enum
 {
-    // yells
-    SAY_VEKLOR_AGGRO_1          = -1531019,
-    SAY_VEKLOR_AGGRO_2          = -1531020,
-    SAY_VEKLOR_AGGRO_3          = -1531021,
-    SAY_VEKLOR_AGGRO_4          = -1531022,
-    SAY_VEKLOR_SLAY             = 11453,
-    SAY_VEKLOR_DEATH            = -1531024,
-    SAY_VEKLOR_SPECIAL          = -1531025,
+    // yells (说明)
+    SAY_VEKLOR_AGGRO_1          = -1531019,                 // 剧情台词/喊话文本 ID
+    SAY_VEKLOR_AGGRO_2          = -1531020,                 // 剧情台词/喊话文本 ID
+    SAY_VEKLOR_AGGRO_3          = -1531021,                 // 剧情台词/喊话文本 ID
+    SAY_VEKLOR_AGGRO_4          = -1531022,                 // 剧情台词/喊话文本 ID
+    SAY_VEKLOR_SLAY             = 11453,                    // 剧情台词/喊话文本 ID
+    SAY_VEKLOR_DEATH            = -1531024,                 // 剧情台词/喊话文本 ID
+    SAY_VEKLOR_SPECIAL          = -1531025,                 // 剧情台词/喊话文本 ID
 
-    SAY_VEKNILASH_AGGRO_1       = -1531026,
-    SAY_VEKNILASH_AGGRO_2       = -1531027,
-    SAY_VEKNILASH_AGGRO_3       = -1531028,
-    SAY_VEKNILASH_AGGRO_4       = -1531029,
-    SAY_VEKNILASH_SLAY          = -1531030,
-    SAY_VEKNILASH_DEATH         = -1531031,
-    SAY_VEKNILASH_SPECIAL       = -1531032,
+    SAY_VEKNILASH_AGGRO_1       = -1531026,                 // 剧情台词/喊话文本 ID
+    SAY_VEKNILASH_AGGRO_2       = -1531027,                 // 剧情台词/喊话文本 ID
+    SAY_VEKNILASH_AGGRO_3       = -1531028,                 // 剧情台词/喊话文本 ID
+    SAY_VEKNILASH_AGGRO_4       = -1531029,                 // 剧情台词/喊话文本 ID
+    SAY_VEKNILASH_SLAY          = -1531030,                 // 剧情台词/喊话文本 ID
+    SAY_VEKNILASH_DEATH         = -1531031,                 // 剧情台词/喊话文本 ID
+    SAY_VEKNILASH_SPECIAL       = -1531032,                 // 剧情台词/喊话文本 ID
 
-    // common spells
-    SPELL_TWIN_TELEPORT         = 799,
-    SPELL_TWIN_TELEPORT_STUN    = 800,
-    SPELL_HEAL_BROTHER          = 7393,
-    SPELL_TWIN_TELEPORT_VISUAL  = 26638,
-    SPELL_TWIN_SUICIDE          = 26627,
-    SPELL_TWIN_EMPATHY          = 1177,
+    // common spells (法术)
+    SPELL_TWIN_TELEPORT         = 799,                      // 技能法术 ID
+    SPELL_TWIN_TELEPORT_STUN    = 800,                      // 技能法术 ID
+    SPELL_HEAL_BROTHER          = 7393,                     // 技能法术 ID
+    SPELL_TWIN_TELEPORT_VISUAL  = 26638,                    // 技能法术 ID
+    SPELL_TWIN_SUICIDE          = 26627,                    // 技能法术 ID
+    SPELL_TWIN_EMPATHY          = 1177,                     // 技能法术 ID
 
-    // veklor spells
-    SPELL_ARCANE_BURST          = 568,
-    SPELL_EXPLODE_BUG           = 804,          // targets 15316 or 15317
-    SPELL_SHADOW_BOLT           = 26006,
-    SPELL_BLIZZARD              = 26607,
-    SPELL_FRENZY                = 27897,
+    // veklor spells (法术)
+    SPELL_ARCANE_BURST          = 568,                      // 技能法术 ID
+    SPELL_EXPLODE_BUG           = 804,          // targets 15316 or 15317 (说明)
+    SPELL_SHADOW_BOLT           = 26006,                    // 技能法术：暗影箭
+    SPELL_BLIZZARD              = 26607,                    // 技能法术：暴风雪
+    SPELL_FRENZY                = 27897,                    // 技能法术 ID
 
-    // veknilash spells
-    SPELL_MUTATE_BUG            = 802,          // targets 15316 or 15317
-    SPELL_VIRULENT_POISON       = 22413,
-    SPELL_UPPERCUT              = 26007,
-    SPELL_UNBALANCING_STRIKE    = 26613,
-    SPELL_BERSERK               = 27680,
-    SPELL_DOUBLE_ATTACK         = 18943,
+    // veknilash spells (法术)
+    SPELL_MUTATE_BUG            = 802,          // targets 15316 or 15317 (说明)
+    SPELL_VIRULENT_POISON       = 22413,                    // 技能法术 ID
+    SPELL_UPPERCUT              = 26007,                    // 技能法术：上勾拳
+    SPELL_UNBALANCING_STRIKE    = 26613,                    // 技能法术 ID
+    SPELL_BERSERK               = 27680,                    // 技能法术：狂暴
+    SPELL_DOUBLE_ATTACK         = 18943,                    // 技能法术 ID
 
-    FACTION_HOSTILE             = 16,
+    FACTION_HOSTILE             = 16,                       // 阵营 ID
 };
 
+// EmperorActions 战斗行为动作枚举
 enum EmperorActions
 {
     EMPEROR_BERSERK,
     EMPEROR_BUG_ABILITY,
-    EMPEROR_ACTION_MAX,
+    EMPEROR_ACTION_MAX,                                     // 战斗行为动作
     EMPEROR_TELEPORT_DELAY = 10,
 };
 
+// boss_twin_emperorsAI 首领战斗 AI
 struct boss_twin_emperorsAI : public CombatAI
 {
     boss_twin_emperorsAI(Creature* creature, uint32 actionCount) : CombatAI(creature, actionCount), m_instance(static_cast<instance_temple_of_ahnqiraj*>(creature->GetInstanceData()))
@@ -90,7 +97,7 @@ struct boss_twin_emperorsAI : public CombatAI
 
     instance_temple_of_ahnqiraj* m_instance;
 
-    // Workaround for the shared health pool
+    // Workaround for the shared health pool (说明)
     void DamageTaken(Unit* /*dealer*/, uint32& damage, DamageEffectType /*damagetype*/, SpellEntry const* spellInfo) override
     {
         if (!m_instance || (spellInfo && spellInfo->Id == SPELL_TWIN_EMPATHY))
@@ -107,7 +114,7 @@ struct boss_twin_emperorsAI : public CombatAI
         }
     }
 
-    // Workaround for the shared health pool
+    // Workaround for the shared health pool (说明)
     void HealedBy(Unit* /*healer*/, uint32& uiHealedAmount) override
     {
         if (!m_instance)
@@ -156,11 +163,11 @@ struct boss_twin_emperorsAI : public CombatAI
         SetCombatMovement(true);
     }
 
-    // Return true, if succeeded
+    // Return true, if succeeded (说明)
     virtual bool DoHandleBugAbility() = 0;
     virtual bool DoHandleBerserk() = 0;
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -180,13 +187,15 @@ struct boss_twin_emperorsAI : public CombatAI
     }
 };
 
+// VeknilashActions 战斗行为动作枚举
 enum VeknilashActions
 {
     VEKNILASH_UPPERCUT = EMPEROR_ACTION_MAX,
     VEKNILASH_UNBALANCING_STRIKE,
-    VEKNILASH_ACTION_MAX,
+    VEKNILASH_ACTION_MAX,                                   // 战斗行为动作
 };
 
+// boss_veknilashAI 首领战斗 AI
 struct boss_veknilashAI : public boss_twin_emperorsAI
 {
     boss_veknilashAI(Creature* creature) : boss_twin_emperorsAI(creature, VEKNILASH_ACTION_MAX)
@@ -195,7 +204,7 @@ struct boss_veknilashAI : public boss_twin_emperorsAI
         AddCombatAction(VEKNILASH_UNBALANCING_STRIKE, urand(8000, 18000));
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         boss_twin_emperorsAI::Reset();
 
@@ -210,7 +219,7 @@ struct boss_veknilashAI : public boss_twin_emperorsAI
         boss_twin_emperorsAI::MoveInLineOfSight(who);
     }
 
-    void Aggro(Unit* who) override
+    void Aggro(Unit* who) override                          // 进入战斗回调处理
     {
         boss_twin_emperorsAI::Aggro(who);
 
@@ -228,7 +237,7 @@ struct boss_veknilashAI : public boss_twin_emperorsAI
         DoScriptText(SAY_VEKNILASH_SLAY, m_creature);
     }
 
-    void JustDied(Unit* killer) override
+    void JustDied(Unit* killer) override                    // 死亡回调处理
     {
         boss_twin_emperorsAI::JustDied(killer);
 
@@ -245,7 +254,7 @@ struct boss_veknilashAI : public boss_twin_emperorsAI
         return DoCastSpellIfCan(nullptr, SPELL_BERSERK) == CAST_OK;
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -271,15 +280,17 @@ struct boss_veknilashAI : public boss_twin_emperorsAI
     }
 };
 
+// VeklorActions 战斗行为动作枚举
 enum VeklorActions
 {
     VEKLOR_SHADOWBOLT = EMPEROR_ACTION_MAX,
     VEKLOR_BLIZZARD,
     VEKLOR_ARCANE_BURST,
     VEKLOR_TELEPORT,
-    VEKLOR_ACTION_MAX,
+    VEKLOR_ACTION_MAX,                                      // 战斗行为动作
 };
 
+// boss_veklorAI 首领战斗 AI
 struct boss_veklorAI : public boss_twin_emperorsAI
 {
     boss_veklorAI(Creature* creature) : boss_twin_emperorsAI(creature, VEKLOR_ACTION_MAX)
@@ -291,7 +302,7 @@ struct boss_veklorAI : public boss_twin_emperorsAI
         AddOnKillText(SAY_VEKLOR_SLAY);
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         boss_twin_emperorsAI::Reset();
 
@@ -307,7 +318,7 @@ struct boss_veklorAI : public boss_twin_emperorsAI
         boss_twin_emperorsAI::MoveInLineOfSight(who);
     }
 
-    void Aggro(Unit* who) override
+    void Aggro(Unit* who) override                          // 进入战斗回调处理
     {
         boss_twin_emperorsAI::Aggro(who);
 
@@ -320,7 +331,7 @@ struct boss_veklorAI : public boss_twin_emperorsAI
         }
     }
 
-    void JustDied(Unit* killer) override
+    void JustDied(Unit* killer) override                    // 死亡回调处理
     {
         boss_twin_emperorsAI::JustDied(killer);
 
@@ -363,7 +374,7 @@ struct boss_veklorAI : public boss_twin_emperorsAI
         return DoCastSpellIfCan(nullptr, SPELL_FRENZY) == CAST_OK;
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -417,7 +428,7 @@ struct MutateBug : public AuraScript
     }
 };
 
-void AddSC_boss_twinemperors()
+void AddSC_boss_twinemperors() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_veknilash";

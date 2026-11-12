@@ -33,3 +33,20 @@ paper exchanges.
 You can also decide to send some kind of special greeting when you initially
 add a name to your `THANKS' file. The mere presense of a name in `THANKS' is
 then a flag to you that the initial greeting has been sent.
+
+---
+中文说明（THANKS 文件说明译文）：
+
+所有发行版都应包含一个 `THANKS` 文件，其中按字母顺序列出双栏贡献者名单（每行一位）：左栏为贡献者姓名，右栏为该贡献者最后已知的有效邮箱地址。列表开头应使用类似如下的致谢引言：
+
+  MaNGOS THANKS 致谢文件
+  MaNGOS 最初由 Team Python 和 WoW Daemon Team 编写。此后还有许多人通过反馈问题、提出改进建议或直接提交代码为 MaNGOS 做出了贡献。
+  以下是这些贡献者的名单。请帮助我们保持名单的完整与准确。
+  特别感谢 WowwoW 团队，在项目创建过程中我们多次得到他们的帮助，祝他们继续保持出色的工作。
+  同样感谢 Ludmilla 团队，他们也为社区提供了一个优秀的服务器项目；虽然我们从他们那里获得的直接帮助不多，但也确实得到过支持。
+
+维护本文件最简单的原则就是感谢每一位为项目做出贡献的人，而不去评判贡献的大小。
+
+与 `AUTHORS` 不同，`THANKS` 文件并非出于法律原因而维护，而是为了感谢所有在项目中提供过帮助的贡献者。`AUTHORS` 文件无法用于此目的，因为诸如缺陷报告、创意和建议等贡献并不涉及法律文件往来。
+
+当你最初将某人的名字添加到 `THANKS` 文件时，还可以决定向其发送某种特别的问候；名字出现在 `THANKS` 中本身也可以作为已发送初始问候的标记。

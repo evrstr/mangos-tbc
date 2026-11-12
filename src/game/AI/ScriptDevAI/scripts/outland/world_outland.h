@@ -1,7 +1,13 @@
 
 #ifndef DEF_WORLD_MAP_OUTLAND_SCRIPTS_H
+
+// 外域大世界脚本公共头文件
+/* 遭遇战概述：
+ * 外域大世界事件与任务 NPC 通用常量声明。
+ */
 #define DEF_WORLD_MAP_OUTLAND_SCRIPTS_H
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     TYPE_DEATHS_DOOR_NORTH  = 0,
@@ -89,6 +95,7 @@ enum
     GO_UNGUARDED_SUMMONING_SITE = 184750,
 };
 
+// Shartuul 相关枚举
 enum Shartuul
 {
     SPELL_LEGION_RING_CHARM_NORTH_01 = 39985,
@@ -173,6 +180,7 @@ enum Shartuul
     SHARTUUL_FACTION_HOSTILE = 14,
 };
 
+// ShartuulData 相关枚举
 enum ShartuulData
 {
     EVENT_START,
@@ -185,6 +193,7 @@ enum ShartuulData
     EVENT_FAIL,
 };
 
+// SpawnIndexes 相关枚举
 enum SpawnIndexes
 {
     POS_IDX_EMISSARY_SPAWN = 0,

@@ -35,12 +35,13 @@
 
 namespace
 {
-    // bound box of poly search area
+    // bound box of poly search area (最近多边形查询包围盒半宽高：近距离 5 码、远距离 10 码)
     std::array<float, VERTEX_SIZE> NearPolySearchBound { 5.0f, 5.0f, 5.0f };
     std::array<float, VERTEX_SIZE> FarPolySearchBound { 10.0f, 10.0f, 10.0f };
 }
 
 ////////////////// PathFinder //////////////////
+/// 构造寻路器：绑定当前单位、获取默认地图导航查询句柄并初始化通行过滤器
 PathFinder::PathFinder(const Unit* owner, bool ignoreNormalization) :
     m_type(PATHFIND_BLANK), m_useStraightPath(false), m_forceDestination(false), m_straightLine(false),
     m_pointPathLimit(MAX_POINT_PATH_LENGTH), // TODO: Fix legitimate long paths
@@ -87,6 +88,7 @@ PathFinder::~PathFinder()
     DEBUG_FILTER_LOG(LOG_FILTER_PATHFINDING, "++ PathFinder::~PathInfo() for %u \n", m_sourceUnit->GetGUIDLow());
 }
 
+/// 根据单位当前是否乘坐动态载具或切换地图，绑定对应的 dtNavMeshQuery 与 dtNavMesh
 void PathFinder::SetCurrentNavMesh()
 {
     if (m_sourceUnit && MMAP::MMapFactory::IsPathfindingEnabled(m_sourceUnit->GetMapId(), m_sourceUnit))
@@ -118,6 +120,7 @@ void PathFinder::SetCurrentNavMesh()
 #endif
 }
 
+/// 从世界坐标终点发起寻路（若单位在载具上则自动转换为载具局部坐标系）
 bool PathFinder::calculate(float destX, float destY, float destZ, bool forceDest/* = false*/, bool straightLine/* = false*/)
 {
     float x, y, z;
@@ -128,6 +131,7 @@ bool PathFinder::calculate(float destX, float destY, float destZ, bool forceDest
     return calculate(Vector3(x, y, z), dest, forceDest, straightLine);
 }
 
+/// 核心寻路入口：检查坐标及 MMAP 瓦片就绪状态，无可用导航网格时退化为直连捷径，否则构建多边形走廊路径
 bool PathFinder::calculate(Vector3 const& start, Vector3 const& dest, bool forceDest/* = false*/, bool straightLine/* = false*/)
 {
     if (!MaNGOS::IsValidMapCoord(dest.x, dest.y, dest.z))
@@ -312,6 +316,7 @@ void PathFinder::setAreaCost(uint32 area, float cost)
 }
 #endif
 
+/// 优先在已有走廊数组中查找距离 point 最近的多边形引用（避免昂贵的全局最近多边形搜索）
 dtPolyRef PathFinder::getPathPolyByPosition(const dtPolyRef* polyPath, uint32 polyPathSize, const float* point, float* distance, const float maxDist) const
 {
     if (!polyPath || !polyPathSize)
@@ -343,6 +348,7 @@ dtPolyRef PathFinder::getPathPolyByPosition(const dtPolyRef* polyPath, uint32 po
     return (minDist3d <= maxDist) ? nearestPoly : INVALID_POLYREF;
 }
 
+/// 定位坐标 point 所在的导航多边形：先查缓存走廊 -> 再试近盒 5 码 -> 最后试远盒 10 码
 dtPolyRef PathFinder::getPolyByLocation(const float* point, float* distance)
 {
     // first we check the current path
@@ -392,6 +398,7 @@ dtPolyRef PathFinder::getPolyByLocation(const float* point, float* distance)
     return INVALID_POLYREF;
 }
 
+/// 构建多边形走廊（复用子路径 / Detour findPath / raycast 直线检测），随后生成离散三维点路径
 void PathFinder::BuildPolyPath(const Vector3& startPos, const Vector3& endPos)
 {
 #ifndef ENABLE_PLAYERBOTS
@@ -801,6 +808,7 @@ void PathFinder::BuildPolyPath(const Vector3& startPos, const Vector3& endPos)
     BuildPointPath(startPoint, endPoint);
 }
 
+/// 将多边形走廊转换为三维坐标点列（直线采样 / findStraightPath / findSmoothPath + 共线抽稀 + 强制终点与高度归一化）
 void PathFinder::BuildPointPath(const float* startPoint, const float* endPoint)
 {
     if (m_pointPathLimit * VERTEX_SIZE > m_cachedPoints.size())
@@ -993,6 +1001,7 @@ void PathFinder::BuildPointPath(const float* startPoint, const float* endPoint)
     DEBUG_FILTER_LOG(LOG_FILTER_PATHFINDING, "++ PathFinder::BuildPointPath path type %d size %d poly-size %d\n", m_type, pointCount, m_polyLength);
 }
 
+/// 对生成路径各顶点执行 Z 轴贴地/泳高/飞高修正（支持载具局部坐标与世界坐标往返转换）
 void PathFinder::NormalizePath()
 {
     if (!sWorld.getConfig(CONFIG_BOOL_PATH_FIND_NORMALIZE_Z) || m_ignoreNormalization || !m_sourceUnit)
@@ -1010,6 +1019,7 @@ void PathFinder::NormalizePath()
     }
 }
 
+/// 生成仅包含起点与终点的直连捷径路径
 void PathFinder::BuildShortcut()
 {
     DEBUG_FILTER_LOG(LOG_FILTER_PATHFINDING, "++ PathFinder::BuildShortcut :: making shortcut\n");
@@ -1035,6 +1045,7 @@ bool PathFinder::IsPointHigherThan(const Vector3& posOne, const Vector3& posTwo)
 }
 #endif
 
+/// 根据单位类型（玩家/Bot/生物）及水陆通行能力初始化 Detour 多边形过滤器
 void PathFinder::createFilter()
 {
     uint16 includeFlags = 0;
@@ -1146,6 +1157,7 @@ bool PathFinder::HaveTile(const Vector3& p) const
     return (m_navMesh->getTileAt(tx, ty, 0) != nullptr); // Don't use layer so always set to 0
 }
 
+/// 当路径步进经过一组已访问多边形后，同步拼接修正剩余走廊数组
 uint32 PathFinder::fixupCorridor(dtPolyRef* path, uint32 npath, uint32 maxPath, dtPolyRef const* visited, uint32 nvisited)
 {
     int32 furthestPath = -1;
@@ -1194,6 +1206,7 @@ uint32 PathFinder::fixupCorridor(dtPolyRef* path, uint32 npath, uint32 maxPath, 
     return req + size;
 }
 
+/// 在走廊前方提取距离当前位置足够远的转向引导点（遇到 Off-Mesh 链接或拐点即停止）
 bool PathFinder::getSteerTarget(const float* startPos, const float* endPos,
                                 float minTargetDist, const dtPolyRef* path, uint32 pathSize,
                                 float* steerPos, unsigned char& steerPosFlag, dtPolyRef& steerPosRef) const
@@ -1231,6 +1244,7 @@ bool PathFinder::getSteerTarget(const float* startPos, const float* endPos,
     return true;
 }
 
+/// 沿多边形走廊以固定步长（SMOOTH_PATH_STEP_SIZE）贴面推进并采样高度，生成平滑路径点序列
 dtStatus PathFinder::findSmoothPath(const float* startPos, const float* endPos,
                                     const dtPolyRef* polyPath, uint32 polyPathSize,
                                     float* smoothPath, int* smoothPathSize, uint32 maxSmoothPathSize)
@@ -1356,6 +1370,7 @@ dtStatus PathFinder::findSmoothPath(const float* startPos, const float* endPos,
     return nsmoothPath < m_pointPathLimit ? DT_SUCCESS : DT_FAILURE;
 }
 
+/// 在 startPoint 周围 maxRange 半径内随机选点并计算直线/水下/悬浮可达路径
 void PathFinder::ComputePathToRandomPoint(Vector3 const& startPoint, float maxRange)
 {
     clear();

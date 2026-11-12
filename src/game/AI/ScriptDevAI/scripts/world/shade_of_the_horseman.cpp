@@ -17,7 +17,7 @@
  /* ScriptData
  SDName: Shade_of_the_Horseman
  SD%Complete: 75
- SDComment:
+ SDComment: (无头骑士之影世界事件：袭击新手村、纵火与扑灭、降落作战)
  SDCategory: NPCs
  EndScriptData
  */
@@ -27,6 +27,7 @@
 #include "AI/ScriptDevAI/scripts/world/world_map_scripts.h"
 #include "World/WorldState.h"
 
+// 无头骑士之影世界事件法术与技能枚举
 enum ShadeOfTheHorseman
 {
     SPELL_JACK_O_LANTERNED              = 44185, // should this be here at all? shade is shown as the caster of this spell once in sniff
@@ -208,6 +209,7 @@ enum ShadeOfTheHorsemanPathId
 ## npc_orphan_matron
 ######*/
 
+// 孤儿院院长 AI (npc_orphan_matronAI)：发布灭火演习任务并在骑士袭击时调度村民与玩家救火
 struct npc_orphan_matronAI : public ScriptedAI
 {
     npc_orphan_matronAI(Creature* creature) : ScriptedAI(creature), m_instance(creature->GetInstanceData())
@@ -318,6 +320,7 @@ bool QuestAccept_npc_orphan_matron(Player* /*player*/, Creature* creature, const
 ## npc_orphan
 ######*/
 
+// 孤儿 AI (npc_orphanAI)：在火灾发生时惊慌哭泣，火被扑灭后欢呼跳舞
 struct npc_orphanAI : public ScriptedAI
 {
     npc_orphanAI(Creature* creature) : ScriptedAI(creature), m_actionTimer(urand(5000, 15000)), m_instance(creature->GetInstanceData())
@@ -385,6 +388,8 @@ bool GossipHello_npc_orphan(Player* player, Creature* creature)
 ## npc_shade_of_the_horseman
 ######*/
 
+// 无头骑士之影 AI (npc_shade_of_the_horsemanAI)
+// 核心逻辑：村庄盘旋空中投掷烈焰、降落与玩家战斗、施放旋风斩与点燃，死亡后生成奖励大南瓜灯
 struct npc_shade_of_the_horsemanAI : public ScriptedAI
 {
     npc_shade_of_the_horsemanAI(Creature* creature) : ScriptedAI(creature), m_stopPeriodicFireTimer(30000), m_failTimer(388000),
@@ -619,6 +624,7 @@ struct npc_shade_of_the_horsemanAI : public ScriptedAI
 ## npc_headless_horseman_fire
 ######*/
 
+// 无头骑士烈焰火堆 AI (npc_headless_horseman_fireAI)：管理着火状态与水桶浇熄判定
 struct npc_headless_horseman_fireAI : public ScriptedAI
 {
     npc_headless_horseman_fireAI(Creature* creature) : ScriptedAI(creature)
@@ -711,6 +717,7 @@ struct npc_headless_horseman_fireAI : public ScriptedAI
 ## go_large_jack_o_lantern
 ######*/
 
+// 击败无头骑士之影后出现的大南瓜灯游戏对象 AI (go_large_jack_o_lanternAI)：玩家拾取万圣节节日奖励
 struct go_large_jack_o_lanternAI : public GameObjectAI
 {
     go_large_jack_o_lanternAI(GameObject* go) : GameObjectAI(go), m_instance(m_go->GetInstanceData()) {}
@@ -763,6 +770,7 @@ bool GOUse_go_large_jack_o_lantern(Player* /*player*/, GameObject* /*go*/)
 };
 
 // 42144 Headless Horseman - Create Water Bucket
+// 水桶提水法术脚本：玩家使用大水桶时获取水桶道具与光环
 struct HorsemanCreateWaterBucket : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -961,6 +969,7 @@ struct HorsemanConflagrateTargetTest : public SpellScript
 };
 
 // 42339 Bucket Lands - may target either player or fire npc
+// 水桶投掷着陆法术脚本：命中火堆时降低火势或扑灭火焰
 struct BucketLands : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -993,6 +1002,7 @@ struct BucketLands : public SpellScript
 // 42228 Headless Horseman - Fire Extinguish (guard)
 // 42348 Headless Horseman - Fire Extinguish (just splash) *
 // 43898 TEST Headless Horseman - Fire Extinguish (just splash)
+// 扑灭火堆法术脚本
 struct FireExtinguish : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -1062,6 +1072,7 @@ struct OrcChildLaughter : public SpellScript
     }
 };
 
+// 注册无头骑士之影世界事件脚本
 void AddSC_shade_of_the_horseman()
 {
     Script* pNewScript = new Script;

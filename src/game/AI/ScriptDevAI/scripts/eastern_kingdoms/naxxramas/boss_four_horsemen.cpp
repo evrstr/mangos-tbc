@@ -21,68 +21,71 @@ SDComment: Percentage of say for special text is guessed based on videos
 SDCategory: Naxxramas
 EndScriptData */
 
+// 天启四骑士（The Four Horsemen）军事区3号首领战 AI（莫格莱尼、库尔塔兹、布劳缪克丝、瑟里耶克交替叠加印记）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // ***** Yells *****
-    // lady blaumeux
-    SAY_BLAU_AGGRO          = 13010,
-    SAY_BLAU_SPECIAL        = 13013,
-    SAY_BLAU_SLAY           = 13012,
-    SAY_BLAU_DEATH          = 13011,
+    // lady blaumeux (lady布劳缪克丝)
+    SAY_BLAU_AGGRO          = 13010,                        // blau开战 台词广播 ID
+    SAY_BLAU_SPECIAL        = 13013,                        // blauspecial 台词广播 ID
+    SAY_BLAU_SLAY           = 13012,                        // blau击杀 台词广播 ID
+    SAY_BLAU_DEATH          = 13011,                        // blau死亡 台词广播 ID
 
-    // alexandros mograine
-    SAY_MORG_AGGRO1         = 13051,
-    SAY_MORG_AGGRO2         = 13052,
-    SAY_MORG_AGGRO3         = 13053,
-    SAY_MORG_SLAY1          = 13055,
-    SAY_MORG_SLAY2          = 13056,
-    SAY_MORG_SPECIAL        = 13057,
-    SAY_MORG_DEATH          = 13054,
+    // alexandros mograine (alexandros莫格莱尼)
+    SAY_MORG_AGGRO1         = 13051,                        // morgaggro1 台词广播 ID
+    SAY_MORG_AGGRO2         = 13052,                        // morgaggro2 台词广播 ID
+    SAY_MORG_AGGRO3         = 13053,                        // morgaggro3 台词广播 ID
+    SAY_MORG_SLAY1          = 13055,                        // morgslay1 台词广播 ID
+    SAY_MORG_SLAY2          = 13056,                        // morgslay2 台词广播 ID
+    SAY_MORG_SPECIAL        = 13057,                        // morgspecial 台词广播 ID
+    SAY_MORG_DEATH          = 13054,                        // morg死亡 台词广播 ID
 
-    // thane korthazz
-    SAY_KORT_AGGRO          = 13034,
-    SAY_KORT_SPECIAL        = 13037,
-    SAY_KORT_SLAY           = 13036,
-    SAY_KORT_DEATH          = 13035,
+    // thane korthazz (thane库尔塔兹)
+    SAY_KORT_AGGRO          = 13034,                        // kort开战 台词广播 ID
+    SAY_KORT_SPECIAL        = 13037,                        // kortspecial 台词广播 ID
+    SAY_KORT_SLAY           = 13036,                        // kort击杀 台词广播 ID
+    SAY_KORT_DEATH          = 13035,                        // kort死亡 台词广播 ID
 
-    // sir zeliek
-    SAY_ZELI_AGGRO          = 13097,
-    SAY_ZELI_SPECIAL        = 13100,
-    SAY_ZELI_SLAY           = 13099,
-    SAY_ZELI_DEATH          = 13098,
+    // sir zeliek (sir瑟里耶克)
+    SAY_ZELI_AGGRO          = 13097,                        // zeli开战 台词广播 ID
+    SAY_ZELI_SPECIAL        = 13100,                        // zelispecial 台词广播 ID
+    SAY_ZELI_SLAY           = 13099,                        // zeli击杀 台词广播 ID
+    SAY_ZELI_DEATH          = 13098,                        // zeli死亡 台词广播 ID
 
     // ***** Spells *****
-    // all horsemen
-    SPELL_SHIELDWALL        = 29061,
+    // all horsemen (all四骑士)
+    SPELL_SHIELDWALL        = 29061,                        // shieldwall 法术 ID
 
-    // lady blaumeux
-    SPELL_MARK_OF_BLAUMEUX  = 28833,
-    SPELL_VOID_ZONE         = 28863,
-    SPELL_SPIRIT_BLAUMEUX   = 28931,
+    // lady blaumeux (lady布劳缪克丝)
+    SPELL_MARK_OF_BLAUMEUX  = 28833,                        // 印记of布劳缪克丝 法术 ID
+    SPELL_VOID_ZONE         = 28863,                        // voidzone 法术 ID
+    SPELL_SPIRIT_BLAUMEUX   = 28931,                        // 之魂布劳缪克丝 法术 ID
 
-    // highlord mograine
-    SPELL_MARK_OF_MOGRAINE  = 28834,
-    SPELL_RIGHTEOUS_FIRE    = 28882,
-    SPELL_SPIRIT_MOGRAINE   = 28928,
+    // highlord mograine (highlord莫格莱尼)
+    SPELL_MARK_OF_MOGRAINE  = 28834,                        // 印记of莫格莱尼 法术 ID
+    SPELL_RIGHTEOUS_FIRE    = 28882,                        // righteous火焰 法术 ID
+    SPELL_SPIRIT_MOGRAINE   = 28928,                        // 之魂莫格莱尼 法术 ID
 
-    // thane korthazz
-    SPELL_MARK_OF_KORTHAZZ  = 28832,
-    SPELL_METEOR            = 28884,
-    SPELL_SPIRIT_KORTHAZZ   = 28932,
+    // thane korthazz (thane库尔塔兹)
+    SPELL_MARK_OF_KORTHAZZ  = 28832,                        // 印记of库尔塔兹 法术 ID
+    SPELL_METEOR            = 28884,                        // 流星 法术 ID
+    SPELL_SPIRIT_KORTHAZZ   = 28932,                        // 之魂库尔塔兹 法术 ID
 
-    // sir zeliek
-    SPELL_MARK_OF_ZELIEK    = 28835,
-    SPELL_HOLY_WRATH        = 28883,
-    SPELL_SPIRIT_ZELIEK     = 28934,
+    // sir zeliek (sir瑟里耶克)
+    SPELL_MARK_OF_ZELIEK    = 28835,                        // 印记of瑟里耶克 法术 ID
+    SPELL_HOLY_WRATH        = 28883,                        // 神圣wrath 法术 ID
+    SPELL_SPIRIT_ZELIEK     = 28934,                        // 之魂瑟里耶克 法术 ID
 
-    INDEX_BLAUMEUX          = 0,
-    INDEX_MORGRAINE         = 1,
-    INDEX_KORTHAZZ          = 2,
-    INDEX_ZELIEK            = 3,
+    INDEX_BLAUMEUX          = 0,                            // 布劳缪克丝 标识 ID
+    INDEX_MORGRAINE         = 1,                            // morgraine 标识 ID
+    INDEX_KORTHAZZ          = 2,                            // 库尔塔兹 标识 ID
+    INDEX_ZELIEK            = 3,                            // 瑟里耶克 标识 ID
 
     MAX_MARK_STACKS         = 100,      // Horsemen enrage at this milestone
 };
@@ -104,6 +107,7 @@ static const Position resetCoords[3] =
         {2594.6f, -3006.7f, 0.0, 0.0}
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum BlaumeuxActions
 {
     BLAUMEUX_SHIELD_WALL_50,
@@ -113,6 +117,7 @@ enum BlaumeuxActions
     BLAUMEUX_ACTIONS_MAX,
 };
 
+// 首领战 AI：布劳缪克丝（lady_blaumeux）
 struct boss_lady_blaumeuxAI : public BossAI
 {
     boss_lady_blaumeuxAI(Creature* creature) : BossAI(creature, BLAUMEUX_ACTIONS_MAX)
@@ -135,12 +140,14 @@ struct boss_lady_blaumeuxAI : public BossAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
         m_creature->SetSpellList(m_creature->GetCreatureInfo()->SpellList);
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         BossAI::JustDied(killer);
@@ -173,6 +180,7 @@ struct boss_lady_blaumeuxAI : public BossAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MograineActions
 {
     MOGRAINE_SHIELD_WALL_50,
@@ -182,6 +190,7 @@ enum MograineActions
     MOGRAINE_ACTIONS_MAX,
 };
 
+// 首领战 AI：莫格莱尼（alexandros_mograine）
 struct boss_alexandros_mograineAI : public BossAI
 {
     boss_alexandros_mograineAI(Creature* creature) : BossAI(creature, MOGRAINE_ACTIONS_MAX)
@@ -202,12 +211,14 @@ struct boss_alexandros_mograineAI : public BossAI
         });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
         m_creature->SetSpellList(m_creature->GetCreatureInfo()->SpellList);
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         BossAI::JustDied(killer);
@@ -240,6 +251,7 @@ struct boss_alexandros_mograineAI : public BossAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KorthazActions
 {
     KORTHAZ_SHIELD_WALL_50,
@@ -249,6 +261,7 @@ enum KorthazActions
     KORTHAZ_ACTIONS_MAX,
 };
 
+// 首领战 AI：库尔塔兹（thane_korthazz）
 struct boss_thane_korthazzAI : public BossAI
 {
     boss_thane_korthazzAI(Creature* creature) : BossAI(creature, KORTHAZ_ACTIONS_MAX)
@@ -269,12 +282,14 @@ struct boss_thane_korthazzAI : public BossAI
         });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
         m_creature->SetSpellList(m_creature->GetCreatureInfo()->SpellList);
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         BossAI::JustDied(killer);
@@ -307,6 +322,7 @@ struct boss_thane_korthazzAI : public BossAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ZeliekActions
 {
     ZELIEK_SHIELD_WALL_50,
@@ -316,6 +332,7 @@ enum ZeliekActions
     ZELIEK_ACTIONS_MAX,
 };
 
+// 首领战 AI：瑟里耶克（sir_zeliek）
 struct boss_sir_zeliekAI : public BossAI
 {
     boss_sir_zeliekAI(Creature* creature) : BossAI(creature, ZELIEK_ACTIONS_MAX)
@@ -336,12 +353,14 @@ struct boss_sir_zeliekAI : public BossAI
         });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
         m_creature->SetSpellList(m_creature->GetCreatureInfo()->SpellList);
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         BossAI::JustDied(killer);
@@ -374,10 +393,10 @@ struct boss_sir_zeliekAI : public BossAI
     }
 };
 
-// 28832 - Mark of Korth'azz
-// 28833 - Mark of Blaumeux
-// 28834 - Mark of Rivendare
-// 28835 - Mark of Zeliek
+// 28832 - Mark of Korth'azz (28832 - 印记 of Korth'azz)
+// 28833 - Mark of Blaumeux (28833 - 印记 of 布劳缪克丝)
+// 28834 - Mark of Rivendare (28834 - 印记 of Rivendare)
+// 28835 - Mark of Zeliek (28835 - 印记 of 瑟里耶克)
 struct HorsemenMark : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -403,6 +422,7 @@ struct HorsemenMark : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_four_horsemen
 void AddSC_boss_four_horsemen()
 {
     Script* newScript = new Script;

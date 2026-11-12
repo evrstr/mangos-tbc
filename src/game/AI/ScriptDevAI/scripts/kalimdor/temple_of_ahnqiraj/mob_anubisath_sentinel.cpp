@@ -21,6 +21,10 @@ SDComment: mob_anubisath_sentinel, mob_anubisath_defender
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：阿努比萨斯哨兵随机技能共享与狂暴机制 AI
+ */
+
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "AI/ScriptDevAI/include/sc_common.h"
 
@@ -28,39 +32,42 @@ EndScriptData */
 ## npc_anubisath_sentinel
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_GENERIC_FRENZY            = -1000002,
-    EMOTE_SHARE_POWERS              = -1531047,
+    EMOTE_GENERIC_FRENZY            = -1000002,             // 剧情台词/喊话文本 ID
+    EMOTE_SHARE_POWERS              = -1531047,             // 剧情台词/喊话文本 ID
 
-    SPELL_PERIODIC_MANA_BURN        = 812,
-    SPELL_MENDING                   = 2147,
-    SPELL_PERIODIC_SHADOW_STORM     = 2148,
-    SPELL_PERIODIC_THUNDERCLAP      = 2834,
-    SPELL_MORTAL_STRIKE             = 9347,
-    SPELL_FIRE_ARCANE_REFLECT       = 13022,
-    SPELL_SHADOW_FROST_REFLECT      = 19595,
-    SPELL_PERIODIC_KNOCK_AWAY       = 21737,
-    SPELL_THORNS                    = 25777,
-    SPELL_TRANSFER_POWER            = 2400,
-    SPELL_HEAL_BRETHEN              = 26565,
+    SPELL_PERIODIC_MANA_BURN        = 812,                  // 技能法术 ID
+    SPELL_MENDING                   = 2147,                 // 技能法术 ID
+    SPELL_PERIODIC_SHADOW_STORM     = 2148,                 // 技能法术 ID
+    SPELL_PERIODIC_THUNDERCLAP      = 2834,                 // 技能法术 ID
+    SPELL_MORTAL_STRIKE             = 9347,                 // 技能法术 ID
+    SPELL_FIRE_ARCANE_REFLECT       = 13022,                // 技能法术：法术反射
+    SPELL_SHADOW_FROST_REFLECT      = 19595,                // 技能法术：法术反射
+    SPELL_PERIODIC_KNOCK_AWAY       = 21737,                // 技能法术 ID
+    SPELL_THORNS                    = 25777,                // 技能法术 ID
+    SPELL_TRANSFER_POWER            = 2400,                 // 技能法术 ID
+    SPELL_HEAL_BRETHEN              = 26565,                // 技能法术 ID
 
-    SPELL_ENRAGE                    = 8599,
+    SPELL_ENRAGE                    = 8599,                 // 技能法术：激怒/狂暴
 
     MAX_BUDDY                       = 4
 };
 
+// AnubSentinelActions 战斗行为动作枚举
 enum AnubSentinelActions
 {
     ANUBSENTINEL_BERSERK_HP_CHECK,
-    ANUBSENTINEL_ACTION_MAX,
+    ANUBSENTINEL_ACTION_MAX,                                // 战斗行为动作
 };
 
+// npc_anubisath_sentinelAI NPC 脚本 AI
 struct npc_anubisath_sentinelAI : public CombatAI
 {
     npc_anubisath_sentinelAI(Creature* creature) : CombatAI(creature, ANUBSENTINEL_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddTimerlessCombatAction(ANUBSENTINEL_BERSERK_HP_CHECK, true);         // Soft enrage at 30% HP
+        AddTimerlessCombatAction(ANUBSENTINEL_BERSERK_HP_CHECK, true);         // Soft enrage at 30% HP (说明)
         m_assistList.clear();
     }
 
@@ -71,7 +78,7 @@ struct npc_anubisath_sentinelAI : public CombatAI
 
     GuidList m_assistList;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         m_myAbility = 0;
@@ -88,17 +95,17 @@ struct npc_anubisath_sentinelAI : public CombatAI
             reader.PSendSysMessage("Anubisath Sentinel - not correct number of mobs for group found. Number found %u, should be %u", uint32(m_assistList.size()), MAX_BUDDY);
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         CombatAI::EnterEvadeMode();
 
         for (auto guid : m_assistList)
         {
-            // Skip self as we are obviously alive and in world
+            // Skip self as we are obviously alive and in world (说明)
             if (guid == m_creature->GetObjectGuid())
                 continue;
 
-            // Respawn fallen Anubisath Sentinel
+            // Respawn fallen Anubisath Sentinel (复活)
             if (Creature* buddy = m_creature->GetMap()->GetCreature(guid))
             {
                 if (buddy->IsDead())
@@ -107,9 +114,9 @@ struct npc_anubisath_sentinelAI : public CombatAI
         }
     }
 
-    void Aggro(Unit* who) override
+    void Aggro(Unit* who) override                          // 进入战斗回调处理
     {
-        // Find all buddies
+        // Find all buddies (说明)
         if (m_assistList.empty())
         {
             CreatureList assistList;
@@ -124,7 +131,7 @@ struct npc_anubisath_sentinelAI : public CombatAI
 
         if (!m_myAbility)
         {
-            std::shuffle(m_abilities.begin(), m_abilities.end(), *GetRandomGenerator()); // shuffle the abilities, they will be set to the current creature and its siblings
+            std::shuffle(m_abilities.begin(), m_abilities.end(), *GetRandomGenerator()); // shuffle the abilities, they will be set to the current creature and its siblings (说明)
             SetAbility();
             InitSentinelsNear(who);
         }
@@ -137,15 +144,15 @@ struct npc_anubisath_sentinelAI : public CombatAI
 
     void SetAbility(bool forced=false, uint32 abilityId=0)
     {
-        if (m_myAbility) // Do not set ability if already force set by the first Anubisath Sentinel to get aggro
+        if (m_myAbility) // Do not set ability if already force set by the first Anubisath Sentinel to get aggro (说明)
             return;
 
-        // This Anubisath Sentinel is the first one to set his ability as it is the one that got initial aggro
-        // Pick the first ability in the (randomised) list of abilities
+        // This Anubisath Sentinel is the first one to set his ability as it is the one that got initial aggro (说明)
+        // Pick the first ability in the (randomised) list of abilities (说明)
         if (!forced)
             m_myAbility = m_abilities[0];
-        // This Anubisath Sentinel is forced to set his ability by the first sentinel to get aggro
-        // Check that the requested ability is valid
+        // This Anubisath Sentinel is forced to set his ability by the first sentinel to get aggro (说明)
+        // Check that the requested ability is valid (说明)
         else if (std::find(m_abilities.begin(), m_abilities.end(), abilityId) != m_abilities.end())
             m_myAbility = abilityId;
         else
@@ -168,7 +175,7 @@ struct npc_anubisath_sentinelAI : public CombatAI
                 if (guid == m_creature->GetObjectGuid() || !buddy->IsAlive())
                     continue;
 
-                // Only emote on the first ability transfert
+                // Only emote on the first ability transfert (说明)
                 if (!hasDoneEmote)
                 {
                     DoScriptText(EMOTE_SHARE_POWERS, m_creature);
@@ -204,7 +211,7 @@ struct npc_anubisath_sentinelAI : public CombatAI
         }
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         if (action == ANUBSENTINEL_BERSERK_HP_CHECK)
         {
@@ -231,8 +238,8 @@ struct SharePowers : public SpellScript
                 uint32 spellId = spell->m_currentBasePoints[EFFECT_INDEX_0];
                 if (Unit* unitTarget = spell->GetUnitTarget())
                 {
-                    caster->CastSpell(unitTarget, spellId, TRIGGERED_OLD_TRIGGERED);              // Cast own ability on target
-                    caster->CastSpell(unitTarget, SPELL_HEAL_BRETHEN, TRIGGERED_OLD_TRIGGERED);   // Heal Brethren
+                    caster->CastSpell(unitTarget, spellId, TRIGGERED_OLD_TRIGGERED);              // Cast own ability on target (技能目标)
+                    caster->CastSpell(unitTarget, SPELL_HEAL_BRETHEN, TRIGGERED_OLD_TRIGGERED);   // Heal Brethren (说明)
                 }
             }
         }
@@ -243,21 +250,23 @@ struct SharePowers : public SpellScript
 ## npc_anubisath_defender
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SPELL_SHADOW_STORM      = 26555,
-    SPELL_METEOR            = 26558,
-    SPELL_ENRAGE_DEFENDER   = 8269,
-    SPELL_EXPLODE           = 25698,
-    // SPELL_SHADOW_FROST_REFLECT      = 19595, // Same as Anubisath Sentinel
-    // SPELL_FIRE_ARCANE_REFLECT       = 13022, // Same as Anubisath Sentinel
-    SPELL_THUNDERCLAP       = 26554,
-    SPELL_PLAGUE            = 26556,
-    SPELL_SUMMON_WARRIOR    = 17431,
+    SPELL_SHADOW_STORM      = 26555,                        // 技能法术 ID
+    SPELL_METEOR            = 26558,                        // 技能法术：流星
+    SPELL_ENRAGE_DEFENDER   = 8269,                         // 技能法术：激怒/狂暴
+    SPELL_EXPLODE           = 25698,                        // 技能法术 ID
+    // SPELL_SHADOW_FROST_REFLECT      = 19595, // Same as Anubisath Sentinel (说明)
+    // SPELL_FIRE_ARCANE_REFLECT       = 13022, // Same as Anubisath Sentinel (说明)
+    SPELL_THUNDERCLAP       = 26554,                        // 技能法术 ID
+    SPELL_PLAGUE            = 26556,                        // 技能法术 ID
+    SPELL_SUMMON_WARRIOR    = 17431,                        // 技能法术 ID
     SPELL_SUMMON_SWARMGUARD = 17430
 
 };
 
+// AnubDefenderActions 战斗行为动作枚举
 enum AnubDefenderActions
 {
     ANUBDEFENDER_HP_CHECK,
@@ -266,14 +275,15 @@ enum AnubDefenderActions
     ANUBDEFENDER_THUNDERCLAP,
     ANUBDEFENDER_SHADOW_STORM,
     ANUBDEFENDER_SUMMON,
-    ANUBDEFENDER_ACTION_MAX,
+    ANUBDEFENDER_ACTION_MAX,                                // 战斗行为动作
 };
 
+// npc_anubisath_defenderAI NPC 脚本 AI
 struct npc_anubisath_defenderAI : public CombatAI
 {
     npc_anubisath_defenderAI(Creature* creature) : CombatAI(creature, ANUBDEFENDER_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddTimerlessCombatAction(ANUBDEFENDER_HP_CHECK, true);         // Enrage or explode at 10% HP
+        AddTimerlessCombatAction(ANUBDEFENDER_HP_CHECK, true);         // Enrage or explode at 10% HP (说明)
         AddCombatAction(ANUBDEFENDER_METEOR, true);
         AddCombatAction(ANUBDEFENDER_PLAGUE, true);
         AddCombatAction(ANUBDEFENDER_THUNDERCLAP, true);
@@ -285,25 +295,25 @@ struct npc_anubisath_defenderAI : public CombatAI
 
     void Aggro(Unit* /*who*/) override
     {
-        // At each aggro Anubisath Defender randomises its four abilities
+        // At each aggro Anubisath Defender randomises its four abilities (说明)
         m_creature->RemoveAllAuras();
-        // Pick between the two reflect spells
+        // Pick between the two reflect spells (法术)
         uint32 reflectSpellId = (urand(0, 1) ? SPELL_FIRE_ARCANE_REFLECT : SPELL_SHADOW_FROST_REFLECT);
         DoCastSpellIfCan(m_creature, reflectSpellId, CAST_TRIGGERED);
-        // Pick between Meteor and Plague
+        // Pick between Meteor and Plague (说明)
         if (urand(0, 1))
             ResetCombatAction(ANUBDEFENDER_METEOR, urand(6, 10) * IN_MILLISECONDS);
         else
             ResetCombatAction(ANUBDEFENDER_PLAGUE, urand(6, 10) * IN_MILLISECONDS);
-        // Pick between Shadow Storm and Thunderclap
+        // Pick between Shadow Storm and Thunderclap (说明)
         if (urand(0, 1))
             ResetCombatAction(ANUBDEFENDER_THUNDERCLAP, urand(5, 8) * IN_MILLISECONDS);
         else
             ResetCombatAction(ANUBDEFENDER_SHADOW_STORM, urand(5, 8) * IN_MILLISECONDS);
-        // The ability at 10% is randomised when the event triggers
+        // The ability at 10% is randomised when the event triggers (说明)
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -377,7 +387,7 @@ struct npc_anubisath_defenderAI : public CombatAI
     }
 };
 
-void AddSC_mob_anubisath_sentinel()
+void AddSC_mob_anubisath_sentinel() // 注册脚本到系统管理器
 {
     Script* newScript = new Script;
     newScript->Name = "mob_anubisath_sentinel";

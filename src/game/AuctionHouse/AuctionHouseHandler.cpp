@@ -32,7 +32,7 @@
 // please DO NOT use iterator++, because it is slower than ++iterator!!!
 // post-incrementation is always slower than pre-incrementation !
 
-// void called when player click on auctioneer npc
+// void called when player click on auctioneer npc (玩家点击拍卖师 NPC 时触发)
 void WorldSession::HandleAuctionHelloOpcode(WorldPacket& recv_data)
 {
     ObjectGuid auctioneerGuid;                              // NPC guid
@@ -48,7 +48,7 @@ void WorldSession::HandleAuctionHelloOpcode(WorldPacket& recv_data)
     SendAuctionHello(unit);
 }
 
-// this void causes that auction window is opened
+// this void causes that auction window is opened (下发 MSG_AUCTION_HELLO 打开客户端拍卖行界面)
 void WorldSession::SendAuctionHello(Unit* unit) const
 {
     // always return pointer
@@ -60,7 +60,7 @@ void WorldSession::SendAuctionHello(Unit* unit) const
     SendPacket(data);
 }
 
-// call this method when player bids, creates, or deletes auction
+// call this method when player bids, creates, or deletes auction (向客户端发送拍卖操作结果响应：竞拍/上架/取消)
 void WorldSession::SendAuctionCommandResult(AuctionEntry* auc, AuctionAction Action, AuctionError ErrorCode, InventoryResult invError, uint32 auctionId) const
 {
     WorldPacket data(SMSG_AUCTION_COMMAND_RESULT, 16);
@@ -89,7 +89,7 @@ void WorldSession::SendAuctionCommandResult(AuctionEntry* auc, AuctionAction Act
     SendPacket(data);
 }
 
-// this function sends notification, if bidder is online
+// this function sends notification, if bidder is online (竞拍者在线时发送竞拍状态通知：中标或被超越)
 void WorldSession::SendAuctionBidderNotification(AuctionEntry* auction, bool won) const
 {
     WorldPacket data(SMSG_AUCTION_BIDDER_NOTIFICATION, (8 * 4));
@@ -106,7 +106,7 @@ void WorldSession::SendAuctionBidderNotification(AuctionEntry* auction, bool won
     SendPacket(data);
 }
 
-// this void causes on client to display: "Your auction sold"
+// this void causes on client to display: "Your auction sold" (卖家在线时发送拍卖状态通知：售出、被竞价或流拍)
 void WorldSession::SendAuctionOwnerNotification(AuctionEntry* auction, bool sold) const
 {
     WorldPacket data(SMSG_AUCTION_OWNER_NOTIFICATION, (7 * 4));
@@ -127,7 +127,7 @@ void WorldSession::SendAuctionOwnerNotification(AuctionEntry* auction, bool sold
     SendPacket(data);
 }
 
-// shows ERR_AUCTION_REMOVED_S
+// shows ERR_AUCTION_REMOVED_S (通知竞拍者拍卖已被卖家取消)
 void WorldSession::SendAuctionRemovedNotification(AuctionEntry* auction) const
 {
     WorldPacket data(SMSG_AUCTION_REMOVED_NOTIFICATION, (3 * 4));
@@ -138,7 +138,7 @@ void WorldSession::SendAuctionRemovedNotification(AuctionEntry* auction) const
     SendPacket(data);
 }
 
-// this function sends mail to old bidder, with his bid; the auction already holds the new bid
+// this function sends mail to old bidder, with his bid; the auction already holds the new bid (向被超越的原竞拍者发送退还出价的邮件)
 void WorldSession::SendAuctionOutbiddedMail(AuctionEntry* auction, uint32 oldBidderLowGuid, uint32 oldBid)
 {
     ObjectGuid oldBidder_guid = ObjectGuid(HIGHGUID_PLAYER, oldBidderLowGuid);
@@ -163,7 +163,7 @@ void WorldSession::SendAuctionOutbiddedMail(AuctionEntry* auction, uint32 oldBid
     }
 }
 
-// this function sends mail, when auction is cancelled to old bidder
+// this function sends mail, when auction is cancelled to old bidder (拍卖被取消时向原竞拍者发送退款邮件)
 void WorldSession::SendAuctionCancelledToBidderMail(AuctionEntry* auction)
 {
     ObjectGuid bidder_guid = ObjectGuid(HIGHGUID_PLAYER, auction->bidder);
@@ -188,6 +188,7 @@ void WorldSession::SendAuctionCancelledToBidderMail(AuctionEntry* auction)
     }
 }
 
+/// 校验拍卖师交互权限（含 GM 指令模式）并返回对应拍卖行配置
 AuctionHouseEntry const* WorldSession::GetCheckedAuctionHouseForAuctioneer(ObjectGuid guid) const
 {
     Unit* auctioneer;
@@ -220,7 +221,7 @@ AuctionHouseEntry const* WorldSession::GetCheckedAuctionHouseForAuctioneer(Objec
     return AuctionHouseMgr::GetAuctionHouseEntry(auctioneer);
 }
 
-// this void creates new auction and adds auction to some auctionhouse
+// this void creates new auction and adds auction to some auctionhouse (处理玩家上架物品拍卖请求)
 void WorldSession::HandleAuctionSellItem(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: HandleAuctionSellItem");
@@ -324,7 +325,7 @@ void WorldSession::HandleAuctionSellItem(WorldPacket& recv_data)
     SendAuctionCommandResult(AH, AUCTION_STARTED, AUCTION_OK);
 }
 
-// this function is called when client bids or buys out auction
+// this function is called when client bids or buys out auction (处理玩家竞拍或一口价买断请求)
 void WorldSession::HandleAuctionPlaceBid(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: HandleAuctionPlaceBid");
@@ -400,7 +401,7 @@ void WorldSession::HandleAuctionPlaceBid(WorldPacket& recv_data)
     SendAuctionCommandResult(nullptr, AUCTION_BID_PLACED, AUCTION_OK, EQUIP_ERR_OK, auctionId);
 }
 
-// this void is called when auction_owner cancels his auction
+// this void is called when auction_owner cancels his auction (处理卖家取消拍卖请求)
 void WorldSession::HandleAuctionRemoveItem(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: HandleAuctionRemoveItem");
@@ -468,7 +469,7 @@ void WorldSession::HandleAuctionRemoveItem(WorldPacket& recv_data)
     delete auction;
 }
 
-// called when player lists his bids
+// called when player lists his bids (处理玩家查询自己参与竞拍的条目列表)
 void WorldSession::HandleAuctionListBidderItems(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: HandleAuctionListBidderItems");
@@ -518,7 +519,7 @@ void WorldSession::HandleAuctionListBidderItems(WorldPacket& recv_data)
     SendPacket(data);
 }
 
-// this void sends player info about his auctions
+// this void sends player info about his auctions (处理玩家查询自己上架的拍卖条目列表)
 void WorldSession::HandleAuctionListOwnerItems(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: HandleAuctionListOwnerItems");
@@ -549,7 +550,7 @@ void WorldSession::HandleAuctionListOwnerItems(WorldPacket& recv_data)
     SendPacket(data);
 }
 
-// this void is called when player clicks on search button
+// this void is called when player clicks on search button (处理玩家搜索/浏览拍卖行物品请求并分页排序返回)
 void WorldSession::HandleAuctionListItems(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: HandleAuctionListItems");

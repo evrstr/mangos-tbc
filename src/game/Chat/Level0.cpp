@@ -30,6 +30,7 @@
 #include "revision.h"
 #include "Util/Util.h"
 
+/// 处理 `.help` 命令：显示指定命令或顶层命令帮助
 bool ChatHandler::HandleHelpCommand(char* args)
 {
     if (!*args)
@@ -46,15 +47,17 @@ bool ChatHandler::HandleHelpCommand(char* args)
     return true;
 }
 
+/// 处理 `.commands` 命令：列出当前权限可用的全部命令
 bool ChatHandler::HandleCommandsCommand(char* /*args*/)
 {
     ShowHelpForCommand(getCommandTable(), "");
     return true;
 }
 
+/// 处理 `.account` 命令：显示当前账号权限等级
 bool ChatHandler::HandleAccountCommand(char* args)
 {
-    // let show subcommands at unexpected data in args
+    // let show subcommands at unexpected data in args | 附带多余参数时返回 false 以显示子命令帮助
     if (*args)
         return false;
 
@@ -63,6 +66,7 @@ bool ChatHandler::HandleAccountCommand(char* args)
     return true;
 }
 
+/// 处理 `.start` 命令：脱困传送回绑定出生点
 bool ChatHandler::HandleStartCommand(char* /*args*/)
 {
     Player* chr = m_session->GetPlayer();
@@ -81,11 +85,12 @@ bool ChatHandler::HandleStartCommand(char* /*args*/)
         return false;
     }
 
-    // cast spell Stuck
+    // cast spell Stuck | 施放“角色卡死”法术（7355）
     chr->CastSpell(chr, 7355, TRIGGERED_NONE);
     return true;
 }
 
+/// 处理 `.server info` 命令：显示版本、数据库版本、在线与排队人数及运行时间
 bool ChatHandler::HandleServerInfoCommand(char* /*args*/)
 {
     uint32 activeClientsNum = sWorld.GetActiveSessionCount();
@@ -109,11 +114,12 @@ bool ChatHandler::HandleServerInfoCommand(char* /*args*/)
     return true;
 }
 
+/// 处理 `.dismount` 命令：强制解除坐骑状态
 bool ChatHandler::HandleDismountCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
 
-    // If player is not mounted, so go out :)
+    // If player is not mounted, so go out :) | 若未处于骑乘状态则提示并返回
     if (!player->IsMounted())
     {
         SendSysMessage(LANG_CHAR_NON_MOUNTED);
@@ -133,11 +139,12 @@ bool ChatHandler::HandleDismountCommand(char* /*args*/)
     return true;
 }
 
+/// 处理 `.save` 命令：保存角色数据到数据库（普通玩家受存盘冷却限制以防刷档）
 bool ChatHandler::HandleSaveCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
 
-    // save GM account without delay and output message (testing, etc)
+    // save GM account without delay and output message (testing, etc) | GM 账号无延迟立即存盘并输出提示
     if (GetAccessLevel() > SEC_PLAYER)
     {
         player->SaveToDB();
@@ -145,7 +152,7 @@ bool ChatHandler::HandleSaveCommand(char* /*args*/)
         return true;
     }
 
-    // save or plan save after 20 sec (logout delay) if current next save time more this value and _not_ output any messages to prevent cheat planning
+    // save or plan save after 20 sec (logout delay) if current next save time more this value and _not_ output any messages to prevent cheat planning | 普通玩家距下次自动存盘超过 20 秒才允许手动存盘且不回显提示
     uint32 save_interval = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
     if (save_interval == 0 || (save_interval > 20 * IN_MILLISECONDS && player->GetSaveTimer() <= save_interval - 20 * IN_MILLISECONDS))
         player->SaveToDB();
@@ -153,6 +160,7 @@ bool ChatHandler::HandleSaveCommand(char* /*args*/)
     return true;
 }
 
+/// 处理 `.gmlist` 命令：列出当前在线的 GM 及其密语接收状态
 bool ChatHandler::HandleGMListIngameCommand(char* /*args*/)
 {
     std::list< std::pair<std::string, bool> > names;
@@ -185,9 +193,10 @@ bool ChatHandler::HandleGMListIngameCommand(char* /*args*/)
     return true;
 }
 
+/// 处理 `.account password` 命令：修改当前登录账号的密码
 bool ChatHandler::HandleAccountPasswordCommand(char* args)
 {
-    // allow use from RA, but not from console (not have associated account id)
+    // allow use from RA, but not from console (not have associated account id) | 允许远程管理使用，但控制台无关联账号不可用
     if (!GetAccountId())
     {
         SendSysMessage(LANG_RA_ONLY_COMMAND);
@@ -195,7 +204,7 @@ bool ChatHandler::HandleAccountPasswordCommand(char* args)
         return false;
     }
 
-    // allow or quoted string with possible spaces or literal without spaces
+    // allow or quoted string with possible spaces or literal without spaces | 支持带引号（可含空格）或不带引号的密码参数
     char* old_pass = ExtractQuotedOrLiteralArg(&args);
     char* new_pass = ExtractQuotedOrLiteralArg(&args);
     char* new_pass_c = ExtractQuotedOrLiteralArg(&args);
@@ -232,22 +241,23 @@ bool ChatHandler::HandleAccountPasswordCommand(char* args)
             SendSysMessage(LANG_PASSWORD_TOO_LONG);
             SetSentErrorMessage(true);
             return false;
-        case AOR_NAME_NOT_EXIST:                            // not possible case, don't want get account name for output
+        case AOR_NAME_NOT_EXIST:                            // not possible case, don't want get account name for output | 理论不可达分支，避免泄露账号名
         default:
             SendSysMessage(LANG_COMMAND_NOTCHANGEPASSWORD);
             SetSentErrorMessage(true);
             return false;
     }
 
-    // OK, but avoid normal report for hide passwords, but log use command for anyone
+    // OK, but avoid normal report for hide passwords, but log use command for anyone | 脱敏记录命令日志并抑制默认命令回显，防止日志泄露明文密码
     LogCommand(".account password *** *** ***");
     SetSentErrorMessage(true);
     return false;
 }
 
+/// 处理 `.account lock` 命令：开启或关闭账号 IP 锁定
 bool ChatHandler::HandleAccountLockCommand(char* args)
 {
-    // allow use from RA, but not from console (not have associated account id)
+    // allow use from RA, but not from console (not have associated account id) | 允许远程管理使用，但控制台无关联账号不可用
     if (!GetAccountId())
     {
         SendSysMessage(LANG_RA_ONLY_COMMAND);
@@ -277,13 +287,14 @@ bool ChatHandler::HandleAccountLockCommand(char* args)
     return true;
 }
 
-/// Display the 'Message of the day' for the realm
+/// Display the 'Message of the day' for the realm | 显示服务器今日公告 (MOTD)
 bool ChatHandler::HandleServerMotdCommand(char* /*args*/)
 {
     PSendSysMessage(LANG_MOTD_CURRENT, sWorld.GetMotd());
     return true;
 }
 
+/// 处理 `.whisperrestriction` 命令：查询或切换密语限制开关（仅限好友/队友/公会成员）
 bool ChatHandler::HandleWhisperRestrictionCommand(char* args)
 {
     if (!*args)

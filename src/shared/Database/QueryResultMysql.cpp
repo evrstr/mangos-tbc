@@ -22,6 +22,7 @@
 #include "DatabaseEnv.h"
 #include "Util/Errors.h"
 
+// 构造 MySQL 结果集并初始化每列的数据类型 | Construct MySQL result wrapper and initialize column data types
 QueryResultMysql::QueryResultMysql(MYSQL_RES* result, MYSQL_FIELD* fields, uint64 rowCount, uint32 fieldCount) :
     QueryResult(rowCount, fieldCount), mResult(result)
 {
@@ -37,6 +38,7 @@ QueryResultMysql::~QueryResultMysql()
     EndQuery();
 }
 
+// 获取下一行记录并更新当前行各字段指针 | Fetch next row and update field value pointers
 bool QueryResultMysql::NextRow()
 {
     if (!mResult)
@@ -55,6 +57,7 @@ bool QueryResultMysql::NextRow()
     return true;
 }
 
+// 释放行缓冲区与 MySQL 结果集 | Free row buffer and MYSQL_RES handle
 void QueryResultMysql::EndQuery()
 {
     delete[] mCurrentRow;
@@ -67,6 +70,7 @@ void QueryResultMysql::EndQuery()
     }
 }
 
+// 将 MySQL 原生字段枚举映射到内部通用数据类型 | Map MySQL native field type enum to internal Field::DataTypes
 enum Field::DataTypes QueryResultMysql::ConvertNativeType(enum_field_types mysqlType) const
 {
     switch (mysqlType)

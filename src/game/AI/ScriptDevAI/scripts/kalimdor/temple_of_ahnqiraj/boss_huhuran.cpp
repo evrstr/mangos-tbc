@@ -21,24 +21,30 @@ SDComment:
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：哈霍兰公主 (Princess Huhuran) 自然抗性检验与狂暴毒性箭雨战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_GENERIC_FRENZY_KILL   = -1000001,
-    EMOTE_GENERIC_BERSERK       = -1000004,
+    EMOTE_GENERIC_FRENZY_KILL   = -1000001,                 // 剧情台词/喊话文本 ID
+    EMOTE_GENERIC_BERSERK       = -1000004,                 // 剧情台词/喊话文本 ID
 
-    SPELL_FRENZY                = 26051,        // triggers 26052 - Poison Bolt Volley (will hit the 15 closest people)
-    SPELL_BERSERK               = 26068,        // triggers 26052 - Poison Bolt Volley (will hit the 15 closest people)
-    SPELL_NOXIOUS_POISON        = 26053,
-    SPELL_WYVERN_STING          = 26180,        // triggers 26233 on aura removal, doing 500 nature damage if 26180 expires (confirmed) and about 3K if dispelled early (amount unconfirmed)
-    SPELL_WYVERN_STING_DAMAGE   = 26233,
+    SPELL_FRENZY                = 26051,        // triggers 26052 - Poison Bolt Volley (will hit the 15 closest people) (说明)
+    SPELL_BERSERK               = 26068,        // triggers 26052 - Poison Bolt Volley (will hit the 15 closest people) (说明)
+    SPELL_NOXIOUS_POISON        = 26053,                    // 技能法术 ID
+    SPELL_WYVERN_STING          = 26180,        // triggers 26233 on aura removal, doing 500 nature damage if 26180 expires (confirmed) and about 3K if dispelled early (amount unconfirmed) (说明)
+    SPELL_WYVERN_STING_DAMAGE   = 26233,                    // 技能法术 ID
     SPELL_ACID_SPIT             = 26050
 };
 
+// HuhuranActions 战斗行为动作枚举
 enum HuhuranActions
 {
     HUHURAN_BERSERK,
@@ -47,9 +53,10 @@ enum HuhuranActions
     HUHURAN_SPIT,
     HUHURAN_NOXIOUS_POISON,
     HUHURAN_WYVERN,
-    HUHURAN_ACTION_MAX,
+    HUHURAN_ACTION_MAX,                                     // 战斗行为动作
 };
 
+// boss_huhuranAI 首领战斗 AI
 struct boss_huhuranAI : public CombatAI
 {
     boss_huhuranAI(Creature* creature) : CombatAI(creature, HUHURAN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -82,7 +89,7 @@ struct boss_huhuranAI : public CombatAI
             m_instance->SetData(TYPE_HUHURAN, DONE);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -132,7 +139,7 @@ struct boss_huhuranAI : public CombatAI
     }
 };
 
-struct HuhuranWyvernSting : public AuraScript // TODO: Add spell script for filtering
+struct HuhuranWyvernSting : public AuraScript // TODO: Add spell script for filtering (法术)
 {
     void OnApply(Aura* aura, bool apply) const override
     {
@@ -140,14 +147,14 @@ struct HuhuranWyvernSting : public AuraScript // TODO: Add spell script for filt
         {
             if (Unit* caster = aura->GetCaster())
             {
-                int32 natureDamage = (aura->GetRemoveMode() == AURA_REMOVE_BY_DISPEL) ? 3000 : 500;  // Deal 500 nature damage on spell expire but 3000 if dispelled
+                int32 natureDamage = (aura->GetRemoveMode() == AURA_REMOVE_BY_DISPEL) ? 3000 : 500;  // Deal 500 nature damage on spell expire but 3000 if dispelled (说明)
                 caster->CastCustomSpell(aura->GetTarget(), 26233, &natureDamage, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
             }
         }
     }
 };
 
-void AddSC_boss_huhuran()
+void AddSC_boss_huhuran() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_huhuran";

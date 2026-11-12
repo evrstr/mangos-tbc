@@ -20,6 +20,7 @@
 
 #include "UnitAI.h"
 
+// 生物 AI 工厂模板实例化：将通用 void* 数据转换为 Creature* 并创建具体 AI 实例
 template<class REAL_AI>
 UnitAI*
 CreatureAIFactory<REAL_AI>::Create(void* data) const

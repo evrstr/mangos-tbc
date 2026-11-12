@@ -21,10 +21,16 @@ SDComment: Timers may need some fine adjustments
 SDCategory: Coilfang Resevoir, The Steamvault
 EndScriptData */
 
+// 督军卡利瑟斯（蒸汽地窟最终首领）
+/* 遭遇战概述：
+ * 督军卡利瑟斯战斗中会引导周围的纳迦纳加储藏罐汲取狂暴能量，玩家需及时打碎储藏罐。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "steam_vault.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_INTRO                   = 17724,
@@ -45,12 +51,14 @@ enum
     POINT_MOVE_DISTILLER = 1
 };
 
+// WarlordKalithreshActions // order based on priority 相关枚举
 enum WarlordKalithreshActions // order based on priority
 {
     WARLORD_KALITHRESH_ACTION_WARLORDS_RAGE,
     WARLORD_KALITHRESH_ACTION_MAX,
 };
 
+// boss_warlord_kalithreshAI 逻辑实现
 struct boss_warlord_kalithreshAI : public CombatAI
 {
     boss_warlord_kalithreshAI(Creature* creature) : CombatAI(creature, WARLORD_KALITHRESH_ACTION_MAX),
@@ -70,6 +78,7 @@ struct boss_warlord_kalithreshAI : public CombatAI
 
     bool m_hasTaunted;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -87,12 +96,14 @@ struct boss_warlord_kalithreshAI : public CombatAI
         }
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_WARLORD_KALITHRESH, FAIL);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 2))
@@ -106,6 +117,7 @@ struct boss_warlord_kalithreshAI : public CombatAI
             m_instance->SetData(TYPE_WARLORD_KALITHRESH, IN_PROGRESS);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -114,6 +126,7 @@ struct boss_warlord_kalithreshAI : public CombatAI
             m_instance->SetData(TYPE_WARLORD_KALITHRESH, DONE);
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (!m_hasTaunted && m_creature->IsWithinDistInMap(who, 45.0f))
@@ -147,6 +160,7 @@ struct boss_warlord_kalithreshAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         if (action == WARLORD_KALITHRESH_ACTION_WARLORDS_RAGE)
@@ -171,10 +185,12 @@ struct boss_warlord_kalithreshAI : public CombatAI
     }
 };
 
+// mob_naga_distillerAI 逻辑实现
 struct mob_naga_distillerAI : public CombatAI
 {
     mob_naga_distillerAI(Creature* creature) : CombatAI(creature, 0) { }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE);
@@ -184,6 +200,7 @@ struct mob_naga_distillerAI : public CombatAI
     }
 };
 
+// 注册 boss_warlord_kalithresh 脚本
 void AddSC_boss_warlord_kalithresh()
 {
     Script* pNewScript = new Script;

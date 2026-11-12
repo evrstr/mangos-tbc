@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: world_map_scripts
 SD%Complete: 100
-SDComment: Quest support: 1126, 4740, 8868, 11538
+SDComment: Quest support: 1126, 4740, 8868, 11538 (世界地图通用事件脚本与无头骑士数据管理)
 SDCategory: World Map Scripts
 EndScriptData */
 
@@ -36,16 +36,17 @@ EndScriptData */
 
 enum
 {
-    EVENT_UC_FROM_GROMGOL_ARRIVAL = 15312,
-    EVENT_GROMGOL_FROM_UC_ARRIVAL = 15314,
-    EVENT_OG_FROM_UC_ARRIVAL = 15318,
-    EVENT_UC_FROM_OG_ARRIVAL = 15320,
-    EVENT_OG_FROM_GROMGOL_ARRIVAL = 15322,
-    EVENT_GROMGOL_FROM_OG_ARRIVAL = 15324,
+    EVENT_UC_FROM_GROMGOL_ARRIVAL = 15312,                  // 幽暗城到港（来自格罗姆高）
+    EVENT_GROMGOL_FROM_UC_ARRIVAL = 15314,                  // 格罗姆高到港（来自幽暗城）
+    EVENT_OG_FROM_UC_ARRIVAL = 15318,                       // 奥格瑞玛到港（来自幽暗城）
+    EVENT_UC_FROM_OG_ARRIVAL = 15320,                       // 幽暗城到港（来自奥格瑞玛）
+    EVENT_OG_FROM_GROMGOL_ARRIVAL = 15322,                  // 奥格瑞玛到港（来自格罗姆高）
+    EVENT_GROMGOL_FROM_OG_ARRIVAL = 15324,                  // 格罗姆高到港（来自奥格瑞玛）
 
-    SOUND_ZEPPELIN_HORN = 11804,
+    SOUND_ZEPPELIN_HORN = 11804,                            // 飞艇汽笛声音 ID
 };
 
+// 处理世界交通工具到港事件：更新世界状态并让飞艇主管播放汽笛号角
 bool ProcessEventTransports(uint32 uiEventId, Object* pSource, Object* /*pTarget*/, bool /*bIsStart*/)
 {
     sWorldState.HandleConditionStateChange(pSource->GetEntry(), uiEventId);
@@ -54,22 +55,22 @@ bool ProcessEventTransports(uint32 uiEventId, Object* pSource, Object* /*pTarget
     uint32 entry = 0;
     switch (uiEventId)
     {
-        case EVENT_UC_FROM_GROMGOL_ARRIVAL: // UC arrival from gromgol
+        case EVENT_UC_FROM_GROMGOL_ARRIVAL: // UC arrival from gromgol (格罗姆高到达幽暗城)
             entry = NPC_HINDENBURG;
             break;
-        case EVENT_GROMGOL_FROM_UC_ARRIVAL: // gromgol arrival from UC
+        case EVENT_GROMGOL_FROM_UC_ARRIVAL: // gromgol arrival from UC (幽暗城到达格罗姆高)
             entry = NPC_SQUIBBY_OVERSPECK;
             break;
-        case EVENT_OG_FROM_UC_ARRIVAL:      // OG arrival from UC
+        case EVENT_OG_FROM_UC_ARRIVAL:      // OG arrival from UC (幽暗城到达奥格瑞玛)
             entry = NPC_FREZZA;
             break;
-        case EVENT_UC_FROM_OG_ARRIVAL:      // UC arrival from OG
+        case EVENT_UC_FROM_OG_ARRIVAL:      // UC arrival from OG (奥格瑞玛到达幽暗城)
             entry = NPC_ZAPETTA;
             break;
-        case EVENT_OG_FROM_GROMGOL_ARRIVAL: // OG arrival from gromgol
+        case EVENT_OG_FROM_GROMGOL_ARRIVAL: // OG arrival from gromgol (格罗姆高到达奥格瑞玛)
             entry = NPC_SNURK_BUCKSQUICK;
             break;
-        case EVENT_GROMGOL_FROM_OG_ARRIVAL: // gromgol arrival from OG
+        case EVENT_GROMGOL_FROM_OG_ARRIVAL: // gromgol arrival from OG (奥格瑞玛到达格罗姆高)
             entry = NPC_NEZRAZ;
             break;
     }
@@ -80,21 +81,25 @@ bool ProcessEventTransports(uint32 uiEventId, Object* pSource, Object* /*pTarget
     return true;
 }
 
+// 重置无头骑士袭击村庄数据
 void ShadeOfTheHorsemanData::Reset()
 {
     memset(m_shadeOfTheHorsemanAttackPhases, 0, sizeof(m_shadeOfTheHorsemanAttackPhases));
 }
 
+// 获取村庄袭击阶段
 uint32 ShadeOfTheHorsemanData::GetDataAttackPhase(uint32 id) const
 {
     return m_shadeOfTheHorsemanAttackPhases[id];
 }
 
+// 设置村庄袭击阶段
 void ShadeOfTheHorsemanData::SetDataAttackPhase(uint32 id, uint32 value)
 {
     m_shadeOfTheHorsemanAttackPhases[id] = value;
 }
 
+// 判定特定节日灭火/进攻任务条件是否满足
 bool ShadeOfTheHorsemanData::IsConditionFulfilled(uint32 conditionId, uint32 areaId) const
 {
     uint32 checkAreaId = 0;
@@ -153,16 +158,19 @@ bool ShadeOfTheHorsemanData::IsConditionFulfilled(uint32 conditionId, uint32 are
     }
 }
 
+// 统一实例数据获取接口
 uint32 ShadeOfTheHorsemanData::HandleGetData(uint32 id) const
 {
     return m_shadeOfTheHorsemanAttackPhases[id - TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE];
 }
 
+// 统一实例数据设置接口
 void ShadeOfTheHorsemanData::HandleSetData(uint32 id, uint32 value)
 {
     m_shadeOfTheHorsemanAttackPhases[id - TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE] = value;
 }
 
+// 根据区域 ID 换算受袭村庄类型
 uint32 ShadeOfTheHorsemanData::GetTypeFromZoneId(uint32 zoneId)
 {
     switch (zoneId)
@@ -177,6 +185,7 @@ uint32 ShadeOfTheHorsemanData::GetTypeFromZoneId(uint32 zoneId)
     }
 }
 
+// 周期更新：向各村庄区域玩家同步世界状态倒计时，到期时触发袭击
 bool ShadeOfTheHorsemanData::Update(const uint32 diff)
 {
     if (!sGameEventMgr.IsActiveHoliday(HOLIDAY_HALLOWS_END))
@@ -203,11 +212,13 @@ bool ShadeOfTheHorsemanData::Update(const uint32 diff)
     return false;
 }
 
+// 计算下一次无头骑士入侵世界状态倒计时分钟数
 uint32 ShadeOfTheHorsemanData::CalculateWorldstateTimerValue() const
 {
     return 60 - m_horsemanTime.tm_min + 60 * (m_horsemanTime.tm_hour % 4);
 }
 
+// 注册世界地图事件脚本
 void AddSC_world_map_scripts()
 {
     Script* pNewScript = new Script;

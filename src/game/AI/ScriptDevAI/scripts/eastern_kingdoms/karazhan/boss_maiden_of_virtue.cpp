@@ -21,31 +21,36 @@ SDComment:
 SDCategory: Karazhan
 EndScriptData */
 
+// 贞节圣女（Maiden of Virtue）首领战 AI（忏悔、神圣之火与神圣愤怒）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO               = 15079,
-    SAY_SLAY1               = 15082,
-    SAY_SLAY2               = 15083,
-    SAY_SLAY3               = 15084,
-    SAY_REPENTANCE1         = 15080,
-    SAY_REPENTANCE2         = 13396,
-    SAY_DEATH               = 15081,
+    SAY_AGGRO               = 15079,                        // 开战 台词广播 ID
+    SAY_SLAY1               = 15082,                        // slay1 台词广播 ID
+    SAY_SLAY2               = 15083,                        // slay2 台词广播 ID
+    SAY_SLAY3               = 15084,                        // slay3 台词广播 ID
+    SAY_REPENTANCE1         = 15080,                        // repentance1 台词广播 ID
+    SAY_REPENTANCE2         = 13396,                        // repentance2 台词广播 ID
+    SAY_DEATH               = 15081,                        // 死亡 台词广播 ID
 
-    SPELL_REPENTANCE        = 29511,
-    SPELL_HOLYFIRE          = 29522,
-    SPELL_HOLYWRATH         = 32445,
-    SPELL_HOLYGROUND        = 29512
+    SPELL_REPENTANCE        = 29511,                        // repentance 法术 ID
+    SPELL_HOLYFIRE          = 29522,                        // holyfire 法术 ID
+    SPELL_HOLYWRATH         = 32445,                        // holywrath 法术 ID
+    SPELL_HOLYGROUND        = 29512                         // holyground 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MaidenOfVirtueActions
 {
     MAIDEN_ACTION_MAX,
 };
 
+// 首领战 AI：ofvirtue（maiden_of_virtue）
 struct boss_maiden_of_virtueAI : public CombatAI
 {
     boss_maiden_of_virtueAI(Creature* creature) : CombatAI(creature, MAIDEN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -76,6 +81,7 @@ struct boss_maiden_of_virtueAI : public CombatAI
             m_instance->SetData(TYPE_MAIDEN, IN_PROGRESS);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -93,6 +99,7 @@ struct boss_maiden_of_virtueAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_maiden_of_virtue
 void AddSC_boss_maiden_of_virtue()
 {
     Script* pNewScript = new Script;

@@ -25,12 +25,16 @@ class WorldPacket;
 namespace Movement
 {
     class MoveSpline;
+    /// 样条移动网络封包序列化构建器
     class PacketBuilder
     {
+            /// 写入 SMSG_MONSTER_MOVE 公共头部（起点、样条 ID、朝向模式、标志与总耗时）
             static void WriteCommonMonsterMovePart(const MoveSpline& move_spline, WorldPacket& data);
         public:
 
+            /// 构造完整的怪物移动更新封包（SMSG_MONSTER_MOVE）
             static void WriteMonsterMove(const MoveSpline& move_spline, WorldPacket& data);
+            /// 构造对象创建封包（SMSG_UPDATE_OBJECT）中的样条移动状态块
             static void WriteCreate(const MoveSpline& move_spline, ByteBuffer& data);
     };
 }

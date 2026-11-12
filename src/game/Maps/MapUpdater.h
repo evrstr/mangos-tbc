@@ -30,6 +30,7 @@
 
 class Worker;
 
+// 地图多线程更新调度器，使用生产者-消费者队列与工作线程池并发更新地图任务
 class MapUpdater
 {
     public:
@@ -37,13 +38,13 @@ class MapUpdater
         MapUpdater(size_t num_threads);
         MapUpdater(const MapUpdater&) = delete;
         
-        void activate(size_t num_threads);
-        void deactivate();
-        void wait();
-        void join();
-        bool activated();
-        void update_finished();
-        void schedule_update(Worker* worker);
+        void activate(size_t num_threads);     // 启动指定数量的工作线程
+        void deactivate();                     // 停止工作线程并等待退出
+        void wait();                           // 等待所有待处理的更新任务完成
+        void join();                           // 汇合所有工作线程
+        bool activated();                      // 检查工作线程池是否已激活
+        void update_finished();                // 工作线程完成单个任务后回调，减少挂起计数并唤醒等待者
+        void schedule_update(Worker* worker);  // 将更新任务放入队列等待工作线程执行
 
     private:
         ProducerConsumerQueue<Worker *> _queue;

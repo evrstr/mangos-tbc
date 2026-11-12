@@ -21,10 +21,16 @@
  SDCategory: Hellfire Citadel, Shattered Halls
  EndScriptData */
 
+// 破碎大厅通用与杂项脚本
+/* 遭遇战概述：
+ * 封装破碎大厅限时人质被处决事件与随从交互。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "shattered_halls.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_START = 14134,
@@ -46,6 +52,7 @@ enum
     MAX_GLADIATORS = 3,
 };
 
+// GladiatorActions 相关枚举
 enum GladiatorActions
 {
     GLADIATOR_STOP_EVENT,
@@ -63,6 +70,7 @@ struct npc_shattered_hand_gladiator : public CombatAI
 
     ObjectGuid m_sparringPartner;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -116,6 +124,7 @@ struct npc_shattered_hand_gladiator : public CombatAI
             m_eventStarted = true;
         }
     }
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -131,6 +140,7 @@ struct npc_shattered_hand_gladiator : public CombatAI
             }
         }
     }
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         CombatAI::UpdateAI(diff);
@@ -150,6 +160,7 @@ struct npc_shattered_hand_gladiator : public CombatAI
     }
 };
 
+// CenturionActions 相关枚举
 enum CenturionActions
 {
     CENTURION_EVENT_RP,
@@ -167,6 +178,7 @@ struct npc_shattered_hand_centurion : public CombatAI
         AddCustomAction(CENTURION_EVENT_RP, 2000, 10000, [&]() { HandleRP(); });
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -177,6 +189,7 @@ struct npc_shattered_hand_centurion : public CombatAI
     ScriptedInstance* m_instance;
     bool m_eventStarted;
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 6))
@@ -242,6 +255,7 @@ struct npc_shattered_hand_centurion : public CombatAI
         }
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -273,6 +287,7 @@ struct npc_shattered_hand_centurion : public CombatAI
  ## npc_shattered_hand_legionnaire 16700
  ######*/
 
+// ShatteredHandLegionnairActions 相关枚举
 enum ShatteredHandLegionnairActions
 {
     LEGIONNAIRE_PUMMEL,
@@ -282,6 +297,7 @@ enum ShatteredHandLegionnairActions
     LEGIONNAIRE_REINF_CD,
 };
 
+// ShatteredHandLegionnair 相关枚举
 enum ShatteredHandLegionnair
 {
     SPELL_AURA_OF_DISCIPLINE        = 30472,
@@ -337,12 +353,14 @@ struct npc_shattered_hand_legionnaire : public CombatAI
     instance_shattered_halls* m_instance;
     bool m_reinfCD;
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (urand(0, 4) > 2)
             DoBroadcastText(aRandomAggro[urand(0, 6)], m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_creature->HasStringId(FIRST_LEGIONNAIRE_STRING))
@@ -352,6 +370,7 @@ struct npc_shattered_hand_legionnaire : public CombatAI
         }
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_JUST_DIED)
@@ -500,6 +519,7 @@ struct npc_shattered_hand_legionnaire : public CombatAI
         m_reinfCD = false;
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -522,8 +542,10 @@ struct npc_shattered_hand_legionnaire : public CombatAI
 };
 
 // 37437 ClearAllDebuffs
+// ClearAllDebuffs 法术脚本
 struct ClearAllDebuffs : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->m_targets.getUnitTarget();
@@ -539,6 +561,7 @@ struct ClearAllDebuffs : public SpellScript
     }
 };
 
+// 注册 shattered_halls 脚本
 void AddSC_shattered_halls()
 {
     Script* pNewScript = new Script;

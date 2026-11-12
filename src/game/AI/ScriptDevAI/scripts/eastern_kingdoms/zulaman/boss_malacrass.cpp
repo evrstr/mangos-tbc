@@ -21,23 +21,26 @@ SDComment: Contain adds and adds selection; Stolen abilities timers need improve
 SDCategory: Zul'Aman
 EndScriptData */
 
+// 妖术领主玛拉卡斯（Hex Lord Malacrass）首领战 AI（吸取玩家职业技能、灵魂虹吸与四名随机祭司侍从协同）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulaman.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1568045,
-    SAY_ENRAGE                  = -1568046,
-    SAY_KILL1                   = 23593,
-    SAY_KILL2                   = 23594,
-    SAY_SOUL_SIPHON             = -1568049,
-    SAY_DRAIN_POWER             = -1568050,
-    SAY_SPIRIT_BOLTS            = -1568051,
-    SAY_ADD_DIED1               = -1568052,
-    SAY_ADD_DIED2               = -1568053,
-    SAY_ADD_DIED3               = -1568054,
-    SAY_DEATH                   = -1568055,
+    SAY_AGGRO                   = -1568045,                 // 开战 台词广播 ID
+    SAY_ENRAGE                  = -1568046,                 // 狂暴 台词广播 ID
+    SAY_KILL1                   = 23593,                    // kill1 台词广播 ID
+    SAY_KILL2                   = 23594,                    // kill2 台词广播 ID
+    SAY_SOUL_SIPHON             = -1568049,                 // 灵魂siphon 台词广播 ID
+    SAY_DRAIN_POWER             = -1568050,                 // 吸取power 台词广播 ID
+    SAY_SPIRIT_BOLTS            = -1568051,                 // 之魂bolts 台词广播 ID
+    SAY_ADD_DIED1               = -1568052,                 // adddied1 台词广播 ID
+    SAY_ADD_DIED2               = -1568053,                 // adddied2 台词广播 ID
+    SAY_ADD_DIED3               = -1568054,                 // adddied3 台词广播 ID
+    SAY_DEATH                   = -1568055,                 // 死亡 台词广播 ID
 
     /* Notes about the event:
      * The boss casts siphon soul right after he finishes the spirit bolts channel, which takes 10 sec
@@ -45,72 +48,72 @@ enum
      * Basically the boss casts a dummy spell which chooses a random target on which it casts the actuall channel spell
      * The drain power spell acts as a enrage timer. It's cast each 30 seconds after the boss' health is below 80%
      */
-    SPELL_SPIRIT_BOLTS          = 43383,
-    SPELL_SIPHON_SOUL_DUMMY     = 43498,
-    SPELL_SIPHON_SOUL           = 43501,
-    SPELL_DRAIN_POWER           = 44131,
+    SPELL_SPIRIT_BOLTS          = 43383,                    // 之魂bolts 法术 ID
+    SPELL_SIPHON_SOUL_DUMMY     = 43498,                    // siphon灵魂dummy 法术 ID
+    SPELL_SIPHON_SOUL           = 43501,                    // siphon灵魂 法术 ID
+    SPELL_DRAIN_POWER           = 44131,                    // 吸取power 法术 ID
 
     // for various powers he uses after using soul drain
-    // Death Knight
-    SPELL_DK_DEATH_AND_DECAY    = 61603,
-    SPELL_DK_PLAGUE_STRIKE      = 61600,
-    SPELL_DK_MARK_OF_BLOOD      = 61606,
+    // Death Knight (死亡骑士)
+    SPELL_DK_DEATH_AND_DECAY    = 61603,                    // dk死亡anddecay 法术 ID
+    SPELL_DK_PLAGUE_STRIKE      = 61600,                    // dkplague打击 法术 ID
+    SPELL_DK_MARK_OF_BLOOD      = 61606,                    // dk印记of鲜血 法术 ID
 
-    // Druid
-    SPELL_DR_THORNS             = 43420,
-    SPELL_DR_LIFEBLOOM          = 43421,
-    SPELL_DR_MOONFIRE           = 43545,
+    // Druid (德鲁伊)
+    SPELL_DR_THORNS             = 43420,                    // drthorns 法术 ID
+    SPELL_DR_LIFEBLOOM          = 43421,                    // drlifebloom 法术 ID
+    SPELL_DR_MOONFIRE           = 43545,                    // drmoonfire 法术 ID
 
-    // Hunter
-    SPELL_HU_EXPLOSIVE_TRAP     = 43444,
-    SPELL_HU_FREEZING_TRAP      = 43447,
-    SPELL_HU_SNAKE_TRAP         = 43449,
+    // Hunter (猎人)
+    SPELL_HU_EXPLOSIVE_TRAP     = 43444,                    // huexplosivetrap 法术 ID
+    SPELL_HU_FREEZING_TRAP      = 43447,                    // hufreezingtrap 法术 ID
+    SPELL_HU_SNAKE_TRAP         = 43449,                    // husnaketrap 法术 ID
 
-    // Mage
-    SPELL_MG_FROST_NOVA         = 43426,
-    SPELL_MG_ICE_LANCE          = 43427,
-    SPELL_MG_FROSTBOLT          = 43428,
+    // Mage (法师)
+    SPELL_MG_FROST_NOVA         = 43426,                    // mg冰霜新星 法术 ID
+    SPELL_MG_ICE_LANCE          = 43427,                    // mgicelance 法术 ID
+    SPELL_MG_FROSTBOLT          = 43428,                    // mgfrostbolt 法术 ID
 
-    // Paladin
-    SPELL_PA_CONSECRATION       = 43429,
-    SPELL_PA_AVENGING_WRATH     = 43430,
-    SPELL_PA_HOLY_LIGHT         = 43451,
+    // Paladin (圣骑士)
+    SPELL_PA_CONSECRATION       = 43429,                    // paconsecration 法术 ID
+    SPELL_PA_AVENGING_WRATH     = 43430,                    // paavengingwrath 法术 ID
+    SPELL_PA_HOLY_LIGHT         = 43451,                    // pa神圣light 法术 ID
 
-    // Priest
-    SPELL_PR_HEAL               = 41372,
+    // Priest (牧师)
+    SPELL_PR_HEAL               = 41372,                    // pr治疗 法术 ID
     // SPELL_PR_MIND_BLAST         = 41374, - unconfirmed
     // SPELL_PR_SW_DEATH           = 41375, - unconfirmed
-    SPELL_PR_PSYCHIC_SCREAM     = 43432,
-    SPELL_PR_MIND_CONTROL       = 43550,
+    SPELL_PR_PSYCHIC_SCREAM     = 43432,                    // prpsychicscream 法术 ID
+    SPELL_PR_MIND_CONTROL       = 43550,                    // prmindcontrol 法术 ID
 
-    // Rogue
-    SPELL_RO_WOUND_POISON       = 39665,
-    SPELL_RO_BLIND              = 43433,
-    SPELL_RO_SLICE_DICE         = 43547,
+    // Rogue (潜行者)
+    SPELL_RO_WOUND_POISON       = 39665,                    // rowound毒药 法术 ID
+    SPELL_RO_BLIND              = 43433,                    // roblind 法术 ID
+    SPELL_RO_SLICE_DICE         = 43547,                    // roslicedice 法术 ID
 
-    // Shaman
-    SPELL_SH_CHAIN_LIGHT        = 43435,
-    SPELL_SH_FIRE_NOVA          = 43436,
-    SPELL_SH_HEALING_WAVE       = 43548,
+    // Shaman (萨满祭司)
+    SPELL_SH_CHAIN_LIGHT        = 43435,                    // sh连环light 法术 ID
+    SPELL_SH_FIRE_NOVA          = 43436,                    // sh火焰新星 法术 ID
+    SPELL_SH_HEALING_WAVE       = 43548,                    // sh治疗wave 法术 ID
 
-    // Warlock
-    SPELL_WL_CURSE_OF_DOOM      = 43439,
-    SPELL_WL_RAIN_OF_FIRE       = 43440,
-    SPELL_WL_UNSTABLE_AFFL      = 35183,
+    // Warlock (术士)
+    SPELL_WL_CURSE_OF_DOOM      = 43439,                    // wl诅咒ofdoom 法术 ID
+    SPELL_WL_RAIN_OF_FIRE       = 43440,                    // wlrainof火焰 法术 ID
+    SPELL_WL_UNSTABLE_AFFL      = 35183,                    // wlunstableaffl 法术 ID
 
-    // Warrior
-    SPELL_WR_MORTAL_STRIKE      = 43441,
-    SPELL_WR_WHIRLWIND          = 43442,
-    SPELL_WR_SPELL_REFLECT      = 43443,
+    // Warrior (战士)
+    SPELL_WR_MORTAL_STRIKE      = 43441,                    // wrmortal打击 法术 ID
+    SPELL_WR_WHIRLWIND          = 43442,                    // wr旋风斩 法术 ID
+    SPELL_WR_SPELL_REFLECT      = 43443,                    // wr法术reflect 法术 ID
 
     // misc
-    TARGET_TYPE_RANDOM          = 0,
-    TARGET_TYPE_VICTIM          = 1,
-    TARGET_TYPE_SELF            = 2,
-    TARGET_TYPE_FRIENDLY        = 3,
-    TARGET_TYPE_RANDOM_NOT_MAIN = 4,
+    TARGET_TYPE_RANDOM          = 0,                        // 遭遇战类型random 标识 ID
+    TARGET_TYPE_VICTIM          = 1,                        // 遭遇战类型victim 标识 ID
+    TARGET_TYPE_SELF            = 2,                        // 遭遇战类型self 标识 ID
+    TARGET_TYPE_FRIENDLY        = 3,                        // 遭遇战类型friendly 标识 ID
+    TARGET_TYPE_RANDOM_NOT_MAIN = 4,                        // 遭遇战类型randomnotmain 标识 ID
 
-    MAX_ACTIVE_ADDS             = 4
+    MAX_ACTIVE_ADDS             = 4                         // activeadds 标识 ID
 };
 
 // Adds positions
@@ -143,55 +146,55 @@ static PlayerAbilityStruct aMalacrassStolenAbility[][4] =
 {
     {},
     {
-        // 1 warrior
+        // 1 warrior (1战士)
         {SPELL_WR_SPELL_REFLECT,    TARGET_TYPE_SELF,     7000,  15000},
         {SPELL_WR_WHIRLWIND,        TARGET_TYPE_SELF,     7000,  15000},
         {SPELL_WR_MORTAL_STRIKE,    TARGET_TYPE_VICTIM,   6000,  15000}
     },
     {
-        // 2 paladin
+        // 2 paladin (2圣骑士)
         {SPELL_PA_CONSECRATION,     TARGET_TYPE_SELF,     13000, 30000},
         {SPELL_PA_HOLY_LIGHT,       TARGET_TYPE_FRIENDLY, 10000, 12000},
         {SPELL_PA_AVENGING_WRATH,   TARGET_TYPE_SELF,     13000, 30000}
     },
     {
-        // 3 hunter
+        // 3 hunter (3猎人)
         {SPELL_HU_EXPLOSIVE_TRAP,   TARGET_TYPE_SELF,     12000, 30000},
         {SPELL_HU_FREEZING_TRAP,    TARGET_TYPE_SELF,     3000,  30000},
         {SPELL_HU_SNAKE_TRAP,       TARGET_TYPE_SELF,     21000, 30000}
     },
     {
-        // 4 rogue
+        // 4 rogue (4潜行者)
         {SPELL_RO_WOUND_POISON,     TARGET_TYPE_VICTIM,   6000,  15000},
         {SPELL_RO_SLICE_DICE,       TARGET_TYPE_SELF,     0,     30000},
         {SPELL_RO_BLIND,            TARGET_TYPE_RANDOM_NOT_MAIN,   7000, 15000}
     },
     {
-        // 5 priest
+        // 5 priest (5牧师)
         {SPELL_PR_MIND_CONTROL,     TARGET_TYPE_SELF,     11000, 12000},
         {SPELL_PR_HEAL,             TARGET_TYPE_FRIENDLY, 10000, 12000},
         {SPELL_PR_PSYCHIC_SCREAM,   TARGET_TYPE_RANDOM,   12000, 12000}
     },
     {
-        // 6 death knight
+        // 6 death knight (6死亡骑士)
         {SPELL_DK_DEATH_AND_DECAY,  TARGET_TYPE_RANDOM,   25000, 30000},
         {SPELL_DK_PLAGUE_STRIKE,    TARGET_TYPE_VICTIM,   5000,  17000},
         {SPELL_DK_MARK_OF_BLOOD,    TARGET_TYPE_RANDOM,   14000, 30000}
     },
     {
-        // 7 shaman
+        // 7 shaman (7萨满祭司)
         {SPELL_SH_FIRE_NOVA,        TARGET_TYPE_SELF,     12000, 30000},
         {SPELL_SH_CHAIN_LIGHT,      TARGET_TYPE_RANDOM,   11000, 12000},
         {SPELL_SH_HEALING_WAVE,     TARGET_TYPE_FRIENDLY, 10000, 12000},
     },
     {
-        // 8 mage
+        // 8 mage (8法师)
         {SPELL_MG_FROST_NOVA,       TARGET_TYPE_SELF,     2000,  10000},
         {SPELL_MG_ICE_LANCE,        TARGET_TYPE_RANDOM,   2000,  10000},
         {SPELL_MG_FROSTBOLT,        TARGET_TYPE_RANDOM,   2000,  4000},
     },
     {
-        // 9 warlock
+        // 9 warlock (9术士)
         {SPELL_WL_CURSE_OF_DOOM,    TARGET_TYPE_RANDOM,   11000, 11000},
         {SPELL_WL_RAIN_OF_FIRE,     TARGET_TYPE_RANDOM,   6000,  5000},
         {SPELL_WL_UNSTABLE_AFFL,    TARGET_TYPE_RANDOM,   10000, 11000}
@@ -200,13 +203,14 @@ static PlayerAbilityStruct aMalacrassStolenAbility[][4] =
         // 10 unused - no class in DBC here
     },
     {
-        // 11 druid
+        // 11 druid (11德鲁伊)
         {SPELL_DR_LIFEBLOOM,        TARGET_TYPE_FRIENDLY, 10000, 12000},
         {SPELL_DR_THORNS,           TARGET_TYPE_SELF,     0,     40000},
         {SPELL_DR_MOONFIRE,         TARGET_TYPE_RANDOM,   4000,  4000}
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MalacrassActions
 {
     MALACRASS_SPIRIT_BOLTS,
@@ -220,6 +224,7 @@ enum MalacrassActions
     MALACRASS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（malacrass）
 struct boss_malacrassAI : public CombatAI
 {
     boss_malacrassAI(Creature* creature) : CombatAI(creature, MALACRASS_ACTION_MAX), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData()))
@@ -244,6 +249,7 @@ struct boss_malacrassAI : public CombatAI
 
     uint8 m_playerClass;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -254,12 +260,14 @@ struct boss_malacrassAI : public CombatAI
         m_creature->ApplySpellImmune(nullptr, IMMUNITY_MECHANIC, MECHANIC_DISARM, true);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_MALACRASS, FAIL);
     }
 
+    // 尸体清除回调
     void CorpseRemoved(uint32& respawnDelay) override
     {
         // Respawn after 30 seconds
@@ -269,7 +277,7 @@ struct boss_malacrassAI : public CombatAI
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
-        if (eventType == AI_EVENT_CUSTOM_A) // malacrass kill or wipe
+        if (eventType == AI_EVENT_CUSTOM_A) // malacrass kill or wipe (玛拉卡斯击杀orwipe)
         {
             auto& addsList = m_instance->GetMalacrassAddsEntryList();
             m_creature->ForcedDespawn();
@@ -281,13 +289,13 @@ struct boss_malacrassAI : public CombatAI
 
     void DoInitializeAdds()
     {
-        // not if m_creature are dead, so avoid
+        // not if m_creature are dead, so avoid (若生物已死亡则跳过处理)
         if (!m_creature->IsAlive())
             return;
 
         auto& addsList = m_instance->GetMalacrassAddsEntryList();
 
-        // it's empty, so first time
+        // it's empty, so first time (容器为空，初次初始化)
         if (addsList.empty())
         {
             addsList.resize(MAX_ACTIVE_ADDS);
@@ -300,7 +308,7 @@ struct boss_malacrassAI : public CombatAI
                 creature->SetCorpseDelay(5);
             }
         }
-        // Resummon the killed adds
+        // Resummon the killed adds (重新召唤已死亡的小怪)
         else
         {
             if (!m_instance)
@@ -308,7 +316,7 @@ struct boss_malacrassAI : public CombatAI
 
             for (uint8 i = 0; i < MAX_ACTIVE_ADDS; ++i)
             {
-                // If we already have the creature on the map, then don't summon it
+                // If we already have the creature on the map, then don't summon it (若场景中已存在该生物则不再重复召唤)
                 if (m_instance->GetSingleCreatureFromStorage(addsList[i], true))
                     continue;
 
@@ -456,6 +464,7 @@ struct boss_malacrassAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_malacrass
 void AddSC_boss_malacrass()
 {
     Script* pNewScript = new Script;

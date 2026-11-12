@@ -27,6 +27,7 @@
 /* *********************************************************
  *                     OUTLAND
  */
+// BashirNpcs 相关枚举
 enum BashirNpcs
 {
     // Timer NPC
@@ -59,6 +60,7 @@ enum BashirNpcs
     NPC_GRAND_COLLECTOR         = 23333,
 };
 
+// BashirData 相关枚举
 enum BashirData
 {
     BASHIR_MAX_EVENTS = 15,
@@ -95,6 +97,7 @@ enum BashirData
     GO_BASHIR_CRYSTALFORGE = 185921,
 };
 
+// BashirPhases : uint32 相关枚举
 enum BashirPhases : uint32
 {
     BASHIR_PHASE_NOT_ACTIVE,
@@ -202,6 +205,7 @@ float bashirCustomSpawnPositions[][4] =
     // {,,,},
 };
 
+// OutlandActions 相关枚举
 enum OutlandActions
 {
     BASHIR_ACTION_INTRO,
@@ -214,6 +218,7 @@ enum OutlandActions
     SHARTUUL_SPAWN_SEQUENCE,
 };
 
+// ShartuulPhases : uint32 相关枚举
 enum ShartuulPhases : uint32
 {
     PHASE_0_SHARTUUL_DISABLED,
@@ -296,6 +301,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
 
     std::map<uint64, TimePoint> m_vindicatorWhisperCooldowns;
 
+    // 初始化副本数据与状态
     void Initialize() override
     {
         m_uiEmissaryOfHate_KilledAddCount = 0;
@@ -334,6 +340,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
         m_shadeData.Reset();
     }
 
+    // 获取遭遇战状态数据
     uint32 GetData(uint32 type) const override
     {
         if (type >= TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE && type <= TYPE_SHADE_OF_THE_HORSEMAN_MAX)
@@ -341,6 +348,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
         return 0;
     }
 
+    // 设置遭遇战状态数据
     void SetData(uint32 type, uint32 data) override
     {
         switch (type)
@@ -1532,6 +1540,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
 
     // generic section
 
+    // 副本生物创建登记
     void OnCreatureCreate(Creature* creature) override
     {
         switch (creature->GetEntry())
@@ -1618,6 +1627,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
         }
     }
 
+    // 副本生物重生处理
     void OnCreatureRespawn(Creature* creature) override
     {
         switch (creature->GetEntry())
@@ -1676,6 +1686,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
             go->ForcedDespawn(300000);
     }
 
+    // 副本生物脱战脱逃处理
     void OnCreatureEvade(Creature* creature) override
     {
         switch (creature->GetEntry())
@@ -1756,6 +1767,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
         }
     }
 
+    // 副本生物死亡处理
     void OnCreatureDeath(Creature* creature) override
     {
         switch (creature->GetEntry())
@@ -1811,6 +1823,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
         }
     }
 
+    // 副本游戏对象创建登记
     void OnObjectCreate(GameObject* go) override
     {
         switch (go->GetEntry())
@@ -2010,8 +2023,10 @@ struct world_map_outland : public ScriptedMap, public TimerManager
     }
 };
 
+// PossessDemonShartuul 法术脚本
 struct PossessDemonShartuul : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_0)
@@ -2024,8 +2039,10 @@ struct PossessDemonShartuul : public SpellScript
     }
 };
 
+// SmashShield 法术脚本
 struct SmashShield : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_0)
@@ -2039,6 +2056,7 @@ struct SmashShield : public SpellScript
     }
 };
 
+// 注册 OutlandWorldScript 脚本
 void AddSC_OutlandWorldScript()
 {
     Script* pNewScript = new Script;

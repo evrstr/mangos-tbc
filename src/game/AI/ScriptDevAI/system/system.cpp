@@ -21,6 +21,7 @@ SystemMgr& SystemMgr::Instance()
     return pSysMgr;
 }
 
+// 从 sd2_db_version 表加载 ScriptDev2 数据库版本信息
 void SystemMgr::LoadVersion()
 {
     // Get Version information
@@ -42,24 +43,28 @@ void SystemMgr::LoadVersion()
     outstring_log("Loading %s\n", strSD2Version.c_str());
 }
 
+// 从 script_texts 表加载通用脚本文本数据
 void SystemMgr::LoadScriptTexts()
 {
     outstring_log("SD2: Loading Script Texts...");
     LoadMangosStrings(WorldDatabase, "script_texts", TEXT_SOURCE_TEXT_START, TEXT_SOURCE_TEXT_END, true);
 }
 
+// 从 custom_texts 表加载自定义脚本文本数据
 void SystemMgr::LoadScriptTextsCustom()
 {
     outstring_log("SD2: Loading Custom Texts...");
     LoadMangosStrings(WorldDatabase, "custom_texts", TEXT_SOURCE_CUSTOM_START, TEXT_SOURCE_CUSTOM_END, true);
 }
 
+// 从 gossip_texts 表加载 NPC 对话文本数据
 void SystemMgr::LoadScriptGossipTexts()
 {
     outstring_log("SD2: Loading Gossip Texts...");
     LoadMangosStrings(WorldDatabase, "gossip_texts", TEXT_SOURCE_GOSSIP_START, TEXT_SOURCE_GOSSIP_END);
 }
 
+// 从 script_waypoint 表加载 NPC 巡逻/护送路径点并注册到 WaypointManager
 void SystemMgr::LoadScriptWaypoints()
 {
     uint64 creatureCount = 0;

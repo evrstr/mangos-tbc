@@ -21,6 +21,7 @@
 
 #include "MotionGenerators/MovementGenerator.h"
 
+/// 点对点移动生成器：控制单位移动到指定三维坐标（可选寻路、速度与终点朝向）
 class PointMovementGenerator : public MovementGenerator
 {
     public:
@@ -41,7 +42,9 @@ class PointMovementGenerator : public MovementGenerator
         MovementGeneratorType GetMovementGeneratorType() const override { return POINT_MOTION_TYPE; }
 
     protected:
+        /// 构建并下发 MoveSplineInit 到目标坐标
         virtual void Move(Unit& unit);
+        /// 到达目标点后通知 AI、召唤者及触发 Relay 脚本
         virtual void MovementInform(Unit& unit);
 
     protected:
@@ -56,6 +59,7 @@ class PointMovementGenerator : public MovementGenerator
         uint32 m_relayId;
 };
 
+/// 撤退移动生成器：AI 脱离目标并移动到指定点，到达后等待 delay 毫秒再结束
 class RetreatMovementGenerator : public PointMovementGenerator
 {
     public:
@@ -74,10 +78,11 @@ class RetreatMovementGenerator : public PointMovementGenerator
         void MovementInform(Unit&) override {}
 
     private:
-        ShortTimeTracker m_delayTimer;
+        ShortTimeTracker m_delayTimer; // 到达撤退点后的驻留倒计时
         bool m_arrived;
 };
 
+/// 驻守移动生成器：移动到目标点后持续驻留（Update 恒返回 true 直到被外部替换）
 class StayMovementGenerator : public PointMovementGenerator
 {
     public:
@@ -98,6 +103,7 @@ class StayMovementGenerator : public PointMovementGenerator
         bool m_arrived;
 };
 
+/// 起飞/降落点移动生成器（TakeOff/Land）：强制使用飞行样条直线前往目标点
 class PointTOLMovementGenerator : public PointMovementGenerator
 {
     public:

@@ -22,35 +22,38 @@ SDCategory: Bosses
 EndScriptData
 */
 
+// 卡扎克领主（Lord Kazzak）世界首领 AI（暗影箭雨、捕获灵魂与狂暴灭团机制）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_INTRO                 = -1000147,
-    SAY_AGGRO1                = -1000148,
-    SAY_AGGRO2                = -1000149,
-    SAY_SURPREME1             = -1000150,
-    SAY_SURPREME2             = -1000151,
-    SAY_KILL1                 = -1000152,
-    SAY_KILL2                 = -1000153,
-    SAY_KILL3                 = -1000154,
-    SAY_DEATH                 = -1000155,
-    EMOTE_FRENZY              = -1000002,
-    SAY_RAND1                 = -1000157,
-    SAY_RAND2                 = -1000158,
+    SAY_INTRO                 = -1000147,                   // 开场 台词广播 ID
+    SAY_AGGRO1                = -1000148,                   // aggro1 台词广播 ID
+    SAY_AGGRO2                = -1000149,                   // aggro2 台词广播 ID
+    SAY_SURPREME1             = -1000150,                   // surpreme1 台词广播 ID
+    SAY_SURPREME2             = -1000151,                   // surpreme2 台词广播 ID
+    SAY_KILL1                 = -1000152,                   // kill1 台词广播 ID
+    SAY_KILL2                 = -1000153,                   // kill2 台词广播 ID
+    SAY_KILL3                 = -1000154,                   // kill3 台词广播 ID
+    SAY_DEATH                 = -1000155,                   // 死亡 台词广播 ID
+    EMOTE_FRENZY              = -1000002,                   // 狂乱 表情动作 ID
+    SAY_RAND1                 = -1000157,                   // rand1 台词广播 ID
+    SAY_RAND2                 = -1000158,                   // rand2 台词广播 ID
 
-    SPELL_SHADOW_VOLLEY       = 21341,
-    SPELL_BERSERK             = 21340,
-    SPELL_CLEAVE              = 20691,
-    SPELL_THUNDERCLAP         = 26554,
-    SPELL_VOIDBOLT            = 21066,
+    SPELL_SHADOW_VOLLEY       = 21341,                      // 暗影箭雨 法术 ID
+    SPELL_BERSERK             = 21340,                      // 狂暴 法术 ID
+    SPELL_CLEAVE              = 20691,                      // 顺劈斩 法术 ID
+    SPELL_THUNDERCLAP         = 26554,                      // thunderclap 法术 ID
+    SPELL_VOIDBOLT            = 21066,                      // voidbolt 法术 ID
     SPELL_MARK_OF_KAZZAK      = 21056,                  // triggers 21058 when target gets to 0 mana
     SPELL_CAPTURESOUL         = 21053,                  // procs 21054 on kill
-    SPELL_TWISTED_REFLECTION   = 21063
+    SPELL_TWISTED_REFLECTION   = 21063                      // twisted倒影镜像 法术 ID
 };
 
-enum KazzakActions // order based on priority
+enum KazzakActions // order based on priority (按优先级顺序排序)
 {
     KAZZAK_ACTION_SUPREME,
     KAZZAK_ACTION_VOIDBOLT,
@@ -64,6 +67,7 @@ enum KazzakActions // order based on priority
 };
 
 
+// 首领战 AI：标识 ID（kazzak）
 struct boss_kazzakAI : public ScriptedAI
 {
     boss_kazzakAI(Creature* creature) : ScriptedAI(creature, KAZZAK_ACTION_MAX)
@@ -79,6 +83,7 @@ struct boss_kazzakAI : public ScriptedAI
     }
 
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         for (uint32 i = 0; i < KAZZAK_ACTION_MAX; ++i)
@@ -107,7 +112,7 @@ struct boss_kazzakAI : public ScriptedAI
             case KAZZAK_ACTION_SHADOW_BOLT_VOLLEY: return urand(3000, 12000);
             case KAZZAK_ACTION_THUNDERCLAP: return urand(16000, 20000);
             case KAZZAK_ACTION_CLEAVE: return 7000;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
@@ -122,7 +127,7 @@ struct boss_kazzakAI : public ScriptedAI
             case KAZZAK_ACTION_SHADOW_BOLT_VOLLEY: return urand(5000, 30000);
             case KAZZAK_ACTION_THUNDERCLAP: return urand(10000, 14000);
             case KAZZAK_ACTION_CLEAVE: return urand(8000, 12000);
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
@@ -137,6 +142,7 @@ struct boss_kazzakAI : public ScriptedAI
         DoScriptText(urand(0, 1) ? SAY_AGGRO1 : SAY_AGGRO2, m_creature);
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* pVictim) override
     {
         if (pVictim->GetTypeId() != TYPEID_PLAYER)
@@ -249,6 +255,7 @@ struct boss_kazzakAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         UpdateTimers(diff, m_creature->IsInCombat());
@@ -257,15 +264,17 @@ struct boss_kazzakAI : public ScriptedAI
             return;
 
         ExecuteActions();
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_kazzak
 UnitAI* GetAI_boss_kazzak(Creature* pCreature)
 {
     return new boss_kazzakAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_kazzakAI
 void AddSC_boss_kazzakAI()
 {
     Script* pNewScript = new Script;

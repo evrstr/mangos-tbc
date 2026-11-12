@@ -21,29 +21,35 @@ SDComment: Small adjustments; Timers
 SDCategory: Caverns of Time, The Dark Portal
 EndScriptData */
 
+/**
+ * 开启黑暗之门：埃欧努斯 (Aeonus) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "dark_portal.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_AGGRO               = 16828,
-    SAY_BANISH              = 16829,
-    SAY_SLAY1               = 16831,
-    SAY_SLAY2               = 16832,
-    SAY_DEATH               = 16830,
-    EMOTE_GENERIC_FRENZY    = 1191,
+    SAY_AGGRO               = 16828,                        // 剧情台词/喊话文本 ID
+    SAY_BANISH              = 16829,                        // 剧情台词/喊话文本 ID
+    SAY_SLAY1               = 16831,                        // 剧情台词/喊话文本 ID
+    SAY_SLAY2               = 16832,                        // 剧情台词/喊话文本 ID
+    SAY_DEATH               = 16830,                        // 剧情台词/喊话文本 ID
+    EMOTE_GENERIC_FRENZY    = 1191,                         // 剧情台词/喊话文本 ID
 
-    SPELL_THRASH            = 8876,
-    SPELL_DOUBLE_ATTACK     = 19818,
+    SPELL_THRASH            = 8876,                         // 技能法术 ID
+    SPELL_DOUBLE_ATTACK     = 19818,                        // 技能法术 ID
 
-    SPELL_CLEAVE            = 40504,
-    SPELL_TIME_STOP         = 31422,
-    SPELL_ENRAGE            = 37605,
-    SPELL_SAND_BREATH       = 31473,
+    SPELL_CLEAVE            = 40504,                        // 技能法术：顺劈斩
+    SPELL_TIME_STOP         = 31422,                        // 技能法术 ID
+    SPELL_ENRAGE            = 37605,                        // 技能法术：激怒/狂暴
+    SPELL_SAND_BREATH       = 31473,                        // 技能法术 ID
     SPELL_SAND_BREATH_H     = 39049
 };
 
+// boss_aeonusAI 首领战斗 AI
 struct boss_aeonusAI : public CombatAI
 {
     boss_aeonusAI(Creature* creature) : CombatAI(creature, 0),
@@ -55,7 +61,7 @@ struct boss_aeonusAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         DoCastSpellIfCan(nullptr, m_isRegularMode ? SPELL_THRASH : SPELL_DOUBLE_ATTACK, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
@@ -68,7 +74,7 @@ struct boss_aeonusAI : public CombatAI
 
     void MoveInLineOfSight(Unit* who) override
     {
-        // Despawn Time Keeper
+        // Despawn Time Keeper (使时间管理者消失)
         if (who->GetTypeId() == TYPEID_UNIT && who->GetEntry() == NPC_TIME_KEEPER)
         {
             if (m_creature->IsWithinDistInMap(who, 20.0f))
@@ -93,7 +99,7 @@ struct boss_aeonusAI : public CombatAI
     }
 };
 
-void AddSC_boss_aeonus()
+void AddSC_boss_aeonus() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_aeonus";

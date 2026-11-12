@@ -21,36 +21,41 @@ SDComment:
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 夺灵者哈卡（Hakkar the Soulflayer）最终首领战 AI（堕落之血瘟疫传播、血液虹吸治疗与击杀哈卡之子吃毒血破盾）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1309020,
-    SAY_FLEEING                 = -1309021,
+    SAY_AGGRO                   = -1309020,                 // 开战 台词广播 ID
+    SAY_FLEEING                 = -1309021,                 // fleeing 台词广播 ID
 
     SPELL_BLOOD_SIPHON          = 24324,                    // triggers 24322 or 24323 on caster
-    SPELL_CORRUPTED_BLOOD       = 24328,
-    SPELL_CAUSE_INSANITY        = 24327,
-    SPELL_WILL_OF_HAKKAR        = 24178,
-    SPELL_ENRAGE                = 24318,
-    SPELL_DOUBLE_ATTACK         = 19818,
+    SPELL_CORRUPTED_BLOOD       = 24328,                    // corrupted鲜血 法术 ID
+    SPELL_CAUSE_INSANITY        = 24327,                    // causeinsanity 法术 ID
+    SPELL_WILL_OF_HAKKAR        = 24178,                    // willof哈卡 法术 ID
+    SPELL_ENRAGE                = 24318,                    // 狂暴 法术 ID
+    SPELL_DOUBLE_ATTACK         = 19818,                    // 双重攻击 法术 ID
 
     // The Aspects of all High Priests
-    SPELL_ASPECT_OF_JEKLIK      = 24687,
-    SPELL_ASPECT_OF_VENOXIS     = 24688,
-    SPELL_ASPECT_OF_MARLI       = 24686,
-    SPELL_ASPECT_OF_THEKAL      = 24689,
-    SPELL_ASPECT_OF_ARLOKK      = 24690
+    SPELL_ASPECT_OF_JEKLIK      = 24687,                    // aspectof耶克里克 法术 ID
+    SPELL_ASPECT_OF_VENOXIS     = 24688,                    // aspectof温诺希斯 法术 ID
+    SPELL_ASPECT_OF_MARLI       = 24686,                    // aspectof玛尔里 法术 ID
+    SPELL_ASPECT_OF_THEKAL      = 24689,                    // aspectof塞卡尔 法术 ID
+    SPELL_ASPECT_OF_ARLOKK      = 24690                     // aspectof阿罗克 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum HakkarActions
 {
     HAKKAR_ENRAGE_LOW,
     HAKKAR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（hakkar）
 struct boss_hakkarAI : public CombatAI
 {
     boss_hakkarAI(Creature* creature) : CombatAI(creature, HAKKAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -60,6 +65,7 @@ struct boss_hakkarAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -98,6 +104,7 @@ struct boss_hakkarAI : public CombatAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（HakkarPowerDown）
 struct HakkarPowerDown : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -113,6 +120,7 @@ struct HakkarPowerDown : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（BloodSiphon）
 struct BloodSiphon : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -125,6 +133,7 @@ struct BloodSiphon : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_hakkar
 void AddSC_boss_hakkar()
 {
     Script* pNewScript = new Script;

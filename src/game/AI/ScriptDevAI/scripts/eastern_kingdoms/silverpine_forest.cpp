@@ -21,6 +21,8 @@ SDComment: Quest support: 435, 452
 SDCategory: Silverpine Forest
 EndScriptData */
 
+// 银松森林（Silverpine Forest）阿鲁高与被遗忘者区域脚本
+
 /* ContentData
 npc_deathstalker_erland
 npc_deathstalker_faerleia
@@ -33,27 +35,29 @@ EndContentData */
 ## npc_deathstalker_erland
 #####*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START_1         = -1000306,
-    SAY_START_2         = -1000307,
-    SAY_AGGRO_1         = -1000308,
-    SAY_AGGRO_2         = -1000309,
-    SAY_AGGRO_3         = -1000310,
-    SAY_PROGRESS        = -1000311,
-    SAY_END             = -1000312,
-    SAY_RANE            = -1000313,
-    SAY_RANE_REPLY      = -1000314,
-    SAY_CHECK_NEXT      = -1000315,
-    SAY_QUINN           = -1000316,
-    SAY_QUINN_REPLY     = -1000317,
-    SAY_BYE             = -1000318,
+    SAY_START_1         = -1000306,                         // 开始1 台词广播 ID
+    SAY_START_2         = -1000307,                         // 开始2 台词广播 ID
+    SAY_AGGRO_1         = -1000308,                         // 开战1 台词广播 ID
+    SAY_AGGRO_2         = -1000309,                         // 开战2 台词广播 ID
+    SAY_AGGRO_3         = -1000310,                         // 开战3 台词广播 ID
+    SAY_PROGRESS        = -1000311,                         // progress 台词广播 ID
+    SAY_END             = -1000312,                         // end 台词广播 ID
+    SAY_RANE            = -1000313,                         // rane 台词广播 ID
+    SAY_RANE_REPLY      = -1000314,                         // ranereply 台词广播 ID
+    SAY_CHECK_NEXT      = -1000315,                         // checknext 台词广播 ID
+    SAY_QUINN           = -1000316,                         // quinn 台词广播 ID
+    SAY_QUINN_REPLY     = -1000317,                         // quinnreply 台词广播 ID
+    SAY_BYE             = -1000318,                         // bye 台词广播 ID
 
-    QUEST_ERLAND        = 435,
-    NPC_RANE            = 1950,
-    NPC_QUINN           = 1951
+    QUEST_ERLAND        = 435,                              // erland 任务 ID
+    NPC_RANE            = 1950,                             // rane Entry ID
+    NPC_QUINN           = 1951                              // quinn Entry ID
 };
 
+// 随从/NPC AI：erland（deathstalker_erland）
 struct npc_deathstalker_erlandAI : public npc_escortAI
 {
     npc_deathstalker_erlandAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -97,8 +101,10 @@ struct npc_deathstalker_erlandAI : public npc_escortAI
         }
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         switch (urand(0, 2))
@@ -110,6 +116,7 @@ struct npc_deathstalker_erlandAI : public npc_escortAI
     }
 };
 
+// 任务接取回调函数：npc_deathstalker_erland
 bool QuestAccept_npc_deathstalker_erland(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ERLAND)
@@ -122,6 +129,7 @@ bool QuestAccept_npc_deathstalker_erland(Player* pPlayer, Creature* pCreature, c
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_deathstalker_erland
 UnitAI* GetAI_npc_deathstalker_erland(Creature* pCreature)
 {
     return new npc_deathstalker_erlandAI(pCreature);
@@ -131,29 +139,30 @@ UnitAI* GetAI_npc_deathstalker_erland(Creature* pCreature)
 ## npc_deathstalker_faerleia
 #####*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_PYREWOOD_AMBUSH    = 452,
+    QUEST_PYREWOOD_AMBUSH    = 452,                         // pyrewoodambush 任务 ID
 
     // cast it after every wave
-    SPELL_DRINK_POTION       = 3359,
+    SPELL_DRINK_POTION       = 3359,                        // drinkpotion 法术 ID
 
-    SAY_START                = -1000553,
-    SAY_COMPLETED            = -1000554,
+    SAY_START                = -1000553,                    // 开始 台词广播 ID
+    SAY_COMPLETED            = -1000554,                    // completed 台词广播 ID
 
     // 1st wave
-    NPC_COUNCILMAN_SMITHERS  = 2060,
+    NPC_COUNCILMAN_SMITHERS  = 2060,                        // councilmansmithers Entry ID
     // 2nd wave
-    NPC_COUNCILMAN_THATHER   = 2061,
-    NPC_COUNCILMAN_HENDRICKS = 2062,
+    NPC_COUNCILMAN_THATHER   = 2061,                        // councilmanthather Entry ID
+    NPC_COUNCILMAN_HENDRICKS = 2062,                        // councilmanhendricks Entry ID
     // 3rd wave
-    NPC_COUNCILMAN_WILHELM   = 2063,
-    NPC_COUNCILMAN_HARTIN    = 2064,
-    NPC_COUNCILMAN_HIGARTH   = 2066,
+    NPC_COUNCILMAN_WILHELM   = 2063,                        // councilmanwilhelm Entry ID
+    NPC_COUNCILMAN_HARTIN    = 2064,                        // councilmanhartin Entry ID
+    NPC_COUNCILMAN_HIGARTH   = 2066,                        // councilmanhigarth Entry ID
     // final wave
-    NPC_COUNCILMAN_COOPER    = 2065,
-    NPC_COUNCILMAN_BRUNSWICK = 2067,
-    NPC_LORD_MAYOR_MORRISON  = 2068
+    NPC_COUNCILMAN_COOPER    = 2065,                        // councilmancooper Entry ID
+    NPC_COUNCILMAN_BRUNSWICK = 2067,                        // councilmanbrunswick Entry ID
+    NPC_LORD_MAYOR_MORRISON  = 2068                         // lordmayormorrison Entry ID
 };
 
 struct SpawnPoint
@@ -173,17 +182,19 @@ SpawnPoint SpawnPoints[] =
 
 static float m_afMoveCoords[] = { -410.69f, 1498.04f, 19.77f};
 
+// 随从/NPC AI：faerleia（deathstalker_faerleia）
 struct npc_deathstalker_faerleiaAI : public ScriptedAI
 {
     npc_deathstalker_faerleiaAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
-    ObjectGuid m_playerGuid;
-    uint32 m_uiWaveTimer;
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
+    uint32 m_uiWaveTimer;                                   // Wave 技能计时器
     uint32 m_uiSummonCount;
     uint8  m_uiWaveCount;
-    bool   m_bEventStarted;
+    bool   m_bEventStarted;                                 // EventStarted 状态标记
 
     void StartEvent(Player* pPlayer)
     {
@@ -211,6 +222,7 @@ struct npc_deathstalker_faerleiaAI : public ScriptedAI
         FinishEvent();
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         ++m_uiSummonCount;
@@ -242,6 +254,7 @@ struct npc_deathstalker_faerleiaAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bEventStarted && !m_uiSummonCount)
@@ -281,10 +294,11 @@ struct npc_deathstalker_faerleiaAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 任务接取回调函数：npc_deathstalker_faerleia
 bool QuestAccept_npc_deathstalker_faerleia(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_PYREWOOD_AMBUSH)
@@ -300,11 +314,13 @@ bool QuestAccept_npc_deathstalker_faerleia(Player* pPlayer, Creature* pCreature,
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_deathstalker_faerleia
 UnitAI* GetAI_npc_deathstalker_faerleia(Creature* pCreature)
 {
     return new npc_deathstalker_faerleiaAI(pCreature);
 }
 
+// 注册并载入脚本模块：silverpine_forest
 void AddSC_silverpine_forest()
 {
     Script* pNewScript = new Script;

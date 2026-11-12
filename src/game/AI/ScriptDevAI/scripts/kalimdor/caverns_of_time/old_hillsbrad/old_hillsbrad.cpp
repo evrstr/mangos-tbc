@@ -21,6 +21,10 @@ SDComment: Thrall reset on server restart is not supported, because of core limi
 SDCategory: Caverns of Time, Old Hillsbrad Foothills
 EndScriptData */
 
+/**
+ * 旧希尔斯布莱德丘陵 (敦霍尔德营救萨尔) 副本主逻辑与护送流程
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "old_hillsbrad.h"
 
@@ -33,6 +37,7 @@ instance_old_hillsbrad::instance_old_hillsbrad(Map* pMap) : ScriptedInstance(pMa
 }
 
 
+// OHFActions 战斗行为动作枚举
 enum OHFActions
 {
     OHF_BARREL_RP,
@@ -42,21 +47,21 @@ enum OHFActions
 
 void instance_old_hillsbrad::Initialize()
 {
-    // On soft reset - Those trash respawns again
-    // Trash in the Huts that cant respawn when Lieutnant Drake is alive
+    // On soft reset - Those trash respawns again (说明)
+    // Trash in the Huts that cant respawn when Lieutnant Drake is alive (说明)
     instance->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_DRAKE_TRASH_RESPAWN, 0);
-    // Trash on the Bridges that get despawned when player starts Thrall escort
+    // Trash on the Bridges that get despawned when player starts Thrall escort (说明)
     instance->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_THRALL_TRASH_RESPAWN, 0);
-    // Trash and friendly npcs around tarren mill that get despawned during Epoch Hunter Event
+    // Trash and friendly npcs around tarren mill that get despawned during Epoch Hunter Event (说明)
     instance->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_TARREN_MILL_DESPAWN, 0);
 
-    // If Escort got finished we keep Barrels and all Escort related NPCs despawned
+    // If Escort got finished we keep Barrels and all Escort related NPCs despawned (说明)
     if (GetData(TYPE_THRALL_EVENT) == DONE)
         instance->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_THRALL_ESCORT, 1);
     else
     {
         instance->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_THRALL_ESCORT, 0);
-        // For safety reason (crash)
+        // For safety reason (crash) (说明)
         HandleThrallRelocation();        
     }
 
@@ -91,8 +96,8 @@ void instance_old_hillsbrad::OnCreatureRespawn(Creature* creature)
     switch (creature->GetEntry())
     {
         case NPC_SKARLOC:
-            // Confirmed from TBC Anni that on soft reset Thrall respawns at Prison and players can do the Escort again
-            // Guessed: To prevent getting double boss loot (confirmed on mop classic) 
+            // Confirmed from TBC Anni that on soft reset Thrall respawns at Prison and players can do the Escort again (说明)
+            // Guessed: To prevent getting double boss loot (confirmed on mop classic) (说明)
             if (GetData(TYPE_SKARLOC) == DONE)
             {
                 creature->SetNoXP(true);
@@ -102,7 +107,7 @@ void instance_old_hillsbrad::OnCreatureRespawn(Creature* creature)
         break;
         case NPC_IMAGE_EROZION: 
         {            
-            // on try 19 there is another Text - no text after 20 trys
+            // on try 19 there is another Text - no text after 20 trys (说明)
             if (m_uiThrallEventCount == 19)
                 DoBroadcastText(SAY_ERONZION_RESET_LAST, creature);
             else if (m_uiThrallEventCount <= MAX_WIPE_COUNTER)
@@ -167,7 +172,7 @@ void instance_old_hillsbrad::OnCreatureGroupDespawn(CreatureGroup* creatureGroup
             if (thrall->IsAlive())
                 thrall->GetMotionMaster()->UnpauseWaypoints();
 
-    // Spawn next Wave if group died before timer but only if next wave isnt spawned yet
+    // Spawn next Wave if group died before timer but only if next wave isnt spawned yet (说明)
     if (creatureGroup->HasStringId("OHF_EPOCH_WAVE_01"))
         if (m_uiWave == 2)
             SpawnWave();
@@ -191,11 +196,11 @@ void instance_old_hillsbrad::HandleThrallRelocation()
     {
         debug_log("SD2: Instance Old Hillsbrad: Thrall relocation");
 
-        // Thrall already got spawned
+        // Thrall already got spawned (说明)
         if (thrall->IsAlive())
             return;
 
-        // Despawn Corpse
+        // Despawn Corpse (消失)
         thrall->ForcedDespawn();
     }
 
@@ -203,11 +208,11 @@ void instance_old_hillsbrad::HandleThrallRelocation()
     {
         SetData(TYPE_THRALL_EVENT, IN_PROGRESS);
 
-        // respawn thrall
+        // respawn thrall (重新刷新萨尔)
         if (SpawnGroup* thrallGroup = instance->GetSpawnManager().GetSpawnGroup("OHF_THRALL_INN"))
             thrallGroup->Spawn(true, true);
 
-        // readd Gossip Flag for Taretha and remove standstate
+        // readd Gossip Flag for Taretha and remove standstate (说明)
         if (Creature* taretha = GetSingleCreatureFromStorage(NPC_TARETHA, true))
         {
             taretha->RemoveAurasDueToSpell(SPELL_SHADOW_SPIKE);
@@ -216,7 +221,7 @@ void instance_old_hillsbrad::HandleThrallRelocation()
         }
         else 
         {
-        // Something went wrong, respawn
+        // Something went wrong, respawn (复活)
             if (SpawnGroup* taretha = instance->GetSpawnManager().GetSpawnGroup("OHF_TARETHA"))
                 taretha->Spawn(true, true);
         }
@@ -224,27 +229,27 @@ void instance_old_hillsbrad::HandleThrallRelocation()
     else if (GetData(TYPE_ESCORT_BARN) == DONE)
     {
         SetData(TYPE_THRALL_EVENT, IN_PROGRESS);
-        // respawn thrall
+        // respawn thrall (重新刷新萨尔)
         if (SpawnGroup* thrallGroup = instance->GetSpawnManager().GetSpawnGroup("OHF_THRALL_BARN"))
             thrallGroup->Spawn(true, true);
     }
-    // Skarloc Dead - Respawn at that Position
+    // Skarloc Dead - Respawn at that Position (说明)
     else if (GetData(TYPE_ESCORT_SKARLOC) == DONE)
     {
         SetData(TYPE_THRALL_EVENT, IN_PROGRESS);
-        // respawn thrall
+        // respawn thrall (重新刷新萨尔)
         if (SpawnGroup* thrallGroup = instance->GetSpawnManager().GetSpawnGroup("OHF_THRALL_SKARLOC"))
             thrallGroup->Spawn(true, true);
 
-        // Also respawn Horse
+        // Also respawn Horse (复活)
         if (SpawnGroup* horseGroup = instance->GetSpawnManager().GetSpawnGroup("OHF_SKARLOC_MOUNT"))
             horseGroup->Spawn(true, true);
     }
-    // Died before Skarloc - respawn at Prison and Close Door
+    // Died before Skarloc - respawn at Prison and Close Door (说明)
     else
     {
         SetData(TYPE_THRALL_EVENT, NOT_STARTED);
-        // respawn thrall
+        // respawn thrall (重新刷新萨尔)
         if (SpawnGroup* thrallGroup = instance->GetSpawnManager().GetSpawnGroup("OHF_THRALL_PRISON"))
             thrallGroup->Spawn(true, true);
 
@@ -263,24 +268,24 @@ void instance_old_hillsbrad::SetData(uint32 uiType, uint32 uiData)
                 if (m_uiBarrelCount >= MAX_BARRELS)
                     return;
 
-                // Update barrels used and world state
+                // Update barrels used and world state (说明)
                 ++m_uiBarrelCount;
                 DoUpdateWorldState(WORLD_STATE_OLD_HILLSBRAD_BARREL_COUNT, m_uiBarrelCount);
 
                 debug_log("SD2: Instance Old Hillsbrad: go_barrel_old_hillsbrad count %u", m_uiBarrelCount);
                 
-                // 5 Barrels used - Worldstate still gets shown ingame                
+                // 5 Barrels used - Worldstate still gets shown ingame (说明)
                 if (m_uiBarrelCount == MAX_BARRELS)
                 {
                     ResetTimer(OHF_BARREL_RP, 3000);
                     m_uiDrakeStep = 1;
                 }
-                // Change to IN_PROGRESS for gossip condition handling
+                // Change to IN_PROGRESS for gossip condition handling (说明)
                 SetData(TYPE_BARREL_DIVERSION, IN_PROGRESS);
             }
             break;
         case TYPE_THRALL_EVENT:
-            // nothing to do if already done and thrall respawn
+            // nothing to do if already done and thrall respawn (说明)
             if (GetData(TYPE_THRALL_EVENT) == DONE)
                 return;
             m_auiEncounter[uiType] = uiData;
@@ -321,10 +326,10 @@ void instance_old_hillsbrad::SetData(uint32 uiType, uint32 uiData)
                     ++m_uiThrallEventCount;
                     debug_log("SD2: Instance Old Hillsbrad: Thrall event failed %u times.", m_uiThrallEventCount);
 
-                    // reset Thrall on timer
+                    // reset Thrall on timer (重置计时器)
                     ResetTimer(OHF_THRALL_RESET, 30000);
                 }
-                // If we already respawned Thrall too many times, the event is failed for good
+                // If we already respawned Thrall too many times, the event is failed for good (说明)
                 else if (m_uiThrallEventCount > MAX_WIPE_COUNTER)
                     debug_log("SD2: Instance Old Hillsbrad: Thrall event failed %u times. Reset instance required.", m_uiThrallEventCount);
             }
@@ -356,13 +361,13 @@ void instance_old_hillsbrad::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             if (uiData == DONE)
             {
-                // Safety
+                // Safety (说明)
                 if (GetData(TYPE_EPOCH_WAVE) == IN_PROGRESS)
                 {
                     SetData(TYPE_EPOCH_WAVE, DONE);
                     DisableTimer(OHF_EPOCH_WAVES);
                 }
-                // Start end RP
+                // Start end RP (开始完成)
                 if (Creature* taretha = GetSingleCreatureFromStorage(NPC_TARETHA))
                 {
                     if (taretha->IsAlive())
@@ -427,16 +432,16 @@ void instance_old_hillsbrad::Load(const char* chrIn)
             i = NOT_STARTED;
     }
 
-    // custom reload
-    // If Epoch event is not done, we have to redo barrel and full escort
+    // custom reload (说明)
+    // If Epoch event is not done, we have to redo barrel and full escort (说明)
     if (m_auiEncounter[7] != DONE)
     {
-        m_auiEncounter[0] = NOT_STARTED;    // Barrel
-        m_auiEncounter[3] = NOT_STARTED;    // Thrall respawning at Skarloc
-        m_auiEncounter[4] = NOT_STARTED;    // Thrall respawning at Barn
-        m_auiEncounter[5] = NOT_STARTED;    // Thrall respawning at Inn
-        m_auiEncounter[6] = NOT_STARTED;    // Epoch Hunter Waves
-        m_auiEncounter[8] = NOT_STARTED;    // Escort
+        m_auiEncounter[0] = NOT_STARTED;    // Barrel (说明)
+        m_auiEncounter[3] = NOT_STARTED;    // Thrall respawning at Skarloc (说明)
+        m_auiEncounter[4] = NOT_STARTED;    // Thrall respawning at Barn (说明)
+        m_auiEncounter[5] = NOT_STARTED;    // Thrall respawning at Inn (说明)
+        m_auiEncounter[6] = NOT_STARTED;    // Epoch Hunter Waves (说明)
+        m_auiEncounter[8] = NOT_STARTED;    // Escort (护送)
     }
 
     OUT_LOAD_INST_DATA_COMPLETE;
@@ -460,12 +465,12 @@ void instance_old_hillsbrad::ExecuteChatCommand(ChatHandler* handler, char* args
         ResetTimer(OHF_BARREL_RP, 3000);
         m_uiDrakeStep = 1;
  
-        // Change to IN_PROGRESS for gossip condition handling
+        // Change to IN_PROGRESS for gossip condition handling (说明)
         SetData(TYPE_BARREL_DIVERSION, IN_PROGRESS);
     }
     else if (val == "prison")
     {
-        // Nothing started yet
+        // Nothing started yet (说明)
         SetData(TYPE_SKARLOC, NOT_STARTED);
         SetData(TYPE_ESCORT_SKARLOC, NOT_STARTED);
         SetData(TYPE_ESCORT_BARN, NOT_STARTED);
@@ -564,7 +569,7 @@ void instance_old_hillsbrad::DoBarrelRP()
     {
         case 1: 
         {
-            // First spawn  all Roaring Flames - despawning on soft reset
+            // First spawn  all Roaring Flames - despawning on soft reset (说明)
             if (SpawnGroup* roaringFlames = instance->GetSpawnManager().GetSpawnGroup("OHF_ROARING_FLAMES"))
                 roaringFlames->Spawn(true, true);
             ResetTimer(OHF_BARREL_RP, 2000);
@@ -573,7 +578,7 @@ void instance_old_hillsbrad::DoBarrelRP()
         }
         case 2: 
         {
-            // Spawn Lieutnant Drake only if not already done and prevent enemy npc respawning
+            // Spawn Lieutnant Drake only if not already done and prevent enemy npc respawning (说明)
             if (GetData(TYPE_DRAKE) != DONE)
             {
                 if (SpawnGroup* lieutnantDrake = instance->GetSpawnManager().GetSpawnGroup("OHF_LIEUTENANTDRAKE"))
@@ -582,8 +587,8 @@ void instance_old_hillsbrad::DoBarrelRP()
                 instance->GetVariableManager().SetVariable(WORLD_STATE_OLD_HILLSBRAD_CUSTOM_DRAKE_TRASH_RESPAWN, 1);
             }
 
-            // Orc Prisoners and all alive enemy NPC groups around the orc Huts will have differen RP elements after Lieutenant Drake spawned
-            // Everything gets handled via EAI activated with AI_EVENT_CUSTOM_EVENTAI_A
+            // Orc Prisoners and all alive enemy NPC groups around the orc Huts will have differen RP elements after Lieutenant Drake spawned (说明)
+            // Everything gets handled via EAI activated with AI_EVENT_CUSTOM_EVENTAI_A (说明)
             if (std::vector<Creature*> const* drakerpSpecial = instance->GetCreatures("OHF_DRAKE_RP_SPECIAL"))
             {
                 for (Creature* creature : *drakerpSpecial)
@@ -595,7 +600,7 @@ void instance_old_hillsbrad::DoBarrelRP()
         }
         case 3: 
         {
-            // Remove Barrel Worldstate and update quests
+            // Remove Barrel Worldstate and update quests (说明)
             UpdateLodgeQuestCredit();
             DoUpdateWorldState(WORLD_STATE_OLD_HILLSBRAD_BARREL_COUNT, 0);
             break;
@@ -657,7 +662,7 @@ void instance_old_hillsbrad::Update(uint32 uiDiff)
     UpdateTimers(uiDiff);
 }
 
-InstanceData* GetInstanceData_instance_old_hillsbrad(Map* pMap)
+InstanceData* GetInstanceData_instance_old_hillsbrad(Map* pMap) // 创建并返回副本数据实例
 {
     return new instance_old_hillsbrad(pMap);
 }
@@ -683,7 +688,7 @@ bool ProcessEventId_event_go_barrel_old_hillsbrad(uint32 /*uiEventId*/, Object* 
     return false;
 }
 
-void AddSC_instance_old_hillsbrad()
+void AddSC_instance_old_hillsbrad() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_old_hillsbrad";

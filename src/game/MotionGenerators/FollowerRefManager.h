@@ -24,6 +24,7 @@
 class Unit;
 class TargetedMovementGeneratorBase;
 
+/// 跟随者引用管理器：挂载在被跟随的 Unit 上，管理所有正在跟随它的目标移动生成器
 class FollowerRefManager : public RefManager<Unit, TargetedMovementGeneratorBase>
 {
 };

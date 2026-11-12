@@ -41,6 +41,7 @@
 
 #define MAX_INBOX_CLIENT_UI_CAPACITY 50
 
+/// 校验玩家当前是否可与指定邮箱对象交互
 bool WorldSession::CheckMailBox(ObjectGuid guid) const
 {
     if (!GetPlayer()->GetGameObjectIfCanInteractWith(guid, GAMEOBJECT_TYPE_MAILBOX))
@@ -54,6 +55,7 @@ bool WorldSession::CheckMailBox(ObjectGuid guid) const
 
 /**
  * Handles the Packet sent by the client when sending a mail.
+ * 处理玩家发送邮件请求：校验收件人、阵营、屏蔽、附件物品交易权限、邮资/金币及货到付款设置并投递
  *
  * This methods takes the packet sent by the client and performs the following actions:
  * - Checks whether the mail is valid: i.e. can he send the selected items,
@@ -311,6 +313,7 @@ void WorldSession::HandleSendMail(WorldPacket& recv_data)
  * @see MailCheckMask
  *
  * @param recv_data the packet containing information about the mail the player read.
+ * 标记指定邮件为已读并减少未读计数
  *
  */
 void WorldSession::HandleMailMarkAsRead(WorldPacket& recv_data)
@@ -337,6 +340,7 @@ void WorldSession::HandleMailMarkAsRead(WorldPacket& recv_data)
 
 /**
  * Handles the Packet sent by the client when deleting a mail.
+ * 处理删除邮件请求（货到付款 COD 邮件不允许直接删除）
  *
  * This method is called when a client deletes a mail in his mailbox.
  *
@@ -372,6 +376,7 @@ void WorldSession::HandleMailDelete(WorldPacket& recv_data)
 }
 /**
  * Handles the Packet sent by the client when returning a mail to sender.
+ * 处理退回邮件给原发件人请求
  * This method is called when a player chooses to return a mail to its sender.
  * It will create a new MailDraft and add the items, money, etc. associated with the mail
  * and then send the mail to the original sender.
@@ -436,6 +441,7 @@ void WorldSession::HandleMailReturnToSender(WorldPacket& recv_data)
 
 /**
  * Handles the packet sent by the client when taking an item from the mail.
+ * 处理从邮件提取附件物品请求（若为 COD 货到付款邮件则先扣款并寄回给发件人）
  */
 void WorldSession::HandleMailTakeItem(WorldPacket& recv_data)
 {
@@ -535,6 +541,7 @@ void WorldSession::HandleMailTakeItem(WorldPacket& recv_data)
 
 /**
  * Handles the packet sent by the client when taking money from the mail.
+ * 处理从邮件提取附带金币请求
  */
 void WorldSession::HandleMailTakeMoney(WorldPacket& recv_data)
 {
@@ -571,6 +578,7 @@ void WorldSession::HandleMailTakeMoney(WorldPacket& recv_data)
 
 /**
  * Handles the packet sent by the client when requesting the current mail list.
+ * 处理查询收件箱邮件列表请求（单次最多下发 50 封已送达且未删除邮件）
  * It will send a list of all available mails in the players mailbox to the client.
  */
 void WorldSession::HandleGetMailList(WorldPacket& recv_data)
@@ -676,6 +684,7 @@ void WorldSession::HandleGetMailList(WorldPacket& recv_data)
 
 /**
  * Handles the packet sent by the client when requesting information about the body of a mail.
+ * 处理查询邮件或可阅读物品的正文文本内容请求
  *
  * This function is called when client needs mail message body,
  * or when player clicks on item which has some flag set
@@ -700,6 +709,7 @@ void WorldSession::HandleItemTextQuery(WorldPacket& recv_data)
 
 /**
  * Handles the packet sent by the client when he copies the body a mail to his inventory.
+ * 处理将邮件正文抄录为永久信件物品存入背包请求
  *
  * When a player copies the body of a mail to his inventory this method is called. It will create
  * a new item with the text of the mail and store it in the players inventory (if possible).
@@ -773,7 +783,7 @@ void WorldSession::HandleMailCreateTextItem(WorldPacket& recv_data)
 }
 
 /**
- * No idea when this is called.
+ * No idea when this is called. (查询未读邮件与小地图新邮件提示悬浮信息，最多返回 3 封未读邮件发件人)
  */
 void WorldSession::HandleQueryNextMailTime(WorldPacket& /**recv_data*/)
 {

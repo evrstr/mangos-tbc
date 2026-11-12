@@ -22,6 +22,7 @@
 #include "Common.h"
 #include <chrono>
 
+/// 获取进程启动时的单调时钟基准时间点（首次调用时初始化）
 inline std::chrono::steady_clock::time_point GetApplicationStartTime()
 {
     using namespace std::chrono;
@@ -31,13 +32,15 @@ inline std::chrono::steady_clock::time_point GetApplicationStartTime()
     return ApplicationStartTime;
 }
 
+/// 世界服务器毫秒级全局计时器：维护服务器启动以来的单调毫秒时间与每帧 Tick 差值
 class WorldTimer
 {
     public:
 
-        // get current server time
+        // get current server time | 获取当前服务器运行毫秒数
         static uint32 getMSTime();
 
+        /// 计算旧毫秒时间戳与目标 steady_clock 时间点之间的差值（处理 32 位回绕）
         static inline uint32 getMSTimeDiff(const uint32& oldMSTime, std::chrono::steady_clock::time_point newTime)
         {
             using namespace std::chrono;
@@ -46,7 +49,7 @@ class WorldTimer
             return getMSTimeDiff(oldMSTime, newMSTime);
         }
 
-        // get time difference between two timestamps
+        // get time difference between two timestamps | 计算两个 32 位毫秒时间戳的差值（兼容 uint32 溢出回绕）
         static inline uint32 getMSTimeDiff(const uint32& oldMSTime, const uint32& newMSTime)
         {
             if (oldMSTime > newMSTime)
@@ -60,13 +63,13 @@ class WorldTimer
             return newMSTime - oldMSTime;
         }
 
-        // get last world tick time
+        // get last world tick time | 获取最新一次世界主循环 Tick 时间戳
         static uint32 tickTime();
 
-        // get previous world tick time
+        // get previous world tick time | 获取上一次世界主循环 Tick 时间戳
         static uint32 tickPrevTime();
 
-        // tick world timer
+        // tick world timer | 推进一次世界 Tick 并返回与上次 Tick 的毫秒差值
         static uint32 tick();
 
      private:
@@ -74,6 +77,7 @@ class WorldTimer
         static uint32 m_iPrevTime;
 };
 
+/// 周期性间隔计时器（time_t 精度）：累计耗时达到 _interval 后触发，Reset 时扣除一个周期
 class IntervalTimer
 {
     public:
@@ -102,6 +106,7 @@ class IntervalTimer
         time_t _current;
 };
 
+/// 短周期无符号毫秒间隔计时器（uint32 精度）
 class ShortIntervalTimer
 {
     public:
@@ -129,6 +134,7 @@ class ShortIntervalTimer
         uint32 _current;
 };
 
+/// 倒计时追踪器（time_t 精度）：从 expiry 倒减至 <= 0 时视为到期
 struct TimeTracker
 {
     public:
@@ -142,6 +148,7 @@ struct TimeTracker
         time_t i_expiryTime;
 };
 
+/// 短周期倒计时追踪器（int32 毫秒精度）
 struct ShortTimeTracker
 {
     public:

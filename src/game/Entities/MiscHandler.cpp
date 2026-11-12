@@ -42,6 +42,7 @@
 #include "Social/SocialMgr.h"
 #include "GMTickets/GMTicketMgr.h"
 
+// 处理玩家释放灵魂跑尸请求 (CMSG_REPOP_REQUEST)
 void WorldSession::HandleRepopRequestOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_REPOP_REQUEST");
@@ -56,18 +57,20 @@ void WorldSession::HandleRepopRequestOpcode(WorldPacket& recv_data)
     // creatures can kill players
     // so if the server is lagging enough the player can
     // release spirit after he's killed but before he is updated
+    // 世界更新顺序为会话、玩家、生物；网络处理并发运行，可能在角色更新心跳前收到释放请求，需先行处理死亡
     if (GetPlayer()->GetDeathState() == JUST_DIED)
     {
         DEBUG_LOG("HandleRepopRequestOpcode: got request after player %s(%d) was killed and before he was updated", GetPlayer()->GetName(), GetPlayer()->GetGUIDLow());
         GetPlayer()->KillPlayer();
     }
 
-    // this is spirit release confirm?
+    // this is spirit release confirm? (确认释放灵魂：移除宠物、生成尸体并在墓地转化为灵魂状态)
     GetPlayer()->RemovePet(PET_SAVE_REAGENTS);
     GetPlayer()->BuildPlayerRepop();
     GetPlayer()->RepopAtGraveyard();
 }
 
+// 处理查询在线玩家列表命令 (CMSG_WHO)
 void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_WHO");
@@ -269,6 +272,7 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
     DEBUG_LOG("WORLD: Send SMSG_WHO Message");
 }
 
+// 处理玩家请求安全登出 (CMSG_LOGOUT_REQUEST)
 void WorldSession::HandleLogoutRequestOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_LOGOUT_REQUEST, security %u", GetSecurity());
@@ -302,11 +306,13 @@ void WorldSession::HandleLogoutRequestOpcode(WorldPacket& /*recv_data*/)
     }
 }
 
+// 客户端确认退出游戏 (CMSG_PLAYER_LOGOUT)
 void WorldSession::HandlePlayerLogoutOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_PLAYER_LOGOUT Message");
 }
 
+// 取消登出倒计时 (CMSG_LOGOUT_CANCEL)
 void WorldSession::HandleLogoutCancelOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_LOGOUT_CANCEL Message");
@@ -322,6 +328,7 @@ void WorldSession::HandleLogoutCancelOpcode(WorldPacket& /*recv_data*/)
     DEBUG_LOG("WORLD: Sent SMSG_LOGOUT_CANCEL_ACK Message");
 }
 
+// 切换 PvP 战斗标记状态 (CMSG_TOGGLE_PVP)
 void WorldSession::HandleTogglePvP(WorldPacket& recv_data)
 {
     uint32 zoneId = GetPlayer()->GetZoneId();
@@ -332,6 +339,7 @@ void WorldSession::HandleTogglePvP(WorldPacket& recv_data)
     }
 
     // this opcode can be used in two ways: Either set explicit new status or toggle old status
+    // 该操作码支持两种模式：显式下发目标布尔状态或翻转现有 PvP 意图标志
     if (recv_data.size() == 1)
     {
         bool newPvPStatus;
@@ -347,6 +355,7 @@ void WorldSession::HandleTogglePvP(WorldPacket& recv_data)
         GetPlayer()->UpdatePvP(true);
 }
 
+// 客户端上报进入新区域 (CMSG_ZONEUPDATE)
 void WorldSession::HandleZoneUpdateOpcode(WorldPacket& recv_data)
 {
     uint32 newZone;
@@ -363,6 +372,7 @@ void WorldSession::HandleZoneUpdateOpcode(WorldPacket& recv_data)
     m_initialZoneUpdated = true;
 }
 
+// 切换当前选中目标实体 (CMSG_SET_TARGET)
 void WorldSession::HandleSetTargetOpcode(WorldPacket& recv_data)
 {
     // When this packet send?
@@ -371,7 +381,7 @@ void WorldSession::HandleSetTargetOpcode(WorldPacket& recv_data)
 
     _player->SetTargetGuid(guid);
 
-    // update reputation list if need
+    // update reputation list if need (若目标为某阵营且尚未在声望面板激活，则将其设为可见)
     Unit* unit = ObjectAccessor::GetUnit(*_player, guid);   // can select group members at diff maps
     if (!unit)
         return;
@@ -380,6 +390,7 @@ void WorldSession::HandleSetTargetOpcode(WorldPacket& recv_data)
         _player->GetReputationMgr().SetVisible(factionTemplateEntry);
 }
 
+// 客户端上报当前交互/高亮的目标对象 (CMSG_SET_SELECTION)
 void WorldSession::HandleSetSelectionOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -400,6 +411,7 @@ void WorldSession::HandleSetSelectionOpcode(WorldPacket& recv_data)
         _player->GetReputationMgr().SetVisible(factionTemplateEntry);
 }
 
+// 玩家主动切换站立/坐下/卧倒/跪姿 (CMSG_STANDSTATECHANGE)
 void WorldSession::HandleStandStateChangeOpcode(WorldPacket& recv_data)
 {
     uint32 animstate;
@@ -424,6 +436,7 @@ void WorldSession::HandleStandStateChangeOpcode(WorldPacket& recv_data)
     _player->SetStandState(uint8(animstate), true);
 }
 
+// 请求好友与屏蔽列表 (CMSG_CONTACT_LIST)
 void WorldSession::HandleContactListOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_CONTACT_LIST");
@@ -433,6 +446,7 @@ void WorldSession::HandleContactListOpcode(WorldPacket& recv_data)
     _player->GetSocial()->SendSocialList();
 }
 
+// 请求添加好友 (CMSG_ADD_FRIEND)
 void WorldSession::HandleAddFriendOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_ADD_FRIEND");
@@ -450,7 +464,7 @@ void WorldSession::HandleAddFriendOpcode(WorldPacket& recv_data)
     if (!normalizePlayerName(friendName))
         return;
 
-    CharacterDatabase.escape_string(friendName);            // prevent SQL injection - normal name don't must changed by this call
+    CharacterDatabase.escape_string(friendName);            // prevent SQL injection - normal name don't must changed by this call (SQL 转义防注入)
 
     DEBUG_LOG("WORLD: %s asked to add friend : '%s'",
               GetPlayer()->GetName(), friendName.c_str());
@@ -458,6 +472,7 @@ void WorldSession::HandleAddFriendOpcode(WorldPacket& recv_data)
     CharacterDatabase.AsyncPQuery(&WorldSession::HandleAddFriendOpcodeCallBack, GetAccountId(), friendNote, "SELECT guid, race FROM characters WHERE name = '%s'", friendName.c_str());
 }
 
+// 异步添加好友查库完成回调
 void WorldSession::HandleAddFriendOpcodeCallBack(QueryResult* result, uint32 accountId, std::string friendNote)
 {
     if (!result)
@@ -509,6 +524,7 @@ void WorldSession::HandleAddFriendOpcodeCallBack(QueryResult* result, uint32 acc
     DEBUG_LOG("WORLD: Sent (SMSG_FRIEND_STATUS)");
 }
 
+// 处理删除好友请求 (CMSG_DEL_FRIEND)
 void WorldSession::HandleDelFriendOpcode(WorldPacket& recv_data)
 {
     ObjectGuid friendGuid;
@@ -524,6 +540,7 @@ void WorldSession::HandleDelFriendOpcode(WorldPacket& recv_data)
     DEBUG_LOG("WORLD: Sent motd (SMSG_FRIEND_STATUS)");
 }
 
+// 处理添加忽略屏蔽玩家 (CMSG_ADD_IGNORE)
 void WorldSession::HandleAddIgnoreOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_ADD_IGNORE");
@@ -543,6 +560,7 @@ void WorldSession::HandleAddIgnoreOpcode(WorldPacket& recv_data)
     CharacterDatabase.AsyncPQuery(&WorldSession::HandleAddIgnoreOpcodeCallBack, GetAccountId(), "SELECT guid FROM characters WHERE name = '%s'", IgnoreName.c_str());
 }
 
+// 异步添加忽略屏蔽查库回调
 void WorldSession::HandleAddIgnoreOpcodeCallBack(QueryResult* result, uint32 accountId)
 {
     if (!result)
@@ -583,6 +601,7 @@ void WorldSession::HandleAddIgnoreOpcodeCallBack(QueryResult* result, uint32 acc
     DEBUG_LOG("WORLD: Sent (SMSG_FRIEND_STATUS)");
 }
 
+// 处理移除忽略屏蔽 (CMSG_DEL_IGNORE)
 void WorldSession::HandleDelIgnoreOpcode(WorldPacket& recv_data)
 {
     ObjectGuid ignoreGuid;
@@ -598,6 +617,7 @@ void WorldSession::HandleDelIgnoreOpcode(WorldPacket& recv_data)
     DEBUG_LOG("WORLD: Sent motd (SMSG_FRIEND_STATUS)");
 }
 
+// 设置指定好友的自定义备注文本 (CMSG_SET_CONTACT_NOTES)
 void WorldSession::HandleSetContactNotesOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_CONTACT_NOTES");
@@ -607,6 +627,7 @@ void WorldSession::HandleSetContactNotesOpcode(WorldPacket& recv_data)
     _player->GetSocial()->SetFriendNote(guid, note);
 }
 
+// 玩家提交游戏建议或缺陷报告 (CMSG_BUG)
 void WorldSession::HandleBugOpcode(WorldPacket& recv_data)
 {
     uint32 suggestion, contentlen, typelen;
@@ -629,6 +650,7 @@ void WorldSession::HandleBugOpcode(WorldPacket& recv_data)
     CharacterDatabase.PExecute("INSERT INTO bugreport (type,content) VALUES('%s', '%s')", type.c_str(), content.c_str());
 }
 
+// 跑尸到达尸体范围点击复活 (CMSG_RECLAIM_CORPSE)
 void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
 {
     DETAIL_LOG("WORLD: Received opcode CMSG_RECLAIM_CORPSE");
@@ -639,7 +661,7 @@ void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
     if (GetPlayer()->IsAlive())
         return;
 
-    // do not allow corpse reclaim in arena
+    // do not allow corpse reclaim in arena (竞技场内禁止跑尸复活)
     if (GetPlayer()->InArena())
         return;
 
@@ -652,20 +674,21 @@ void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
     if (!corpse)
         return;
 
-    // prevent resurrect before 30-sec delay after body release not finished
+    // prevent resurrect before 30-sec delay after body release not finished (释放灵魂后必须等待复活倒计时结束)
     if (corpse->GetGhostTime() + GetPlayer()->GetCorpseReclaimDelay(corpse->GetType() == CORPSE_RESURRECTABLE_PVP) > time(nullptr))
         return;
 
     if (!corpse->IsWithinDistInMap(GetPlayer(), CORPSE_RECLAIM_RADIUS, true))
         return;
 
-    // resurrect
+    // resurrect (执行角色复活，战场满血，野外 50% 血法)
     GetPlayer()->ResurrectPlayer(GetPlayer()->InBattleGround() ? 1.0f : 0.5f);
 
-    // spawn bones
+    // spawn bones (留下骸骨)
     GetPlayer()->SpawnCorpseBones();
 }
 
+// 响应其他玩家发起的复活法术邀请 (CMSG_RESURRECT_RESPONSE)
 void WorldSession::HandleResurrectResponseOpcode(WorldPacket& recv_data)
 {
     DETAIL_LOG("WORLD: Received opcode CMSG_RESURRECT_RESPONSE");
@@ -680,16 +703,17 @@ void WorldSession::HandleResurrectResponseOpcode(WorldPacket& recv_data)
 
     if (status == 0)
     {
-        GetPlayer()->clearResurrectRequestData();           // reject
+        GetPlayer()->clearResurrectRequestData();           // reject (拒绝复活)
         return;
     }
 
     if (!GetPlayer()->isRessurectRequestedBy(guid))
         return;
 
-    GetPlayer()->ResurrectUsingRequestDataInit();                // will call spawncorpsebones
+    GetPlayer()->ResurrectUsingRequestDataInit();                // will call spawncorpsebones (接受复活并生成骸骨)
 }
 
+// 处理玩家触碰区域触发器 AreaTrigger (CMSG_AREATRIGGER)，包含传送门门禁检查、地下城跑尸自动复活与脚本触发
 void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_AREATRIGGER");
@@ -770,13 +794,14 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
         return;
 
     // ghost resurrected at enter attempt to dungeon with corpse (including fail enter cases)
+    // 灵魂状态尝试进入地下城时自动复活并确定具体入口
     if (!player->IsAlive() && targetMapEntry->IsDungeon())
     {
         auto data = player->CheckAndRevivePlayerOnDungeonEnter(targetMapEntry, at->target_mapId);
-		if (!data.first)
-			return;
-		if (data.second)
-			at = data.second;
+        if (!data.first)
+            return;
+        if (data.second)
+            at = data.second;
     }
 
     if (at->conditionId && !sObjectMgr.IsConditionSatisfied(at->conditionId, player, player->GetMap(), nullptr, CONDITION_FROM_AREATRIGGER_TELEPORT))
@@ -790,10 +815,11 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // teleport player (trigger requirement will be checked on TeleportTo)
+    // teleport player (trigger requirement will be checked on TeleportTo) (执行玩家跨图/同图传送)
     player->TeleportTo(at->target_mapId, at->target_X, at->target_Y, at->target_Z, at->target_Orientation, TELE_TO_NOT_LEAVE_TRANSPORT, at);
 }
 
+// 客户端上报更新账户/角色专属配置数据（解压 zlib 并持久化） (CMSG_UPDATE_ACCOUNT_DATA)
 void WorldSession::HandleUpdateAccountData(WorldPacket& recv_data)
 {
     DETAIL_LOG("WORLD: Received opcode CMSG_UPDATE_ACCOUNT_DATA");
@@ -806,7 +832,7 @@ void WorldSession::HandleUpdateAccountData(WorldPacket& recv_data)
     if (type > NUM_ACCOUNT_DATA_TYPES)
         return;
 
-    if (decompressedSize == 0)                              // erase
+    if (decompressedSize == 0)                              // erase (清空指定配置类型数据)
     {
         SetAccountData(AccountDataType(type), 0, "");
         return;
@@ -838,6 +864,7 @@ void WorldSession::HandleUpdateAccountData(WorldPacket& recv_data)
     SetAccountData(AccountDataType(type), 0, adata);
 }
 
+// 响应客户端请求同步账户/角色配置数据（压缩并发送 SMSG_UPDATE_ACCOUNT_DATA） (CMSG_REQUEST_ACCOUNT_DATA)
 void WorldSession::HandleRequestAccountData(WorldPacket& recv_data)
 {
     DETAIL_LOG("WORLD: Received opcode CMSG_REQUEST_ACCOUNT_DATA");
@@ -874,6 +901,7 @@ void WorldSession::HandleRequestAccountData(WorldPacket& recv_data)
     SendPacket(data);
 }
 
+// 设置动作条技能/物品/宏快捷键槽位 (CMSG_SET_ACTION_BUTTON)
 void WorldSession::HandleSetActionButtonOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_ACTION_BUTTON");
@@ -912,20 +940,23 @@ void WorldSession::HandleSetActionButtonOpcode(WorldPacket& recv_data)
     }
 }
 
+// 过场动画播放完毕 (CMSG_COMPLETE_CINEMATIC)
 void WorldSession::HandleCompleteCinematic(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_COMPLETE_CINEMATIC");
-    // If player has sight bound to visual waypoint NPC we should remove it
+    // If player has sight bound to visual waypoint NPC we should remove it (解除视觉路点绑定)
     GetPlayer()->StopCinematic();
 }
 
+// 客户端通知过场动画镜头切换开始 (CMSG_NEXT_CINEMATIC_CAMERA)
 void WorldSession::HandleNextCinematicCamera(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_NEXT_CINEMATIC_CAMERA");
-    // Sent by client when cinematic actually begun. So we begin the server side process
+    // Sent by client when cinematic actually begun. So we begin the server side process (客户端正式进入电影镜头播放流程)
     GetPlayer()->StartCinematic();
 }
 
+// 设置额外动作条显示掩码 (CMSG_SET_ACTIONBAR_TOGGLES)
 void WorldSession::HandleSetActionBarTogglesOpcode(WorldPacket& recv_data)
 {
     uint8 ActionBar;
@@ -942,6 +973,7 @@ void WorldSession::HandleSetActionBarTogglesOpcode(WorldPacket& recv_data)
     GetPlayer()->SetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_ACTION_BAR_TOGGLES, ActionBar);
 }
 
+// 查询角色累计在线时长与当前等级在线时长 (CMSG_PLAYED_TIME)
 void WorldSession::HandlePlayedTime(WorldPacket& /*recv_data*/)
 {
     WorldPacket data(SMSG_PLAYED_TIME, 4 + 4);
@@ -950,6 +982,7 @@ void WorldSession::HandlePlayedTime(WorldPacket& /*recv_data*/)
     SendPacket(data);
 }
 
+// 处理观察其他玩家装备与天赋请求 (CMSG_INSPECT)
 void WorldSession::HandleInspectOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -1041,6 +1074,7 @@ void WorldSession::HandleInspectOpcode(WorldPacket& recv_data)
     SendPacket(data);
 }
 
+// 处理观察其他玩家荣誉与击杀统计数据请求 (MSG_INSPECT_HONOR_STATS)
 void WorldSession::HandleInspectHonorStatsOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -1070,6 +1104,7 @@ void WorldSession::HandleInspectHonorStatsOpcode(WorldPacket& recv_data)
     SendPacket(data);
 }
 
+// GM 世界坐标传送指令 (CMSG_WORLD_TELEPORT)
 void WorldSession::HandleWorldTeleportOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_WORLD_TELEPORT from %s", GetPlayer()->GetGuidStr().c_str());
@@ -1108,6 +1143,7 @@ void WorldSession::HandleWorldTeleportOpcode(WorldPacket& recv_data)
         SendNotification(LANG_YOU_NOT_HAVE_PERMISSION);
 }
 
+// GM 查询玩家账号、邮箱与最近登录 IP 信息 (CMSG_WHOIS)
 void WorldSession::HandleWhoisOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_WHOIS");
@@ -1163,12 +1199,13 @@ void WorldSession::HandleWhoisOpcode(WorldPacket& recv_data)
     DEBUG_LOG("Received whois command from player %s for character %s", GetPlayer()->GetName(), charname.c_str());
 }
 
+// 处理玩家举报垃圾邮件或不良发言 (CMSG_COMPLAIN)
 void WorldSession::HandleComplainOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_COMPLAIN");
 
     uint8 spamType;
-    recv_data >> spamType;                                 // Spam type (Mail = 0, Chat = 1)
+    recv_data >> spamType;                                 // Spam type (Mail = 0, Chat = 1) (举报类型：0=邮件, 1=聊天)
 
     switch (spamType)
     {
@@ -1182,13 +1219,15 @@ void WorldSession::HandleComplainOpcode(WorldPacket& recv_data)
 
     // NOTE: all chat messages from this spammer automatically ignored by spam reporter until logout in case chat spam.
     // if it's mail spam - ALL mails from this spammer automatically removed by client
+    // 客户端会自动屏蔽来自被举报者的聊天发言，或自动删除其所有信件
 
-    // Complaint Received message
+    // Complaint Received message (下发举报已收到确认包)
     WorldPacket data(SMSG_COMPLAIN_RESULT, 1);
     data << uint8(0);
     SendPacket(data);
 }
 
+// 举报垃圾邮件子处理
 void WorldSession::HandleComplainMail(WorldPacket& recv_data)
 {
     ObjectGuid spammer;
@@ -1204,6 +1243,7 @@ void WorldSession::HandleComplainMail(WorldPacket& recv_data)
     DEBUG_LOG("REPORT SPAM MAIL: Spammer %s, unk1 %u, mailId %u, unk2 %u", spammer.GetString().c_str(), unk1, mailId, unk2);
 }
 
+// 举报不良聊天子处理
 void WorldSession::HandleComplainChat(WorldPacket& recv_data)
 {
     ObjectGuid spammer;
@@ -1223,6 +1263,7 @@ void WorldSession::HandleComplainChat(WorldPacket& recv_data)
     DEBUG_LOG("REPORT SPAM CHAT: Spammer %s, unk1 %u, messageType %u, channelId %u, secondsSinceMessage %u, description %s", spammer.GetString().c_str(), unk1, messageType, channelId, secondsSinceMessage, description.c_str());
 }
 
+// 响应服务器分流拆分状态查询 (CMSG_REALM_SPLIT)
 void WorldSession::HandleRealmSplitOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_REALM_SPLIT");
@@ -1233,7 +1274,7 @@ void WorldSession::HandleRealmSplitOpcode(WorldPacket& recv_data)
 
     WorldPacket data(SMSG_REALM_SPLIT, 4 + 4 + split_date.size() + 1);
     data << unk;
-    data << uint32(0x00000000);                             // realm split state
+    data << uint32(0x00000000);                             // realm split state (服务器拆分状态：0=正常, 1=已拆分, 2=等待拆分)
     // split states:
     // 0x0 realm normal
     // 0x1 realm split
@@ -1243,6 +1284,7 @@ void WorldSession::HandleRealmSplitOpcode(WorldPacket& recv_data)
     // DEBUG_LOG("response sent %u", unk);
 }
 
+// 客户端切换远视/鹰眼观察视角 (CMSG_FAR_SIGHT)
 void WorldSession::HandleFarSightOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_FAR_SIGHT");
@@ -1268,6 +1310,7 @@ void WorldSession::HandleFarSightOpcode(WorldPacket& recv_data)
     }
 }
 
+// 设置角色当前展示的头衔称号 (CMSG_SET_TITLE)
 void WorldSession::HandleSetTitleOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_TITLE");
@@ -1275,7 +1318,7 @@ void WorldSession::HandleSetTitleOpcode(WorldPacket& recv_data)
     int32 title;
     recv_data >> title;
 
-    // -1 at none
+    // -1 at none (-1 表示不显示任何头衔)
     if (title > 0 && title < MAX_TITLE_INDEX)
     {
         if (!GetPlayer()->HasTitle(title))
@@ -1287,6 +1330,7 @@ void WorldSession::HandleSetTitleOpcode(WorldPacket& recv_data)
     GetPlayer()->SetUInt32Value(PLAYER_CHOSEN_TITLE, title);
 }
 
+// 处理重置所有地下城进度请求 (CMSG_RESET_INSTANCES)
 void WorldSession::HandleResetInstancesOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_RESET_INSTANCES");
@@ -1300,6 +1344,7 @@ void WorldSession::HandleResetInstancesOpcode(WorldPacket& /*recv_data*/)
         _player->ResetInstances(INSTANCE_RESET_ALL);
 }
 
+// 处理切换地下城难度（普通/英雄） (MSG_SET_DUNGEON_DIFFICULTY)
 void WorldSession::HandleSetDungeonDifficultyOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode MSG_SET_DUNGEON_DIFFICULTY");
@@ -1316,7 +1361,7 @@ void WorldSession::HandleSetDungeonDifficultyOpcode(WorldPacket& recv_data)
     if (Difficulty(mode) == _player->GetDifficulty())
         return;
 
-    // cannot reset while in an instance
+    // cannot reset while in an instance (在副本内部无法切换难度或重置)
     Map* map = _player->GetMap();
     if (map && map->IsDungeon())
     {
@@ -1324,7 +1369,7 @@ void WorldSession::HandleSetDungeonDifficultyOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // Exception to set mode to normal for low-level players
+    // Exception to set mode to normal for low-level players (未达英雄难度最低等级要求的玩家无法切换)
     if (_player->GetLevel() < LEVELREQUIREMENT_HEROIC && mode > REGULAR_DIFFICULTY)
         return;
 
@@ -1345,18 +1390,19 @@ void WorldSession::HandleSetDungeonDifficultyOpcode(WorldPacket& recv_data)
     }
 }
 
+// 取消坐骑光环主动下马 (CMSG_CANCEL_MOUNT_AURA)
 void WorldSession::HandleCancelMountAuraOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode  CMSG_CANCEL_MOUNT_AURA");
 
-    // If player is not mounted, so go out :)
+    // If player is not mounted, so go out :) (未处于骑乘状态)
     if (!_player->IsMounted())                              // not blizz like; no any messages on blizz
     {
         ChatHandler(this).SendSysMessage(LANG_CHAR_NON_MOUNTED);
         return;
     }
 
-    if (_player->IsTaxiFlying())                            // not blizz like; no any messages on blizz
+    if (_player->IsTaxiFlying())                            // not blizz like; no any messages on blizz (飞行点航线中禁止下马)
     {
         ChatHandler(this).SendSysMessage(LANG_YOU_IN_FLIGHT);
         return;
@@ -1366,6 +1412,7 @@ void WorldSession::HandleCancelMountAuraOpcode(WorldPacket& /*recv_data*/)
     _player->Unmount();
 }
 
+// 客户端请求宠物/魅惑单位法术信息 (CMSG_REQUEST_PET_INFO)
 void WorldSession::HandleRequestPetInfoOpcode(WorldPacket& /*recv_data */)
 {
     if (_player->GetPet())
@@ -1374,6 +1421,7 @@ void WorldSession::HandleRequestPetInfoOpcode(WorldPacket& /*recv_data */)
         _player->CharmSpellInitialize();
 }
 
+// 开启飞行路线性能基准测试 (/timetest) (CMSG_SET_TAXI_BENCHMARK_MODE)
 void WorldSession::HandleSetTaxiBenchmarkOpcode(WorldPacket& recv_data)
 {
     uint8 mode;
@@ -1387,6 +1435,7 @@ void WorldSession::HandleSetTaxiBenchmarkOpcode(WorldPacket& recv_data)
     DEBUG_LOG("Client used \"/timetest %d\" command", mode);
 }
 
+// 切换竞技场解说员观战模式 (CMSG_COMMENTATOR_ENABLE)
 void WorldSession::HandleCommentatorModeOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_COMMENTATOR_ENABLE");

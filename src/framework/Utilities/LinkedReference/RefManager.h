@@ -24,6 +24,7 @@
 #include "Utilities/LinkedList.h"
 #include "Utilities/LinkedReference/Reference.h"
 
+/// 双向链表引用管理器：管理指向目标对象 TO 的所有源对象 FROM 的 Reference
 template <class TO, class FROM>
 class RefManager : public LinkedListHead
 {
@@ -46,13 +47,14 @@ class RefManager : public LinkedListHead
         const_iterator begin() const { return const_iterator(getFirst()); }
         const_iterator end() const { return const_iterator(nullptr); }
 
+        /// 使管理器中所有现存引用失效并清空链表（通常在目标对象销毁时调用）
         void clearReferences()
         {
             LinkedListElement* ref;
             while ((ref = getFirst()) != nullptr)
             {
                 ((Reference<TO, FROM>*) ref)->invalidate();
-                ref->delink();                              // the delink might be already done by invalidate(), but doing it here again does not hurt and insures an empty list
+                ref->delink();                              // the delink might be already done by invalidate(), but doing it here again does not hurt and insures an empty list | invalidate() 可能已执行 delink()，此处再次调用以确保链表彻底清空
             }
         }
 };

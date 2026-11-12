@@ -30,9 +30,9 @@
 #include "Maps/SpawnGroup.h"
 #include "Grids/CellImpl.h"
 
-#define IGNORE_M2 true // simple define for avoiding bugs due to different setting across movechase
+#define IGNORE_M2 true // simple define for avoiding bugs due to different setting across movechase (追击视野检测统一忽略 M2 小物件)
 
-#define CHASE_CLOSENESS_TIMER                             2000
+#define CHASE_CLOSENESS_TIMER                             2000 // 模型重叠退步与扇形散开触发延迟（毫秒）
 
 const char* ChaseModes[] =
 {
@@ -43,6 +43,7 @@ const char* ChaseModes[] =
 };
 
 //-----------------------------------------------//
+/// 目标跟踪移动通用主循环：校验目标有效性/同地图/同载具/施法打断/定身状态，驱动具体子类移动逻辑
 template<class T, typename D>
 bool TargetedMovementGeneratorMedium<T, D>::Update(T& owner, const uint32& time_diff)
 {
@@ -172,10 +173,10 @@ void ChaseMovementGenerator::SetOffsetAndAngle(float offset, float angle, bool m
     m_moveFurther = moveFurther;
 }
 
-// Chase-Movement: These factors depend on combat-reach distance
-#define CHASE_DEFAULT_RANGE_FACTOR                        0.5f
-#define CHASE_RECHASE_RANGE_FACTOR                        0.75f
-#define CHASE_MOVE_CLOSER_FACTOR                          0.875f
+// Chase-Movement: These factors depend on combat-reach distance (追击距离比例系数，均基于双方战斗接触半径计算)
+#define CHASE_DEFAULT_RANGE_FACTOR                        0.5f   // 默认追击目标停止距离系数
+#define CHASE_RECHASE_RANGE_FACTOR                        0.75f  // 触发重新追击的阈值系数
+#define CHASE_MOVE_CLOSER_FACTOR                          0.875f // 路径裁剪时的逼近系数
 
 std::pair<std::string, std::string> ChaseMovementGenerator::GetPrintout() const
 {
@@ -221,6 +222,7 @@ float ChaseMovementGenerator::GetDynamicTargetDistance(Unit& owner, bool forRang
     }
 }
 
+/// 周期性追击调度：处理目标位移重算、路径终点提前拦截（防穿背）及到达后的后退/散开检测
 void ChaseMovementGenerator::HandleTargetedMovement(Unit& owner, const uint32& time_diff)
 {
     bool targetMoved = false;
@@ -350,6 +352,7 @@ void ChaseMovementGenerator::HandleMovementFailure(Unit& owner)
     _clearUnitStateMove(owner);
 }
 
+/// 追击样条到达终点处理：修正面向目标、启动近距避让计时器并结束当前移动状态
 void ChaseMovementGenerator::HandleFinalizedMovement(Unit& owner)
 {
     this->i_targetReached = true;
@@ -377,6 +380,7 @@ void ChaseMovementGenerator::HandleFinalizedMovement(Unit& owner)
     m_reachable = true; // just to be absolutely sure clear reachability here - if its unreachable it will reset on next update
 }
 
+/// 主动后撤拉距（如远程/施法怪物与近战目标拉开指定距离）
 void ChaseMovementGenerator::DistanceYourself(Unit& owner, float distance)
 {
     float x, y, z;
@@ -390,6 +394,7 @@ void ChaseMovementGenerator::DistanceYourself(Unit& owner, float distance)
     }
 }
 
+/// 当目标钻入自身模型过近时小幅步行后退；若距离合适则转入多怪扇形散开检测
 void ChaseMovementGenerator::Backpedal(Unit& owner)
 {
     // do not allow backpedalling during scripts
@@ -429,6 +434,7 @@ const float fanningRadius = 1.f;
 const float fanAngleMin = M_PI_F / 5;
 const float fanAngleMax = M_PI_F / 4;
 
+/// 检测 1 码内是否有攻击同一目标的其他静止怪物，若有则按 ±36°~45° 随机扇形角度散开站位
 void ChaseMovementGenerator::FanOut(Unit& owner)
 {
     if (!m_fanningEnabled)
@@ -474,6 +480,7 @@ void ChaseMovementGenerator::FanOut(Unit& owner)
     }
 }
 
+/// 向指定目标点寻路并下发样条移动（优先尝试 200 码内直连射线检测，失败则回退完整导航网格寻路）
 bool ChaseMovementGenerator::DispatchSplineToPosition(Unit& owner, float x, float y, float z, bool walk, bool cutPath, bool target, bool checkReachable)
 {
     if (owner.IsDebuggingMovement())
@@ -581,6 +588,7 @@ bool ChaseMovementGenerator::DispatchSplineToPosition(Unit& owner, float x, floa
     return true;
 }
 
+/// 当配置了非 0 追击距离偏移时，沿路径寻找首个同时满足距离与视距（LOS）的节点并截断后续路径
 void ChaseMovementGenerator::CutPath(Unit& owner, PointsArray& path)
 {
     if (this->i_offset != 0.f) // need to cut path until most distant viable point
@@ -676,6 +684,7 @@ void ChaseMovementGenerator::_setLocation(Unit& owner)
     i_speedChanged = false;
 }
 
+/// 校验候选停靠点是否处于目标有效攻击距离与垂直近战高度范围内
 bool ChaseMovementGenerator::IsReachablePositionToTarget(Unit& owner, float x, float y, float z, Unit& target)
 {
     // if we arrived here something failed in PF dispatch and target is not reachable
@@ -730,6 +739,7 @@ void FollowMovementGenerator::MarkMovegen()
         m_main = false;
 }
 
+/// 计算跟随移动速度：非战斗时同步主人速度，满足条件时叠加追赶加速（最高 40 码/秒）
 float FollowMovementGenerator::GetSpeed(Unit& owner) const
 {
     const UnitMoveType type = i_target->m_movementInfo.GetSpeedType();
@@ -855,6 +865,7 @@ bool FollowMovementGenerator::GetResetPosition(Unit& owner, Position& pos) const
     return true;
 }
 
+/// 寻路并启动跟随移动（玩家主人的随从会按视野裁剪路径，不可达或卡死时尝试视距安全传送解卡）
 bool FollowMovementGenerator::Move(Unit& owner, float x, float y, float z)
 {
     if (!owner.movespline->Finalized())
@@ -954,6 +965,7 @@ bool FollowMovementGenerator::_getOrientation(Unit& owner, float& o) const
     return true;
 }
 
+/// 计算目标周围的期望跟随停靠坐标（目标移动中结合目标样条终点或朝向速度做位置预测）
 bool FollowMovementGenerator::_getLocation(Unit& owner, float& x, float& y, float& z, bool movingNow) const
 {
     if (!i_target.isValid())
@@ -1079,6 +1091,7 @@ float FollowMovementGenerator::GetDynamicTargetDistance(Unit& owner, bool forRan
     return allowed_dist;
 }
 
+/// 周期性检测被跟随目标的移动启停、速度变更与位移偏差，触发重定位或静止朝向对齐
 void FollowMovementGenerator::HandleTargetedMovement(Unit& owner, const uint32& time_diff)
 {
     static const MovementFlags detected = MovementFlags(MOVEFLAG_MASK_MOVING_FORWARD | MOVEFLAG_BACKWARD | MOVEFLAG_PITCH_UP | MOVEFLAG_PITCH_DOWN);
@@ -1204,6 +1217,7 @@ bool FormationMovementGenerator::GetResetPosition(Unit&, Position& pos) const
     return true;
 }
 
+/// 编队移动路径构建：沿领队未来样条节点逐段计算平滑槽位偏移点与匹配速度
 float FormationMovementGenerator::BuildPath(Unit& owner, PointsArray& path)
 {
     float speed = -1.0f;
@@ -1345,6 +1359,7 @@ float FormationMovementGenerator::BuildPath(Unit& owner, PointsArray& path)
 }
 
 // return true if follower is far from master and heading to it
+/// 检查编队成员与领队距离：过远时直接传送复位，超距时直线/寻路奔向领队
 bool FormationMovementGenerator::HandleMasterDistanceCheck(Unit& owner, const uint32& time_diff)
 {
     Unit* master = m_slot->GetMaster();

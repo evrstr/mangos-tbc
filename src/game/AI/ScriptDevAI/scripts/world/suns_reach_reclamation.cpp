@@ -18,6 +18,7 @@
 #include "World/WorldState.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 阳痕港收复任务完成回调：增加阳痕港及太阳之井大门的世界状态阶段进度
 bool QuestRewarded_suns_reach_reclamation(Player* /*player*/, Creature* /*creature*/, Quest const* quest)
 {
     sWorldState.AddSunsReachProgress(quest->GetQuestId());
@@ -27,12 +28,13 @@ bool QuestRewarded_suns_reach_reclamation(Player* /*player*/, Creature* /*creatu
 
 enum
 {
-    SPELL_SHOOT = 38858,
-    SPELL_DAWNBLADE_ATTACK_RESPONSE = 45189,
+    SPELL_SHOOT = 38858,                                    // 射击法术
+    SPELL_DAWNBLADE_ATTACK_RESPONSE = 45189,                // 晨锋攻击反击响应法术
 
-    SPELL_DAWNBLADE_ATTACK = 45187,
+    SPELL_DAWNBLADE_ATTACK = 45187,                         // 晨锋攻击光环
 };
 
+// 晨锋攻击法术脚本
 struct DawnbladeAttack : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -56,7 +58,7 @@ struct DawnbladeAttack : public SpellScript
     }
 };
 
-// spell used elsewhere as well
+// spell used elsewhere as well (奎尔丹纳斯射击法术脚本：受击生物若带晨锋光环则施放反击法术)
 struct QuelDanasShoot : public SpellScript
 {
     void OnHit(Spell* spell, SpellMissInfo /*missInfo*/) const override
@@ -71,6 +73,7 @@ struct QuelDanasShoot : public SpellScript
     }
 };
 
+// 注册阳痕港收复相关脚本
 void AddSC_suns_reach_reclamation()
 {
     Script* pNewScript = new Script;

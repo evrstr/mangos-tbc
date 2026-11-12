@@ -5,31 +5,36 @@
 #ifndef DEF_BFD_H
 #define DEF_BFD_H
 
+/**
+ * 黑暗深渊 (Blackfathom Deeps) 副本常量与波次召唤定义
+ */
+
+// 常量与事件枚举
 enum
 {
     MAX_ENCOUNTER               = 3,
     MAX_FIRES                   = 4,
     MAX_COUNT_POS               = 3,
 
-    TYPE_KELRIS                 = 1,
-    TYPE_SHRINE                 = 2,
-    TYPE_AQUANIS                = 3,
+    TYPE_KELRIS                 = 1,                        // 首领遭遇/事件状态标识
+    TYPE_SHRINE                 = 2,                        // 首领遭遇/事件状态标识
+    TYPE_AQUANIS                = 3,                        // 首领遭遇/事件状态标识
 
-    NPC_KELRIS                  = 4832,
-    NPC_BARON_AQUANIS           = 12876,
+    NPC_KELRIS                  = 4832,                     // NPC 条目 ID
+    NPC_BARON_AQUANIS           = 12876,                    // NPC 条目 ID
 
-    // Shrine event
-    NPC_AKUMAI_SERVANT          = 4978,
-    NPC_AKUMAI_SNAPJAW          = 4825,
-    NPC_BARBED_CRUSTACEAN       = 4823,
-    NPC_MURKSHALLOW_SOFTSHELL   = 4977,
+    // Shrine event (祭坛事件)
+    NPC_AKUMAI_SERVANT          = 4978,                     // NPC 条目 ID
+    NPC_AKUMAI_SNAPJAW          = 4825,                     // NPC 条目 ID
+    NPC_BARBED_CRUSTACEAN       = 4823,                     // NPC 条目 ID
+    NPC_MURKSHALLOW_SOFTSHELL   = 4977,                     // NPC 条目 ID
 
-    GO_PORTAL_DOOR              = 21117,
-    GO_SHRINE_1                 = 21118,
-    GO_SHRINE_2                 = 21119,
-    GO_SHRINE_3                 = 21120,
-    GO_SHRINE_4                 = 21121,
-    GO_FATHOM_STONE             = 177964,
+    GO_PORTAL_DOOR              = 21117,                    // 游戏对象条目 ID
+    GO_SHRINE_1                 = 21118,                    // 游戏对象条目 ID
+    GO_SHRINE_2                 = 21119,                    // 游戏对象条目 ID
+    GO_SHRINE_3                 = 21120,                    // 游戏对象条目 ID
+    GO_SHRINE_4                 = 21121,                    // 游戏对象条目 ID
+    GO_FATHOM_STONE             = 177964,                   // 游戏对象条目 ID
 };
 
 /* This is the spawn pattern for the event mobs
@@ -50,12 +55,12 @@ enum
 * On wipe the mobs don't despawn; they stay there until player returns
 */
 
-static const Position aSpawnLocations[6] =                  // Should be near the correct positions
+static const Position aSpawnLocations[6] =                  // Should be near the correct positions (接近正确的刷新坐标)
 {
-    { -768.949f, -174.413f, -25.87f, 3.09f},                // Left side
+    { -768.949f, -174.413f, -25.87f, 3.09f},                // Left side (左侧)
     { -768.888f, -164.238f, -25.87f, 3.09f},
     { -768.951f, -153.911f, -25.88f, 3.09f},
-    { -867.782f, -174.352f, -25.87f, 6.27f},                // Right side
+    { -867.782f, -174.352f, -25.87f, 6.27f},                // Right side (右侧)
     { -867.875f, -164.089f, -25.87f, 6.27f},
     { -867.859f, -153.927f, -25.88f, 6.27f}
 };
@@ -72,7 +77,7 @@ struct SummonInformation
     PosCount m_aCountAndPos[MAX_COUNT_POS];
 };
 
-// ASSERT m_uiSummonPosition < 6 (see aSpawnLocations)
+// ASSERT m_uiSummonPosition < 6 (see aSpawnLocations) (说明)
 static const SummonInformation aWaveSummonInformation[] =
 {
     {0, NPC_AKUMAI_SNAPJAW,         {{1, 0}, {1, 1}, {1, 5}}},
@@ -85,25 +90,26 @@ static const SummonInformation aWaveSummonInformation[] =
 
 static const float afAquanisPos[4] = { -782.21f, -63.26f, -42.43f, 2.36f };
 
+// instance_blackfathom_deeps 副本数据管理脚本
 class instance_blackfathom_deeps : public ScriptedInstance
 {
     public:
         instance_blackfathom_deeps(Map* pMap);
         ~instance_blackfathom_deeps() {}
 
-        void Initialize() override;
+        void Initialize() override;                         // 初始化副本数据与状态
 
-        void OnCreatureCreate(Creature* pCreature) override;
-        void OnObjectCreate(GameObject* pGo) override;
-        void OnCreatureDeath(Creature* pCreature) override;
+        void OnCreatureCreate(Creature* pCreature) override;    // 生物创建/加载至副本地图时的回调
+        void OnObjectCreate(GameObject* pGo) override;      // 游戏对象创建/加载至副本地图时的回调
+        void OnCreatureDeath(Creature* pCreature) override;    // 生物在副本地图中死亡回调
 
         void Update(const uint32 diff) override;
 
-        void SetData(uint32 uiType, uint32 uiData) override;
-        uint32 GetData(uint32 uiType) const override;
+        void SetData(uint32 uiType, uint32 uiData) override;    // 设置自定义状态数据
+        uint32 GetData(uint32 uiType) const override;       // 获取自定义状态数据
 
-        const char* Save() const override { return m_strInstData.c_str(); }
-        void Load(const char* chrIn) override;
+        const char* Save() const override { return m_strInstData.c_str(); }    // 序列化副本进度数据供存盘
+        void Load(const char* chrIn) override;              // 反序列化并恢复副本进度数据
 
     protected:
         void DoSpawnMobs(uint8 uiWaveIndex);

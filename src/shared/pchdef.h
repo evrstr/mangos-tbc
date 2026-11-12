@@ -1,4 +1,5 @@
 // add here most rarely modified headers to speed up debug build compilation
+// | 在此处集中引入极少变动的头文件（预编译头 PCH），以加速 Debug 模式编译
 #ifndef PCHDEF_H
 #define PCHDEF_H
 

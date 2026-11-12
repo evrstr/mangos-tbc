@@ -21,30 +21,36 @@ SDComment:
 SDCategory: Zul'Farrak
 EndScriptData */
 
+/**
+ * 祖尔法拉克：巫医祖穆拉 (Witch Doctor Zum'rah) 僵尸骷髅召唤首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulfarrak.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_INTRO                   = -1209000,
-    SAY_AGGRO                   = -1209001,
-    SAY_KILL                    = -1209002,
-    SAY_SUMMON                  = -1209003,
+    SAY_INTRO                   = -1209000,                 // 剧情台词/喊话文本 ID
+    SAY_AGGRO                   = -1209001,                 // 剧情台词/喊话文本 ID
+    SAY_KILL                    = -1209002,                 // 剧情台词/喊话文本 ID
+    SAY_SUMMON                  = -1209003,                 // 剧情台词/喊话文本 ID
 
-    SPELL_SHADOW_BOLT           = 12739,
-    SPELL_SHADOW_BOLT_VOLLEY    = 15245,
-    SPELL_WARD_OF_ZUMRAH        = 11086,
-    SPELL_HEALING_WAVE          = 12491,
-    SPELL_SUMMON_ZOMBIES        = 10247,            // spell should be triggered by missing trap 128972
+    SPELL_SHADOW_BOLT           = 12739,                    // 技能法术：暗影箭
+    SPELL_SHADOW_BOLT_VOLLEY    = 15245,                    // 技能法术：暗影箭
+    SPELL_WARD_OF_ZUMRAH        = 11086,                    // 技能法术 ID
+    SPELL_HEALING_WAVE          = 12491,                    // 技能法术 ID
+    SPELL_SUMMON_ZOMBIES        = 10247,            // spell should be triggered by missing trap 128972 (说明)
 
-    // NPC_WARD_OF_ZUMRAH       = 7785,
-    // NPC_SKELETON_OF_ZUMRAH   = 7786,
-    NPC_ZULFARRAK_ZOMBIE        = 7286,             // spawned by the graves
-    NPC_ZULFARRAK_DEAD_HERO     = 7276,             // spawned by the graves
+    // NPC_WARD_OF_ZUMRAH       = 7785, (说明)
+    // NPC_SKELETON_OF_ZUMRAH   = 7786, (说明)
+    NPC_ZULFARRAK_ZOMBIE        = 7286,             // spawned by the graves (说明)
+    NPC_ZULFARRAK_DEAD_HERO     = 7276,             // spawned by the graves (说明)
 
-    FACTION_HOSTILE             = 14,
+    FACTION_HOSTILE             = 14,                       // 阵营 ID
 };
 
+// boss_zumrahAI 首领战斗 AI
 struct boss_zumrahAI : public ScriptedAI
 {
     boss_zumrahAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -64,7 +70,7 @@ struct boss_zumrahAI : public ScriptedAI
 
     bool m_bHasTurnedHostile;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiShadowBoltTimer         = 1000;
         m_uiShadowBoltVolleyTimer   = urand(6000, 30000);
@@ -98,7 +104,7 @@ struct boss_zumrahAI : public ScriptedAI
         ScriptedAI::MoveInLineOfSight(pWho);
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         if (pSummoned->GetEntry() == NPC_ZULFARRAK_ZOMBIE || pSummoned->GetEntry() == NPC_ZULFARRAK_DEAD_HERO)
             pSummoned->AI()->AttackStart(m_creature->GetVictim());
@@ -109,7 +115,7 @@ struct boss_zumrahAI : public ScriptedAI
         if (!m_pInstance)
             return nullptr;
 
-        // Get the list of usable graves (not used already by players)
+        // Get the list of usable graves (not used already by players) (说明)
         GuidList lTempList;
         GameObjectList lGravesInRange;
 
@@ -117,7 +123,7 @@ struct boss_zumrahAI : public ScriptedAI
         for (GuidList::const_iterator itr = lTempList.begin(); itr != lTempList.end(); ++itr)
         {
             GameObject* pGo = m_creature->GetMap()->GetGameObject(*itr);
-            // Go spawned and no looting in process
+            // Go spawned and no looting in process (说明)
             if (pGo && pGo->IsSpawned() && pGo->GetLootState() == GO_READY)
                 lGravesInRange.push_back(pGo);
         }
@@ -125,13 +131,13 @@ struct boss_zumrahAI : public ScriptedAI
         if (lGravesInRange.empty())
             return nullptr;
 
-        // Sort the graves
+        // Sort the graves (说明)
         lGravesInRange.sort(ObjectDistanceOrder(m_creature));
 
         return *lGravesInRange.begin();
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
@@ -140,7 +146,7 @@ struct boss_zumrahAI : public ScriptedAI
         {
             if (m_uiSpawnZombieTimer <= uiDiff)
             {
-                // Use a nearby grave to spawn zombies
+                // Use a nearby grave to spawn zombies (说明)
                 if (GameObject* pGrave = SelectNearbyShallowGrave())
                 {
                     m_creature->CastSpell(pGrave->GetPositionX(), pGrave->GetPositionY(), pGrave->GetPositionZ(), SPELL_SUMMON_ZOMBIES, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, pGrave->GetObjectGuid());
@@ -151,7 +157,7 @@ struct boss_zumrahAI : public ScriptedAI
 
                     m_uiSpawnZombieTimer = 20000;
                 }
-                else                                        // No Grave usable any more
+                else                                        // No Grave usable any more (说明)
                     m_uiSpawnZombieTimer = 0;
             }
             else
@@ -200,12 +206,12 @@ struct boss_zumrahAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_boss_zumrah(Creature* pCreature)
+UnitAI* GetAI_boss_zumrah(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new boss_zumrahAI(pCreature);
 }
 
-void AddSC_boss_zumrah()
+void AddSC_boss_zumrah() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_zumrah";

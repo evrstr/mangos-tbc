@@ -21,6 +21,8 @@
  SDCategory: Sunwell_Plateau
  EndScriptData */
 
+// 太阳之井高地（Sunwell Plateau）日蚀斥候、魔能守卫与巡逻机械技能 AI
+
 /* ContentData
 npc_sunblade_scout
 EndContentData */
@@ -35,16 +37,17 @@ EndContentData */
 ## npc_sunblade_protector
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_STONED                                = 10255,
-    SPELL_DOUBLE_ATTACK                         = 18943,
-    SPELL_INVISIBILITY_AND_STEALTH_DETECTION    = 18950,
-    SPELL_DUAL_WIELD_PASSIVE                    = 42459,
-    SPELL_SUNWELL_RADIANCE                      = 45769,
-    SPELL_ACTIVATE_SUNBLADE_PROTECTOR           = 46475,
-    SPELL_SINISTER_STRIKE                       = 46558,
-    SPELL_FEL_LIGHTNING                         = 46480,
+    SPELL_STONED                                = 10255,    // stoned 法术 ID
+    SPELL_DOUBLE_ATTACK                         = 18943,    // 双重攻击 法术 ID
+    SPELL_INVISIBILITY_AND_STEALTH_DETECTION    = 18950,    // 隐形and潜行detection 法术 ID
+    SPELL_DUAL_WIELD_PASSIVE                    = 42459,    // dualwieldpassive 法术 ID
+    SPELL_SUNWELL_RADIANCE                      = 45769,    // sunwellradiance 法术 ID
+    SPELL_ACTIVATE_SUNBLADE_PROTECTOR           = 46475,    // 激活sunbladeprotector 法术 ID
+    SPELL_SINISTER_STRIKE                       = 46558,    // sinister打击 法术 ID
+    SPELL_FEL_LIGHTNING                         = 46480,    // 魔能闪电 法术 ID
 
     SAY_PROTECTOR_REACHED_HOME                  = -1580109, // 25200 Unit entering energy conservation mode.                            - protector reached home
     SAY_INACTIVE_PROTECTOR_AGGRO                = -1580110, // 25201 Local proximity threat detected. Exiting energy conservation mode. - protector inactive aggro
@@ -52,17 +55,18 @@ enum
     SAY_ACTIVE_PROTECTOR_AGGRO                  = -1580112, // 25203 Enemy presence detected.                                           - active protector aggro
     SAY_PROTECTOR_ACTIVATED                     = -1580113, // 25206 Unit is now operational and attacking targets.                     - inactive protector activated
 
-    POINT_MOVE_SUNBLADE_PROTECTOR = 1,
+    POINT_MOVE_SUNBLADE_PROTECTOR = 1,                      // movesunbladeprotector 路径点 ID
     CAST_DISTANCE = 20, // SPELL_ACTIVATE_SUNBLADE_PROTECTOR
 };
 
-enum SunbladeScoutActions // order based on priority
+enum SunbladeScoutActions // order based on priority (按优先级顺序排序)
 {
     SUNBLADE_SCOUT_ACTIVATE_SUNBLADE_PROTECTOR,
     SUNBLADE_SCOUT_SINISTER_STRIKE,
     SUNBLADE_SCOUT_ACTION_MAX,
 };
 
+// 随从/NPC AI：scout（sunblade_scout）
 struct npc_sunblade_scoutAI : public CombatAI
 {
     npc_sunblade_scoutAI(Creature* creature) : CombatAI(creature, SUNBLADE_SCOUT_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -73,6 +77,7 @@ struct npc_sunblade_scoutAI : public CombatAI
 
     instance_sunwell_plateau* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -86,6 +91,7 @@ struct npc_sunblade_scoutAI : public CombatAI
         m_creature->SetInCombatWithZone(); // maybe callforhelp instead of linking
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 uiType, uint32 uiPointId) override
     {
         if (uiType != POINT_MOTION_TYPE || !uiPointId)
@@ -146,12 +152,13 @@ struct npc_sunblade_scoutAI : public CombatAI
     }
 };
 
-enum SunbladeProtectorActions // order based on priority
+enum SunbladeProtectorActions // order based on priority (按优先级顺序排序)
 {
     SUNBLADE_PROTECTOR_FEL_LIGHTNING,
     SUNBLADE_PROTECTOR_ACTION_MAX,
 };
 
+// 随从/NPC AI：protector（sunblade_protector）
 struct npc_sunblade_protectorAI : public CombatAI
 {
     npc_sunblade_protectorAI(Creature* creature) : CombatAI(creature, SUNBLADE_PROTECTOR_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -168,8 +175,9 @@ struct npc_sunblade_protectorAI : public CombatAI
     }
 
     instance_sunwell_plateau* m_instance;
-    bool m_bInactive;
+    bool m_bInactive;                                       // Inactive 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -195,6 +203,7 @@ struct npc_sunblade_protectorAI : public CombatAI
         m_creature->SetInCombatWithZone();
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_creature->HasAura(SPELL_STONED))
@@ -227,6 +236,7 @@ struct ActivateSunbladeProtectorChannel : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SunwellTeleport）
 struct SunwellTeleport : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -269,6 +279,7 @@ struct EarthquakeGuardian : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：sunwell_plateau
 void AddSC_sunwell_plateau()
 {
     Script* pNewScript = new Script;

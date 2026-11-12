@@ -1,67 +1,101 @@
 Installation Instructions
+安装说明
 =========================
 
 Clean install of ScriptDev2
+全新安装 ScriptDev2
 ---------------------------
 
 Download MaNGOS (using git clone)
+下载 MaNGOS（使用 git clone）
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 See their http://getmangos.com/community[forum] or http://getmangos.com/wiki[wiki] for more details
+详情请参阅其 http://getmangos.com/community[论坛] 或 http://getmangos.com/wiki[Wiki]。
 
 Get the sources
+获取源码
 ~~~~~~~~~~~~~~~
 
 Clone ScriptDev2 `git clone git://github.com/scriptdev2/scriptdev2.git ScriptDev2` - execute from within src/bindings directory
+在 `src/bindings` 目录内执行 `git clone git://github.com/scriptdev2/scriptdev2.git ScriptDev2` 以克隆 ScriptDev2。
 
 *MS Windows:* +
 Compile ScriptDev2 using the scriptVC80, scriptVC90 or scriptVC100 Solution within the ScriptDev2 folder (this will overwrite the Mangoscript dll in the output directory)
+*MS Windows 平台：* +
+使用 ScriptDev2 文件夹中的 scriptVC80、scriptVC90 或 scriptVC100 解决方案编译 ScriptDev2（编译产物将覆盖输出目录中的 Mangoscript dll）。
 
 *GNU/Linux or CMake:* +
 When running CMake on MaNGOS, make sure to set `-D INCLUDE_BINDINGS_DIR=ScriptDev2`
 Compile MaNGOS (ScriptDev2 will automatically be built when compiling Mangos from here on)
+*GNU/Linux 或 CMake：* +
+对 MaNGOS 运行 CMake 时，请确保设置 `-D INCLUDE_BINDINGS_DIR=ScriptDev2`。
+随后编译 MaNGOS（此后编译 MaNGOS 时会自动一并构建 ScriptDev2）。
 
 
 Handle the databases
+处理数据库
 ~~~~~~~~~~~~~~~~~~~~
 
 Create ScriptDev2-Database::
 Execute `sql\scriptdev2_create_database.sql` , then execute +
 `sql\scriptdev2_create_structure.sql` on that database.
+创建 ScriptDev2 数据库：
+先执行 `sql\scriptdev2_create_database.sql`，随后在该数据库上执行 `sql\scriptdev2_create_structure.sql`。
 Add content to ScriptDev2-Database::
 Execute `sql\scriptdev2_script_full.sql` on scriptdev2 databse
+向 ScriptDev2 数据库导入数据：
+在 scriptdev2 数据库上执行 `sql\scriptdev2_script_full.sql`。
 Update ScriptNames::
 Execute `sql\mangos_scriptname_full.sql` on your MaNGOS world Database
+更新 ScriptNames：
+在你的 MaNGOS world 数据库上执行 `sql\mangos_scriptname_full.sql`。
 
 Configuration files
+配置文件
 ~~~~~~~~~~~~~~~~~~~
 
 Place the included "scriptdev2.conf" file within the directory containing your "mangosd.conf" and "realmd.conf" files.
+将附带的 "scriptdev2.conf" 文件放到存放 "mangosd.conf" 和 "realmd.conf" 的同一目录中。
 
 You may need to change this file to match the database you created and any custom settings you wish to use.
+你可能需要修改该文件，使其匹配你所创建的数据库以及所需的自定义设置。
 
 Note this file will be differently created for Unix based systems.
+注意：在类 Unix 系统上该文件的生成方式会有所不同。
 
 Run mangosd
+运行 mangosd
 ~~~~~~~~~~~
 
 Run mangosd from your output directory. If you use another directory to run mangos, you need (on windows) copy the mangosscript.dll to that directory before starting mangosd.
+从你的输出目录运行 mangosd。如果你在其他目录中运行 mangos，在 Windows 上必须先将 mangosscript.dll 复制到该目录，然后再启动 mangosd。
 
 
 How to Update ScriptDev2
+如何更新 ScriptDev2
 ------------------------
 
 . Enter src/bindings/ScriptDev2 directory (with git-bash)
+  （使用 git-bash 进入 `src/bindings/ScriptDev2` 目录）
 . Update ScriptDev2 with `git pull`
+  （执行 `git pull` 更新 ScriptDev2）
 . Compile ScriptDev2 +
   On _windows_ you must still compile MaNGOS before ScriptDev2
+  （编译 ScriptDev2；在 _Windows_ 下仍需先编译 MaNGOS，再编译 ScriptDev2）
 . Update your Database with new Scriptdev2 SQL changes. For this you can either:
+  （使用新的 ScriptDev2 SQL 变更更新数据库。你可以选择以下任一方式：）
   * apply only the changes that were made during that revision by looking in the sql\update folder or (files named rXXX_scriptdev2.sql should be executed on the scriptdev2 db while rXXX_mangos.sql should be executed on your mangos db)
+    （查看 `sql\update` 文件夹，仅应用对应版本产生的变更；其中名为 `rXXX_scriptdev2.sql` 的文件在 scriptdev2 数据库上执行，`rXXX_mangos.sql` 在 mangos 数据库上执行）
   * reapply "mangos_scriptname_full.sql" to your MaNGOS database. - WARNING this will NOT include removed script names!
+    （重新对 MaNGOS 数据库执行 "mangos_scriptname_full.sql"。—— 警告：此方式不会清理已被移除的脚本名称！）
 
 ScriptDev2 Change Log
+ScriptDev2 更新日志
 ---------------------
 
 You can view the ScriptDev2 change log on the https://github.com/scriptdev2/scriptdev2/commits/master[ScriptDev2 Github Repository].
+你可以在 https://github.com/scriptdev2/scriptdev2/commits/master[ScriptDev2 Github 仓库] 查看 ScriptDev2 的更新记录。
 
 Or of course locally with your Git GUI tools or with `git log` (Note that it should be up to date before looking into your local log)
+当然，你也可以在本地通过 Git 图形界面工具或 `git log` 查看（注意查看本地日志前应先更新仓库）。

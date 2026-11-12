@@ -23,22 +23,24 @@
  * @class TypeContainerVisitor is implemented as a visitor pattern.  It is
  * a visitor to the TypeMapContainer or ContainerMapList.  The visitor has
  * to overload its types as a visit method is called.
+ * TypeContainerVisitor 实现了访问者模式，用于遍历 TypeMapContainer 或 ContainerMapList，
+ * 具体访问者类需为各目标类型重载 Visit 方法。
  */
 
 #include "Platform/Define.h"
 #include "TypeContainer.h"
 
-// forward declaration
+// forward declaration | 前向声明
 template<class T, class Y> class TypeContainerVisitor;
 
-// visitor helper
+// visitor helper | 访问者分派辅助函数
 template<class VISITOR, class TYPE_CONTAINER>
 void VisitorHelper(VISITOR& v, TYPE_CONTAINER& c)
 {
     v.Visit(c);
 }
 
-// terminate condition container map list
+// terminate condition container map list | TypeList 递归终止条件
 template<class VISITOR>
 void VisitorHelper(VISITOR& /*v*/, ContainerMapList<TypeNull>& /*c*/)
 {
@@ -50,7 +52,7 @@ void VisitorHelper(VISITOR& v, ContainerMapList<T>& c)
     v.Visit(c._element);
 }
 
-// recursion container map list
+// recursion container map list | 递归遍历 ContainerMapList 中的所有类型分支
 template<class VISITOR, class H, class T>
 void VisitorHelper(VISITOR& v, ContainerMapList<TypeList<H, T> >& c)
 {
@@ -58,13 +60,14 @@ void VisitorHelper(VISITOR& v, ContainerMapList<TypeList<H, T> >& c)
     VisitorHelper(v, c._TailElements);
 }
 
-// for TypeMapContainer
+// for TypeMapContainer | 展开 TypeMapContainer 内部元素列表
 template<class VISITOR, class OBJECT_TYPES>
 void VisitorHelper(VISITOR& v, TypeMapContainer<OBJECT_TYPES>& c)
 {
     VisitorHelper(v, c.GetElements());
 }
 
+/// 类型容器访问者包装器
 template<class VISITOR, class TYPE_CONTAINER>
 class TypeContainerVisitor
 {

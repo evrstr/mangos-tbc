@@ -21,14 +21,17 @@
 
 #include "Maps/Map.h"
 
+/// 地图网格（NGrid）生命周期状态基类
 class GridState
 {
     public:
 
+        /// 状态更新回调：推进计时并执行状态迁移或网格卸载
         virtual void Update(Map&, NGridType&, GridInfo&, const uint32& x, const uint32& y, const uint32& t_diff) const = 0;
         virtual ~GridState() {}
 };
 
+/// 无效状态：未初始化或占位状态，不执行任何更新
 class InvalidState : public GridState
 {
     public:
@@ -37,6 +40,7 @@ class InvalidState : public GridState
         virtual ~InvalidState() {}
 };
 
+/// 激活状态：网格内或周边存在活跃对象/玩家，定期检查是否可转入空闲态
 class ActiveState : public GridState
 {
     public:
@@ -45,6 +49,7 @@ class ActiveState : public GridState
         virtual ~ActiveState() {}
 };
 
+/// 空闲状态：重置网格过期计时器并立即流转至待卸载状态
 class IdleState : public GridState
 {
     public:
@@ -53,6 +58,7 @@ class IdleState : public GridState
         virtual ~IdleState() {}
 };
 
+/// 待移除状态：等待过期计时结束且未加锁后执行网格卸载
 class RemovalState : public GridState
 {
     public:

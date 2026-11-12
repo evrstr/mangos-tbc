@@ -27,7 +27,7 @@ void ByteBufferException::PrintPosError() const
 
 void ByteBuffer::print_storage() const
 {
-    if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output
+    if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output | 未开启 Debug 日志级别时直接跳过格式化以节省开销
         return;
 
     std::ostringstream ss;
@@ -44,7 +44,7 @@ void ByteBuffer::print_storage() const
 
 void ByteBuffer::textlike() const
 {
-    if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output
+    if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output | 未开启 Debug 日志级别时直接跳过格式化
         return;
 
     std::ostringstream ss;
@@ -61,7 +61,7 @@ void ByteBuffer::textlike() const
 
 void ByteBuffer::hexlike() const
 {
-    if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output
+    if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output | 未开启 Debug 日志级别时直接跳过十六进制转储
         return;
 
     std::ostringstream ss;

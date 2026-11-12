@@ -27,13 +27,14 @@
 
 class Map;
 
+// 单个待刷新对象的调度信息（记录复活时间点、数据库 GUID、类型及使用状态）
 class SpawnInfo
 {
     public:
         SpawnInfo(TimePoint when, uint32 dbguid, HighGuid high) : m_respawnTime(when), m_dbguid(dbguid), m_high(high), m_used(false), m_inUse(false){}
         TimePoint const& GetRespawnTime() const { return m_respawnTime; }
         void SetRespawnTime(TimePoint const& time) { m_respawnTime = time; }
-        bool ConstructForMap(Map& map); // can fail due to linking, pooling not supported
+        bool ConstructForMap(Map& map); // can fail due to linking, pooling not supported (在地图上构造生成该对象；可能因生物链接失败，不支持对象池)
         uint32 GetDbGuid() const { return m_dbguid; }
         HighGuid GetHighGuid() const { return m_high; }
         void SetUsed() { m_used = true; }
@@ -48,30 +49,32 @@ class SpawnInfo
 
 bool operator<(SpawnInfo const& lhs, SpawnInfo const& rhs);
 
+// 地图刷新管理器，负责地图内生物/游戏对象的延迟刷新调度与刷怪组（SpawnGroup）管理
 class SpawnManager
 {
     public:
         SpawnManager(Map& map) : m_map(map), m_updated(false) {}
         ~SpawnManager();
-        void Initialize();
+        void Initialize(); // 初始化地图内的所有刷怪组并加载关联的生物与游戏对象
 
         void AddCreature(uint32 dbguid);
         void AddGameObject(uint32 dbguid);
 
-        void RespawnCreature(uint32 dbguid, uint32 respawnDelay = 0); // seconds
-        void RespawnGameObject(uint32 dbguid, uint32 respawnDelay = 0); // seconds
+        void RespawnCreature(uint32 dbguid, uint32 respawnDelay = 0); // seconds (单位：秒)
+        void RespawnGameObject(uint32 dbguid, uint32 respawnDelay = 0); // seconds (单位：秒)
 
         void RemoveSpawns(std::vector<uint32> const& creatureDbGuids, std::vector<uint32> const& goDbGuids);
         void RemoveSpawn(uint32 dbguid, HighGuid high);
 
         // boilerplate methods for dynguid transition period
+        // 动态 GUID 过渡期的样板方法：追踪事件激活的数据库 GUID
         void AddEventGuid(uint32 dbguid, HighGuid high);
         void RemoveEventGuid(uint32 dbguid, HighGuid high);
         bool IsEventGuid(uint32 dbguid, HighGuid high) const;
 
-        void RespawnAll();
+        void RespawnAll(); // 立即重生所有待刷新对象
 
-        void Update();
+        void Update(); // 每帧推进刷怪组与到期刷新队列
 
         std::string GetRespawnList();
 
@@ -83,7 +86,7 @@ class SpawnManager
         Map& m_map;
 
         std::vector<SpawnInfo> m_deferredSpawns;
-        std::vector<SpawnInfo> m_spawns; // must only be erased from in Update
+        std::vector<SpawnInfo> m_spawns; // must only be erased from in Update (仅允许在 Update 中移除元素)
         std::map<uint32, SpawnGroup*> m_spawnGroups;
         std::map<uint32, SpawnGroup*> m_spawnGroupsPerStringId;
         bool m_updated;

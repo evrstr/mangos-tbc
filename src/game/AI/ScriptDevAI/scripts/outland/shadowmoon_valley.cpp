@@ -21,6 +21,11 @@ SDComment: Quest support: 10451, 10458, 10480, 10481, 10514, 10540, 10588, 10707
 SDCategory: Shadowmoon Valley
 EndScriptData */
 
+// 影月谷野外任务与生物脚本
+/* 遭遇战概述：
+ * 影月谷古尔丹之手诅咒密码系列任务、库雷尼与伊利达雷生物 AI。
+ */
+
 /* ContentData
 mob_mature_netherwing_drake
 mob_enslaved_netherwing_drake
@@ -47,6 +52,7 @@ EndContentData */
 # mob_mature_netherwing_drake
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_JUST_EATEN              = -1000175,
@@ -62,6 +68,7 @@ enum
     GO_FLAYER_CARCASS           = 185155,
 };
 
+// mob_mature_netherwing_drakeAI 逻辑实现
 struct mob_mature_netherwing_drakeAI : public ScriptedAI
 {
     mob_mature_netherwing_drakeAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -73,6 +80,7 @@ struct mob_mature_netherwing_drakeAI : public ScriptedAI
     uint32 m_uiNetherbreathTimer;
     uint32 m_uiIntangiblePresenceTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         SetReactState(REACT_DEFENSIVE);
@@ -187,6 +195,7 @@ struct mob_mature_netherwing_drakeAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_mob_mature_netherwing_drake(Creature* pCreature)
 {
     return new mob_mature_netherwing_drakeAI(pCreature);
@@ -196,6 +205,7 @@ UnitAI* GetAI_mob_mature_netherwing_drake(Creature* pCreature)
 # mob_enslaved_netherwing_drake
 ####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     FACTION_FRIENDLY                = 1840,                 // Not sure if this is correct, it was taken off of Mordenai.
@@ -210,6 +220,7 @@ enum
     NPC_ESCAPE_DUMMY                = 21348
 };
 
+// mob_enslaved_netherwing_drakeAI 逻辑实现
 struct mob_enslaved_netherwing_drakeAI : public ScriptedAI
 {
     mob_enslaved_netherwing_drakeAI(Creature* creature) : ScriptedAI(creature), m_uiFlyTimer(0), m_disabled(false)
@@ -221,6 +232,7 @@ struct mob_enslaved_netherwing_drakeAI : public ScriptedAI
     uint32 m_uiFlyTimer;
     bool m_disabled;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_creature->SetCanFly(false);
@@ -302,6 +314,7 @@ struct mob_enslaved_netherwing_drakeAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_mob_enslaved_netherwing_drake(Creature* pCreature)
 {
     return new mob_enslaved_netherwing_drakeAI(pCreature);
@@ -311,6 +324,7 @@ UnitAI* GetAI_mob_enslaved_netherwing_drake(Creature* pCreature)
 # npc_dragonmaw_peon
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_PEON_1                      = -1000652,
@@ -325,6 +339,7 @@ enum
     POINT_DEST                      = 1
 };
 
+// npc_dragonmaw_peonAI 逻辑实现
 struct npc_dragonmaw_peonAI : public ScriptedAI
 {
     npc_dragonmaw_peonAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -334,6 +349,7 @@ struct npc_dragonmaw_peonAI : public ScriptedAI
     uint32 m_uiMoveTimer;
     uint32 m_uiEatTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_playerGuid.Clear();
@@ -448,8 +464,10 @@ struct npc_dragonmaw_peonAI : public ScriptedAI
 };
 
 // 40468 - Serving Poisoned Mutton
+// ServingPoisonedMutton 法术脚本
 struct ServingPoisonedMutton : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_1)
@@ -473,6 +491,7 @@ struct ServingPoisonedMutton : public SpellScript
 # npc_wilda
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_WIL_START               = -1000381,
@@ -500,6 +519,7 @@ enum
     NPC_CAPTURED_WATER_SPIRIT   = 21029,
 };
 
+// npc_wildaAI 逻辑实现
 struct npc_wildaAI : public npc_escortAI
 {
     npc_wildaAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -516,6 +536,7 @@ struct npc_wildaAI : public npc_escortAI
     uint32 m_uiShockTimer;
     uint32 m_uiLightningTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiHealingTimer = 0;
@@ -573,6 +594,7 @@ struct npc_wildaAI : public npc_escortAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_COILSKAR_ASSASSIN)
@@ -682,11 +704,13 @@ struct npc_wildaAI : public npc_escortAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_wilda(Creature* pCreature)
 {
     return new npc_wildaAI(pCreature);
 }
 
+// 接受任务交互回调
 bool QuestAccept_npc_wilda(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ESCAPE_COILSCAR)
@@ -705,6 +729,7 @@ bool QuestAccept_npc_wilda(Player* pPlayer, Creature* pCreature, const Quest* pQ
 # Quest: Battle of the Crimson Watch
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     QUEST_BATTLE_OF_THE_CRIMSON_WATCH = 10781,
@@ -734,6 +759,7 @@ enum
     NPC_MARCUS_AURALION = 22073,
 };
 
+// CinematicCreature 相关枚举
 enum CinematicCreature
 {
     LORD_ILLIDAN = 1,
@@ -805,6 +831,7 @@ static WaveData WavesInfo[] =
 # mob_torloth
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_CLEAVE = 15284,
@@ -817,6 +844,7 @@ enum
     FACTION_HOSTILE = 14,
 };
 
+// TorlothActions 相关枚举
 enum TorlothActions
 {
     TORLOTH_CLEAVE,
@@ -826,6 +854,7 @@ enum TorlothActions
     TORLOTH_ANIMATIONS,
 };
 
+// mob_torlothAI 逻辑实现
 struct mob_torlothAI : public CombatAI
 {
     mob_torlothAI(Creature* creature) : CombatAI(creature, TORLOTH_ACTION_MAX)
@@ -841,6 +870,7 @@ struct mob_torlothAI : public CombatAI
 
     uint8 m_uiAnimationCount;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -919,6 +949,7 @@ struct mob_torlothAI : public CombatAI
         ++m_uiAnimationCount;
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (Player* player = m_creature->GetMap()->GetPlayer(m_playerGuid))
@@ -935,6 +966,7 @@ struct mob_torlothAI : public CombatAI
             SendAIEvent(AI_EVENT_CUSTOM_B, m_creature, spawner); // success
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -959,6 +991,7 @@ struct mob_torlothAI : public CombatAI
 # npc_lord_illidan_stormrage
 #####*/
 
+// npc_lord_illidan_stormrageAI 逻辑实现
 struct npc_lord_illidan_stormrageAI : public Scripted_NoMovementAI
 {
     npc_lord_illidan_stormrageAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) {}
@@ -974,6 +1007,7 @@ struct npc_lord_illidan_stormrageAI : public Scripted_NoMovementAI
     bool m_bEventStarted;
     bool m_bWaveAnnounced;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_playerGuid.Clear();
@@ -1005,6 +1039,7 @@ struct npc_lord_illidan_stormrageAI : public Scripted_NoMovementAI
         Reset();
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A) // failed - sent by torloth
@@ -1055,6 +1090,7 @@ struct npc_lord_illidan_stormrageAI : public Scripted_NoMovementAI
         m_uiAnnounceTimer = WavesInfo[m_uiWaveCount].uiYellTimer;
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         // increment mob count
@@ -1165,6 +1201,7 @@ bool GOQuestAccept_GO_crystal_prison(Player* player, GameObject* /*go*/, Quest c
 ## npc_totem_of_spirits
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     QUEST_SPIRITS_FIRE_AND_EARTH        = 10458,
@@ -1207,6 +1244,7 @@ enum
     EVENT_AIR                           = 13516,
 };
 
+// npc_totem_of_spiritsAI 逻辑实现
 struct npc_totem_of_spiritsAI : public ScriptedAI
 {
     npc_totem_of_spiritsAI(Creature* creature) : ScriptedAI(creature), m_uiElementalSieveTimer(2500)
@@ -1217,6 +1255,7 @@ struct npc_totem_of_spiritsAI : public ScriptedAI
 
     uint32 m_uiElementalSieveTimer; // needs to be cast non-stop without interference from evade and some such
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
     void SummonedMovementInform(Creature* summoned, uint32 /*motionType*/, uint32 /*data*/) override
@@ -1241,12 +1280,14 @@ struct npc_totem_of_spiritsAI : public ScriptedAI
         summoned->ForcedDespawn(1000);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         // After summoning the spirit soul, make it move towards the totem
         summoned->GetMotionMaster()->MovePoint(1, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ() + 4);
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_uiElementalSieveTimer <= diff)
@@ -1263,8 +1304,10 @@ struct npc_totem_of_spiritsAI : public ScriptedAI
 // 36115 - Fiery Soul Captured
 // 36170 - Water Soul Captured
 // 36181 - Air Soul Captured
+// ElementalCapturedCredit 法术脚本
 struct ElementalCapturedCredit : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -1324,8 +1367,10 @@ bool ProcessEventId_event_spell_soul_captured_credit(uint32 uiEventId, Object* p
 }
 
 // 36035 - Elemental Sieve
+// ElementalSieve 光环脚本
 struct ElementalSieve : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply || aura->GetRemoveMode() != AURA_REMOVE_BY_DEATH)
@@ -1404,6 +1449,7 @@ const static WaveCoords DeathwailDescentCoords[] =
     {-3248.166f, 289.8274f, 139.0618f},
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_BEGIN_DESCENT			= -1015002,
@@ -1438,6 +1484,7 @@ enum
     DEATHWAIL_DESPAWN_TIME	= 300000
 };
 
+// npc_shadowlord_deathwailAI 逻辑实现
 struct npc_shadowlord_deathwailAI : public ScriptedAI
 {
     npc_shadowlord_deathwailAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -1465,6 +1512,7 @@ struct npc_shadowlord_deathwailAI : public ScriptedAI
     bool m_bEventInProgress = false;
     bool m_bDeathwailGrounded;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         if (m_bEventInProgress && !m_bDeathwailGrounded)
@@ -1632,6 +1680,7 @@ struct npc_shadowlord_deathwailAI : public ScriptedAI
             DoBeginDescent();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoScriptText(SAY_DEAD, m_creature);
@@ -1785,6 +1834,7 @@ struct npc_shadowlord_deathwailAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_shadowlord_deathwail(Creature* pCreature)
 {
     return new npc_shadowlord_deathwailAI(pCreature);
@@ -1794,6 +1844,7 @@ UnitAI* GetAI_npc_shadowlord_deathwail(Creature* pCreature)
 #mob_shadowmoon_soulstealer
 #####*/
 
+// mob_shadowmoon_soulstealerAI 逻辑实现
 struct mob_shadowmoon_soulstealerAI : public ScriptedAI
 {
     mob_shadowmoon_soulstealerAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -1806,6 +1857,7 @@ struct mob_shadowmoon_soulstealerAI : public ScriptedAI
     bool m_bSixtyTriggered;
     bool m_bTwentyTriggered;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         SetCombatMovement(false);
@@ -1831,6 +1883,7 @@ struct mob_shadowmoon_soulstealerAI : public ScriptedAI
         Reset();
     }
 
+    // 进入战斗回调
     void Aggro(Unit* who) override
     {
         m_cDeathwail = GetClosestCreatureWithEntry(m_creature, NPC_SHADOWLORD_DEATHWAIL, 200.0f);
@@ -1865,6 +1918,7 @@ struct mob_shadowmoon_soulstealerAI : public ScriptedAI
             m_creature->CombatStop();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_cDeathwail)
@@ -1909,6 +1963,7 @@ struct mob_shadowmoon_soulstealerAI : public ScriptedAI
 #npc_spawned_oronok_tornheart
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // texts
@@ -2012,6 +2067,7 @@ const static Position aDamnationLocations[] =
     { -3599.71f, 1897.94f, 47.24f}             // 8 epilogue move loc
 };
 
+// npc_spawned_oronok_tornheartAI 逻辑实现
 struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelper
 {
     npc_spawned_oronok_tornheartAI(Creature* pCreature) : ScriptedAI(pCreature),
@@ -2038,6 +2094,7 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
 
     bool m_bHasAttackStart;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiLightningTimer  = 15000;
@@ -2165,6 +2222,7 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* pSummoned) override
     {
         switch (pSummoned->GetEntry())
@@ -2175,6 +2233,7 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
         }
     }
 
+    // 召唤生物消失回调
     void SummonedCreatureDespawn(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_CYRUKH_THE_FIRELORD)
@@ -2409,11 +2468,13 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_spawned_oronok_tornheart(Creature* pCreature)
 {
     return new npc_spawned_oronok_tornheartAI(pCreature);
 }
 
+// NPC 对话开始交互回调
 bool GossipHello_npc_spawned_oronok_tornheart(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->GetQuestStatus(QUEST_CIPHER_OF_DAMNATION) == QUEST_STATUS_INCOMPLETE)
@@ -2427,6 +2488,7 @@ bool GossipHello_npc_spawned_oronok_tornheart(Player* pPlayer, Creature* pCreatu
     return true;
 }
 
+// NPC 对话选项选择回调
 bool GossipSelect_npc_spawned_oronok_tornheart(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
@@ -2446,6 +2508,7 @@ bool GossipSelect_npc_spawned_oronok_tornheart(Player* pPlayer, Creature* pCreat
 ## npc_domesticated_felboar
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     EMOTE_SNIFF_AIR             = -1000907,
@@ -2461,6 +2524,7 @@ enum
     GO_SHADOWMOON_TUBER_MOUND   = 184701,
 };
 
+// npc_domesticated_felboarAI 逻辑实现
 struct npc_domesticated_felboarAI : public ScriptedAI
 {
     npc_domesticated_felboarAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -2468,6 +2532,7 @@ struct npc_domesticated_felboarAI : public ScriptedAI
     uint32 m_uiTuberTimer;
     uint8 m_uiTuberStage;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiTuberTimer = 0;
@@ -2540,14 +2605,17 @@ struct npc_domesticated_felboarAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_domesticated_felboar(Creature* pCreature)
 {
     return new npc_domesticated_felboarAI(pCreature);
 }
 
 // 36652 - Tuber Whistle
+// TuberWhistle 法术脚本
 struct TuberWhistle : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -2569,6 +2637,7 @@ struct TuberWhistle : public SpellScript
 ## npc_veneratus_spawn_node
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_VENERATUS_SPAWN         = -1000579,
@@ -2577,12 +2646,15 @@ enum
     NPC_SPIRIT_HUNTER           = 21332,
 };
 
+// npc_veneratus_spawn_nodeAI 逻辑实现
 struct npc_veneratus_spawn_nodeAI : public Scripted_NoMovementAI
 {
     npc_veneratus_spawn_nodeAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
 
+    // 遭遇战/状态重置回调
     void Reset() override { }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* pWho) override
     {
         // Check for the spirit hunter in order to spawn Veneratus; this will replace missing spells 36614 (dummy periodic spell) and 36616 (summon spell)
@@ -2597,6 +2669,7 @@ struct npc_veneratus_spawn_nodeAI : public Scripted_NoMovementAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_veneratus_spawn_node(Creature* pCreature)
 {
     return new npc_veneratus_spawn_nodeAI(pCreature);
@@ -2606,6 +2679,7 @@ UnitAI* GetAI_npc_veneratus_spawn_node(Creature* pCreature)
 ## npc_disobedient_dragonmaw_peon
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_IDLE1   = -1001285,
@@ -2636,6 +2710,7 @@ enum
     POINT_ARRIVED           = 1,
 };
 
+// npc_disobedient_dragonmaw_peonAI 逻辑实现
 struct npc_disobedient_dragonmaw_peonAI : public ScriptedAI
 {
     npc_disobedient_dragonmaw_peonAI(Creature* creature) : ScriptedAI(creature)
@@ -2649,6 +2724,7 @@ struct npc_disobedient_dragonmaw_peonAI : public ScriptedAI
     uint32 m_sunderarmorTimer;
     ObjectGuid m_lastPlayerGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         if (m_lastPlayerGuid.IsEmpty())
@@ -2734,6 +2810,7 @@ struct npc_disobedient_dragonmaw_peonAI : public ScriptedAI
         m_angryTimer = 0;
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         if (!m_creature->IsInCombat())
@@ -2795,6 +2872,7 @@ struct npc_disobedient_dragonmaw_peonAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_disobedient_dragonmaw_peon(Creature* pCreature)
 {
     return new npc_disobedient_dragonmaw_peonAI(pCreature);
@@ -2804,6 +2882,7 @@ UnitAI* GetAI_npc_disobedient_dragonmaw_peon(Creature* pCreature)
 ## Deadliest Trap Ever Laid commander NPC AIs
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_EVENT_ACCEPT_ARCUS = -1001293,
@@ -2848,6 +2927,7 @@ enum
     DRAGONMAW_KILL_COUNT    = 30,
 };
 
+// CommanderActions : uint32 相关枚举
 enum CommanderActions : uint32
 {
     COMMANDER_COMBAT_ACTION_AIMED_SHOT,
@@ -2942,6 +3022,7 @@ static DeadliestScriptInfo deadliestScriptInfo[COMMANDER_COUNT] =
     { NPC_ALDOR_DRAGONMAW_SKYBREAKER,   NPC_ALTAR_DEFENDER,   LAST_POINT_ARCUS, SAY_EVENT_ACCEPT_ARCUS, SAY_EVENT_START_ARCUS, SAY_EVENT_END_ARCUS, SAY_EVENT_ACCEPT_ARCUS, QUEST_DEADLIEST_TRAP_ALDOR }
 };
 
+// npc_commanderAI 逻辑实现
 struct npc_commanderAI : public CombatAI
 {
     npc_commanderAI(Creature* creature, uint8 commanderId) : CombatAI(creature, COMMANDER_COMBAT_ACTION_MAX),
@@ -3015,6 +3096,7 @@ struct npc_commanderAI : public CombatAI
         return 0;
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -3127,6 +3209,7 @@ struct npc_commanderAI : public CombatAI
         m_creature->SetActiveObjectState(false);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         FailEvent();
@@ -3152,6 +3235,7 @@ struct npc_commanderAI : public CombatAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         if (summoned->GetEntry() == deadliestScriptInfo[m_commanderId].dragonmawNpc)
@@ -3174,6 +3258,7 @@ struct npc_commanderAI : public CombatAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         UpdateTimers(diff, m_creature->IsInCombat());
@@ -3185,6 +3270,7 @@ struct npc_commanderAI : public CombatAI
     }
 };
 
+// npc_commander_hobbAI 逻辑实现
 struct npc_commander_hobbAI : public npc_commanderAI
 {
     npc_commander_hobbAI(Creature* creature) : npc_commanderAI(creature, COMMANDER_HOBB) {}
@@ -3204,6 +3290,7 @@ struct npc_commander_hobbAI : public npc_commanderAI
     }
 };
 
+// npc_commander_arcusAI 逻辑实现
 struct npc_commander_arcusAI : public npc_commanderAI
 {
     npc_commander_arcusAI(Creature* creature) : npc_commanderAI(creature, COMMANDER_ARCUS)
@@ -3226,6 +3313,7 @@ struct npc_commander_arcusAI : public npc_commanderAI
     }
 };
 
+// 接受任务交互回调
 bool QuestAccept_npc_commander(Player* player, Creature* questgiver, Quest const* quest)
 {
     switch (quest->GetQuestId())
@@ -3244,6 +3332,7 @@ bool QuestAccept_npc_commander(Player* player, Creature* questgiver, Quest const
 # Dragonmaw Racer NPC AIs (Netherwing faction questline)
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     QUEST_MUCKJAW                   = 11064,
@@ -3327,6 +3416,7 @@ static DragonmawRacerScriptInfo dragonmawRacesScriptInfo[RACER_COUNT] =
     { QUEST_SKYSHATTER, SAY_START_SKYSHATTER, SPELL_ATTACK_SKYSHATTER, NPC_TARGET_SKYSHATTER, SPELL_AGGRO_CHECK_SKYSHATTER, SPELL_AGGRO_BURST_SKYSHATTER, SAY_END_SKYSHATTER }
 };
 
+// npc_dragonmaw_racerAI 逻辑实现
 struct npc_dragonmaw_racerAI : public ScriptedAI
 {
     npc_dragonmaw_racerAI(Creature* creature, uint8 racerId) : ScriptedAI(creature), m_racerId(racerId) { Reset(); }
@@ -3336,6 +3426,7 @@ struct npc_dragonmaw_racerAI : public ScriptedAI
     uint32 m_questId;
     ObjectGuid m_playerRacerGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_creature->SetHover(false);
@@ -3346,6 +3437,7 @@ struct npc_dragonmaw_racerAI : public ScriptedAI
         m_uiAttackTimer = 0;
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_uiAttackTimer)
@@ -3359,6 +3451,7 @@ struct npc_dragonmaw_racerAI : public ScriptedAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* pSummoned) override
     {
         DoCastSpellIfCan(pSummoned, dragonmawRacesScriptInfo[m_racerId].attackSpellId);
@@ -3423,6 +3516,7 @@ struct npc_dragonmaw_racerAI : public ScriptedAI
     }
 };
 
+// npc_dragonmaw_racer_muckjawAI 逻辑实现
 struct npc_dragonmaw_racer_muckjawAI : public npc_dragonmaw_racerAI
 {
     npc_dragonmaw_racer_muckjawAI(Creature* creature) : npc_dragonmaw_racerAI(creature, RACER_MUCKJAW) {}
@@ -3452,6 +3546,7 @@ struct npc_dragonmaw_racer_muckjawAI : public npc_dragonmaw_racerAI
     }
 };
 
+// npc_dragonmaw_racer_tropeAI 逻辑实现
 struct npc_dragonmaw_racer_tropeAI : public npc_dragonmaw_racerAI
 {
     npc_dragonmaw_racer_tropeAI(Creature* creature) : npc_dragonmaw_racerAI(creature, RACER_TROPE) {}
@@ -3481,6 +3576,7 @@ struct npc_dragonmaw_racer_tropeAI : public npc_dragonmaw_racerAI
     }
 };
 
+// npc_dragonmaw_racer_corlokAI 逻辑实现
 struct npc_dragonmaw_racer_corlokAI : public npc_dragonmaw_racerAI
 {
     npc_dragonmaw_racer_corlokAI(Creature* creature) : npc_dragonmaw_racerAI(creature, RACER_CORLOK) {}
@@ -3510,6 +3606,7 @@ struct npc_dragonmaw_racer_corlokAI : public npc_dragonmaw_racerAI
     }
 };
 
+// npc_dragonmaw_racer_ichmanAI 逻辑实现
 struct npc_dragonmaw_racer_ichmanAI : public npc_dragonmaw_racerAI
 {
     npc_dragonmaw_racer_ichmanAI(Creature* creature) : npc_dragonmaw_racerAI(creature, RACER_ICHMAN) {}
@@ -3535,6 +3632,7 @@ struct npc_dragonmaw_racer_ichmanAI : public npc_dragonmaw_racerAI
     }
 };
 
+// npc_dragonmaw_racer_mulverickAI 逻辑实现
 struct npc_dragonmaw_racer_mulverickAI : public npc_dragonmaw_racerAI
 {
     npc_dragonmaw_racer_mulverickAI(Creature* creature) : npc_dragonmaw_racerAI(creature, RACER_MULVERICK) {}
@@ -3573,6 +3671,7 @@ struct npc_dragonmaw_racer_mulverickAI : public npc_dragonmaw_racerAI
     }
 };
 
+// npc_dragonmaw_racer_skyshatterAI 逻辑实现
 struct npc_dragonmaw_racer_skyshatterAI : public npc_dragonmaw_racerAI
 {
     npc_dragonmaw_racer_skyshatterAI(Creature* creature) : npc_dragonmaw_racerAI(creature, RACER_SKYSHATTER) {}
@@ -3613,6 +3712,7 @@ struct npc_dragonmaw_racer_skyshatterAI : public npc_dragonmaw_racerAI
     }
 };
 
+// 接受任务交互回调
 bool QuestAccept_npc_dragonmaw_racer(Player* player, Creature* questgiver, Quest const* quest)
 {
     switch (quest->GetQuestId())
@@ -3637,8 +3737,10 @@ bool QuestAccept_npc_dragonmaw_racer(Player* player, Creature* questgiver, Quest
     return false;
 }
 
+// DragonmawKnockdownTheAggroCheck 法术脚本
 struct DragonmawKnockdownTheAggroCheck : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (!spell->GetUnitTarget()->IsPlayer() || spell->GetCaster()->IsPlayer())
@@ -3715,6 +3817,7 @@ enum {
     SPELL_SHADOWLORD_SLEEP             = 12098,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     ILLIDARI_CLEAVE,
@@ -3723,6 +3826,7 @@ enum
     ILLIDARI_ACTION_MAX,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     ASSASSIN_DEBILITATING_STRIKE,
@@ -3730,6 +3834,7 @@ enum
     ASSASSIN_ACTION_MAX,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SUCCUBUS_LASH_OF_PAIN,
@@ -3737,6 +3842,7 @@ enum
     SUCCUBUS_ACTION_MAX,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     VINDICATOR_EXORCISM,
@@ -3746,6 +3852,7 @@ enum
     VINDICATOR_ACTION_MAX,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     CAALEN_HOLY_SMITE,
@@ -3753,12 +3860,14 @@ enum
     CAALEN_ACTION_MAX,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAGISTER_FIREBALL, // FLEE AT 15%
     MAGISTER_ACTION_MAX,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SHADOWLORD_INFERNO,
@@ -3767,6 +3876,7 @@ enum
     SHADOWLORD_ACTION_MAX,
 };
 
+// mob_bt_battle_fighterAI 逻辑实现
 struct mob_bt_battle_fighterAI : public ScriptedAI
 {
     mob_bt_battle_fighterAI(Creature* pCreature) : ScriptedAI(pCreature, VINDICATOR_ACTION_MAX)
@@ -3832,6 +3942,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI
     uint8 m_uiLastWaypoint = 0;
     bool m_bIsWaypointing = true;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         ScriptedAI::Reset();
@@ -4070,6 +4181,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI
         }
     }
 
+    // 执行就绪的战斗动作
     void ExecuteActions() override
     {
         if (!CanExecuteCombatAction())
@@ -4337,6 +4449,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 
+    // 进入战斗回调
     void Aggro(Unit* who) override
     {
         switch (m_creature->GetEntry())
@@ -4371,6 +4484,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI
 
     }*/
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (!m_bIsWaypointing)
@@ -4417,6 +4531,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_mob_bt_battle_fighter(Creature* pCreature)
 {
     return new mob_bt_battle_fighterAI(pCreature);
@@ -4539,6 +4654,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
         Reset();
     }
 
+    // IllidariAttackGroup { 相关枚举
     enum IllidariAttackGroup {
         NONE = 0,
         RAVAGERS_1 = 1,
@@ -4579,6 +4695,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
     uint8 m_uiNumLightswornForward;
     uint8 m_uiNumMagisterForward;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_forwardFormationMap.clearMaps();
@@ -5344,6 +5461,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_fIllidariAttackTimer < diff)
@@ -5366,12 +5484,14 @@ struct npc_bt_battle_sensor : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_bt_battle_sensor(Creature* pCreature)
 {
     return new npc_bt_battle_sensor(pCreature);
 }
 
 // 37851 - Tag Greater Felfire Diemetradon
+// TagGreaterFelfireDiemetradon 法术脚本
 struct TagGreaterFelfireDiemetradon : public SpellScript, public AuraScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -5389,6 +5509,7 @@ struct TagGreaterFelfireDiemetradon : public SpellScript, public AuraScript
             static_cast<Creature*>(target)->RegisterHitBySpell(spell->m_spellInfo->Id);
     }
 
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -5396,8 +5517,10 @@ struct TagGreaterFelfireDiemetradon : public SpellScript, public AuraScript
     }
 };
 
+// DragonmawIllusionBase 光环脚本
 struct DragonmawIllusionBase : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -5413,8 +5536,10 @@ struct DragonmawIllusionBase : public AuraScript
     }
 };
 
+// DragonmawIllusionTransform 光环脚本
 struct DragonmawIllusionTransform : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -5424,6 +5549,7 @@ struct DragonmawIllusionTransform : public AuraScript
     }
 };
 
+// CallingRider 法术脚本
 struct CallingRider : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -5432,6 +5558,7 @@ struct CallingRider : public SpellScript
     }
 };
 
+// 注册 shadowmoon_valley 脚本
 void AddSC_shadowmoon_valley()
 {
     Script* pNewScript = new Script;

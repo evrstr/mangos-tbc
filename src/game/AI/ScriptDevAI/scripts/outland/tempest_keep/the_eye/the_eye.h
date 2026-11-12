@@ -3,8 +3,14 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_THE_EYE_H
+
+// 风暴要塞团队副本数据头文件
+/* 遭遇战概述：
+ * 定义风暴要塞四大首领与门禁枚举。
+ */
 #define DEF_THE_EYE_H
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER               = 4,
@@ -49,21 +55,29 @@ enum
 
 static const uint32 aAdvisors[MAX_ADVISORS] = {NPC_CAPERNIAN, NPC_SANGUINAR, NPC_TELONICUS, NPC_THALADRED};
 
+// instance_the_eye 副本数据管理类
 class instance_the_eye : public ScriptedInstance
 {
     public:
         instance_the_eye(Map* pMap);
 
+        // 初始化副本数据与状态
         void Initialize() override;
         bool IsEncounterInProgress() const override;
 
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* pCreature) override;
+        // 副本生物重生处理
         void OnCreatureRespawn(Creature* creature) override;
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* pGo) override;
 
+        // 副本生物脱战脱逃处理
         void OnCreatureEvade(Creature* creature) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 uiType, uint32 uiData) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 uiType) const override;
 
         // checks whether to open the doors preventing Kael access

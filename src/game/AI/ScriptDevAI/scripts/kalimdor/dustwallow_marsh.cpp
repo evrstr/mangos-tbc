@@ -21,6 +21,10 @@ SDComment: Quest support: 1173, 1222, 1270, 1273, 1324, 11180, 11198, 11209.
 SDCategory: Dustwallow Marsh
 EndScriptData */
 
+/**
+ * 尘泥沼泽 (Dustwallow Marsh) 任务与沉没神庙等 NPC 脚本
+ */
+
 /* ContentData
 mobs_risen_husk_spirit
 npc_restless_apparition
@@ -44,16 +48,18 @@ EndContentData */
 ## mobs_risen_husk_spirit
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_WHATS_HAUNTING_WITCH_HILL  = 11180,
-    SPELL_SUMMON_RESTLESS_APPARITION = 42511,
-    SPELL_CONSUME_FLESH              = 37933,               // Risen Husk
-    SPELL_INTANGIBLE_PRESENCE        = 43127,               // Risen Spirit
-    NPC_RISEN_HUSK                   = 23555,
+    QUEST_WHATS_HAUNTING_WITCH_HILL  = 11180,               // 任务 ID
+    SPELL_SUMMON_RESTLESS_APPARITION = 42511,               // 技能法术 ID
+    SPELL_CONSUME_FLESH              = 37933,               // Risen Husk (说明)
+    SPELL_INTANGIBLE_PRESENCE        = 43127,               // Risen Spirit (说明)
+    NPC_RISEN_HUSK                   = 23555,               // NPC 条目 ID
     NPC_RISEN_SPIRIT                 = 23554
 };
 
+// mobs_risen_husk_spiritAI AI 逻辑实现
 struct mobs_risen_husk_spiritAI : public ScriptedAI
 {
     mobs_risen_husk_spiritAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -63,7 +69,7 @@ struct mobs_risen_husk_spiritAI : public ScriptedAI
 
     Player* m_pCreditPlayer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiConsumeFlesh_Timer = 10000;
         m_uiIntangiblePresence_Timer = 5000;
@@ -71,7 +77,7 @@ struct mobs_risen_husk_spiritAI : public ScriptedAI
         m_pCreditPlayer = nullptr;
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         if (m_pCreditPlayer)
             m_pCreditPlayer->RewardPlayerAndGroupAtEventCredit(pSummoned->GetEntry(), pSummoned);
@@ -92,7 +98,7 @@ struct mobs_risen_husk_spiritAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
@@ -121,7 +127,7 @@ struct mobs_risen_husk_spiritAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_mobs_risen_husk_spirit(Creature* pCreature)
+UnitAI* GetAI_mobs_risen_husk_spirit(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new mobs_risen_husk_spiritAI(pCreature);
 }
@@ -130,30 +136,32 @@ UnitAI* GetAI_mobs_risen_husk_spirit(Creature* pCreature)
 ## npc_restless_apparition
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_RAND_1      = -1000543,
-    SAY_RAND_2      = -1000544,
-    SAY_RAND_3      = -1000545,
-    SAY_RAND_4      = -1000546,
-    SAY_RAND_5      = -1000547,
-    SAY_RAND_6      = -1000548,
-    SAY_RAND_7      = -1000549,
+    SAY_RAND_1      = -1000543,                             // 剧情台词/喊话文本 ID
+    SAY_RAND_2      = -1000544,                             // 剧情台词/喊话文本 ID
+    SAY_RAND_3      = -1000545,                             // 剧情台词/喊话文本 ID
+    SAY_RAND_4      = -1000546,                             // 剧情台词/喊话文本 ID
+    SAY_RAND_5      = -1000547,                             // 剧情台词/喊话文本 ID
+    SAY_RAND_6      = -1000548,                             // 剧情台词/喊话文本 ID
+    SAY_RAND_7      = -1000549,                             // 剧情台词/喊话文本 ID
     SAY_RAND_8      = -1000550
 };
 
+// npc_restless_apparitionAI NPC 脚本 AI
 struct npc_restless_apparitionAI : public ScriptedAI
 {
     npc_restless_apparitionAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
     uint32 m_uiTalk_Timer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiTalk_Timer = 1000;
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_uiTalk_Timer)
             return;
@@ -179,7 +187,7 @@ struct npc_restless_apparitionAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_restless_apparition(Creature* pCreature)
+UnitAI* GetAI_npc_restless_apparition(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_restless_apparitionAI(pCreature);
 }
@@ -188,19 +196,21 @@ UnitAI* GetAI_npc_restless_apparition(Creature* pCreature)
 ## npc_morokk
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_MOR_CHALLENGE       = -1000499,
-    SAY_MOR_SCARED          = -1000500,
+    SAY_MOR_CHALLENGE       = -1000499,                     // 剧情台词/喊话文本 ID
+    SAY_MOR_SCARED          = -1000500,                     // 剧情台词/喊话文本 ID
 
-    NPC_MOROKK              = 4500,
-    QUEST_CHALLENGE_MOROKK  = 1173,
+    NPC_MOROKK              = 4500,                         // NPC 条目 ID
+    QUEST_CHALLENGE_MOROKK  = 1173,                         // 任务 ID
 
-    FACTION_MOR_HOSTILE     = 168,
-    FACTION_MOR_RUNNING     = 35,
+    FACTION_MOR_HOSTILE     = 168,                          // 阵营 ID
+    FACTION_MOR_RUNNING     = 35,                           // 阵营 ID
     FACTION_MOR_SPAWN       = 29
 };
 
+// npc_morokkAI NPC 脚本 AI
 struct npc_morokkAI : public npc_escortAI
 {
     npc_morokkAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -211,7 +221,7 @@ struct npc_morokkAI : public npc_escortAI
 
     bool m_bIsSuccess;
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void JustRespawned() override
     {
@@ -231,7 +241,7 @@ struct npc_morokkAI : public npc_escortAI
         }
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -281,7 +291,7 @@ struct npc_morokkAI : public npc_escortAI
                     SetEscortPaused(false);
                     SetReactState(REACT_PASSIVE);
                     DoScriptText(SAY_MOR_SCARED, m_creature);
-                    m_creature->GetMotionMaster()->Clear(false); // TODO: make whole EscortAI work like this
+                    m_creature->GetMotionMaster()->Clear(false); // TODO: make whole EscortAI work like this (说明)
                 }
             }
         }
@@ -290,12 +300,12 @@ struct npc_morokkAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_morokk(Creature* pCreature)
+UnitAI* GetAI_npc_morokk(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_morokkAI(pCreature);
 }
 
-bool QuestAccept_npc_morokk(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_morokk(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_CHALLENGE_MOROKK)
     {
@@ -312,40 +322,41 @@ bool QuestAccept_npc_morokk(Player* pPlayer, Creature* pCreature, const Quest* p
 ## npc_ogron
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_OGR_START                       = -1000452,
-    SAY_OGR_SPOT                        = -1000453,
-    SAY_OGR_RET_WHAT                    = -1000454,
-    SAY_OGR_RET_SWEAR                   = -1000455,
-    SAY_OGR_REPLY_RET                   = -1000456,
-    SAY_OGR_RET_TAKEN                   = -1000457,
-    SAY_OGR_TELL_FIRE                   = -1000458,
-    SAY_OGR_RET_NOCLOSER                = -1000459,
-    SAY_OGR_RET_NOFIRE                  = -1000460,
-    SAY_OGR_RET_HEAR                    = -1000461,
-    SAY_OGR_CAL_FOUND                   = -1000462,
-    SAY_OGR_CAL_MERCY                   = -1000463,
-    SAY_OGR_HALL_GLAD                   = -1000464,
-    EMOTE_OGR_RET_ARROW                 = -1000465,
-    SAY_OGR_RET_ARROW                   = -1000466,
-    SAY_OGR_CAL_CLEANUP                 = -1000467,
-    SAY_OGR_NODIE                       = -1000468,
-    SAY_OGR_SURVIVE                     = -1000469,
-    SAY_OGR_RET_LUCKY                   = -1000470,
-    SAY_OGR_THANKS                      = -1000471,
+    SAY_OGR_START                       = -1000452,         // 剧情台词/喊话文本 ID
+    SAY_OGR_SPOT                        = -1000453,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_WHAT                    = -1000454,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_SWEAR                   = -1000455,         // 剧情台词/喊话文本 ID
+    SAY_OGR_REPLY_RET                   = -1000456,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_TAKEN                   = -1000457,         // 剧情台词/喊话文本 ID
+    SAY_OGR_TELL_FIRE                   = -1000458,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_NOCLOSER                = -1000459,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_NOFIRE                  = -1000460,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_HEAR                    = -1000461,         // 剧情台词/喊话文本 ID
+    SAY_OGR_CAL_FOUND                   = -1000462,         // 剧情台词/喊话文本 ID
+    SAY_OGR_CAL_MERCY                   = -1000463,         // 剧情台词/喊话文本 ID
+    SAY_OGR_HALL_GLAD                   = -1000464,         // 剧情台词/喊话文本 ID
+    EMOTE_OGR_RET_ARROW                 = -1000465,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_ARROW                   = -1000466,         // 剧情台词/喊话文本 ID
+    SAY_OGR_CAL_CLEANUP                 = -1000467,         // 剧情台词/喊话文本 ID
+    SAY_OGR_NODIE                       = -1000468,         // 剧情台词/喊话文本 ID
+    SAY_OGR_SURVIVE                     = -1000469,         // 剧情台词/喊话文本 ID
+    SAY_OGR_RET_LUCKY                   = -1000470,         // 剧情台词/喊话文本 ID
+    SAY_OGR_THANKS                      = -1000471,         // 剧情台词/喊话文本 ID
 
-    QUEST_QUESTIONING                   = 1273,
+    QUEST_QUESTIONING                   = 1273,             // 任务 ID
 
-    FACTION_GENERIC_FRIENDLY            = 35,
-    FACTION_THER_HOSTILE                = 151,
+    FACTION_GENERIC_FRIENDLY            = 35,               // 阵营 ID
+    FACTION_THER_HOSTILE                = 151,              // 阵营 ID
 
-    NPC_REETHE                          = 4980,
-    NPC_CALDWELL                        = 5046,
-    NPC_HALLAN                          = 5045,
-    NPC_SKIRMISHER                      = 5044,
+    NPC_REETHE                          = 4980,             // NPC 条目 ID
+    NPC_CALDWELL                        = 5046,             // NPC 条目 ID
+    NPC_HALLAN                          = 5045,             // NPC 条目 ID
+    NPC_SKIRMISHER                      = 5044,             // NPC 条目 ID
 
-    SPELL_FAKE_SHOT                     = 7105,
+    SPELL_FAKE_SHOT                     = 7105,             // 技能法术 ID
 
     PHASE_INTRO                         = 0,
     PHASE_GUESTS                        = 1,
@@ -356,6 +367,7 @@ enum
 static float m_afSpawn[] = { -3383.501953f, -3203.383301f, 36.149f};
 static float m_afMoveTo[] = { -3371.414795f, -3212.179932f, 34.210f};
 
+// npc_ogronAI NPC 脚本 AI
 struct npc_ogronAI : public npc_escortAI
 {
     npc_ogronAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -372,7 +384,7 @@ struct npc_ogronAI : public npc_escortAI
     uint32 m_uiPhaseCounter;
     uint32 m_uiGlobalTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiGlobalTimer = 5000;
 
@@ -409,7 +421,7 @@ struct npc_ogronAI : public npc_escortAI
         return nullptr;
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -426,7 +438,7 @@ struct npc_ogronAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         lCreatureList.push_back(pSummoned);
 
@@ -438,7 +450,7 @@ struct npc_ogronAI : public npc_escortAI
         {
             if (Creature* pCaldwell = GetCreature(NPC_CALDWELL))
             {
-                // will this conversion work without compile warning/error?
+                // will this conversion work without compile warning/error? (说明)
                 size_t iSize = lCreatureList.size();
                 pSummoned->GetMotionMaster()->MoveFollow(pCaldwell, 0.5f, (M_PI / 2) * (int)iSize);
             }
@@ -463,7 +475,7 @@ struct npc_ogronAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
         {
@@ -592,7 +604,7 @@ struct npc_ogronAI : public npc_escortAI
     }
 };
 
-bool QuestAccept_npc_ogron(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_ogron(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_QUESTIONING)
     {
@@ -607,7 +619,7 @@ bool QuestAccept_npc_ogron(Player* pPlayer, Creature* pCreature, const Quest* pQ
     return true;
 }
 
-UnitAI* GetAI_npc_ogron(Creature* pCreature)
+UnitAI* GetAI_npc_ogron(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_ogronAI(pCreature);
 }
@@ -616,19 +628,20 @@ UnitAI* GetAI_npc_ogron(Creature* pCreature)
 ## npc_private_hendel
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_SURRENDER             = -1000415,
+    EMOTE_SURRENDER             = -1000415,                 // 剧情台词/喊话文本 ID
 
-    QUEST_MISSING_DIPLO_PT16    = 1324,
-    FACTION_HOSTILE             = 168,                      // guessed, may be different
+    QUEST_MISSING_DIPLO_PT16    = 1324,                     // 任务 ID
+    FACTION_HOSTILE             = 168,                      // guessed, may be different (说明)
 
-    NPC_SENTRY                  = 5184,                     // helps hendel
-    NPC_JAINA                   = 4968,                     // appears once hendel gives up
-    NPC_TERVOSH                 = 4967,
-    NPC_PAINED                  = 4965,
+    NPC_SENTRY                  = 5184,                     // helps hendel (说明)
+    NPC_JAINA                   = 4968,                     // appears once hendel gives up (说明)
+    NPC_TERVOSH                 = 4967,                     // NPC 条目 ID
+    NPC_PAINED                  = 4965,                     // NPC 条目 ID
 
-    SPELL_TELEPORT_VISUAL       = 12980,
+    SPELL_TELEPORT_VISUAL       = 12980,                    // 技能法术 ID
     SPELL_TELEPORT              = 7079
 };
 
@@ -660,11 +673,12 @@ const OutroSpawnLocation lOutroSpawns[] =
 
 const float fSentryFleePoint[] {-2917.56f, -3329.90f, 30.37f};
 
+// npc_private_hendelAI NPC 脚本 AI
 struct npc_private_hendelAI : public ScriptedAI
 {
     npc_private_hendelAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     ObjectGuid guidPlayer;
 
@@ -681,8 +695,8 @@ struct npc_private_hendelAI : public ScriptedAI
 
     void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
-        // If Private Hendel is hit by spell Teleport (from DBScript)
-        // this means it is time to grant quest credit to the player previously stored to this intend
+        // If Private Hendel is hit by spell Teleport (from DBScript) (说明)
+        // this means it is time to grant quest credit to the player previously stored to this intend (说明)
         if (pSpell->Id == SPELL_TELEPORT)
         {
             if (Player* pPlayer = m_creature->GetMap()->GetPlayer(guidPlayer))
@@ -700,7 +714,7 @@ struct npc_private_hendelAI : public ScriptedAI
             if (Player* pPlayer = dealer->GetBeneficiaryPlayer())
             {
                 if (pPlayer->GetQuestStatus(QUEST_MISSING_DIPLO_PT16) == QUEST_STATUS_INCOMPLETE)
-                    guidPlayer = pPlayer->GetObjectGuid();  // Store the player to give quest credit later
+                    guidPlayer = pPlayer->GetObjectGuid();  // Store the player to give quest credit later (说明)
             }
 
             damage = std::min(damage, m_creature->GetHealth() - 1);
@@ -708,7 +722,7 @@ struct npc_private_hendelAI : public ScriptedAI
             DoScriptText(EMOTE_SURRENDER, m_creature);
             EnterEvadeMode();
 
-            // Make the two sentries flee and despawn
+            // Make the two sentries flee and despawn (说明)
             CreatureList lSentryList;
             GetCreatureListWithEntryInGrid(lSentryList, m_creature, NPC_SENTRY, 40.0f);
 
@@ -724,7 +738,7 @@ struct npc_private_hendelAI : public ScriptedAI
                 }
             }
 
-            // Summon Jaina Proudmoore, Archmage Tervosh and Pained
+            // Summon Jaina Proudmoore, Archmage Tervosh and Pained (说明)
             for (const auto& lOutroSpawn : lOutroSpawns)
             {
                 Creature* pCreature = m_creature->SummonCreature(lOutroSpawn.uiEntry, lOutroSpawn.fX, lOutroSpawn.fY, lOutroSpawn.fZ, lOutroSpawn.fO, TEMPSPAWN_TIMED_DESPAWN, 3 * MINUTE * IN_MILLISECONDS, false, true);
@@ -733,13 +747,13 @@ struct npc_private_hendelAI : public ScriptedAI
                     pCreature->CastSpell(pCreature, SPELL_TELEPORT_VISUAL, TRIGGERED_NONE);
                     pCreature->GetMotionMaster()->MovePoint(0, lOutroSpawn.fDestX, lOutroSpawn.fDestY, lOutroSpawn.fDestZ);
 
-                    // Exception case for Archmage Tervosh: the outro event is a simple speech with visual spell cast
-                    // so it will be handled by a DBScript held by NPC Archmage Tervosh
+                    // Exception case for Archmage Tervosh: the outro event is a simple speech with visual spell cast (说明)
+                    // so it will be handled by a DBScript held by NPC Archmage Tervosh (说明)
                     if (pCreature->GetEntry() == NPC_TERVOSH)
                     {
-                        // Remove Gossip and Quest Giver flag from now, they will be re-added later to Archmage Tervosh in DBScript
+                        // Remove Gossip and Quest Giver flag from now, they will be re-added later to Archmage Tervosh in DBScript (说明)
                         pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER | UNIT_NPC_FLAG_GOSSIP);
-                        // The DBScript will be done here
+                        // The DBScript will be done here (完成)
                         pCreature->GetMotionMaster()->MoveWaypoint(0);
                     }
                 }
@@ -748,15 +762,15 @@ struct npc_private_hendelAI : public ScriptedAI
     }
 };
 
-bool QuestAccept_npc_private_hendel(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_private_hendel(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_MISSING_DIPLO_PT16)
     {
         pCreature->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_COMBAT_STOP | TEMPFACTION_RESTORE_RESPAWN);
         pCreature->AI()->AttackStart(pPlayer);
 
-        // Find the nearby sentries in order to make them attack
-        // The two sentries are linked to Private Hendel in DB to ensure they respawn together
+        // Find the nearby sentries in order to make them attack (说明)
+        // The two sentries are linked to Private Hendel in DB to ensure they respawn together (说明)
         CreatureList lSentryList;
         GetCreatureListWithEntryInGrid(lSentryList, pCreature, NPC_SENTRY, 40.0f);
 
@@ -773,7 +787,7 @@ bool QuestAccept_npc_private_hendel(Player* pPlayer, Creature* pCreature, const 
     return true;
 }
 
-UnitAI* GetAI_npc_private_hendel(Creature* pCreature)
+UnitAI* GetAI_npc_private_hendel(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_private_hendelAI(pCreature);
 }
@@ -783,28 +797,30 @@ UnitAI* GetAI_npc_private_hendel(Creature* pCreature)
 ## TODO Note: Faction change is guessed
 #####*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_ID_STINKYS_ESCAPE_ALLIANCE    = 1222,
-    QUEST_ID_STINKYS_ESCAPE_HORDE       = 1270,
+    QUEST_ID_STINKYS_ESCAPE_ALLIANCE    = 1222,             // 任务 ID
+    QUEST_ID_STINKYS_ESCAPE_HORDE       = 1270,             // 任务 ID
 
-    SAY_STINKY_BEGIN                    = -1000958,
-    SAY_STINKY_FIRST_STOP               = -1000959,
-    SAY_STINKY_SECOND_STOP              = -1001141,
-    SAY_STINKY_THIRD_STOP_1             = -1001142,
-    SAY_STINKY_THIRD_STOP_2             = -1001143,
-    SAY_STINKY_THIRD_STOP_3             = -1001144,
-    SAY_STINKY_PLANT_GATHERED           = -1001145,
-    SAY_STINKY_END                      = -1000962,
-    SAY_STINKY_END_EMOTE                = -1010032,
-    SAY_STINKY_AGGRO_1                  = -1000960,
-    SAY_STINKY_AGGRO_2                  = -1000961,
-    SAY_STINKY_AGGRO_3                  = -1001146,
-    SAY_STINKY_AGGRO_4                  = -1001147,
+    SAY_STINKY_BEGIN                    = -1000958,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_FIRST_STOP               = -1000959,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_SECOND_STOP              = -1001141,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_THIRD_STOP_1             = -1001142,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_THIRD_STOP_2             = -1001143,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_THIRD_STOP_3             = -1001144,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_PLANT_GATHERED           = -1001145,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_END                      = -1000962,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_END_EMOTE                = -1010032,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_AGGRO_1                  = -1000960,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_AGGRO_2                  = -1000961,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_AGGRO_3                  = -1001146,         // 剧情台词/喊话文本 ID
+    SAY_STINKY_AGGRO_4                  = -1001147,         // 剧情台词/喊话文本 ID
 
-    GO_BOGBEAN_PLANT                    = 20939,
+    GO_BOGBEAN_PLANT                    = 20939,            // 游戏对象条目 ID
 };
 
+// npc_stinky_ignatzAI NPC 脚本 AI
 struct npc_stinky_ignatzAI : public npc_escortAI
 {
     npc_stinky_ignatzAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -815,9 +831,9 @@ struct npc_stinky_ignatzAI : public npc_escortAI
 
     ObjectGuid m_bogbeanPlantGuid;
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         switch (urand(0, 3))
         {
@@ -839,7 +855,7 @@ struct npc_stinky_ignatzAI : public npc_escortAI
         }
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -883,7 +899,7 @@ struct npc_stinky_ignatzAI : public npc_escortAI
         }
     }
 
-    void WaypointStart(uint32 uiPointId) override
+    void WaypointStart(uint32 uiPointId) override           // 出发前往指定路径点回调
     {
         if (uiPointId == 31)
         {
@@ -895,12 +911,12 @@ struct npc_stinky_ignatzAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_stinky_ignatz(Creature* pCreature)
+UnitAI* GetAI_npc_stinky_ignatz(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_stinky_ignatzAI(pCreature);
 }
 
-bool QuestAccept_npc_stinky_ignatz(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_stinky_ignatz(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_ID_STINKYS_ESCAPE_ALLIANCE || pQuest->GetQuestId() == QUEST_ID_STINKYS_ESCAPE_HORDE)
         pCreature->AI()->SendAIEvent(AI_EVENT_START_ESCORT, pPlayer, pCreature, pQuest->GetQuestId());
@@ -911,10 +927,11 @@ bool QuestAccept_npc_stinky_ignatz(Player* pPlayer, Creature* pCreature, const Q
 /*######
 ## at_nats_landing
 ######*/
+// 常量与事件枚举
 enum
 {
-    QUEST_NATS_BARGAIN = 11209,
-    SPELL_FISH_PASTE   = 42644,
+    QUEST_NATS_BARGAIN = 11209,                             // 任务 ID
+    SPELL_FISH_PASTE   = 42644,                             // 技能法术 ID
     NPC_LURKING_SHARK  = 23928
 };
 
@@ -937,11 +954,12 @@ bool AreaTrigger_at_nats_landing(Player* pPlayer, const AreaTriggerEntry* /*pAt*
 ## mob_invis_firework_helper
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SPELL_BLUE_THERAMORE_ROCKET = 42813,
-    SPELL_YELLOW_THERAMORE_ROCKET = 42815,
-    SPELL_PURPLE_THERAMORE_ROCKET = 42816,
+    SPELL_BLUE_THERAMORE_ROCKET = 42813,                    // 技能法术 ID
+    SPELL_YELLOW_THERAMORE_ROCKET = 42815,                  // 技能法术 ID
+    SPELL_PURPLE_THERAMORE_ROCKET = 42816,                  // 技能法术 ID
 };
 
 int32 fireworkMidPoint = -4650;
@@ -956,7 +974,7 @@ struct mob_invis_firework_helper : public Scripted_NoMovementAI
     uint32 m_uiFireworkTimer;
     uint8  m_uiFireworkCounter;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiFireworkTimer = 0;
         m_uiFireworkCounter = 0;
@@ -973,7 +991,7 @@ struct mob_invis_firework_helper : public Scripted_NoMovementAI
         m_uiFireworkCounter = 0;
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_uiFireworkTimer)
         {
@@ -1005,7 +1023,7 @@ struct mob_invis_firework_helper : public Scripted_NoMovementAI
     }
 };
 
-UnitAI* GetAI_mob_invis_firework_helper(Creature* pCreature)
+UnitAI* GetAI_mob_invis_firework_helper(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new mob_invis_firework_helper(pCreature);
 }
@@ -1014,21 +1032,22 @@ UnitAI* GetAI_mob_invis_firework_helper(Creature* pCreature)
 ## boss_tethyr
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SPELL_WATER_BOLT            = 42574,
-    SPELL_SPOUT_LEFT            = 42581,                // triggers 42584
-    SPELL_SPOUT_RIGHT           = 42582,
-    SPELL_CANNON_BLAST          = 42578,                // triggers 42576
-    SPELL_CANNON_BLAST_DMG      = 42576,
+    SPELL_WATER_BOLT            = 42574,                    // 技能法术 ID
+    SPELL_SPOUT_LEFT            = 42581,                // triggers 42584 (说明)
+    SPELL_SPOUT_RIGHT           = 42582,                    // 技能法术 ID
+    SPELL_CANNON_BLAST          = 42578,                // triggers 42576 (说明)
+    SPELL_CANNON_BLAST_DMG      = 42576,                    // 技能法术 ID
 
-    NPC_TETHYR                  = 23899,
-    NPC_THERAMORE_MARKSMAN      = 23900,
-    NPC_THERAMORE_CANNON        = 23907,
-    NPC_FIREWORK_HELPER         = 24025,
+    NPC_TETHYR                  = 23899,                    // NPC 条目 ID
+    NPC_THERAMORE_MARKSMAN      = 23900,                    // NPC 条目 ID
+    NPC_THERAMORE_CANNON        = 23907,                    // NPC 条目 ID
+    NPC_FIREWORK_HELPER         = 24025,                    // NPC 条目 ID
 
-    GO_COVE_CANNON              = 186432,               // cast 42578
-    QUEST_TAKE_DOWN_TETHYR      = 11198,
+    GO_COVE_CANNON              = 186432,               // cast 42578 (说明)
+    QUEST_TAKE_DOWN_TETHYR      = 11198,                    // 任务 ID
 
     PHASE_TETHYR_INTRO          = 0,
     PHASE_TETHYR_NORMAL         = 1,
@@ -1036,15 +1055,16 @@ enum
     PHASE_TETHYR_MOVING         = 3,
 };
 
+// boss_tethyrAI 首领战斗 AI
 struct boss_tethyrAI : public Scripted_NoMovementAI
 {
     boss_tethyrAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
     {
-        // Update worldstate
+        // Update worldstate (说明)
         m_creature->GetMap()->GetInstanceData()->SetData(TYPE_TETHYR, IN_PROGRESS);
 
         m_creature->SetCanEnterCombat(false);
-        m_creature->SetSwim(true); // Needed?
+        m_creature->SetSwim(true); // Needed? (说明)
         m_uiPhase = PHASE_INTRO;
         Reset();
     }
@@ -1060,7 +1080,7 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
 
     float m_fGridSearchRange = 150.f;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiWaterBoltTimer  = urand(1000, 2000);
         m_uiSpoutEndTimer   = 7000;
@@ -1073,7 +1093,7 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
             if (UnitAI* ai = spawner->AI())
                 ai->SendAIEvent(AI_EVENT_CUSTOM_A, spawner, spawner);
 
-        // fireworks! 
+        // fireworks! (说明)
         std::list<Creature*> lFirworkHelpers;
         GetCreatureListWithEntryInGrid(lFirworkHelpers, m_creature, NPC_FIREWORK_HELPER, m_fGridSearchRange);
 
@@ -1096,23 +1116,23 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
         DoEncounterCleanup();
     }
 
-    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override    // 移动节点到达通知
     {
         if (uiMotionType == WAYPOINT_MOTION_TYPE)
         {
-            // start attacking
+            // start attacking (开始)
             switch (uiPointId)
             {
                 case 12:
                 {
-                    // remove flags
+                    // remove flags (说明)
                     m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
                     m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                     break;
                 }
                 case 15:
                 {
-                    // attack all marksmen
+                    // attack all marksmen (说明)
                     m_creature->SetCanEnterCombat(true);
 
                     std::list<Creature*> lMarksmen;
@@ -1126,13 +1146,13 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
                         AttackStart(*itr);
                     }
 
-                    if (m_lMarksmenGUIDs.size() == 0) // sanity check
+                    if (m_lMarksmenGUIDs.size() == 0) // sanity check (有效性安全性检查)
                     {
                         m_creature->ForcedDespawn(5000);
                         DoEncounterCleanup();
                     }
 
-                    // make cannons usable
+                    // make cannons usable (说明)
                     std::list<GameObject*> lCannonsInRange;
                     GetGameObjectListWithEntryInGrid(lCannonsInRange, m_creature, GO_COVE_CANNON, m_fGridSearchRange);
 
@@ -1156,12 +1176,12 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
         }
         else if (uiMotionType == POINT_MOTION_TYPE)
         {
-            // Spout on cannon point reach
+            // Spout on cannon point reach (说明)
             if (uiPointId)
             {
                 if (DoCastSpellIfCan(m_creature, m_bSpoutDirection ? SPELL_SPOUT_RIGHT : SPELL_SPOUT_LEFT, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
                 {
-                    // Remove the target focus
+                    // Remove the target focus (目标)
                     m_creature->SetTarget(nullptr);
                     m_uiPhase = PHASE_TETHYR_SPOUT;
                 }
@@ -1176,35 +1196,35 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
         ScriptedAI::EnterCombat(pEnemy);
     }
 
-    void KilledUnit(Unit* pVictim) override
+    void KilledUnit(Unit* pVictim) override                 // 击杀目标回调处理
     {
-        // count the marksmen
+        // count the marksmen (说明)
         if (pVictim->GetEntry() != NPC_THERAMORE_MARKSMAN)
             return;
 
-        // update world state
+        // update world state (说明)
         m_creature->GetMap()->GetInstanceData()->SetData(TYPE_TETHYR, SPECIAL);
         m_lMarksmenGUIDs.remove(pVictim->GetObjectGuid());
 
-        // fail quest if all marksmen are killed
+        // fail quest if all marksmen are killed (说明)
         if (m_lMarksmenGUIDs.size() == 0)
         {
-            //pSummoner->FailQuest(QUEST_ID_TETHYR); Needed?
+            // pSummoner->FailQuest(QUEST_ID_TETHYR); Needed? (说明)
             m_creature->ForcedDespawn(10000);
             DoEncounterCleanup();
             EnterEvadeMode();
         }
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override    // 被法术命中回调处理
     {
-        // spout on cannon
+        // spout on cannon (说明)
         if (pCaster->GetEntry() == NPC_THERAMORE_CANNON && pSpell->Id == SPELL_CANNON_BLAST_DMG)
         {
             if (m_uiPhase == PHASE_TETHYR_SPOUT || m_uiPhase == PHASE_TETHYR_MOVING)
                 return;
 
-            // not all cannons have same distance range
+            // not all cannons have same distance range (说明)
             m_bSpoutDirection = pCaster->GetPositionY() > fireworkMidPoint;
             uint8 uiDistMod = m_bSpoutDirection ? 6 : 5;
 
@@ -1217,13 +1237,13 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
         }
     }
 
-    // function to cleanup the world states and GO flags
+    // function to cleanup the world states and GO flags (说明)
     void DoEncounterCleanup()
     {
-        // update world state
+        // update world state (说明)
         m_creature->GetMap()->GetInstanceData()->SetData(TYPE_TETHYR, NOT_STARTED);
 
-        // reset all cannons
+        // reset all cannons (重置)
         std::list<GameObject*> lCannonsInRange;
         GetGameObjectListWithEntryInGrid(lCannonsInRange, m_creature, GO_COVE_CANNON, m_fGridSearchRange);
 
@@ -1233,7 +1253,7 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
             (*itr)->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND);
         }
 
-        // despawn all marksmen
+        // despawn all marksmen (消失)
         std::list<Creature*> lMarksmenInRange;
         GetCreatureListWithEntryInGrid(lMarksmenInRange, m_creature, NPC_THERAMORE_MARKSMAN, m_fGridSearchRange);
 
@@ -1241,7 +1261,7 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
             (*itr)->ForcedDespawn(10000);
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         switch (m_uiPhase)
         {
@@ -1249,7 +1269,7 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
             {
                 if (m_uiSpoutEndTimer < uiDiff)
                 {
-                    // Remove rotation auras
+                    // Remove rotation auras (说明)
                     m_creature->RemoveAurasDueToSpell(SPELL_SPOUT_LEFT);
                     m_creature->RemoveAurasDueToSpell(SPELL_SPOUT_RIGHT);
 
@@ -1272,7 +1292,7 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
                             if (Creature *target = m_creature->GetMap()->GetCreature((*itr)))
                                 if (DoCastSpellIfCan(target, SPELL_WATER_BOLT) == CAST_OK)
                                 {
-                                    // mimic boss turning because of the missing threat system
+                                    // mimic boss turning because of the missing threat system (说明)
                                     m_creature->SetTarget(target);
                                     m_creature->SetInFront(target);
 
@@ -1295,11 +1315,13 @@ struct boss_tethyrAI : public Scripted_NoMovementAI
 ## npc_major_mills
 ######*/
 
+// 常量与事件枚举
 enum
 {
     DBSCRIPT_RELAY_TAKE_DOWN_TETHYR = 10161
 };
 
+// npc_major_mills NPC 脚本 AI
 struct npc_major_mills : public ScriptedAI
 {
     npc_major_mills(Creature* pCreature) : ScriptedAI(pCreature)
@@ -1309,7 +1331,7 @@ struct npc_major_mills : public ScriptedAI
 
     ObjectGuid m_playerGuid;
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
@@ -1321,12 +1343,12 @@ struct npc_major_mills : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_major_mills(Creature* pCreature)
+UnitAI* GetAI_npc_major_mills(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_major_mills(pCreature);
 }
 
-bool QuestAccept_npc_major_mills(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_major_mills(Player* player, Creature* creature, const Quest* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_TAKE_DOWN_TETHYR)
     {
@@ -1341,10 +1363,11 @@ bool QuestAccept_npc_major_mills(Player* player, Creature* creature, const Quest
     return true;
 }
 
+// SentryPoint 枚举定义
 enum SentryPoint
 {
-    QUEST_MISSING_DIPLO_PT14    = 1265,
-    SPELL_TELEPORT_VISUAL_2     = 799,  // TODO Find the correct spell
+    QUEST_MISSING_DIPLO_PT14    = 1265,                     // 任务 ID
+    SPELL_TELEPORT_VISUAL_2     = 799,  // TODO Find the correct spell (法术)
     NPC_SENTRY_POINT_GUARD      = 5085
 };
 
@@ -1375,18 +1398,19 @@ bool AreaTrigger_at_sentry_point(Player* pPlayer, const AreaTriggerEntry* /*pAt*
 ## npc_smolderwing
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    DO_NOTHING = 111111, // some unlikely to be needed number
+    DO_NOTHING = 111111, // some unlikely to be needed number (说明)
 
-    SAY_1 = -1000343,
-    SAY_2 = -1000344,
+    SAY_1 = -1000343,                                       // 剧情台词/喊话文本 ID
+    SAY_2 = -1000344,                                       // 剧情台词/喊话文本 ID
 
-    NPC_SMOLDERWING = 23789,
+    NPC_SMOLDERWING = 23789,                                // NPC 条目 ID
 
-    SPELL_SMOLDERWING_FIRE_BREATH = 42433,
+    SPELL_SMOLDERWING_FIRE_BREATH = 42433,                  // 技能法术 ID
 
-    GO_STONEMAUL_BANNER = 186335,
+    GO_STONEMAUL_BANNER = 186335,                           // 游戏对象条目 ID
 
     MAP_ID_KALIMDOR = 1,
     ZONE_ID_ONY_LAIR = 2159,
@@ -1402,6 +1426,7 @@ static const DialogueEntry SmolderDialogue[] =
     {0, 0, 0 },
 };
 
+// npc_smolderwing NPC 脚本 AI
 struct npc_smolderwing : public ScriptedAI, private DialogueHelper
 {
     npc_smolderwing(Creature* pCreature) : ScriptedAI(pCreature),
@@ -1410,7 +1435,7 @@ struct npc_smolderwing : public ScriptedAI, private DialogueHelper
         Reset();
     }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
     
     void JustDidDialogueStep(int32 iEntry) override
     {
@@ -1437,7 +1462,7 @@ struct npc_smolderwing : public ScriptedAI, private DialogueHelper
             }
             case GO_STONEMAUL_BANNER:
             {
-                // remove flags
+                // remove flags (说明)
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                 break;
@@ -1457,7 +1482,7 @@ struct npc_smolderwing : public ScriptedAI, private DialogueHelper
         }
     }
 
-    void MovementInform(uint32 movementType, uint32 uiPointId) override
+    void MovementInform(uint32 movementType, uint32 uiPointId) override    // 移动节点到达通知
     {
         if (movementType == POINT_MOTION_TYPE)
         {
@@ -1468,10 +1493,10 @@ struct npc_smolderwing : public ScriptedAI, private DialogueHelper
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_creature->GetMapId() != MAP_ID_KALIMDOR || m_creature->GetZoneId() != ZONE_ID_ONY_LAIR)
-            return; // sanity check
+            return; // sanity check (有效性安全性检查)
 
         DialogueUpdate(uiDiff);
 
@@ -1484,13 +1509,13 @@ struct npc_smolderwing : public ScriptedAI, private DialogueHelper
     void JustRespawned() override
     {
         if (m_creature->GetMapId() != MAP_ID_KALIMDOR || m_creature->GetZoneId() != ZONE_ID_ONY_LAIR)
-            return; // sanity check
+            return; // sanity check (有效性安全性检查)
 
         StartNextDialogueText(DO_NOTHING);
     }
 };
 
-UnitAI* GetAI_npc_smolderwing(Creature* pCreature)
+UnitAI* GetAI_npc_smolderwing(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_smolderwing(pCreature);
 }
@@ -1499,63 +1524,65 @@ UnitAI* GetAI_npc_smolderwing(Creature* pCreature)
 ## npc_theramore_combatant
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    NPC_GUARD_NARRISHA = 5093,
-    NPC_GUARD_KAHIL = 5091,
-    NPC_GUARD_EDWARD = 4922,
-    NPC_GUARD_TARK = 5094,
-    NPC_GUARD_LANA = 5092,
-    NPC_GUARD_JARAD = 4923,
+    NPC_GUARD_NARRISHA = 5093,                              // NPC 条目 ID
+    NPC_GUARD_KAHIL = 5091,                                 // NPC 条目 ID
+    NPC_GUARD_EDWARD = 4922,                                // NPC 条目 ID
+    NPC_GUARD_TARK = 5094,                                  // NPC 条目 ID
+    NPC_GUARD_LANA = 5092,                                  // NPC 条目 ID
+    NPC_GUARD_JARAD = 4923,                                 // NPC 条目 ID
 
-    NPC_MEDIC_HELAINA = 5200, //Red healer
-    NPC_MEDIC_TAMBERLYN = 5199, //Blue healer
+    NPC_MEDIC_HELAINA = 5200, // Red healer (说明)
+    NPC_MEDIC_TAMBERLYN = 5199, // Blue healer (说明)
 
-    NPC_MASTER_SZIGETI = 5090,
-    NPC_MASTER_CRITON = 4924,
+    NPC_MASTER_SZIGETI = 5090,                              // NPC 条目 ID
+    NPC_MASTER_CRITON = 4924,                               // NPC 条目 ID
 
-    NPC_BLUE_CAPTAIN = 5096,
-    NPC_RED_CAPTAIN = 5095,
+    NPC_BLUE_CAPTAIN = 5096,                                // NPC 条目 ID
+    NPC_RED_CAPTAIN = 5095,                                 // NPC 条目 ID
 
-    SPELL_FIRST_AID = 7162,
+    SPELL_FIRST_AID = 7162,                                 // 技能法术 ID
 
     BLUE_TEAM = 1621,
     RED_TEAM = 1622,
 
-    FACTION_THERAMORE_FRIENDLY = 151,
+    FACTION_THERAMORE_FRIENDLY = 151,                       // 阵营 ID
 
-    SAY_RED_WINNER = 1794, //Szigeti
-    SAY_BLUE_WINNER = 1795, //Szigeti
-    SAY_RED_WINNER_OVERALL = 1773, //Criton
-    SAY_BLUE_WINNER_OVERALL = 1774, //Criton
+    SAY_RED_WINNER = 1794, // Szigeti (说明)
+    SAY_BLUE_WINNER = 1795, // Szigeti (说明)
+    SAY_RED_WINNER_OVERALL = 1773, // Criton (说明)
+    SAY_BLUE_WINNER_OVERALL = 1774, // Criton (说明)
 
-    SAY_BACK_TO_CORNERS = 1636, //Criton
+    SAY_BACK_TO_CORNERS = 1636, // Criton (说明)
 
-    SAY_FOR_THE_RED = 1778,
-    SAY_FOR_THE_BLUE = 1777,
+    SAY_FOR_THE_RED = 1778,                                 // 剧情台词/喊话文本 ID
+    SAY_FOR_THE_BLUE = 1777,                                // 剧情台词/喊话文本 ID
 
-    SAY_FIRST_COMBATANTS = 1771,
-    SAY_FIGHT_INTRO = 1643,
-    SAY_FIGHT_START = 1641,
+    SAY_FIRST_COMBATANTS = 1771,                            // 剧情台词/喊话文本 ID
+    SAY_FIGHT_INTRO = 1643,                                 // 剧情台词/喊话文本 ID
+    SAY_FIGHT_START = 1641,                                 // 剧情台词/喊话文本 ID
 
-    SAY_EDWARD_LOSS = 1760,
-    SAY_KAHIL_LOSS = 1762,
-    SAY_NARRISHA_LOSS = 1763,
+    SAY_EDWARD_LOSS = 1760,                                 // 剧情台词/喊话文本 ID
+    SAY_KAHIL_LOSS = 1762,                                  // 剧情台词/喊话文本 ID
+    SAY_NARRISHA_LOSS = 1763,                               // 剧情台词/喊话文本 ID
 
-    SAY_JARAD_LOSS = 1766,
-    SAY_LANA_LOSS = 1767,
-    SAY_TARK_LOSS = 1768,
+    SAY_JARAD_LOSS = 1766,                                  // 剧情台词/喊话文本 ID
+    SAY_LANA_LOSS = 1767,                                   // 剧情台词/喊话文本 ID
+    SAY_TARK_LOSS = 1768,                                   // 剧情台词/喊话文本 ID
 
-    SAY_RED_MOTIVATION_WIN = 1769,
-    SAY_RED_MOTIVATION_LOSS = 1770,
+    SAY_RED_MOTIVATION_WIN = 1769,                          // 剧情台词/喊话文本 ID
+    SAY_RED_MOTIVATION_LOSS = 1770,                         // 剧情台词/喊话文本 ID
 
-    SAY_BLUE_MOTIVATION_LOSS = 1765,
-    SAY_BLUE_MOTIVATION_WIN = 1764,
+    SAY_BLUE_MOTIVATION_LOSS = 1765,                        // 剧情台词/喊话文本 ID
+    SAY_BLUE_MOTIVATION_WIN = 1764,                         // 剧情台词/喊话文本 ID
 
-    SAY_RED_FIRST = 1776,
-    SAY_BLUE_FIRST = 1775,
+    SAY_RED_FIRST = 1776,                                   // 剧情台词/喊话文本 ID
+    SAY_BLUE_FIRST = 1775,                                  // 剧情台词/喊话文本 ID
 };
 
+// CombatantActions 战斗行为动作枚举
 enum CombatantActions
 {
     COMBATANT_CHECK_HP,
@@ -1569,7 +1596,7 @@ enum CombatantActions
     COMBATANT_SEPARATE,
     COMBATANT_INTRO,
     COMBATANT_MOTIVATION,
-    COMBATANT_ACTION_MAX,
+    COMBATANT_ACTION_MAX,                                   // 战斗行为动作
 };
 
 static std::unordered_map<uint32, const Position> startingPositions ({
@@ -1580,6 +1607,7 @@ static std::unordered_map<uint32, const Position> startingPositions ({
 static const uint32 theramore_blue_team[] = {NPC_GUARD_EDWARD, NPC_GUARD_KAHIL, NPC_GUARD_NARRISHA};
 static const uint32 theramore_red_team[] = {NPC_GUARD_JARAD, NPC_GUARD_LANA, NPC_GUARD_TARK};
 
+// npc_theramore_spar_controller NPC 脚本 AI
 struct npc_theramore_spar_controller : public CombatAI
 {
     npc_theramore_spar_controller(Creature* creature) : CombatAI(creature, COMBATANT_ACTION_MAX)
@@ -1923,7 +1951,7 @@ struct npc_theramore_spar_controller : public CombatAI
     }
 };
 
-void AddSC_dustwallow_marsh()
+void AddSC_dustwallow_marsh() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "mobs_risen_husk_spirit";

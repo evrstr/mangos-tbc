@@ -23,6 +23,7 @@
 #include "sqlite3.h"
 #include "QueryResultSqlite.h"
 
+// 一次性读取所有结果行到内存缓冲区并 finalize 语句，防止长期持有 SQLite 读事务锁 | Buffer all result rows in memory and finalize statement immediately to avoid holding SQLite read lock
 QueryResultSqlite::QueryResultSqlite(sqlite3_stmt* stmt) :
     QueryResult(0, 0), mNextRow(0)
 {
@@ -31,14 +32,14 @@ QueryResultSqlite::QueryResultSqlite(sqlite3_stmt* stmt) :
 
     mFieldCount = sqlite3_column_count(stmt);
 
-    // The whole result is read before it is used: a statement still running keeps a read transaction open on its
-    // connection, and a write on that connection then fails at once when another connection has written meanwhile.
+    // The whole result is read before it is used: a statement still running keeps a read transaction open on its | 使用前先读完全部结果：未结束的语句会在连接上保持读事务开启，
+    // connection, and a write on that connection then fails at once when another connection has written meanwhile. | 若期间其他连接执行了写入，该连接随后的写操作会立刻失败。
     int result;
     while ((result = sqlite3_step(stmt)) == SQLITE_ROW)
     {
         for (int i = 0; i < int(mFieldCount); ++i)
         {
-            // the type is read first, reading the text can convert the value
+            // the type is read first, reading the text can convert the value | 先读取原始列类型，因为调用 column_text 可能改变底层类型标记
             mValueTypes.push_back(uint8(ConvertNativeType(sqlite3_column_type(stmt, i))));
 
             const unsigned char* value = sqlite3_column_text(stmt, i);
@@ -75,6 +76,7 @@ QueryResultSqlite::~QueryResultSqlite()
     EndQuery();
 }
 
+// 从缓存中加载下一行字段值与类型到 mCurrentRow | Populate mCurrentRow with cached values and types for the next row
 bool QueryResultSqlite::NextRow()
 {
     if (!mCurrentRow)
@@ -98,12 +100,14 @@ bool QueryResultSqlite::NextRow()
     return true;
 }
 
+// 释放行对象数组 | Free current row Field array
 void QueryResultSqlite::EndQuery()
 {
     delete[] mCurrentRow;
     mCurrentRow = nullptr;
 }
 
+// 将 SQLite 动态类型常量转换为内部 Field::DataTypes | Map SQLite column type constant to internal Field::DataTypes
 enum Field::DataTypes QueryResultSqlite::ConvertNativeType(int sqliteType) const
 {
     switch (sqliteType)

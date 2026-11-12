@@ -21,41 +21,46 @@ SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟：无疤者奥斯里安 (Ossirian the Unscarred) 水晶削弱机制首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Globals/ObjectMgr.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_SUPREME_1           = -1509018,
-    SAY_SUPREME_2           = -1509019,
-    SAY_SUPREME_3           = -1509020,
-    SAY_RAND_INTRO_1        = -1509021,
-    SAY_RAND_INTRO_2        = -1509023,
-    SAY_RAND_INTRO_3        = -1509024,
-    SAY_AGGRO               = -1509025,
-    SAY_SLAY                = 11450,
-    SAY_DEATH               = -1509027,
+    SAY_SUPREME_1           = -1509018,                     // 剧情台词/喊话文本 ID
+    SAY_SUPREME_2           = -1509019,                     // 剧情台词/喊话文本 ID
+    SAY_SUPREME_3           = -1509020,                     // 剧情台词/喊话文本 ID
+    SAY_RAND_INTRO_1        = -1509021,                     // 剧情台词/喊话文本 ID
+    SAY_RAND_INTRO_2        = -1509023,                     // 剧情台词/喊话文本 ID
+    SAY_RAND_INTRO_3        = -1509024,                     // 剧情台词/喊话文本 ID
+    SAY_AGGRO               = -1509025,                     // 剧情台词/喊话文本 ID
+    SAY_SLAY                = 11450,                        // 剧情台词/喊话文本 ID
+    SAY_DEATH               = -1509027,                     // 剧情台词/喊话文本 ID
 
-    SPELL_CURSE_OF_TONGUES  = 25195,
-    SPELL_CYCLONE           = 25189,
-    SPELL_STOMP             = 25188,
-    SPELL_SUPREME           = 25176,
-    SPELL_SUMMON_CRYSTAL    = 25192,
-    SPELL_SAND_STORM        = 25160,                        // tornado spell
-    SPELL_SUMMON            = 20477,                        // TODO NYI
-    SPELL_DOUBLE_ATTACK     = 19818,
+    SPELL_CURSE_OF_TONGUES  = 25195,                        // 技能法术：诅咒
+    SPELL_CYCLONE           = 25189,                        // 技能法术 ID
+    SPELL_STOMP             = 25188,                        // 技能法术 ID
+    SPELL_SUPREME           = 25176,                        // 技能法术 ID
+    SPELL_SUMMON_CRYSTAL    = 25192,                        // 技能法术 ID
+    SPELL_SAND_STORM        = 25160,                        // tornado spell (法术)
+    SPELL_SUMMON            = 20477,                        // TODO NYI (说明)
+    SPELL_DOUBLE_ATTACK     = 19818,                        // 技能法术 ID
 
-    MAX_CRYSTAL_POSITIONS   = 1,                            // TODO
+    MAX_CRYSTAL_POSITIONS   = 1,                            // TODO (说明)
 
-    SPELL_WEAKNESS_FIRE     = 25177,
-    SPELL_WEAKNESS_FROST    = 25178,
-    SPELL_WEAKNESS_NATURE   = 25180,
-    SPELL_WEAKNESS_ARCANE   = 25181,
-    SPELL_WEAKNESS_SHADOW   = 25183,
+    SPELL_WEAKNESS_FIRE     = 25177,                        // 技能法术 ID
+    SPELL_WEAKNESS_FROST    = 25178,                        // 技能法术 ID
+    SPELL_WEAKNESS_NATURE   = 25180,                        // 技能法术 ID
+    SPELL_WEAKNESS_ARCANE   = 25181,                        // 技能法术 ID
+    SPELL_WEAKNESS_SHADOW   = 25183,                        // 技能法术 ID
 
-    NPC_SAND_VORTEX         = 15428,                        // tornado npc
+    NPC_SAND_VORTEX         = 15428,                        // tornado npc (说明)
 
     ZONE_ID_RUINS_AQ        = 3429,
 };
@@ -69,6 +74,7 @@ static const float aSandVortexSpawnPos[2][4] =
 static const float aCrystalSpawnPos[3] = { -9355.75f, 1905.43f, 85.55f};
 static const std::vector<uint32> aWeaknessSpell {SPELL_WEAKNESS_FIRE, SPELL_WEAKNESS_FROST, SPELL_WEAKNESS_NATURE, SPELL_WEAKNESS_ARCANE, SPELL_WEAKNESS_SHADOW};
 
+// OssirianActions 战斗行为动作枚举
 enum OssirianActions
 {
     OSSIRIAN_INITIAL_SPAWN,
@@ -77,9 +83,10 @@ enum OssirianActions
     OSSIRIAN_STOMP,
     OSSIRIAN_CURSE_OF_TONGUES,
     OSSIRIAN_SPEEDUP,
-    OSSIRIAN_ACTION_MAX,
+    OSSIRIAN_ACTION_MAX,                                    // 战斗行为动作
 };
 
+// boss_ossirianAI 首领战斗 AI
 struct boss_ossirianAI : public CombatAI
 {
     boss_ossirianAI(Creature* creature) :
@@ -104,7 +111,7 @@ struct boss_ossirianAI : public CombatAI
 
     GuidVector m_spawnedCrystals;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         m_uiCrystalPosition = 0;
@@ -146,16 +153,16 @@ struct boss_ossirianAI : public CombatAI
 
         GuidVector vector;
         m_instance->GetCreatureGuidVectorFromStorage(NPC_OSSIRIAN_TRIGGER, vector);
-        if (vector.size() < 2) // wrong db data
+        if (vector.size() < 2) // wrong db data (说明)
             return;
 
-        vector.erase(vector.begin()); // remove first
+        vector.erase(vector.begin()); // remove first (说明)
         std::shuffle(vector.begin(), vector.end(), *GetRandomGenerator());
 
         uint32 spawned = 0;
-        for (uint32 i = 0; i < vector.size() - 1; ++i) // try to find at least one
+        for (uint32 i = 0; i < vector.size() - 1; ++i) // try to find at least one (说明)
         {
-            // iterate from random roll until either one (should always occur) is found or we run out of crystals
+            // iterate from random roll until either one (should always occur) is found or we run out of crystals (说明)
             if (Creature* creature = m_creature->GetMap()->GetCreature(vector[i]))
             {
                 if (!creature->IsAlive())
@@ -173,7 +180,7 @@ struct boss_ossirianAI : public CombatAI
     {
         GuidVector vector;
         m_instance->GetCreatureGuidVectorFromStorage(NPC_OSSIRIAN_TRIGGER, vector);
-        if (vector.size() < 2) // wrong db data
+        if (vector.size() < 2) // wrong db data (说明)
             return;
 
         if (Creature* creature = m_creature->GetMap()->GetCreature(vector[0]))
@@ -205,7 +212,7 @@ struct boss_ossirianAI : public CombatAI
         }
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         if (summoned->GetEntry() == NPC_SAND_VORTEX)
         {
@@ -215,11 +222,11 @@ struct boss_ossirianAI : public CombatAI
         }
     }
 
-    void SpellHit(Unit* caster, const SpellEntry* spellInfo) override
+    void SpellHit(Unit* caster, const SpellEntry* spellInfo) override    // 被法术命中回调处理
     {
         if (caster->GetTypeId() == TYPEID_UNIT && caster->GetEntry() == NPC_OSSIRIAN_TRIGGER)
         {
-            // Check for proper spell id
+            // Check for proper spell id (法术)
             if (std::find(aWeaknessSpell.begin(), aWeaknessSpell.end(), spellInfo->Id) == aWeaknessSpell.end())
                 return;
 
@@ -227,7 +234,7 @@ struct boss_ossirianAI : public CombatAI
             ResetCombatAction(OSSIRIAN_SUPREME, 45000);
 
             DoSpawnNextCrystal(1);
-            // despawn go
+            // despawn go (消失)
             if (GameObject* crystal = GetClosestGameObjectWithEntry(caster, GO_OSSIRIAN_CRYSTAL, 5.0f))
             {
                 crystal->SetLootState(GO_JUST_DEACTIVATED);
@@ -240,7 +247,7 @@ struct boss_ossirianAI : public CombatAI
 
     void MoveInLineOfSight(Unit* who) override
     {
-        // TODO: Range guesswork
+        // TODO: Range guesswork (说明)
         if (!m_saidIntro && who->GetTypeId() == TYPEID_PLAYER && m_creature->IsWithinDistInMap(who, 75.0f, false))
         {
             switch (urand(0, 2))
@@ -254,7 +261,7 @@ struct boss_ossirianAI : public CombatAI
         CombatAI::MoveInLineOfSight(who);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -306,7 +313,7 @@ struct boss_ossirianAI : public CombatAI
     }
 };
 
-// This is actually a hack for a server-side spell
+// This is actually a hack for a server-side spell (说明)
 bool GOUse_go_ossirian_crystal(Player* /*player*/, GameObject* go)
 {
     go->SendGameObjectCustomAnim(go->GetObjectGuid());
@@ -316,7 +323,7 @@ bool GOUse_go_ossirian_crystal(Player* /*player*/, GameObject* go)
     return true;
 }
 
-void AddSC_boss_ossirian()
+void AddSC_boss_ossirian() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_ossirian";

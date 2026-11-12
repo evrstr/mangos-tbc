@@ -74,13 +74,14 @@ GridMap::~GridMap()
     unloadData();
 }
 
+// 从 .map 地形文件加载区域、孔洞、高度与液体数据块
 bool GridMap::loadData(char const* filename)
 {
-    // Unload old data if exist
+    // Unload old data if exist (加载前先释放旧数据)
     unloadData();
 
     GridMapFileHeader header;
-    // Not return error if file not found
+    // Not return error if file not found (文件缺失时不直接报错，仅当无可用 VMap 时才视为有效异常)
     FILE* in = fopen(filename, "rb");
     if (!in)
     {
@@ -93,7 +94,7 @@ bool GridMap::loadData(char const* filename)
     if (header.mapMagic     == *((uint32 const*)(MAP_MAGIC)) &&
             header.versionMagic == *((uint32 const*)(MAP_VERSION_MAGIC)))
     {
-        // loadup area data
+        // loadup area data (加载区域数据块)
         if (header.areaMapOffset && !loadAreaData(in, header.areaMapOffset, header.areaMapSize))
         {
             sLog.outError("Error loading map area data\n");
@@ -101,7 +102,7 @@ bool GridMap::loadData(char const* filename)
             return false;
         }
 
-        // loadup holes data
+        // loadup holes data (加载地形孔洞位图数据块)
         if (header.holesOffset && !loadHolesData(in, header.holesOffset, header.holesSize))
         {
             sLog.outError("Error loading map holes data\n");
@@ -109,7 +110,7 @@ bool GridMap::loadData(char const* filename)
             return false;
         }
 
-        // loadup height data
+        // loadup height data (加载高度场数据块)
         if (header.heightMapOffset && !loadHeightData(in, header.heightMapOffset, header.heightMapSize))
         {
             sLog.outError("Error loading map height data\n");
@@ -117,7 +118,7 @@ bool GridMap::loadData(char const* filename)
             return false;
         }
 
-        // loadup liquid data
+        // loadup liquid data (加载水体/熔岩/泥浆等液体数据块)
         if (header.liquidMapOffset && !loadGridMapLiquidData(in, header.liquidMapOffset, header.liquidMapSize))
         {
             sLog.outError("Error loading map liquids data\n");
@@ -134,6 +135,7 @@ bool GridMap::loadData(char const* filename)
     return false;
 }
 
+// 释放网格地图占用的全部内存并重置高度读取函数指针为平坦模式
 void GridMap::unloadData()
 {
     delete[] m_area_map;
@@ -152,6 +154,7 @@ void GridMap::unloadData()
     m_gridGetHeight = &GridMap::getHeightFromFlat;
 }
 
+// 读取 16x16 区块的区域 ID 数据（若无细分数据则使用全网格默认区域）
 bool GridMap::loadAreaData(FILE* in, uint32 offset, uint32 /*size*/)
 {
     GridMapAreaHeader header;
@@ -170,6 +173,7 @@ bool GridMap::loadAreaData(FILE* in, uint32 offset, uint32 /*size*/)
     return true;
 }
 
+// 读取高度场数据（支持 16 位整型、8 位整型压缩及 32 位浮点三种精度存储）
 bool GridMap::loadHeightData(FILE* in, uint32 offset, uint32 /*size*/)
 {
     GridMapHeightHeader header;
@@ -214,6 +218,7 @@ bool GridMap::loadHeightData(FILE* in, uint32 offset, uint32 /*size*/)
     return true;
 }
 
+// 读取 16x16 地形孔洞掩码（洞穴/地下入口处地形挖空标记）
 bool GridMap::loadHolesData(FILE* in, uint32 offset, uint32 /*size*/)
 {
     if (fseek(in, offset, SEEK_SET) != 0)
@@ -224,6 +229,7 @@ bool GridMap::loadHolesData(FILE* in, uint32 offset, uint32 /*size*/)
     return true;
 }
 
+// 读取液体类型、标志位及网格内液体高度矩阵
 bool GridMap::loadGridMapLiquidData(FILE* in, uint32 offset, uint32 /*size*/)
 {
     GridMapLiquidHeader header;
@@ -287,6 +293,7 @@ bool GridMap::isHole(int row, int col) const
     return (hole & holetab_h[holeCol] & holetab_v[holeRow]) != 0;
 }
 
+// 使用三角面重心插值从浮点 V9/V8 高度网格计算精确地面 Z 值
 float GridMap::getHeightFromFloat(float x, float y) const
 {
     if (!m_V8 || !m_V9)
@@ -319,6 +326,8 @@ float GridMap::getHeightFromFloat(float x, float y) const
     // 1 - detect triangle
     // 2 - solve linear equation from triangle points
     // Calculate coefficients for solve h = a*x + b*y + c
+    // 高度数据布局：四角 h1~h4 存在 V9 网格，中心点 h5 存在 V8 网格，将方格划分为 4 个三角形；
+    // 先判断坐标落入哪个三角形，再联立三点线性平面方程 h = a*x + b*y + c 求解高度。
 
     float a, b, c;
     // Select triangle:
@@ -540,21 +549,21 @@ uint8 GridMap::getTerrainType(float x, float y) const
     return m_liquidFlags[lx * 16 + ly];
 }
 
-// Get water state on map
+// Get water state on map (结合液体掩码、AreaTable 液体覆盖与地面高度计算坐标处的水体状态)
 GridMapLiquidStatus GridMap::getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData* data, float collisionHeight)
 {
-    // Check water type (if no water return)
+    // Check water type (if no water return) (无任何液体标志则直接返回无水)
     if (!m_liquidFlags && !m_liquidGlobalFlags)
         return LIQUID_MAP_NO_WATER;
 
-    // Get cell
+    // Get cell (定位到 128x128 分辨率下的子格坐标)
     float cx = MAP_RESOLUTION * (32 - x / SIZE_OF_GRIDS);
     float cy = MAP_RESOLUTION * (32 - y / SIZE_OF_GRIDS);
 
     int x_int = (int)cx & (MAP_RESOLUTION - 1);
     int y_int = (int)cy & (MAP_RESOLUTION - 1);
 
-    // Check water type in cell
+    // Check water type in cell (提取当前子格的液体类型与 DBC 条目，并检查区域液体覆盖)
     int idx = (x_int >> 3) * 16 + (y_int >> 3);
     uint8 type = m_liquidFlags ? m_liquidFlags[idx] : m_liquidGlobalFlags;
     uint32 entry = m_liquidEntry ? m_liquidEntry[idx] : m_liquidGlobalEntry;
@@ -589,12 +598,12 @@ GridMapLiquidStatus GridMap::getLiquidStatus(float x, float y, float z, uint8 Re
     if (type == 0)
         return LIQUID_MAP_NO_WATER;
 
-    // Check req liquid type mask
+    // Check req liquid type mask (过滤不符合请求掩码的液体类型)
     if (ReqLiquidType && !(ReqLiquidType & type))
         return LIQUID_MAP_NO_WATER;
 
     // Check water level:
-    // Check water height map
+    // Check water height map (检查坐标是否位于局部液体矩形范围内)
     int lx_int = x_int - m_liquid_offY;
     if (lx_int < 0 || lx_int >= m_liquid_height)
         return LIQUID_MAP_NO_WATER;
@@ -603,17 +612,17 @@ GridMapLiquidStatus GridMap::getLiquidStatus(float x, float y, float z, uint8 Re
     if (ly_int < 0 || ly_int >= m_liquid_width)
         return LIQUID_MAP_NO_WATER;
 
-    // Get water level
+    // Get water level (获取液面高度)
     float liquid_level = m_liquid_map ? m_liquid_map[lx_int * m_liquid_width + ly_int] : m_liquidLevel;
 
-    // Get ground level (sub 0.2 for fix some errors)
+    // Get ground level (sub 0.2 for fix some errors) (获取地面高度用于比较水深)
     float ground_level = getHeight(x, y);
 
-    // Check water level and ground level
+    // Check water level and ground level (液面低于地面或 Z 远低于地面则判为无水)
     if (liquid_level < ground_level || z < ground_level - 2)
         return LIQUID_MAP_NO_WATER;
 
-    // All ok in water -> store data
+    // All ok in water -> store data (填充返回的液体详情结构)
     if (data)
     {
         data->entry = entry;
@@ -622,19 +631,19 @@ GridMapLiquidStatus GridMap::getLiquidStatus(float x, float y, float z, uint8 Re
         data->depth_level = ground_level;
     }
 
-    // For speed check as int values
+    // For speed check as int values (计算液面与当前 Z 坐标的差值以区分水下/水中/水面/水上)
     float delta = liquid_level - z;
 
     // Get position delta
-    if (delta > collisionHeight)                            // Under water
+    if (delta > collisionHeight)                            // Under water (完全没过碰撞高度：水下)
         return LIQUID_MAP_UNDER_WATER;
 
-    if (delta > 0)                                          // In water
+    if (delta > 0)                                          // In water (部分浸入水中：水中)
         return LIQUID_MAP_IN_WATER;
 
-    if (delta > -1)                                         // Walk on water
+    if (delta > -1)                                         // Walk on water (紧贴液面：水上行走)
         return LIQUID_MAP_WATER_WALK;
-    // Above water
+    // Above water (高于液面：水面之上)
     return LIQUID_MAP_ABOVE_WATER;
 }
 
@@ -760,6 +769,7 @@ void TerrainInfo::Unload(const uint32 x, const uint32 y)
 }
 
 // call this method only
+// 定期清理引用计数为 0 的 GridMap、VMap 与 MMap 瓦片以释放内存
 void TerrainInfo::CleanUpGrids(const uint32 diff)
 {
     i_timer.Update(diff);
@@ -825,12 +835,13 @@ int TerrainInfo::UnrefGrid(const uint32& x, const uint32& y)
     return 0;
 }
 
+// 综合地形 .map 与 VMap 计算静态地面高度，处理悬空、地面下方及高空回退情况
 float TerrainInfo::GetHeightStatic(float x, float y, float z, bool useVmaps/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
 {
-    float mapHeight = VMAP_INVALID_HEIGHT_VALUE;            // Store Height obtained by maps
-    float vmapHeight = VMAP_INVALID_HEIGHT_VALUE;           // Store Height obtained by vmaps (in "corridor" of z (or slightly above z)
+    float mapHeight = VMAP_INVALID_HEIGHT_VALUE;            // Store Height obtained by maps (存储从 .map 地形获得的高度)
+    float vmapHeight = VMAP_INVALID_HEIGHT_VALUE;           // Store Height obtained by vmaps (in "corridor" of z (or slightly above z) (存储从 VMap 获得的建筑/模型表面高度)
 
-    // find raw .map surface under Z coordinates (or well-defined above)
+    // find raw .map surface under Z coordinates (or well-defined above) (查询基础地形高度)
     if (GridMap* gmap = const_cast<TerrainInfo*>(this)->GetGrid(x, y))
         mapHeight = gmap->getHeight(x, y);
 
@@ -843,21 +854,23 @@ float TerrainInfo::GetHeightStatic(float x, float y, float z, bool useVmaps/*=tr
             // if mapHeight has been found search vmap height at least until mapHeight point
             // this prevent case when original Z "too high above ground and vmap height search fail"
             // this will not affect most normal cases (no map in instance, or stay at ground at continent)
+            // 若已知基础地形高度，则将 VMap 向下搜索距离扩展至至少到达地形表面，防止 Z 过高导致 VMap 查询失效
             if (mapHeight > INVALID_HEIGHT && z2 - mapHeight > maxSearchDist)
-                maxSearchDist = z2 - mapHeight + 1.0f;      // 1.0 make sure that we not fail for case when map height near but above for vamp height
+                maxSearchDist = z2 - mapHeight + 1.0f;      // 1.0 make sure that we not fail for case when map height near but above for vamp height (额外留 1.0 容差)
 
-            // look from a bit higher pos to find the floor
+            // look from a bit higher pos to find the floor (从略高于当前位置的 z2 向下射线查找地面/建筑楼板)
             vmapHeight = m_vmgr->getHeight(GetMapId(), x, y, z2, maxSearchDist);
 
             // if not found in expected range, look for infinity range (case of far above floor, but below terrain-height)
+            // 有限范围内未找到时使用无限距离兜底搜索（如位于高空但仍在地形高度以下）
             if (vmapHeight <= INVALID_HEIGHT)
                 vmapHeight = m_vmgr->getHeight(GetMapId(), x, y, z2, 10000.0f);
 
-            // look upwards
+            // look upwards (若在建筑/地形下方较深处，尝试向上搜索最近表面)
             if (vmapHeight <= INVALID_HEIGHT && mapHeight > z2 && std::abs(z2 - mapHeight) > 30.f)
                 vmapHeight = m_vmgr->getHeight(GetMapId(), x, y, z2, -maxSearchDist);
 
-            // still not found, look near terrain height
+            // still not found, look near terrain height (仍未命中则在地形高度附近补充搜索)
             if (vmapHeight <= INVALID_HEIGHT && mapHeight > INVALID_HEIGHT && z2 < mapHeight)
                 vmapHeight = m_vmgr->getHeight(GetMapId(), x, y, mapHeight + 2.0f, DEFAULT_HEIGHT_SEARCH);
         }
@@ -870,6 +883,7 @@ float TerrainInfo::GetHeightStatic(float x, float y, float z, bool useVmaps/*=tr
         if (mapHeight > INVALID_HEIGHT)
         {
             // we have mapheight and vmapheight and must select more appropriate
+            // 同时存在地形高度与 VMap 高度时：若角色在地形下方或建筑表面高于地形，则优先采用 VMap 高度
 
             // we are already under the surface or vmap height above map heigt
             if (z < mapHeight || vmapHeight > mapHeight)
@@ -1055,6 +1069,7 @@ void TerrainInfo::GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, floa
     TerrainManager::GetZoneAndAreaIdByAreaFlag(zoneid, areaid, GetAreaFlag(x, y, z, nullptr, wmoGroupId), m_mapId);
 }
 
+// 优先通过 VMap（如 WMO 内部水体）检测液体状态，未命中时再回退到 .map 网格液体数据
 GridMapLiquidStatus TerrainInfo::getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData* data, float collisionHeight) const
 {
     GridMapLiquidStatus result = LIQUID_MAP_NO_WATER;
@@ -1242,6 +1257,7 @@ GridMap* TerrainInfo::GetGrid(const float x, const float y, bool loadOnlyMap /*=
     return pMap;
 }
 
+// 线程安全地按需加载指定网格的 .map、VMap 与寻路网格（MMap）；mapOnly 为 true 时仅加载 .map
 GridMap* TerrainInfo::LoadMapAndVMap(const uint32 x, const uint32 y, bool mapOnly /*= false*/)
 {
     if ((m_GridMaps[x][y] && mapOnly)
@@ -1349,6 +1365,7 @@ TerrainManager::~TerrainManager()
         delete it.second;
 }
 
+// 加载或复用指定地图 ID 的共享 TerrainInfo 对象
 TerrainInfo* TerrainManager::LoadTerrain(const uint32 mapId)
 {
     Guard _guard(*this);
@@ -1383,6 +1400,7 @@ void TerrainManager::UnloadTerrain(const uint32 mapId)
     }
 }
 
+// 定时触发所有已加载地图的空闲地形网格垃圾回收
 void TerrainManager::Update(const uint32 diff)
 {
     // global garbage collection for GridMap objects and VMaps

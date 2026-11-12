@@ -19,6 +19,7 @@
 #include "PlayerAI.h"
 #include "Entities/Player.h"
 
+// 牧师被魅惑时使用的法术
 enum PriestSpells
 {
     SPELL_PSYCHIC_SCREAM = 8122,
@@ -26,6 +27,7 @@ enum PriestSpells
     SPELL_MIND_BLAST = 8092,
 };
 
+// 牧师魅惑 AI：查找并注册玩家已习得的最高等级牧师法术
 struct PriestAI : public PlayerAI
 {
     PriestAI(Player* player) : PlayerAI(player)
@@ -39,6 +41,7 @@ struct PriestAI : public PlayerAI
     }
 };
 
+// 法师被魅惑时使用的法术
 enum MageSpells
 {
     SPELL_BLIZZARD = 10,
@@ -46,6 +49,7 @@ enum MageSpells
     SPELL_FIREBALL = 133,
 };
 
+// 法师魅惑 AI
 struct MageAI : public PlayerAI
 {
     MageAI(Player* player) : PlayerAI(player)
@@ -59,6 +63,7 @@ struct MageAI : public PlayerAI
     }
 };
 
+// 术士被魅惑时使用的法术
 enum WarlockSpells
 {
     SPELL_RAIN_OF_FIRE = 5740,
@@ -66,6 +71,7 @@ enum WarlockSpells
     SPELL_SHADOW_BOLT = 686,
 };
 
+// 术士魅惑 AI
 struct WarlockAI : public PlayerAI
 {
     WarlockAI(Player* player) : PlayerAI(player)
@@ -79,6 +85,7 @@ struct WarlockAI : public PlayerAI
     }
 };
 
+// 盗贼被魅惑时使用的法术
 enum RogueSpells
 {
     SPELL_BLIND = 2094,
@@ -86,6 +93,7 @@ enum RogueSpells
     SPELL_SINISTER_STRIKE = 1752,
 };
 
+// 盗贼魅惑 AI
 struct RogueAI : public PlayerAI
 {
     RogueAI(Player* player) : PlayerAI(player)
@@ -99,6 +107,7 @@ struct RogueAI : public PlayerAI
     }
 };
 
+// 德鲁伊被魅惑时使用的法术
 enum DruidSpells
 {
     SPELL_WRATH = 5176,
@@ -106,6 +115,7 @@ enum DruidSpells
     SPELL_MOONFIRE = 8921,
 };
 
+// 德鲁伊魅惑 AI
 struct DruidAI : public PlayerAI
 {
     DruidAI(Player* player) : PlayerAI(player)
@@ -119,6 +129,7 @@ struct DruidAI : public PlayerAI
     }
 };
 
+// 萨满祭司被魅惑时使用的法术
 enum ShamanSpells
 {
     SPELL_HEROISM = 32182,
@@ -127,6 +138,7 @@ enum ShamanSpells
     SPELL_FLAME_SHOCK = 8050,
 };
 
+// 萨满祭司魅惑 AI
 struct ShamanAI : public PlayerAI
 {
     ShamanAI(Player* player) : PlayerAI(player)
@@ -142,6 +154,7 @@ struct ShamanAI : public PlayerAI
     }
 };
 
+// 猎人被魅惑时使用的法术
 enum HunterSpells
 {
     SPELL_VOLLEY = 1510,
@@ -149,6 +162,7 @@ enum HunterSpells
     SPELL_RAPTOR_STRIKE = 2973,
 };
 
+// 猎人魅惑 AI
 struct HunterAI : public PlayerAI
 {
     HunterAI(Player* player) : PlayerAI(player)
@@ -162,6 +176,7 @@ struct HunterAI : public PlayerAI
     }
 };
 
+// 战士被魅惑时使用的法术
 enum WarriorSpells
 {
     SPELL_INTIMIDATING_SHOUT = 5246,
@@ -169,6 +184,7 @@ enum WarriorSpells
     SPELL_HEROIC_STRIKE = 78,
 };
 
+// 战士魅惑 AI
 struct WarriorAI : public PlayerAI
 {
     WarriorAI(Player* player) : PlayerAI(player)
@@ -182,6 +198,7 @@ struct WarriorAI : public PlayerAI
     }
 };
 
+// 圣骑士被魅惑时使用的法术
 enum PaladinSpells
 {
     SPELL_FLASH_OF_LIGHT = 19750,
@@ -189,6 +206,7 @@ enum PaladinSpells
     SPELL_CONSECRATION = 26573,
 };
 
+// 圣骑士魅惑 AI
 struct PaladinAI : public PlayerAI
 {
     PaladinAI(Player* player) : PlayerAI(player)
@@ -202,6 +220,7 @@ struct PaladinAI : public PlayerAI
     }
 };
 
+// 工厂函数：按玩家职业实例化对应的魅惑 PlayerAI
 UnitAI* GetClassAI(Classes playerClass, Player* player)
 {
     switch (playerClass)

@@ -39,61 +39,64 @@ namespace G3D
     class Vector4;
 }
 
-// Creature Entry ID used for waypoints show, visible only for GMs
+// Creature Entry ID used for waypoints show, visible only for GMs (GM 调试查看路点时生成的视觉标记生物 Entry)
 #define VISUAL_WAYPOINT 1
 
-#define PET_FOLLOW_DIST  1.0f
-#define PET_FOLLOW_ANGLE (M_PI_F / 2.0f)
+#define PET_FOLLOW_DIST  1.0f           // 宠物默认跟随距离
+#define PET_FOLLOW_ANGLE (M_PI_F / 2.0f) // 宠物默认跟随角度（侧方 90 度）
 
-// values 0 ... MAX_DB_MOTION_TYPE-1 used in DB
+// values 0 ... MAX_DB_MOTION_TYPE-1 used in DB (0 ~ MAX_DB_MOTION_TYPE-1 可配置于数据库默认移动类型)
 enum MovementGeneratorType
 {
-    IDLE_MOTION_TYPE                = 0,                    // IdleMovementGenerator.h
-    RANDOM_MOTION_TYPE              = 1,                    // RandomMovementGenerator.h
-    WAYPOINT_MOTION_TYPE            = 2,                    // WaypointMovementGenerator.h
-    PATH_MOTION_TYPE                = 3,                    // PathMovementGenerator.h
-    LINEAR_WP_MOTION_TYPE           = 4,                    // WaypointMovementGenerator.h
+    IDLE_MOTION_TYPE                = 0,                    // IdleMovementGenerator.h (原地待机)
+    RANDOM_MOTION_TYPE              = 1,                    // RandomMovementGenerator.h (随机漫步)
+    WAYPOINT_MOTION_TYPE            = 2,                    // WaypointMovementGenerator.h (循环路点巡逻)
+    PATH_MOTION_TYPE                = 3,                    // PathMovementGenerator.h (自定义平滑路径)
+    LINEAR_WP_MOTION_TYPE           = 4,                    // WaypointMovementGenerator.h (线性路点移动)
 
-    MAX_DB_MOTION_TYPE              = 5,                    // *** this and below motion types can't be set in DB.
+    MAX_DB_MOTION_TYPE              = 5,                    // *** this and below motion types can't be set in DB. (此及以下类型不可在数据库配置)
 
-    DISTRACT_MOTION_TYPE            = 5,                    // IdleMovementGenerator.h
-    STAY_MOTION_TYPE                = 6,                    // PointMovementGenerator.h
-    FOLLOW_MOTION_TYPE              = 7,                    // TargetedMovementGenerator.h
-    CHASE_MOTION_TYPE               = 8,                    // TargetedMovementGenerator.h
-    RETREAT_MOTION_TYPE             = 9,                    // PointMovementGenerator.h
-    TIMED_FLEEING_MOTION_TYPE       = 10,                   // RandomMovementGenerator.h
-    POINT_MOTION_TYPE               = 11,                   // PointMovementGenerator.h
-    HOME_MOTION_TYPE                = 12,                   // HomeMovementGenerator.h
-    FLEEING_MOTION_TYPE             = 13,                   // RandomMovementGenerator.h
-    CONFUSED_MOTION_TYPE            = 14,                   // RandomMovementGenerator.h
-    EFFECT_MOTION_TYPE              = 15,                   // WrapperMovementGenerator.h
-    TAXI_MOTION_TYPE                = 16,                   // WaypointMovementGenerator.h
-    TIMED_RANDOM_MOTION_TYPE        = 17,                   // RandomMovementGenerator.h
-    FALL_MOTION_TYPE                = 18,                   // WrapperMovementGenerator.h
+    DISTRACT_MOTION_TYPE            = 5,                    // IdleMovementGenerator.h (被扰乱原地朝向)
+    STAY_MOTION_TYPE                = 6,                    // PointMovementGenerator.h (驻守指定坐标)
+    FOLLOW_MOTION_TYPE              = 7,                    // TargetedMovementGenerator.h (跟随目标)
+    CHASE_MOTION_TYPE               = 8,                    // TargetedMovementGenerator.h (追击目标)
+    RETREAT_MOTION_TYPE             = 9,                    // PointMovementGenerator.h (撤退至指定点)
+    TIMED_FLEEING_MOTION_TYPE       = 10,                   // RandomMovementGenerator.h (限时逃跑)
+    POINT_MOTION_TYPE               = 11,                   // PointMovementGenerator.h (点对点移动)
+    HOME_MOTION_TYPE                = 12,                   // HomeMovementGenerator.h (脱战返巢)
+    FLEEING_MOTION_TYPE             = 13,                   // RandomMovementGenerator.h (恐惧/求援逃跑)
+    CONFUSED_MOTION_TYPE            = 14,                   // RandomMovementGenerator.h (迷惑乱走)
+    EFFECT_MOTION_TYPE              = 15,                   // WrapperMovementGenerator.h (击退/冲锋/跳跃等法术效果位移)
+    TAXI_MOTION_TYPE                = 16,                   // WaypointMovementGenerator.h (飞行坐骑航线)
+    TIMED_RANDOM_MOTION_TYPE        = 17,                   // RandomMovementGenerator.h (限时随机漫步)
+    FALL_MOTION_TYPE                = 18,                   // WrapperMovementGenerator.h (空中坠落)
 
-    EXTERNAL_WAYPOINT_MOVE          = 18,                   // Only used in UnitAI::MovementInform when a waypoint is reached. The pathId >= 0 is added as additonal value
-    EXTERNAL_WAYPOINT_MOVE_START    = 19,                   // Only used in UnitAI::MovementInform when a waypoint is started. The pathId >= 0 is added as additional value
-    EXTERNAL_WAYPOINT_FINISHED_LAST = 20,                   // Only used in UnitAI::MovementInform when the waittime of the last wp is finished The pathId >= 0 is added as additional value
+    EXTERNAL_WAYPOINT_MOVE          = 18,                   // Only used in UnitAI::MovementInform when a waypoint is reached. The pathId >= 0 is added as additonal value (仅用于 AI 到达路点回调通知)
+    EXTERNAL_WAYPOINT_MOVE_START    = 19,                   // Only used in UnitAI::MovementInform when a waypoint is started. The pathId >= 0 is added as additional value (仅用于 AI 开始前往路点回调通知)
+    EXTERNAL_WAYPOINT_FINISHED_LAST = 20,                   // Only used in UnitAI::MovementInform when the waittime of the last wp is finished The pathId >= 0 is added as additional value (仅用于 AI 末路点等待结束回调通知)
 
-    FORMATION_MOTION_TYPE           = 21,                   // TargetedMovementGenerator.h
+    FORMATION_MOTION_TYPE           = 21,                   // TargetedMovementGenerator.h (编队跟随)
     MOVEMENT_TYPE_MAX
 };
 
+/// 清理/过期操作执行模式标志
 enum MMCleanFlag
 {
     MMCF_NONE   = 0,
-    MMCF_UPDATE = 1,                                        // Clear or Expire called from update
-    MMCF_RESET  = 2                                         // Flag if need top()->Reset()
+    MMCF_UPDATE = 1,                                        // Clear or Expire called from update (在 Update 迭代中触发，需延迟销毁防止迭代器失效)
+    MMCF_RESET  = 2                                         // Flag if need top()->Reset() (清理后是否需要重置恢复栈顶生成器)
 };
 
+/// 强制移动模式覆盖选项
 enum ForcedMovement
 {
-    FORCED_MOVEMENT_NONE    = 0,
-    FORCED_MOVEMENT_WALK    = 1,
-    FORCED_MOVEMENT_RUN     = 2,
-    FORCED_MOVEMENT_FLIGHT  = 3,
+    FORCED_MOVEMENT_NONE    = 0, // 不强制，沿用单位当前状态
+    FORCED_MOVEMENT_WALK    = 1, // 强制步行
+    FORCED_MOVEMENT_RUN     = 2, // 强制奔跑
+    FORCED_MOVEMENT_FLIGHT  = 3, // 强制飞行
 };
 
+/// 单位运动控制器：基于栈管理各类 MovementGenerator，支持延迟清栈与高优先级压栈抢占
 class MotionMaster : private std::stack<MovementGenerator*>
 {
     private:
@@ -118,6 +121,7 @@ class MotionMaster : private std::stack<MovementGenerator*>
         const_iterator end() const { return Impl::c.end(); }
 
         void UpdateMotion(uint32 diff);
+        /// 清空非栈底的移动生成器（all=true 时连同底层默认生成器一并清除）；Update 内调用自动延迟执行
         void Clear(bool reset = true, bool all = false)
         {
             if (m_cleanFlag & MMCF_UPDATE)
@@ -125,6 +129,7 @@ class MotionMaster : private std::stack<MovementGenerator*>
             else
                 DirectClean(reset, all);
         }
+        /// 使当前栈顶移动生成器过期退出，并恢复下层生成器
         void MovementExpired(bool reset = true)
         {
             if (m_cleanFlag & MMCF_UPDATE)
@@ -133,6 +138,7 @@ class MotionMaster : private std::stack<MovementGenerator*>
                 DirectExpire(reset);
         }
 
+        // 各类高级移动指令接口
         void MoveIdle();
         void MoveRandomAroundPoint(float x, float y, float z, float radius, float verticalZ = 0.0f, uint32 timer = 0, bool walk = true);
         void MoveTargetedHome(bool runHome = true);
@@ -149,6 +155,7 @@ class MotionMaster : private std::stack<MovementGenerator*>
         void MovePath(std::vector<G3D::Vector3>& path, ForcedMovement forcedMovement = FORCED_MOVEMENT_NONE, bool flying = false, bool cyclic = true);
         void MovePath(std::vector<G3D::Vector3>& path, float o, ForcedMovement forcedMovement = FORCED_MOVEMENT_NONE, bool flying = false, bool cyclic = true);
         // MovePath can not change speed or flying mid path due to how it works - if you wish to do that, split it into two paths
+        // MovePath 运行期间无法中途变速或切换飞行状态，如需切换请拆分为两段路径
         void MovePath(int32 pathId = 0, WaypointPathOrigin wpOrigin = PATH_NO_PATH, ForcedMovement forcedMovement = FORCED_MOVEMENT_NONE, bool flying = false, float speed = 0.f, bool cyclic = false, ObjectGuid guid = ObjectGuid());
         void MoveRetreat(float x, float y, float z, float o, uint32 delay);
         void MoveWaypoint(uint32 pathId = 0, uint32 source = 0, uint32 initialDelay = 0, uint32 overwriteEntry = 0, ForcedMovement forcedMovement = FORCED_MOVEMENT_NONE, ObjectGuid guid = ObjectGuid());
@@ -163,6 +170,7 @@ class MotionMaster : private std::stack<MovementGenerator*>
 
         MovementGeneratorType GetCurrentMovementGeneratorType() const;
 
+        /// 通知当前激活的移动生成器单位速度已改变
         void propagateSpeedChange();
         bool SetNextWaypoint(uint32 pointId);
 
@@ -181,7 +189,9 @@ class MotionMaster : private std::stack<MovementGenerator*>
         void UnMarkFollowMovegens();
 
     private:
+        /// 内部压栈并激活新的移动生成器（外部请调用 Move* 系列接口）
         void Mutate(MovementGenerator* m);                  // use Move* functions instead
+        /// 按移动类型刷新对象的更新频率计时器
         void InitializeObjectUpdateTimer(const MovementGeneratorType type);
 
         void DirectClean(bool reset, bool all);

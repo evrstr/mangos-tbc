@@ -21,23 +21,29 @@ SDComment: Summon Player ability NYI
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟：库林纳克斯 (Kurinnaxx) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_ENRAGE              = -1000002,
+    SAY_ENRAGE              = -1000002,                     // 剧情台词/喊话文本 ID
 
-    SPELL_THRASH            = 3391,
-    SPELL_WIDE_SLASH        = 25814,
-    SPELL_MORTAL_WOUND      = 25646,
-    SPELL_SANDTRAP          = 26524,        // summons gameobject 180647
-    SPELL_ENRAGE            = 26527,
-    SPELL_SUMMON_PLAYER     = 26446,
+    SPELL_THRASH            = 3391,                         // 技能法术 ID
+    SPELL_WIDE_SLASH        = 25814,                        // 技能法术 ID
+    SPELL_MORTAL_WOUND      = 25646,                        // 技能法术 ID
+    SPELL_SANDTRAP          = 26524,        // summons gameobject 180647 (召唤)
+    SPELL_ENRAGE            = 26527,                        // 技能法术：激怒/狂暴
+    SPELL_SUMMON_PLAYER     = 26446,                        // 技能法术 ID
 
-    GO_SAND_TRAP            = 180647,
+    GO_SAND_TRAP            = 180647,                       // 游戏对象条目 ID
 };
 
+// KurinnaxxAction 战斗行为动作枚举
 enum KurinnaxxAction
 {
     KURINNAXX_ENRAGE,
@@ -45,10 +51,11 @@ enum KurinnaxxAction
     KURINNAXX_SAND_TRAP,
     KURINNAXX_THRASH,
     KURINNAXX_WIDE_SLASH,
-    KURINNAXX_ACTION_MAX,
+    KURINNAXX_ACTION_MAX,                                   // 战斗行为动作
     KURINNAXX_TRAP_TRIGGER,
 };
 
+// boss_kurinnaxxAI 首领战斗 AI
 struct boss_kurinnaxxAI : public CombatAI
 {
     boss_kurinnaxxAI(Creature* creature) : CombatAI(creature, KURINNAXX_ACTION_MAX)
@@ -78,7 +85,7 @@ struct boss_kurinnaxxAI : public CombatAI
             trap->Use(m_creature);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -122,7 +129,7 @@ struct boss_kurinnaxxAI : public CombatAI
     }
 };
 
-void AddSC_boss_kurinnaxx()
+void AddSC_boss_kurinnaxx() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_kurinnaxx";

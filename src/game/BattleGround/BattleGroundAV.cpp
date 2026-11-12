@@ -35,6 +35,7 @@ BattleGroundAV::BattleGroundAV(): m_mineYellTimer(BG_AV_MINE_YELL), m_honorMapCo
     m_startMessageIds[BG_STARTING_EVENT_FOURTH] = LANG_BG_AV_HAS_BEGUN;
 }
 
+// 玩家击杀时扣除被击杀方 1 点援军兵力
 void BattleGroundAV::HandleKillPlayer(Player* player, Player* killer)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -44,7 +45,7 @@ void BattleGroundAV::HandleKillPlayer(Player* player, Player* killer)
     UpdateScore(GetTeamIndexByTeamId(player->GetTeam()), -1);
 }
 
-// Handle creature kill
+// Handle creature kill (处理关键首领、中尉与矿洞首领被击杀事件)
 void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -56,7 +57,7 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
     {
         case BG_AV_NPC_VANNDAR_STORMPIKE:
         {
-            // cast quest complete spells
+            // cast quest complete spells (击杀范达尔·雷矛：部落立即获胜并完成任务)
             CastSpellOnTeam(BG_AV_SPELL_COMPLETE_AV_QUEST, HORDE);
 
             RewardReputationToTeam(BG_AV_FACTION_ID_FROSTWOLF, m_repBoss, HORDE);
@@ -69,7 +70,7 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
         }
         case BG_AV_NPC_DREKTHAR:
         {
-            // cast quest complete spells
+            // cast quest complete spells (击杀德雷克塔尔：联盟立即获胜并完成任务)
             CastSpellOnTeam(BG_AV_SPELL_COMPLETE_AV_QUEST, ALLIANCE);
 
             RewardReputationToTeam(BG_AV_FACTION_ID_STORMPIKE, m_repBoss, ALLIANCE);
@@ -87,7 +88,7 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
 
             UpdateScore(TEAM_INDEX_ALLIANCE, (-1) * BG_AV_RES_CAPTAIN);
 
-            // spawn fire objects
+            // spawn fire objects (巴琳达阵亡，扣除联盟 100 援军并在碉堡刷出火焰特效)
             SpawnEvent(BG_AV_NODE_CAPTAIN_DEAD_A, 0, true);
             break;
         }
@@ -98,7 +99,7 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
 
             UpdateScore(TEAM_INDEX_HORDE, (-1) * BG_AV_RES_CAPTAIN);
 
-            // spawn fire objects
+            // spawn fire objects (加尔范阵亡，扣除部落 100 援军并在要塞刷出火焰特效)
             SpawnEvent(BG_AV_NODE_CAPTAIN_DEAD_H, 0, true);
             break;
         }
@@ -115,6 +116,7 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
     }
 }
 
+// 登记奥山关键首领、中尉、传令官与矿洞首领 GUID 以便后续喊话或状态查询
 void BattleGroundAV::HandleCreatureCreate(Creature* creature)
 {
     switch (creature->GetEntry())
@@ -139,6 +141,7 @@ void BattleGroundAV::HandleCreatureCreate(Creature* creature)
     }
 }
 
+// 登记矿洞补给与战旗对象 GUID
 void BattleGroundAV::HandleGameObjectCreate(GameObject* go)
 {
     switch (go->GetEntry())
@@ -152,7 +155,7 @@ void BattleGroundAV::HandleGameObjectCreate(GameObject* go)
     }
 }
 
-// Handle quest completion for player
+// Handle quest completion for player (记录战场可重复上交任务进度，达到阈值时升级守军或准备支援部队并奖励全队声望)
 void BattleGroundAV::HandleQuestComplete(uint32 questid, Player* player)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -162,7 +165,7 @@ void BattleGroundAV::HandleQuestComplete(uint32 questid, Player* player)
 
     PvpTeamIndex teamIdx = GetTeamIndexByTeamId(player->GetTeam());
 
-    uint32 reputation = 0;                                  // reputation for the whole team (other reputation must be done in db)
+    uint32 reputation = 0;                                  // reputation for the whole team (other reputation must be done in db) (全队共享声望增量)
     // TODO add events (including quest not available anymore, next quest availabe, go/npc de/spawning)
 
     switch (questid)
@@ -173,7 +176,7 @@ void BattleGroundAV::HandleQuestComplete(uint32 questid, Player* player)
         case BG_AV_QUEST_ARMOR_SCRAPS_H_REPEAT:
             m_teamQuestStatus[teamIdx][0] += 20;
             reputation = 1;
-            if (m_teamQuestStatus[teamIdx][0] == 500 || m_teamQuestStatus[teamIdx][0] == 1000 || m_teamQuestStatus[teamIdx][0] == 1500)  // 25,50,75 turn ins
+            if (m_teamQuestStatus[teamIdx][0] == 500 || m_teamQuestStatus[teamIdx][0] == 1000 || m_teamQuestStatus[teamIdx][0] == 1500)  // 25,50,75 turn ins (累计上交 25/50/75 次护甲碎片时升级墓地守卫)
             {
                 DEBUG_LOG("BattleGroundAV: Quest %i completed starting with unit upgrading..", questid);
                 for (uint8 i = BG_AV_NODES_FIRSTAID_STATION; i < BG_AV_NODES_FROSTWOLF_HUT; ++i)
@@ -204,7 +207,7 @@ void BattleGroundAV::HandleQuestComplete(uint32 questid, Player* player)
             break;
         case BG_AV_QUEST_CRYSTAL_CLUSTER:
         case BG_AV_QUEST_GALLON_OF_BLOOD:
-            m_teamQuestStatus[teamIdx][4] += 4;            // there are 2 quests where you can turn in 5 or 1 item.. ( + 4 cause +1 will be done some lines below)
+            m_teamQuestStatus[teamIdx][4] += 4;            // there are 2 quests where you can turn in 5 or 1 item.. ( + 4 cause +1 will be done some lines below) (上交 5 个版本额外加 4，与下方 ++ 合计为 5)
             reputation = 4;
         case BG_AV_QUEST_IVUS_FOREST_LORD:
         case BG_AV_QUEST_LOKHOLAR_ICE_LORD:
@@ -266,24 +269,25 @@ void BattleGroundAV::HandleQuestComplete(uint32 questid, Player* player)
         RewardReputationToTeam((player->GetTeam() == ALLIANCE) ? BG_AV_FACTION_ID_STORMPIKE : BG_AV_FACTION_ID_FROSTWOLF, reputation, player->GetTeam());
 }
 
-// Method that updates team score
+// Method that updates team score (更新援军兵力点数：归零时直接判负，低于 120 时发出濒败警告)
 void BattleGroundAV::UpdateScore(PvpTeamIndex teamIdx, int32 points)
 {
     int32 worldStateId = teamIdx == TEAM_INDEX_ALLIANCE ? BG_AV_STATE_SCORE_A : BG_AV_STATE_SCORE_H;
 
     // note: to remove reinforcements points must be negative, for adding reinforcements points must be positive
+    // (扣除兵力传负值，矿洞补兵传正值，下限钳制为 0)
     int32 newVal = std::max(GetBgMap()->GetVariableManager().GetVariable(worldStateId) + points, 0);
     GetBgMap()->GetVariableManager().SetVariable(worldStateId, newVal);
 
     if (points < 0)
     {
-        // end battleground and set the winner
+        // end battleground and set the winner (兵力耗尽，判对立阵营获胜)
         if (newVal < 1)
         {
             // other team will win:
             EndBattleGround((teamIdx == TEAM_INDEX_ALLIANCE) ? HORDE : ALLIANCE);
         }
-        // inform the players about getting close to losing
+        // inform the players about getting close to losing (低于 120 点援军时全图警报)
         else if (!m_wasInformedNearLose[teamIdx] && newVal < BG_AV_SCORE_NEAR_LOSE)
         {
             SendMessageToAll((teamIdx == TEAM_INDEX_HORDE) ? LANG_BG_AV_H_NEAR_LOSE : LANG_BG_AV_A_NEAR_LOSE, CHAT_MSG_BG_SYSTEM_NEUTRAL);
@@ -294,6 +298,7 @@ void BattleGroundAV::UpdateScore(PvpTeamIndex teamIdx, int32 points)
     }
 }
 
+// 每帧更新矿洞提示喊话、矿洞周期援军恢复/回归中立计时以及 15 个据点的占领/烧毁倒计时
 void BattleGroundAV::Update(uint32 diff)
 {
     BattleGround::Update(diff);
@@ -316,6 +321,7 @@ void BattleGroundAV::Update(uint32 diff)
         return;
 
     // add points from mine owning, and look if the neutral team can reclaim the mine
+    // (已占领的矿洞每 45 秒恢复 1 点援军，且 20 分钟后由中立势力夺回)
     for (uint8 mine = 0; mine < BG_AV_MAX_MINES; ++mine)
     {
         if (m_mineOwner[mine] != TEAM_INDEX_NEUTRAL)
@@ -336,6 +342,7 @@ void BattleGroundAV::Update(uint32 diff)
     }
 
     // looks for all timers of the nodes and destroy the building (for graveyards the building wont get destroyed, it goes just to the other team
+    // (推进处于突袭争夺状态的墓地或哨塔倒计时，到期后完成占领或烧毁)
     for (uint8 i = 0; i < BG_AV_MAX_NODES; ++i)
     {
         if (m_nodes[i].state == POINT_ASSAULTED)
@@ -348,6 +355,7 @@ void BattleGroundAV::Update(uint32 diff)
     }
 }
 
+// 开战时显示双方援军计数 UI 并开启出入口大门
 void BattleGroundAV::StartingEventOpenDoors()
 {
     GetBgMap()->GetVariableManager().SetVariable(BG_AV_STATE_SCORE_SHOW_H, WORLD_STATE_ADD);
@@ -359,18 +367,19 @@ void BattleGroundAV::StartingEventOpenDoors()
 void BattleGroundAV::AddPlayer(Player* player)
 {
     BattleGround::AddPlayer(player);
-    // create score and add it to map, default values are set in constructor
+    // create score and add it to map, default values are set in constructor (创建奥山玩家战绩条目)
     BattleGroundAVScore* sc = new BattleGroundAVScore;
     m_playerScores[player->GetObjectGuid()] = sc;
 }
 
+// 结束奥特兰克山谷：按双方存活哨塔、占领墓地/矿洞及存活中尉发放结算荣誉与声望，并由传令官喊话宣布胜负
 void BattleGroundAV::EndBattleGround(Team winner)
 {
-    // calculate bonuskills for both teams:
+    // calculate bonuskills for both teams: (统计双方在结束时刻控制的墓地和矿洞数)
     uint32 gravesOwned[PVP_TEAM_COUNT]    = {0, 0};
     uint32 minesOwned[PVP_TEAM_COUNT]     = {0, 0};
 
-    // graves all controlled
+    // graves all controlled (统计当前完全控制的墓地数)
     for (uint8 i = 0; i < BG_AV_MAX_NODES; ++i)
         if (m_nodes[i].state == POINT_CONTROLLED && m_nodes[i].owner != TEAM_INDEX_NEUTRAL)
             ++gravesOwned[m_nodes[i].owner];
@@ -386,7 +395,7 @@ void BattleGroundAV::EndBattleGround(Team winner)
         uint32 bonusHonor = GetBonusHonorFromKill(m_homeTowersControlled[i] * BG_AV_KILL_SURVIVING_TOWER);
         uint32 bonusReputation = m_homeTowersControlled[i] * m_repSurviveTower;
 
-        // bonus tower reputation and honor
+        // bonus tower reputation and honor (存活己方哨塔额外荣誉与声望)
         if (bonusReputation)
             RewardReputationToTeam(avTeamFactions[i], m_homeTowersControlled[i] * m_repSurviveTower, team);
         if (bonusHonor)
@@ -394,13 +403,13 @@ void BattleGroundAV::EndBattleGround(Team winner)
 
         DEBUG_LOG("BattleGroundAV: Team %u wins the battleground. Controlled towers: %u bonus towers honor: %u bonus towers reputation: %u", i, m_homeTowersControlled[i], bonusHonor, bonusReputation);
 
-        // bonus graveyards and mines reputation
+        // bonus graveyards and mines reputation (占领墓地与矿洞额外声望)
         if (gravesOwned[i])
             RewardReputationToTeam(avTeamFactions[i], gravesOwned[i] * m_repOwnedGrave, team);
         if (minesOwned[i])
             RewardReputationToTeam(avTeamFactions[i], minesOwned[i] * m_repOwnedMine, team);
 
-        // captain survived; bonus reputation and honor
+        // captain survived; bonus reputation and honor (若己方中尉存活则发放额外奖励)
         Creature* captain = GetSingleCreatureFromStorage(avTeamCaptains[i]);
         if (captain && captain->IsAlive())
         {
@@ -409,7 +418,7 @@ void BattleGroundAV::EndBattleGround(Team winner)
         }
     }
 
-    // both teams get honor for completing the BG
+    // both teams get honor for completing the BG (节日周末双方完赛额外荣誉)
     if (m_honorMapComplete)
     {
         RewardHonorToTeam(GetBonusHonorFromKill(m_honorMapComplete), ALLIANCE);
@@ -434,6 +443,7 @@ void BattleGroundAV::EndBattleGround(Team winner)
 
 }
 
+// 处理奥山双方隧道出口离开战场触发器
 bool BattleGroundAV::HandleAreaTrigger(Player* source, uint32 trigger)
 {
     // this is wrong way to implement these things. On official it done by gameobject spell cast.
@@ -461,7 +471,7 @@ bool BattleGroundAV::HandleAreaTrigger(Player* source, uint32 trigger)
 void BattleGroundAV::UpdatePlayerScore(Player* source, uint32 type, uint32 value)
 {
     BattleGroundScoreMap::iterator itr = m_playerScores.find(source->GetObjectGuid());
-    if (itr == m_playerScores.end())                        // player not found...
+    if (itr == m_playerScores.end())                        // player not found... (未找到玩家记分记录)
         return;
 
     switch (type)
@@ -487,7 +497,7 @@ void BattleGroundAV::UpdatePlayerScore(Player* source, uint32 type, uint32 value
     }
 }
 
-// Process the destruction of a battleground node
+// Process the destruction of a battleground node (4 分钟突袭倒计时结束：烧毁敌方哨塔并消弱敌方首领将领，或完成墓地占领切换复活点)
 void BattleGroundAV::ProcessPlayerDestroyedPoint(AVNodeIds node)
 {
     DEBUG_LOG("BattleGroundAV: Node %i was destroyed", node);
@@ -499,7 +509,7 @@ void BattleGroundAV::ProcessPlayerDestroyedPoint(AVNodeIds node)
     bool isTower = !m_nodes[node].graveyardId;
     uint32 newState = ownerTeam == ALLIANCE ? avNodeWorldStates[node].worldStateAlly : avNodeWorldStates[node].worldStateHorde;
 
-    // despawn banner
+    // despawn banner (销毁旧旗帜、刷新对应阵营状态并更新地图图标)
     DestroyNode(node);
     PopulateNode(node);
     UpdateNodeWorldState(node, newState);
@@ -508,7 +518,7 @@ void BattleGroundAV::ProcessPlayerDestroyedPoint(AVNodeIds node)
     {
         uint8 tmp = node - BG_AV_NODES_DUNBALDAR_SOUTH;
 
-        // despawn marshal (one of those guys protecting the boss)
+        // despawn marshal (one of those guys protecting the boss) (哨塔被摧毁时同步移除主将旁对应的将领/督军)
         SpawnEvent(BG_AV_MARSHAL_A_SOUTH + tmp, 0, false);
 
         UpdateScore(GetOtherTeamIndex(ownerTeamIdx), (-1) * BG_AV_RES_TOWER);
@@ -517,7 +527,7 @@ void BattleGroundAV::ProcessPlayerDestroyedPoint(AVNodeIds node)
 
         DoSendYellToTeam(ownerTeamIdx, LANG_BG_AV_TOWER_TAKEN, node);
 
-        // update tower counters
+        // update tower counters (更新双方剩余/已摧毁哨塔计数)
         ++m_enemyTowersDestroyed[ownerTeamIdx];
         --m_homeTowersControlled[otherTeamIdx];
     }
@@ -525,12 +535,13 @@ void BattleGroundAV::ProcessPlayerDestroyedPoint(AVNodeIds node)
     {
         DoSendYellToTeam(ownerTeamIdx, LANG_BG_AV_GRAVE_TAKEN, node);
 
-        // setup graveyard to new team
+        // setup graveyard to new team (墓地易主，更新复活点链接)
         GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(avNodeDefaults[node].graveyardId, BG_AV_ZONE_MAIN, GetTeamIdByTeamIndex(ownerTeamIdx));
     }
 }
 
 // Process mine owner change; mineId = 0 => Irondeep Mine; mineId = 1 => Coldtooth Mine;
+// (切换南北矿洞控制权：刷新矿洞阵营事件与首领，启动 20 分钟回归计时与 45 秒资源补给，并发放任务击杀计数)
 void BattleGroundAV::ChangeMineOwner(AVMineIds mineId, PvpTeamIndex newOwnerTeamIdx)
 {
     // TODO changing the owner should result in setting respawntime to infinite for current creatures (they should fight the new ones), spawning new mine owners creatures and changing the chest - objects so that the current owning team can use them
@@ -539,7 +550,7 @@ void BattleGroundAV::ChangeMineOwner(AVMineIds mineId, PvpTeamIndex newOwnerTeam
 
     DEBUG_LOG("BattleGroundAV: Mine id %i was claimed by team index %u", mineId, newOwnerTeamIdx);
 
-    // update world states
+    // update world states (切换矿洞地图世界状态图标)
     GetBgMap()->GetVariableManager().SetVariable(avMineWorldStates[mineId][m_mineOwner[mineId]], WORLD_STATE_REMOVE);
     m_mineOwner[mineId] = newOwnerTeamIdx;
     GetBgMap()->GetVariableManager().SetVariable(avMineWorldStates[mineId][m_mineOwner[mineId]], WORLD_STATE_ADD);
@@ -558,7 +569,7 @@ void BattleGroundAV::ChangeMineOwner(AVMineIds mineId, PvpTeamIndex newOwnerTeam
 
     Team team = GetTeamIdByTeamIndex(newOwnerTeamIdx);
 
-    // quest kill credit
+    // quest kill credit (向获胜方全团在线玩家发放占领矿洞任务击杀计数)
     for (auto& m_player : m_players)
     {
         if (!m_player.first)
@@ -570,7 +581,7 @@ void BattleGroundAV::ChangeMineOwner(AVMineIds mineId, PvpTeamIndex newOwnerTeam
     }
 }
 
-// Check if player is allowed to proceed with the mine quest
+// Check if player is allowed to proceed with the mine quest (校验矿洞补给箱是否属于玩家所在阵营当前占领的矿洞)
 bool BattleGroundAV::CanPlayerDoMineQuest(uint32 goEntry, Team team)
 {
     if (goEntry == BG_AV_GO_IRONDEEP_SUPPLIES)
@@ -578,11 +589,12 @@ bool BattleGroundAV::CanPlayerDoMineQuest(uint32 goEntry, Team team)
     else if (goEntry == BG_AV_GO_COLDTOOTH_SUPPLIES)
         return (m_mineOwner[BG_AV_COLDTOOTH_MINE_ID] == GetTeamIndexByTeamId(team));
 
-    return true;                                            // cause it's no mine'object it is ok if this is true
+    return true;                                            // cause it's no mine'object it is ok if this is true (非矿洞补给对象默认允许)
 }
 
 /// will spawn and despawn creatures around a node
 /// more a wrapper around spawnevent cause graveyards are special
+/// (根据据点当前归属、争夺状态及护甲碎片升级等级，刷新或移除据点旗帜与墓地守卫 NPC)
 void BattleGroundAV::PopulateNode(AVNodeIds node)
 {
     PvpTeamIndex teamIdx = m_nodes[node].owner;
@@ -600,15 +612,15 @@ void BattleGroundAV::PopulateNode(AVNodeIds node)
         else
             graveDefenderType = 3;
 
-        if (m_nodes[node].state == POINT_CONTROLLED) // we can spawn the current owner event
+        if (m_nodes[node].state == POINT_CONTROLLED) // we can spawn the current owner event (控制状态下刷出对应升级等级的墓地守卫)
             SpawnEvent(static_cast<uint8>(BG_AV_MAX_NODES) + static_cast<uint8>(node), static_cast<uint8>(teamIdx) * static_cast<uint8>(BG_AV_MAX_GRAVETYPES) + graveDefenderType, true);
-        else // we despawn the event from the prevowner
+        else // we despawn the event from the prevowner (争夺状态下移除原占领方的墓地守卫)
             SpawnEvent(static_cast<uint8>(BG_AV_MAX_NODES) + static_cast<uint8>(node), static_cast<uint8>(m_nodes[node].prevOwner) * static_cast<uint8>(BG_AV_MAX_GRAVETYPES) + graveDefenderType, false);
     }
     SpawnEvent(node, (static_cast<uint8>(teamIdx) * static_cast<uint8>(BG_AV_MAX_STATES)) + static_cast<uint8>(m_nodes[node].state), true);
 }
 
-// Handle banner click
+// Handle banner click (玩家点击墓地或哨塔旗帜时，按其当前控制/争夺状态分发突袭或防守流程)
 void BattleGroundAV::HandlePlayerClickedOnFlag(Player* player, GameObject* go)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -617,7 +629,7 @@ void BattleGroundAV::HandlePlayerClickedOnFlag(Player* player, GameObject* go)
     DEBUG_LOG("BattleGroundAV: Player from team %u clicked on gameobject entry %u", player->GetTeam(), go->GetEntry());
 
     uint8 event = (GetBgMap()->GetMapDataContainer().GetGameObjectEventIndex(go->GetDbGuid())).event1;
-    if (event >= BG_AV_MAX_NODES)                           // not a node
+    if (event >= BG_AV_MAX_NODES)                           // not a node (非 15 个核心据点之一)
         return;
     AVNodeIds node = AVNodeIds(event);
 
@@ -634,7 +646,7 @@ void BattleGroundAV::HandlePlayerClickedOnFlag(Player* player, GameObject* go)
     }
 }
 
-// Handle node defend
+// Handle node defend (守方玩家抢回被突袭中的己方墓地或哨塔：立即恢复完全控制与守卫)
 void BattleGroundAV::ProcessPlayerDefendsPoint(Player* player, AVNodeIds node)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -645,7 +657,7 @@ void BattleGroundAV::ProcessPlayerDefendsPoint(Player* player, AVNodeIds node)
     if (m_nodes[node].owner == teamIdx || m_nodes[node].state != POINT_ASSAULTED)
         return;
 
-    // ToDo: improve this part; The middle graveyard should be handled directly as an assault
+    // ToDo: improve this part; The middle graveyard should be handled directly as an assault (若为最初中立的落雪墓地被争夺，则按突袭接管流程处理)
     if (m_nodes[node].totalOwner == TEAM_INDEX_NEUTRAL && node == BG_AV_NODES_SNOWFALL_GRAVE)     // initial snowfall capture
     {
         ProcessPlayerAssaultsPoint(player, node);
@@ -670,20 +682,20 @@ void BattleGroundAV::ProcessPlayerDefendsPoint(Player* player, AVNodeIds node)
 
     // process world state
 
-    // send yell and sound
+    // send yell and sound (传令官喊话与音效)
     DoSendYellToTeam(teamIdx, yellId, node);
     PlaySoundToAll(soundId);
 
-    // update score
+    // update score (个人守卫墓地/哨塔计数 +1)
     UpdatePlayerScore(player, scoreType, 1);
 
-    // process node events
+    // process node events (恢复控制状态、刷回守卫及地图图标)
     DefendNode(node, teamIdx);                              // set the right variables for nodeinfo
     PopulateNode(node);                                     // spawn node-creatures (defender for example)
     UpdateNodeWorldState(node, newState);                   // send new mapicon to the player
 }
 
-// Handle node assault
+// Handle node assault (攻方玩家突袭敌方或中立墓地/哨塔：使原墓地失效并转移灵魂、启动 4 分钟争夺计时)
 void BattleGroundAV::ProcessPlayerAssaultsPoint(Player* player, AVNodeIds node)
 {
     DEBUG_LOG("BattleGroundAV: Team %u assaults node id %i", player->GetTeam(), node);
@@ -700,37 +712,37 @@ void BattleGroundAV::ProcessPlayerAssaultsPoint(Player* player, AVNodeIds node)
     uint32 kreditMarker = isTower ? BG_AV_NPC_PVP_TOWER_CREDIT : BG_AV_NPC_PVP_GRAVEYARD_CREDIT;
     int32 yellId        = isTower ? LANG_BG_AV_TOWER_ASSAULTED : LANG_BG_AV_GRAVE_ASSAULTED;
 
-    // process new world state
+    // process new world state (若突袭墓地，通知其灵魂向导转移待复活玩家并立即失效墓地链接)
     if (!isTower)
     {
         // before despawn of GY spirit healer - need to TP players - must be after AssaultNode; opposite team of current player
         if (Creature* spiritHealer = GetClosestCreatureWithEntry(player, teamIdx == TEAM_INDEX_ALLIANCE ? BG_NPC_SPIRIT_GUIDE_HORDE : BG_NPC_SPIRIT_GUIDE_ALLIANCE, 100.f))
             spiritHealer->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, spiritHealer, spiritHealer);
 
-        // make graveyard invalid
+        // make graveyard invalid (争夺期间墓地不可用于复活)
         GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(avNodeDefaults[node].graveyardId, BG_AV_ZONE_MAIN, TEAM_INVALID);
     }
 
-    // send yell and sound
+    // send yell and sound (传令官播报与突袭音效)
     DoSendYellToTeam(teamIdx, yellId, node);
     PlaySoundToAll((teamIdx == TEAM_INDEX_ALLIANCE) ? BG_AV_SOUND_ALLIANCE_ASSAULTS : BG_AV_SOUND_HORDE_ASSAULTS);
 
-    // update score
+    // update score (个人突袭计数 +1 并奖励任务事件击杀计数)
     UpdatePlayerScore(player, scoreType, 1);
 
     // send reward
     player->RewardPlayerAndGroupAtEventCredit(kreditMarker, player);
 
-    // process node events
+    // process node events (更新据点争夺状态、地图灰旗图标并刷新争夺旗帜)
     AssaultNode(node, teamIdx);                             // update nodeinfo variables
     UpdateNodeWorldState(node, newState);                   // send mapicon
     PopulateNode(node);
 }
 
-// Update node world state
+// Update node world state (移除旧世界状态图标并添加新图标，特别处理落雪墓地中立初始图标)
 void BattleGroundAV::UpdateNodeWorldState(AVNodeIds node, uint32 newState)
 {
-    if (m_nodes[node].prevOwner == TEAM_INDEX_NEUTRAL)      // currently only snowfall is supported as neutral node
+    if (m_nodes[node].prevOwner == TEAM_INDEX_NEUTRAL)      // currently only snowfall is supported as neutral node (当前仅落雪墓地具有中立初始状态)
         GetBgMap()->GetVariableManager().SetVariable(BG_AV_STATE_GY_SNOWFALL_N, WORLD_STATE_REMOVE);
     else
         GetBgMap()->GetVariableManager().SetVariable(m_nodes[node].worldState, WORLD_STATE_REMOVE);
@@ -764,6 +776,7 @@ int32 BattleGroundAV::GetNodeMessageId(AVNodeIds node) const
     return 0;
 }
 
+// 将据点设置为突袭争夺状态并启动占领计时
 void BattleGroundAV::AssaultNode(AVNodeIds node, PvpTeamIndex teamIdx)
 {
     MANGOS_ASSERT(m_nodes[node].totalOwner != teamIdx);
@@ -771,7 +784,7 @@ void BattleGroundAV::AssaultNode(AVNodeIds node, PvpTeamIndex teamIdx)
     // only assault an assaulted node if no totalowner exists:
     MANGOS_ASSERT(m_nodes[node].state != POINT_ASSAULTED || m_nodes[node].totalOwner == TEAM_INDEX_NEUTRAL);
 
-    // the timer gets another time, if the previous owner was 0 == Neutral
+    // the timer gets another time, if the previous owner was 0 == Neutral (首次争夺中立落雪墓地使用 5 分钟计时，其余使用 4 分钟)
     m_nodes[node].timer      = (m_nodes[node].prevOwner != TEAM_INDEX_NEUTRAL) ? BG_AV_CAPTIME : BG_AV_SNOWFALL_FIRSTCAP;
     m_nodes[node].prevOwner  = m_nodes[node].owner;
     m_nodes[node].owner      = teamIdx;
@@ -779,6 +792,7 @@ void BattleGroundAV::AssaultNode(AVNodeIds node, PvpTeamIndex teamIdx)
     m_nodes[node].state      = POINT_ASSAULTED;
 }
 
+// 完成据点占领或摧毁，更新永久归属阵营并清零计时器
 void BattleGroundAV::DestroyNode(AVNodeIds node)
 {
     MANGOS_ASSERT(m_nodes[node].state == POINT_ASSAULTED);
@@ -790,7 +804,7 @@ void BattleGroundAV::DestroyNode(AVNodeIds node)
     m_nodes[node].timer      = 0;
 }
 
-// Initialize each battleground node
+// Initialize each battleground node (按默认配置初始化单个奥山据点的归属、事件与墓地链接)
 void BattleGroundAV::InitializeNode(AVNodeIds node)
 {
     m_nodes[node].totalOwner = avNodeDefaults[node].initialOwner;
@@ -805,11 +819,11 @@ void BattleGroundAV::InitializeNode(AVNodeIds node)
     GetBgMap()->GetVariableManager().SetVariable(m_nodes[node].worldState, WORLD_STATE_ADD);
     m_activeEvents[node] = avNodeDefaults[node].initialOwner * BG_AV_MAX_STATES + m_nodes[node].state;
 
-    if (avNodeDefaults[node].graveyardId)                                      // grave-creatures are special cause of a quest
+    if (avNodeDefaults[node].graveyardId)                                      // grave-creatures are special cause of a quest (墓地守卫受护甲碎片任务等级影响，使用独立事件槽位)
     {
         m_activeEvents[node + BG_AV_MAX_NODES] = static_cast<uint8>(avNodeDefaults[node].initialOwner) * static_cast<uint8>(BG_AV_MAX_GRAVETYPES);
 
-        // initialize graveyards
+        // initialize graveyards (初始化墓地归属)
         Team team = TEAM_INVALID;
         if (avNodeDefaults[node].initialOwner != TEAM_INDEX_NEUTRAL)
             team = GetTeamIdByTeamIndex(avNodeDefaults[node].initialOwner);
@@ -819,6 +833,7 @@ void BattleGroundAV::InitializeNode(AVNodeIds node)
     }
 }
 
+// 成功守住据点并恢复原完全控制状态
 void BattleGroundAV::DefendNode(AVNodeIds node, PvpTeamIndex teamIdx)
 {
     MANGOS_ASSERT(m_nodes[node].totalOwner == teamIdx);
@@ -832,10 +847,11 @@ void BattleGroundAV::DefendNode(AVNodeIds node, PvpTeamIndex teamIdx)
     m_nodes[node].timer      = 0;
 }
 
+// 重置奥特兰克山谷：设置声望/荣誉倍率、注册全部世界状态、初始化 600 兵力、双矿洞及 15 个据点
 void BattleGroundAV::Reset()
 {
     BattleGround::Reset();
-    // set the reputation and honor variables:
+    // set the reputation and honor variables: (根据是否为奥山节日周末确定荣誉与声望倍率)
     bool isBgWeekend = BattleGroundMgr::IsBgWeekend(GetTypeId());
 
     m_honorMapComplete    = (isBgWeekend) ? BG_AV_KILL_MAP_COMPLETE_HOLIDAY : BG_AV_KILL_MAP_COMPLETE;
@@ -847,7 +863,7 @@ void BattleGroundAV::Reset()
     m_repSurviveTower     = (isBgWeekend) ? BG_AV_REP_SURVIVING_TOWER_HOLIDAY : BG_AV_REP_SURVIVING_TOWER;
     m_repOwnedMine        = (isBgWeekend) ? BG_AV_REP_OWNED_MINE_HOLIDAY    : BG_AV_REP_OWNED_MINE;
 
-    // vanilla
+    // vanilla (注册矿洞与据点世界状态变量)
     for (uint32 i = 0; i < BG_AV_MAX_MINES; ++i)
         for (uint32 k = 0; k < BG_AV_TEAMS_COUNT; ++k)
             GetBgMap()->GetVariableManager().SetVariableData(avMineWorldStates[i][k], true, 0, 0);
@@ -860,7 +876,7 @@ void BattleGroundAV::Reset()
         GetBgMap()->GetVariableManager().SetVariableData(data.worldStateHordeGrey, true, 0, 0);
     }
 
-    // tbc
+    // tbc (TBC 引入的双方 600 援军点数世界状态)
     GetBgMap()->GetVariableManager().SetVariableData(BG_AV_STATE_SCORE_A, true, 0, 0);
     GetBgMap()->GetVariableManager().SetVariableData(BG_AV_STATE_SCORE_H, true, 0, 0);
     GetBgMap()->GetVariableManager().SetVariableData(BG_AV_STATE_SCORE_SHOW_H, true, 0, 0);
@@ -869,10 +885,10 @@ void BattleGroundAV::Reset()
     GetBgMap()->GetVariableManager().SetVariable(BG_AV_STATE_SCORE_A, BG_AV_SCORE_INITIAL_POINTS);
     GetBgMap()->GetVariableManager().SetVariable(BG_AV_STATE_SCORE_H, BG_AV_SCORE_INITIAL_POINTS);
 
-    // initialize team variables
+    // initialize team variables (初始化双方任务计数、哨塔数与中尉死亡状态)
     for (uint8 i = 0; i < PVP_TEAM_COUNT; ++i)
     {
-        for (uint8 j = 0; j < 9; ++j)                       // 9 quests getting tracked
+        for (uint8 j = 0; j < 9; ++j)                       // 9 quests getting tracked (追踪 9 类可重复战场任务进度)
             m_teamQuestStatus[i][j] = 0;
 
         m_wasInformedNearLose[i] = false;
@@ -882,7 +898,7 @@ void BattleGroundAV::Reset()
         m_activeEvents[BG_AV_NODE_CAPTAIN_DEAD_A + i] = BG_EVENT_NONE;
     }
 
-    // initialize mine variables and active events
+    // initialize mine variables and active events (初始化南北矿洞为中立状态)
     for (uint8 i = 0; i < BG_AV_MAX_MINES; ++i)
     {
         m_mineOwner[i] = TEAM_INDEX_NEUTRAL;
@@ -899,29 +915,29 @@ void BattleGroundAV::Reset()
     m_activeEvents[BG_AV_BOSS_A] = 0;
     m_activeEvents[BG_AV_BOSS_H] = 0;
 
-    for (uint8 i = BG_AV_NODES_DUNBALDAR_SOUTH; i < BG_AV_MAX_NODES; ++i)  // towers
+    for (uint8 i = BG_AV_NODES_DUNBALDAR_SOUTH; i < BG_AV_MAX_NODES; ++i)  // towers (初始化八座碉堡/哨塔对应的将领与督军事件)
         m_activeEvents[BG_AV_MARSHAL_A_SOUTH + i - BG_AV_NODES_DUNBALDAR_SOUTH] = 0;
 
-    // initialize all nodes
+    // initialize all nodes (初始化全部 15 个据点)
     for (uint8 i = 0; i < BG_AV_MAX_NODES; ++i)
         InitializeNode(AVNodeIds(i));
 
-    // setup graveyards
+    // setup graveyards (初始化双方洞口主基地复活点)
     GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(BG_AV_GRAVE_MAIN_ALLIANCE, BG_AV_ZONE_MAIN, ALLIANCE);
     GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(BG_AV_GRAVE_MAIN_HORDE, BG_AV_ZONE_MAIN, HORDE);
 
     m_mineYellTimer = BG_AV_MINE_YELL;
 }
 
-// Handle battleground yells
+// Handle battleground yells (通过对应阵营的传令官 NPC 向全场发送喊话)
 void BattleGroundAV::DoSendYellToTeam(PvpTeamIndex teamIdx, int32 textId, uint8 nodeId, bool useNode /*= true*/, int32 mineLangId /*= 0*/)
 {
-    // Get the specific herald for each team
+    // Get the specific herald for each team (查找对应阵营传令官)
     Creature* pHerald = GetSingleCreatureFromStorage(teamIdx == TEAM_INDEX_ALLIANCE ? BG_AV_NPC_STORMPIKE_HERALD : BG_AV_NPC_FROSTWOLF_HERALD);
     if (!pHerald)
         return;
 
-    // different types of yells, depending on parameters
+    // different types of yells, depending on parameters (根据是否带据点或矿洞参数选择喊话格式)
     if (useNode)
     {
         if (mineLangId)
@@ -933,6 +949,7 @@ void BattleGroundAV::DoSendYellToTeam(PvpTeamIndex teamIdx, int32 textId, uint8 
         SendYellToAll(textId, LANG_UNIVERSAL, pHerald);
 }
 
+// 人数不足提前结束时按剩余援军兵力判定胜者，相等则回退基类按人数判定
 Team BattleGroundAV::GetPrematureWinner()
 {
     int32 hordeScore = GetBgMap()->GetVariableManager().GetVariable(BG_AV_STATE_SCORE_H);
@@ -943,13 +960,13 @@ Team BattleGroundAV::GetPrematureWinner()
     if (allianceScore > hordeScore)
         return ALLIANCE;
 
-    // If the values are equal, fall back to number of players on each team
+    // If the values are equal, fall back to number of players on each team (援军相同时按双方在场人数判定)
     return BattleGround::GetPrematureWinner();
 }
 
 bool BattleGroundAV::IsConditionFulfilled(Player const* /*source*/, uint32 /*conditionId*/, WorldObject const* /*conditionSource*/, uint32 /*conditionSourceType*/)
 {
-    // ToDo: check condition for mine loot; check conditions for quest end script
+    // ToDo: check condition for mine loot; check conditions for quest end script (待实现：矿洞拾取及任务完成脚本条件校验)
 
     return false;
 }

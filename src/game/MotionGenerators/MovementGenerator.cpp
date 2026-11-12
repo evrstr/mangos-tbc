@@ -23,9 +23,11 @@ MovementGenerator::~MovementGenerator()
 {
 }
 
+/// 判断当前移动生成器是否仍处于单位 MotionMaster 栈顶
 bool MovementGenerator::IsActive(Unit& u)
 {
     // When movement generator list modified from Update movegen object erase delayed,
     // so pointer still valid and be used for check
+    // Update 期间修改运动栈会延迟释放对象，因此指针仍有效可用于栈顶比对
     return !u.GetMotionMaster()->empty() && u.GetMotionMaster()->top() == this;
 }

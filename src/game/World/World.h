@@ -51,7 +51,7 @@ class Player;
 class QueryResult;
 class WorldSocket;
 
-// ServerMessages.dbc
+// ServerMessages.dbc | 服务器系统通知消息类型（对应 ServerMessages.dbc）
 enum ServerMessageType
 {
     SERVER_MSG_SHUTDOWN_TIME          = 1,
@@ -61,12 +61,14 @@ enum ServerMessageType
     SERVER_MSG_RESTART_CANCELLED      = 5,
 };
 
+/// 停机/重启选项标志位
 enum ShutdownMask
 {
     SHUTDOWN_MASK_RESTART = 1,
     SHUTDOWN_MASK_IDLE    = 2,
 };
 
+/// 进程退出返回码
 enum ShutdownExitCode
 {
     SHUTDOWN_EXIT_CODE = 0,
@@ -74,7 +76,7 @@ enum ShutdownExitCode
     RESTART_EXIT_CODE  = 2,
 };
 
-/// Timers for different object refresh rates
+/// Timers for different object refresh rates | 世界主循环中各周期性子系统的独立更新计时器索引
 enum WorldTimers
 {
     WUPDATE_AUCTIONS    = 0,
@@ -84,12 +86,12 @@ enum WorldTimers
     WUPDATE_DELETECHARS = 4,
     WUPDATE_AHBOT       = 5,
     WUPDATE_GROUPS      = 6,
-    WUPDATE_WARDEN      = 7, // This is here for headache merge error issues
-    WUPDATE_METRICS     = 8, // not used if BUILD_METRICS is not set
+    WUPDATE_WARDEN      = 7, // This is here for headache merge error issues | 保留占位以减少分支合并冲突
+    WUPDATE_METRICS     = 8, // not used if BUILD_METRICS is not set | 仅在启用 BUILD_METRICS 时使用
     WUPDATE_COUNT       = 9
 };
 
-/// Configuration elements
+/// Configuration elements | 无符号 32 位整型服务器配置项键枚举
 enum eConfigUInt32Values
 {
     CONFIG_UINT32_COMPRESSION = 0,
@@ -213,7 +215,7 @@ enum eConfigUInt32Values
     CONFIG_UINT32_VALUE_COUNT
 };
 
-/// Configuration elements
+/// Configuration elements | 有符号 32 位整型服务器配置项键枚举
 enum eConfigInt32Values
 {
     CONFIG_INT32_DEATH_SICKNESS_LEVEL = 0,
@@ -224,7 +226,7 @@ enum eConfigInt32Values
     CONFIG_INT32_VALUE_COUNT
 };
 
-/// Server config
+/// Server config | 浮点型服务器倍率与距离配置项键枚举
 enum eConfigFloatValues
 {
     CONFIG_FLOAT_RATE_HEALTH = 0,
@@ -315,7 +317,7 @@ enum eConfigFloatValues
     CONFIG_FLOAT_VALUE_COUNT
 };
 
-/// Configuration elements
+/// Configuration elements | 布尔型服务器功能开关配置项键枚举
 enum eConfigBoolValues
 {
     CONFIG_BOOL_GRID_UNLOAD = 0,
@@ -396,7 +398,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_VALUE_COUNT
 };
 
-/// Can be used in SMSG_AUTH_RESPONSE packet
+/// Can be used in SMSG_AUTH_RESPONSE packet | 计费方案标志位（用于 SMSG_AUTH_RESPONSE）
 enum BillingPlanFlags
 {
     SESSION_NONE            = 0x00,
@@ -411,6 +413,7 @@ enum BillingPlanFlags
 };
 
 /// Type of server, this is values from second column of Cfg_Configs.dbc (1.12.1 have another numeration)
+/// 服务器游戏规则类型（对应 Cfg_Configs.dbc 第 2 列）
 enum RealmType
 {
     REALM_TYPE_NORMAL   = 0,
@@ -422,17 +425,17 @@ enum RealmType
                           // replaced by REALM_PVP in realm list
 };
 
-/// Storage class for commands issued for delayed execution
+/// Storage class for commands issued for delayed execution | 控制台/RA/SOAP 异步命令行任务封装，投递到世界主线程安全执行
 struct CliCommandHolder
 {
     typedef std::function<void(const char*)> Print;
     typedef std::function<void(bool)> CommandFinished;
 
-    uint32 m_cliAccountId;                                  // 0 for console and real account id for RA/soap
-    AccountTypes m_cliAccessLevel;
-    std::vector<char> m_command;
-    Print m_print;
-    CommandFinished m_commandFinished;
+    uint32 m_cliAccountId;                                  // 0 for console and real account id for RA/soap | 0 表示本地控制台，非 0 表示 RA/SOAP 登录账号 ID
+    AccountTypes m_cliAccessLevel;                          ///< 执行权限等级
+    std::vector<char> m_command;                            ///< 命令行文本缓冲
+    Print m_print;                                          ///< 输出回调函数
+    CommandFinished m_commandFinished;                      ///< 命令完成通知回调
 
     CliCommandHolder(uint32 accountId, AccountTypes cliAccessLevel, const char* command, Print print, CommandFinished commandFinished)
         : m_cliAccountId(accountId), m_cliAccessLevel(cliAccessLevel), m_command(strlen(command) + 1), m_print(std::move(print)), m_commandFinished(std::move(commandFinished))
@@ -441,7 +444,7 @@ struct CliCommandHolder
     }
 };
 
-/// The World
+/// The World | 游戏世界全局管理器（单例 sWorld）：负责启动加载、配置管理、玩家会话维护、全局定时更新及跨线程消息调度
 class World
 {
     public:
@@ -450,85 +453,93 @@ class World
         World();
         ~World();
 
+        /// 停服前清理：踢出所有会话、卸载全部地图、结束队列工作线程
         void CleanupsBeforeStop();
 
         WorldSession* FindSession(uint32 id) const;
         void AddSession(WorldSession* s);
         bool RemoveSession(uint32 id);
-        /// Get the number of current active sessions
+        /// Get the number of current active sessions | 刷新历史最高活跃会话数与排队会话数统计
         void UpdateMaxSessionCounters();
         uint32 GetActiveAndQueuedSessionCount() const { return m_sessions.size(); }
         uint32 GetActiveSessionCount() const { return m_sessions.size() - m_QueuedSessions.size(); }
         uint32 GetQueuedSessionCount() const { return m_QueuedSessions.size(); }
-        /// Get the maximum number of parallel sessions on the server since last reboot
+        /// Get the maximum number of parallel sessions on the server since last reboot | 获取自本次启动以来的最高并发排队/在线人数
         uint32 GetMaxQueuedSessionCount() const { return m_maxQueuedSessionCount; }
         uint32 GetMaxActiveSessionCount() const { return m_maxActiveSessionCount; }
         uint32 GetUniqueSessionCount() const { return m_uniqueSessionCount.size(); }
-        // player counts
+        // player counts | 线程安全更新与查询各阵营/种族/职业在线玩家统计
         void SetOnlinePlayer(Team team, uint8 race, uint8 plClass, bool apply); // threadsafe
         uint32 GetOnlineTeamPlayers(bool alliance) const { return m_onlineTeams[alliance]; }
         uint32 GetOnlineRacePlayers(uint8 race) const { return m_onlineRaces[race]; }
         uint32 GetOnlineClassPlayers(uint8 plClass) const { return m_onlineClasses[plClass]; }
 
-        /// Get the active session server limit (or security level limitations)
+        /// Get the active session server limit (or security level limitations) | 获取当前最大在线人数限制
         uint32 GetPlayerAmountLimit() const { return m_playerLimit >= 0 ? m_playerLimit : 0; }
+        /// 获取当前最低允许登录账号安全等级（当 m_playerLimit <= 0 时生效）
         AccountTypes GetPlayerSecurityLimit() const { return m_playerLimit <= 0 ? AccountTypes(-m_playerLimit) : SEC_PLAYER; }
 
-        /// Set the active session server limit (or security level limitation)
+        /// Set the active session server limit (or security level limitation) | 设置服务器玩家上限或权限准入阈值
         void SetPlayerLimit(int32 limit, bool needUpdate = false);
 
-        // player Queue
+        // player Queue | 登录排队队列管理
         typedef std::list<WorldSession*> Queue;
         void AddQueuedSession(WorldSession*);
         bool RemoveQueuedSession(WorldSession* sess);
         int32 GetQueuedSessionPos(WorldSession const* sess) const;
 
         /// \todo Actions on m_allowMovement still to be implemented
-        /// Is movement allowed?
+        /// Is movement allowed? | 是否允许全局对象移动
         bool getAllowMovement() const { return m_allowMovement; }
-        /// Allow/Disallow object movements
+        /// Allow/Disallow object movements | 设置全局允许/禁止移动开关
         void SetAllowMovement(bool allow) { m_allowMovement = allow; }
 
-        /// Set a new Message of the Day
+        /// Set a new Message of the Day | 设置服务器每日公告（MOTD）
         void SetMotd(const std::string& motd) { m_motd = motd; }
-        /// Get the current Message of the Day
+        /// Get the current Message of the Day | 获取当前服务器每日公告（MOTD）
         const char* GetMotd() const { return m_motd.c_str(); }
 
         LocaleConstant GetDefaultDbcLocale() const { return m_defaultDbcLocale; }
 
-        /// Get the path where data (dbc, maps) are stored on disk
+        /// Get the path where data (dbc, maps) are stored on disk | 获取服务器数据目录（dbc/maps 等路径）
         std::string GetDataPath() const { return m_dataPath; }
 
-        /// When server started?
+        /// When server started? | 获取服务器启动时间戳
         time_t const& GetStartTime() const { return m_startTime; }
-        /// What time is it?
+        /// What time is it? | 获取当前游戏世界时间戳
         time_t const& GetGameTime() const { return m_gameTime; }
-        /// Uptime (in secs)
+        /// Uptime (in secs) | 获取服务器已运行时长（秒）
         uint32 GetUptime() const { return uint32(m_gameTime - m_startTime); }
-        /// Next daily quests reset time
+        /// Next daily quests reset time | 获取下一次日常任务重置时间
         time_t GetNextDailyQuestsResetTime() const { return m_NextDailyQuestReset; }
 
-        /// Get the maximum skill level a player can reach
+        /// Get the maximum skill level a player can reach | 计算当前等级上限对应的最大专业技能熟练度
         uint16 GetConfigMaxSkillValue() const
         {
             uint32 lvl = getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
             return lvl > 60 ? 300 + ((lvl - 60) * 75) / 10 : lvl * 5;
         }
 
+        /// 启动阶段加载配置、DBC、地图、游戏数据及初始化所有全局管理器
         void SetInitialWorldSettings();
+        /// 从 mangosd.conf 加载或重载服务器各项配置参数
         void LoadConfigSettings(bool reload = false);
+        /// 加载反垃圾信息关键词过滤列表
         void LoadSpamRecords(bool reload = false);
 
+        /// 全服广播本地化系统文本消息
         void SendWorldText(int32 string_id, ...);
         void SendWorldTextToAboveSecurity(uint32 securityLevel, int32 string_id, ...);
         void SendWorldTextToAcceptingTickets(int32 string_id, ...);
+        /// 向全服所有在线玩家广播数据包
         void SendGlobalMessage(WorldPacket const& packet) const;
+        /// 发送服务器停服/重启/自定义系统公告消息
         void SendServerMessage(ServerMessageType type, const char* text = "", Player* player = nullptr) const;
         void SendZoneUnderAttackMessage(uint32 zoneId, Team team);
         void SendDefenseMessage(uint32 zoneId, int32 textId);
         void SendDefenseMessageBroadcastText(uint32 zoneId, uint32 textId);
 
-        /// Are we in the middle of a shutdown?
+        /// Are we in the middle of a shutdown? | 判断服务器是否正处于倒计时停服/重启流程中
         bool IsShutdowning() const { return m_ShutdownTimer > 0; }
         void ShutdownServ(uint32 time, uint32 options, uint8 exitcode);
         void ShutdownCancel();
@@ -537,8 +548,10 @@ class World
         static void StopNow(uint8 exitcode) { m_stopEvent = true; m_ExitCode = exitcode; }
         static bool IsStopped() { return m_stopEvent; }
 
+        /// 世界主循环单帧更新入口：驱动时间、会话、地图、事件、数据库异步回调及停机倒计时
         void Update(uint32 diff);
 
+        /// 处理新增/待更新玩家会话及 CLI 队列命令
         void UpdateSessions(uint32 diff);
 
         /// Get a server configuration element (see #eConfigFloatValues)
@@ -772,7 +785,7 @@ class World
 
         GraveyardManager m_graveyardManager;
 
-        // Housing this here but logically it is completely asynchronous
+        // Housing this here but logically it is completely asynchronous | 异步队列及其工作线程（LFG 匹配队列与战场匹配队列）
         LFGQueue m_lfgQueue;
         std::thread m_lfgQueueThread;
         BattleGroundQueue m_bgQueue;

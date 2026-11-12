@@ -114,7 +114,7 @@ uint32 World::m_maxDiff = 0;
 std::list<uint32> World::m_histDiff;
 #endif
 
-/// World constructor
+/// World constructor | World 构造函数：初始化默认定时器、配置数组及游戏时间
 World::World() : mail_timer(0), mail_timer_expires(0), m_NextDailyQuestReset(0), m_NextWeeklyQuestReset(0), m_NextMonthlyQuestReset(0), m_opcodeCounters(NUM_MSG_TYPES)
 {
     m_playerLimit = 0;
@@ -142,12 +142,13 @@ World::World() : mail_timer(0), mail_timer_expires(0), m_NextDailyQuestReset(0),
         m_configBoolValue = false;
 }
 
-/// World destructor
+/// World destructor | World 析构函数：释放残留会话与命令队列，清理 VMap/MMap 工厂并汇合异步队列线程
 World::~World()
 {
     // it is assumed that no other thread is accessing this data when the destructor is called.  therefore, no locks are necessary
+    // 析构时假定无其他线程正在访问世界对象，无需加锁
 
-    ///- Empty the kicked session set
+    ///- Empty the kicked session set | 清理所有会话与排队对象
     for (auto const session : m_sessions)
         delete session.second;
 
@@ -166,29 +167,29 @@ World::~World()
         m_bgQueueThread.join();
 }
 
-/// Cleanups before world stop
+/// Cleanups before world stop | 停服前清理：登出机器人与全部玩家、释放战场模板并卸载全部地图网格
 void World::CleanupsBeforeStop()
 {
 #ifdef ENABLE_PLAYERBOTS
     sRandomPlayerbotMgr.LogoutAllBots();
 #endif
-    KickAll(true);                                   // save and kick all players
-    UpdateSessions(1);                               // real players unload required UpdateSessions call
-    sBattleGroundMgr.DeleteAllBattleGrounds();       // unload battleground templates before different singletons destroyed
-    sMapMgr.UnloadAll();                             // unload all grids (including locked in memory)
+    KickAll(true);                                   // save and kick all players | 保存并踢出所有在线玩家
+    UpdateSessions(1);                               // real players unload required UpdateSessions call | 需调用一次 UpdateSessions 完成真实玩家卸载清理
+    sBattleGroundMgr.DeleteAllBattleGrounds();       // unload battleground templates before different singletons destroyed | 在各单例销毁前先释放战场模板
+    sMapMgr.UnloadAll();                             // unload all grids (including locked in memory) | 卸载全部地图与网格（含常驻内存网格）
 }
 
-/// Find a session by its id
+/// Find a session by its id | 按账号 ID 查找当前活跃会话
 WorldSession* World::FindSession(uint32 id) const
 {
     SessionMap::const_iterator itr = m_sessions.find(id);
 
     if (itr != m_sessions.end())
-        return itr->second;                                 // also can return nullptr for kicked session
+        return itr->second;                                 // also can return nullptr for kicked session | 若会话已被标记踢出可能返回空或待清理对象
     return nullptr;
 }
 
-/// Remove a given session
+/// Remove a given session | 触发踢出指定账号的会话（延迟至下轮 UpdateSessions 销毁以防迭代器失效）
 bool World::RemoveSession(uint32 id)
 {
     ///- Find the session, kick the user, but we can't delete session at this moment to prevent iterator invalidation
@@ -204,6 +205,7 @@ bool World::RemoveSession(uint32 id)
     return true;
 }
 
+/// 线程安全地将新认证会话加入待接入队列（供网络线程调用）
 void World::AddSession(WorldSession* s)
 {
     std::lock_guard<std::mutex> guard(m_sessionAddQueueLock);
@@ -226,6 +228,7 @@ World::AddSession_(WorldSession* s)
 
     ///- kick already loaded player with same account (if any) and remove session
     ///- if player is in loading and want to load again, return
+    // 若同账号已有会话正在加载角色则拒绝覆盖；否则踢出旧会话并在达到人数上限时加入登录队列
     if (!RemoveSession(s->GetAccountId()))
     {
         s->KickPlayer();
@@ -358,7 +361,7 @@ bool World::RemoveQueuedSession(WorldSession* sess)
     return found;
 }
 
-/// Initialize config values
+/// Initialize config values | 从配置文件读取或重载服务器运行参数、倍率、可视距离及路径查找设置
 void World::LoadConfigSettings(bool reload)
 {
     if (reload)
@@ -881,7 +884,7 @@ void World::LoadConfigSettings(bool reload)
     sLog.outString();
 }
 
-/// Initialize the World
+/// Initialize the World | 世界初始化总入口：校验地图/VMap、加载 DBC、SQL 静态表、脚本系统、计时器与各管理器
 void World::SetInitialWorldSettings()
 {
     ///- Initialize the random number generator
@@ -1555,7 +1558,7 @@ void World::DetectDBCLang()
     sLog.outString();
 }
 
-/// Update the World !
+/// Update the World ! | 世界主循环单帧更新：推进全局计时器、事件、任务重置、会话、地图、战场、异步 SQL 回调与 CLI 命令
 void World::Update(uint32 diff)
 {
     m_currentMSTime = WorldTimer::getMSTime();
@@ -1706,10 +1709,10 @@ void World::Update(uint32 diff)
         Player::DeleteOldCharacters();
     }
 
-    // execute callbacks from sql queries that were queued recently
+    // execute callbacks from sql queries that were queued recently | 执行已完成的异步数据库查询回调
     UpdateResultQueue();
 
-    ///- Erase corpses once every 20 minutes
+    ///- Erase corpses once every 20 minutes | 每 20 分钟清理过期玩家尸体
     if (m_timers[WUPDATE_CORPSES].Passed())
     {
         m_timers[WUPDATE_CORPSES].Reset();
@@ -1717,7 +1720,7 @@ void World::Update(uint32 diff)
         sObjectAccessor.RemoveOldCorpses();
     }
 
-    ///- Process Game events when necessary
+    ///- Process Game events when necessary | 到期时推进游戏世界节日/周期事件状态机
     if (m_timers[WUPDATE_EVENTS].Passed())
     {
         m_timers[WUPDATE_EVENTS].Reset();                   // to give time for Update() to be processed
@@ -1736,15 +1739,16 @@ void World::Update(uint32 diff)
 
     /// </ul>
     ///- Move all creatures with "delayed move" and remove and delete all objects with "delayed remove"
+    // 统一处理本帧标记延迟移动或延迟销毁的地图对象
     sMapMgr.RemoveAllObjectsInRemoveList();
 
-    // update the instance reset times
+    // update the instance reset times | 刷新副本重置时间表
     sMapPersistentStateMgr.Update();
 
-    // And last, but not least handle the issued cli commands
+    // And last, but not least handle the issued cli commands | 处理控制台/RA/SOAP 队列命令
     ProcessCliCommands();
 
-    // cleanup unused GridMap objects as well as VMaps
+    // cleanup unused GridMap objects as well as VMaps | 释放不再使用的地形高度图与 VMap 数据
     sTerrainMgr.Update(diff);
 #ifdef BUILD_METRICS
     auto updateEndTime = std::chrono::time_point_cast<std::chrono::milliseconds>(Clock::now());
@@ -1810,7 +1814,7 @@ namespace MaNGOS
     };
 }                                                           // namespace MaNGOS
 
-/// Sends a system message to all players
+/// Sends a system message to all players | 向所有在线玩家发送本地化系统文本公告
 void World::SendWorldText(int32 string_id, ...)
 {
     va_list ap;
@@ -2097,7 +2101,7 @@ bool World::RemoveBanAccount(BanMode mode, const std::string& source, const std:
     return true;
 }
 
-/// Update the game time
+/// Update the game time | 更新服务器游戏时间戳并驱动关服/重启倒计时
 void World::_UpdateGameTime()
 {
     ///- update the time
@@ -2194,6 +2198,7 @@ void World::ShutdownCancel()
     DEBUG_LOG("Server %s cancelled.", (m_ShutdownMask & SHUTDOWN_MASK_RESTART ? "restart" : "shutdown"));
 }
 
+/// 处理新增会话入表并更新所有活跃会话，返回 false 者出列销毁
 void World::UpdateSessions(uint32 diff)
 {
     ///- Add new sessions
@@ -2812,7 +2817,7 @@ uint32 World::GetAverageLatency() const
 }
 #endif
 
-// Load or reload the graveyard links from the data
+// Load or reload the graveyard links from the data | 从数据库 game_graveyard_zone 加载或重载墓地与区域/地图绑定关系
 void World::LoadGraveyardZones()
 {
     // Clear the map (in case we're reloading) and then add all the entries from
@@ -2905,6 +2910,7 @@ void World::LoadWorldSafeLocs() const
     sLog.outString(">> Loaded %u world safe locs", sWorldSafeLocsStore.GetRecordCount());
 }
 
+/// 启动独立的 LFG 匹配队列更新线程
 void World::StartLFGQueueThread()
 {
     m_lfgQueueThread = std::thread([&]()
@@ -2913,6 +2919,7 @@ void World::StartLFGQueueThread()
     });
 }
 
+/// 启动独立的战场匹配队列更新线程
 void World::StartBGQueueThread()
 {
     m_bgQueueThread = std::thread([&]()

@@ -28,17 +28,18 @@ BattleGroundAA::BattleGroundAA()
     m_startDelayTimes[BG_STARTING_EVENT_THIRD]  = BG_START_DELAY_15S;
     m_startDelayTimes[BG_STARTING_EVENT_FOURTH] = BG_START_DELAY_NONE;
 
-    // we must set messageIds
+    // we must set messageIds (配置开战前各阶段倒计时公告文本 ID)
     m_startMessageIds[BG_STARTING_EVENT_FIRST]  = LANG_ARENA_ONE_MINUTE;
     m_startMessageIds[BG_STARTING_EVENT_SECOND] = LANG_ARENA_THIRTY_SECONDS;
     m_startMessageIds[BG_STARTING_EVENT_THIRD]  = LANG_ARENA_FIFTEEN_SECONDS;
     m_startMessageIds[BG_STARTING_EVENT_FOURTH] = LANG_ARENA_HAS_BEGUN;
 }
 
+// 玩家加入时为其创建默认竞技场记分记录
 void BattleGroundAA::AddPlayer(Player* plr)
 {
     BattleGround::AddPlayer(plr);
-    // create score and add it to map, default values are set in constructor
+    // create score and add it to map, default values are set in constructor (创建默认积分对象并加入记分表)
     BattleGroundAAScore* sc = new BattleGroundAAScore;
 
     m_playerScores[plr->GetObjectGuid()] = sc;

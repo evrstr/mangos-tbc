@@ -41,6 +41,7 @@ namespace VMAP
     class IVMapManager;
 };
 
+// 单个地图网格（Grid）的地形数据类，包含区域、高度、液体及地形孔洞信息
 class GridMap
 {
     private:
@@ -48,11 +49,11 @@ class GridMap
         uint16 m_holes[16][16];
         uint32 m_flags;
 
-        // Area data
+        // Area data (区域数据)
         uint16 m_gridArea;
         uint16* m_area_map;
 
-        // Height level data
+        // Height level data (高度层数据)
         float m_gridHeight;
         float m_gridIntHeightMultiplier;
         union
@@ -68,7 +69,7 @@ class GridMap
             uint8* m_uint8_V8;
         };
 
-        // Liquid data
+        // Liquid data (液体数据)
         uint16 m_liquidGlobalEntry;
         uint8 m_liquidGlobalFlags;
         uint8 m_liquid_offX;
@@ -80,7 +81,7 @@ class GridMap
         uint8* m_liquidFlags;
         float* m_liquid_map;
 
-        // For fast check
+        // For fast check (用于快速检查加载状态)
         bool m_fullyLoaded;
 
         bool loadAreaData(FILE* in, uint32 offset, uint32 size);
@@ -89,7 +90,7 @@ class GridMap
         bool loadHolesData(FILE* in, uint32 offset, uint32 size);
         bool isHole(int row, int col) const;
 
-        // Get height functions and pointers
+        // Get height functions and pointers (高度读取函数及成员函数指针)
         typedef float(GridMap::*pGetHeightPtr)(float x, float y) const;
         pGetHeightPtr m_gridGetHeight;
         float getHeightFromFloat(float x, float y) const;
@@ -118,6 +119,7 @@ class GridMap
         GridMapLiquidStatus getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData* data = nullptr, float collisionHeight = 2.03128f);
 };
 
+// 引用计数基类模板，用于跨地图实例共享地形数据
 template<typename Countable>
 class Referencable
 {
@@ -136,6 +138,7 @@ class Referencable
 };
 
 // class for sharing and managin GridMap objects
+// 地形信息类：在同 mapId 的不同地图实例间共享并管理 GridMap 与 VMap 数据
 class TerrainInfo : public Referencable<std::atomic_long>
 {
     public:
@@ -146,9 +149,10 @@ class TerrainInfo : public Referencable<std::atomic_long>
 
         // TODO: move all terrain/vmaps data info query functions
         // from 'Map' class into this class
-        float GetHeightStatic(float x, float y, float z, bool checkVMap = true, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const;
-        float GetWaterLevel(float x, float y, float z, float* pGround = nullptr) const;
-        float GetWaterOrGroundLevel(float x, float y, float z, float& groundZ, bool swim = false, float minWaterDeep = DEFAULT_COLLISION_HEIGHT) const;
+        // 待办：将所有地形与 VMap 数据查询函数从 Map 类迁移至此
+        float GetHeightStatic(float x, float y, float z, bool checkVMap = true, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const; // 查询静态地面高度（可选 VMap）
+        float GetWaterLevel(float x, float y, float z, float* pGround = nullptr) const; // 查询水面高度
+        float GetWaterOrGroundLevel(float x, float y, float z, float& groundZ, bool swim = false, float minWaterDeep = DEFAULT_COLLISION_HEIGHT) const; // 查询水面或地面高度
         bool IsInWater(float x, float y, float z, GridMapLiquidData* data = nullptr) const;
         bool IsSwimmable(float x, float y, float z, float radius = 1.5f, GridMapLiquidData* data = nullptr) const;
         bool IsUnderWater(float x, float y, float z, float* waterZ = nullptr) const;
@@ -171,6 +175,8 @@ class TerrainInfo : public Referencable<std::atomic_long>
         // to cleanup unreferenced GridMap objects - they are too heavy
         // to destroy them dynamically, especially on highly populated servers
         // THIS METHOD IS NOT THREAD-SAFE!!!! AND IT SHOULDN'T BE THREAD-SAFE!!!!
+        // 此方法仅应由 TerrainManager 调用，用于清理未被引用的 GridMap 对象
+        // （GridMap 过于庞大，不宜在高负载服务器上动态销毁）；注意此方法非线程安全！
         void CleanUpGrids(const uint32 diff);
 
         bool CanCheckLiquidLevel(float x, float y) const;
@@ -178,7 +184,7 @@ class TerrainInfo : public Referencable<std::atomic_long>
     protected:
         friend class Map;
         friend class ObjectMgr;
-        // load/unload terrain data
+        // load/unload terrain data (加载/卸载指定网格的地形数据)
         GridMap* Load(const uint32 x, const uint32 y, bool mapOnly = false);
         void Unload(const uint32 x, const uint32 y);
 
@@ -198,7 +204,7 @@ class TerrainInfo : public Referencable<std::atomic_long>
         bool m_GridMapsLoadAttempted[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
         int16 m_GridRef[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
-        // global garbage collection timer
+        // global garbage collection timer (全局网格垃圾回收定时器)
         ShortIntervalTimer i_timer;
 
         VMAP::IVMapManager* m_vmgr;
@@ -210,6 +216,7 @@ class TerrainInfo : public Referencable<std::atomic_long>
 };
 
 // class for managing TerrainData object and all sort of geometry querying operations
+// 全局地形管理器单例，负责按 mapId 管理 TerrainInfo 并提供几何/区域查询接口
 class TerrainManager : public MaNGOS::Singleton<TerrainManager, MaNGOS::ClassLevelLockable<TerrainManager, std::mutex> >
 {
         typedef std::unordered_map<uint32,  TerrainInfo*> TerrainDataMap;

@@ -21,17 +21,21 @@ SDComment:
 SDCategory: Scholomance
 EndScriptData */
 
+// 院长加丁（Darkmaster Gandling）最终首领战 AI（传送玩家进独立牢房打小怪、奥术飞弹与暗影诅咒）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "scholomance.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_ARCANE_MISSILES          = 15790,
-    SPELL_SHADOW_SHIELD            = 12040,
-    SPELL_CURSE_SD                 = 18702,
-    SPELL_SHADOW_PORTAL            = 17950
+    SPELL_ARCANE_MISSILES          = 15790,                 // 奥术missiles 法术 ID
+    SPELL_SHADOW_SHIELD            = 12040,                 // 暗影护盾 法术 ID
+    SPELL_CURSE_SD                 = 18702,                 // 诅咒sd 法术 ID
+    SPELL_SHADOW_PORTAL            = 17950                  // 暗影传送门 法术 ID
 };
 
+// 首领战 AI：加丁（darkmaster_gandling）
 struct boss_darkmaster_gandlingAI : public ScriptedAI
 {
     boss_darkmaster_gandlingAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -40,13 +44,14 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_pInstance;                          // 副本数据实例指针
 
-    uint32 m_uiArcaneMissilesTimer;
-    uint32 m_uiShadowShieldTimer;
-    uint32 m_uiCurseTimer;
-    uint32 m_uiTeleportTimer;
+    uint32 m_uiArcaneMissilesTimer;                         // ArcaneMissiles 技能计时器
+    uint32 m_uiShadowShieldTimer;                           // ShadowShield 技能计时器
+    uint32 m_uiCurseTimer;                                  // Curse 技能计时器
+    uint32 m_uiTeleportTimer;                               // Teleport 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiArcaneMissilesTimer = 4500;
@@ -55,12 +60,13 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
         m_uiTeleportTimer = 16000;
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        // Arcane Missiles Timer
+        // Arcane Missiles Timer (奥术Missiles计时器)
         if (m_uiArcaneMissilesTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_ARCANE_MISSILES) == CAST_OK)
@@ -69,7 +75,7 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
         else
             m_uiArcaneMissilesTimer -= uiDiff;
 
-        // Shadow Shield Timer
+        // Shadow Shield Timer (暗影护盾计时器)
         if (m_uiShadowShieldTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SHADOW_SHIELD) == CAST_OK)
@@ -78,7 +84,7 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
         else
             m_uiShadowShieldTimer -= uiDiff;
 
-        // Curse Timer
+        // Curse Timer (诅咒计时器)
         if (m_uiCurseTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CURSE_SD) == CAST_OK)
@@ -109,15 +115,17 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
                 m_uiTeleportTimer -= uiDiff;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_darkmaster_gandling
 UnitAI* GetAI_boss_darkmaster_gandling(Creature* pCreature)
 {
     return new boss_darkmaster_gandlingAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_darkmaster_gandling
 void AddSC_boss_darkmaster_gandling()
 {
     Script* pNewScript = new Script;

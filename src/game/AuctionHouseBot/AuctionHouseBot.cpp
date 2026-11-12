@@ -40,6 +40,7 @@ AuctionHouseBot::~AuctionHouseBot()
 {
 }
 
+/// 初始化拍卖行机器人：读取配置文件、加载各类掉落模板及数据库覆盖物品列表
 void AuctionHouseBot::Initialize()
 {
     if (!m_ahBotCfg.SetSource(m_configFileName, "Mangosd_"))
@@ -156,6 +157,7 @@ void AuctionHouseBot::Initialize()
     }
 }
 
+/// 周期更新：轮询处理各个拍卖行的自动上架或自动竞拍/买断
 void AuctionHouseBot::Update()
 {
     if (++m_houseAction >= MAX_AUCTION_HOUSE_TYPE * 2)
@@ -165,32 +167,32 @@ void AuctionHouseBot::Update()
     AuctionHouseObject* auctionHouse = sAuctionMgr.GetAuctionsMap(houseType);
     if (m_houseAction < MAX_AUCTION_HOUSE_TYPE && urand(0, 99) < m_chanceSell)
     {
-	// Lazy-refresh dynamic level
-	if (m_useDynamicMaxLevel)
-	{
-	    uint32 now = time(nullptr);
-	    if (now - m_lastLevelUpdateTime >= m_levelRefreshInterval)
-	    {
-		UpdateDynamicMaxLevel();
-		CalculateItemLevelCap();
-		m_lastLevelUpdateTime = now;
-	    }
-	}
-        // Sell items
+        // Lazy-refresh dynamic level (按刷新间隔惰性更新动态最高等级上限)
+        if (m_useDynamicMaxLevel)
+        {
+            uint32 now = time(nullptr);
+            if (now - m_lastLevelUpdateTime >= m_levelRefreshInterval)
+            {
+                UpdateDynamicMaxLevel();
+                CalculateItemLevelCap();
+                m_lastLevelUpdateTime = now;
+            }
+        }
+        // Sell items (从各类掉落模板与专业制造物品中抽样上架)
         std::unordered_map<uint32, uint32> itemMap;
 
-        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootNormalConfig, m_creatureLootNormalTemplates, itemMap);       // normal creature loot
-        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootEliteConfig, m_creatureLootEliteTemplates, itemMap);         // elite creature loot
-        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootRareEliteConfig, m_creatureLootRareEliteTemplates, itemMap); // rare elite creature loot
-        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootWorldBossConfig, m_creatureLootWorldBossTemplates, itemMap); // world boss creature loot
-        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootRareConfig, m_creatureLootRareTemplates, itemMap);           // rare creature loot
+        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootNormalConfig, m_creatureLootNormalTemplates, itemMap);       // normal creature loot (普通生物掉落)
+        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootEliteConfig, m_creatureLootEliteTemplates, itemMap);         // elite creature loot (精英生物掉落)
+        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootRareEliteConfig, m_creatureLootRareEliteTemplates, itemMap); // rare elite creature loot (稀有精英掉落)
+        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootWorldBossConfig, m_creatureLootWorldBossTemplates, itemMap); // world boss creature loot (世界首领掉落)
+        AddLootToItemMap(&LootTemplates_Creature, m_creatureLootRareConfig, m_creatureLootRareTemplates, itemMap);           // rare creature loot (稀有生物掉落)
 
-        AddLootToItemMap(&LootTemplates_Disenchant, m_disenchantLootConfig, m_disenchantLootTemplates, itemMap);             // disenchant loot
-        AddLootToItemMap(&LootTemplates_Fishing, m_fishingLootConfig, m_fishingLootTemplates, itemMap);                      // fishing loot
-        AddLootToItemMap(&LootTemplates_Gameobject, m_gameobjectLootConfig, m_gameobjectLootTemplates, itemMap);             // gameobject loot
-        AddLootToItemMap(&LootTemplates_Skinning, m_skinningLootConfig, m_skinningLootTemplates, itemMap);                   // skinning loot
+        AddLootToItemMap(&LootTemplates_Disenchant, m_disenchantLootConfig, m_disenchantLootTemplates, itemMap);             // disenchant loot (附魔分解产物)
+        AddLootToItemMap(&LootTemplates_Fishing, m_fishingLootConfig, m_fishingLootTemplates, itemMap);                      // fishing loot (钓鱼产物)
+        AddLootToItemMap(&LootTemplates_Gameobject, m_gameobjectLootConfig, m_gameobjectLootTemplates, itemMap);             // gameobject loot (采集/宝箱对象掉落)
+        AddLootToItemMap(&LootTemplates_Skinning, m_skinningLootConfig, m_skinningLootTemplates, itemMap);                   // skinning loot (剥皮产物)
 
-        // profession items are a bit different (not looted)
+        // profession items are a bit different (not looted) (专业制造物品直接按法术产物表抽样)
         if (m_professionItemsConfig[1] > 0 && m_professionItemsConfig[3] > 0 && m_professionItems.size() > 0)
         {
             int32 maxTemplates = m_professionItemsConfig[0] < 0 ? urand(0, m_professionItemsConfig[1] - m_professionItemsConfig[0]) + m_professionItemsConfig[0] : urand(m_professionItemsConfig[0], m_professionItemsConfig[1]);
@@ -200,10 +202,10 @@ void AuctionHouseBot::Update()
                 {
                     uint32 item = m_professionItems[urand(0, m_professionItems.size() - 1)];
                     ItemPrototype const* prototype = ObjectMgr::GetItemPrototype(item);
-		    if (prototype &&
-			(prototype->RequiredLevel > m_maxRequiredLevel ||
-			 prototype->ItemLevel > m_maxItemLevel))
-		        continue; // skip items too high level
+                    if (prototype &&
+                        (prototype->RequiredLevel > m_maxRequiredLevel ||
+                         prototype->ItemLevel > m_maxItemLevel))
+                        continue; // skip items too high level (跳过超出当前等级/装等上限的物品)
                     if (!prototype || prototype->Quality == 0 || urand(0, (convertEnumToFlag(prototype->Quality)) - 1) > 0)
                         continue; // make it decreasingly likely that crafted items of higher quality is added to the auction house (white: 100%, green: 50%, blue: 25%, purple: 12.5%, ...)
                     uint32 count = (uint32) round((uint64)prototype->GetMaxStackSize() * urand(m_professionItemsConfig[2], m_professionItemsConfig[3]) / 100.0);
@@ -292,12 +294,14 @@ void AuctionHouseBot::Update()
     }
 }
 
+/// 重载 AHBot 配置
 bool AuctionHouseBot::ReloadAllConfig()
 {
     Initialize();
     return true;
 }
 
+/// 重建拍卖行挂单（使既有机器人挂单过期并模拟周期补充库存）
 void AuctionHouseBot::Rebuild(bool all)
 {
     sLog.outString("AHBot: Rebuilding auction house items");
@@ -325,6 +329,7 @@ void AuctionHouseBot::Rebuild(bool all)
     }
 }
 
+/// 统计各拍卖行中机器人当前挂单总数与品质分布
 void AuctionHouseBot::PrepareStatusInfos(AuctionHouseBotStatusInfo& statusInfo) const
 {
     for (uint32 i = 0; i < MAX_AUCTION_HOUSE_TYPE; ++i)
@@ -354,6 +359,7 @@ void AuctionHouseBot::PrepareStatusInfos(AuctionHouseBotStatusInfo& statusInfo) 
     }
 }
 
+/// 设置或删除指定物品在 ahbot_items 表中的自定义配置
 void AuctionHouseBot::SetItemData(uint32 item, AuctionHouseBotItemData& itemData, bool reset)
 {
     static SqlStatementID delItem;
@@ -391,6 +397,7 @@ void AuctionHouseBot::SetItemData(uint32 item, AuctionHouseBotItemData& itemData
     stmt.Execute();
 }
 
+/// 查询物品在 AHBot 中的自定义数据或默认计算价值
 AuctionHouseBotItemData AuctionHouseBot::GetItemData(uint32 item)
 {
     auto iterator = m_itemData.find(item);
@@ -404,6 +411,7 @@ AuctionHouseBotItemData AuctionHouseBot::GetItemData(uint32 item)
     return itemData;
 }
 
+/// 读取整型配置项并限制在 [minValue, maxValue] 范围内
 uint32 AuctionHouseBot::GetMinMaxConfig(const char* config, uint32 minValue, uint32 maxValue, uint32 defaultValue)
 {
     uint32 field = m_ahBotCfg.GetIntDefault(config, defaultValue);
@@ -419,6 +427,7 @@ uint32 AuctionHouseBot::GetMinMaxConfig(const char* config, uint32 minValue, uin
     return field;
 }
 
+/// 解析逗号分隔的掉落数量配置（模板数上下限、重复次数上下限共 4 项）
 void AuctionHouseBot::ParseLootConfig(char const* fieldname, std::vector<int32>& lootConfig)
 {
     std::stringstream includeStream(m_ahBotCfg.GetStringDefault(fieldname));
@@ -454,6 +463,7 @@ void AuctionHouseBot::ParseLootConfig(char const* fieldname, std::vector<int32>&
     }
 }
 
+/// 执行世界库 SQL 查询并将首列非零 ID 填入模板列表
 void AuctionHouseBot::FillUintVectorFromQuery(char const* query, std::vector<uint32>& lootTemplates)
 {
     lootTemplates.clear();
@@ -472,9 +482,10 @@ void AuctionHouseBot::FillUintVectorFromQuery(char const* query, std::vector<uin
     }
 }
 
+/// 解析等级限制相关配置并计算初始等级/装等上限
 void AuctionHouseBot::ParseLevelConstraints()
 {
-    // Get settings from config
+    // Get settings from config (读取等级上限配置)
     m_useDynamicMaxLevel = m_ahBotCfg.GetBoolDefault("AuctionHouseBot.Level.DynamicMaxRequired", false);
     m_ignoreGm = m_ahBotCfg.GetBoolDefault("AuctionHouseBot.Level.IgnoreGmAccounts", false);
     m_levelRefreshInterval = m_ahBotCfg.GetIntDefault("AuctionHouseBot.Level.DynamicRefreshInterval", 10) * MINUTE;
@@ -483,82 +494,84 @@ void AuctionHouseBot::ParseLevelConstraints()
 
     if (m_useDynamicMaxLevel)
     {
-	UpdateDynamicMaxLevel();
+        UpdateDynamicMaxLevel();
     }
     else
     {
-	sLog.outString("AHBot Static max required level set to %u", m_maxRequiredLevel);
+        sLog.outString("AHBot Static max required level set to %u", m_maxRequiredLevel);
     }
 
     CalculateItemLevelCap();
 
-    m_lastLevelUpdateTime = time(nullptr); // So we don't instantly recalc after startup
+    m_lastLevelUpdateTime = time(nullptr); // So we don't instantly recalc after startup (避免启动后立即重复刷新)
 }
 
+/// 根据当前在线最高等级玩家（可选排除 GM 账号）刷新需求等级上限
 void AuctionHouseBot::UpdateDynamicMaxLevel()
 {
-    // Attempt to query all online characters ordered by level
+    // Attempt to query all online characters ordered by level (按等级降序查询所有在线角色)
     if (auto result = CharacterDatabase.PQuery("SELECT account, level FROM characters WHERE online = 1 ORDER BY level DESC"))
     {
-	// Always grab the first result as fallback (highest overall)
-	Field* firstRow = result->Fetch();
-	uint32 firstAcct = firstRow[0].GetUInt32();
-	uint32 fallbackLevel = firstRow[1].GetUInt32();
-	m_maxRequiredLevel = fallbackLevel;
+        // Always grab the first result as fallback (highest overall) (先取最高等级作为保底值)
+        Field* firstRow = result->Fetch();
+        uint32 firstAcct = firstRow[0].GetUInt32();
+        uint32 fallbackLevel = firstRow[1].GetUInt32();
+        m_maxRequiredLevel = fallbackLevel;
 
-	if (m_ignoreGm)
-	{
-	    std::set<uint32> gmAccounts;
-	    // Collect GM accounts
-	    if (auto gmResult = LoginDatabase.PQuery("SELECT id FROM account WHERE gmlevel > 0"))
-	    {
-		do
-		{
-		    Field* field = gmResult->Fetch();
-		    gmAccounts.insert(field[0].GetUInt32());
-		} while (gmResult->NextRow());
-	    }
+        if (m_ignoreGm)
+        {
+            std::set<uint32> gmAccounts;
+            // Collect GM accounts (收集所有 GM 账号 ID)
+            if (auto gmResult = LoginDatabase.PQuery("SELECT id FROM account WHERE gmlevel > 0"))
+            {
+                do
+                {
+                    Field* field = gmResult->Fetch();
+                    gmAccounts.insert(field[0].GetUInt32());
+                } while (gmResult->NextRow());
+            }
 
-            // Look for highest non-GM character
-	    if (gmAccounts.count(firstAcct) == 0)
-	    {
-		sLog.outString("AHBot Dynamic max required level (excluding GMs) set to %u", fallbackLevel);
-	    }
-	    else
-	    {
-		bool foundNonGm = false;
-		while (result->NextRow())
-		{
-		    Field* row = result->Fetch();
-		    uint32 accId = row[0].GetUInt32();
-		    uint32 level = row[1].GetUInt32();
+            // Look for highest non-GM character (查找等级最高的非 GM 玩家角色)
+            if (gmAccounts.count(firstAcct) == 0)
+            {
+                sLog.outString("AHBot Dynamic max required level (excluding GMs) set to %u", fallbackLevel);
+            }
+            else
+            {
+                bool foundNonGm = false;
+                while (result->NextRow())
+                {
+                    Field* row = result->Fetch();
+                    uint32 accId = row[0].GetUInt32();
+                    uint32 level = row[1].GetUInt32();
 
-		    if (gmAccounts.count(accId) == 0)
-		    {
-			m_maxRequiredLevel = level;
-			foundNonGm = true;
-			sLog.outString("AHBot Dynamic max required level (excluding GMs) set to %u", m_maxRequiredLevel);
-			break;
-		    }
-		}
+                    if (gmAccounts.count(accId) == 0)
+                    {
+                        m_maxRequiredLevel = level;
+                        foundNonGm = true;
+                        sLog.outString("AHBot Dynamic max required level (excluding GMs) set to %u", m_maxRequiredLevel);
+                        break;
+                    }
+                }
 
-		if (!foundNonGm)
-		{
-		    sLog.outString("AHBot Notice: No non-GM players online. Fallback max required level (including GMs) set to %u", fallbackLevel);
-		}
-	    }
-	}
-	else
-	{
-	    sLog.outString("AHBot Dynamic max required level set to %u", m_maxRequiredLevel);
-	}
+                if (!foundNonGm)
+                {
+                    sLog.outString("AHBot Notice: No non-GM players online. Fallback max required level (including GMs) set to %u", fallbackLevel);
+                }
+            }
+        }
+        else
+        {
+            sLog.outString("AHBot Dynamic max required level set to %u", m_maxRequiredLevel);
+        }
     }
     else
     {
-	sLog.outError("AHBot Error: No online characters found. Retaining static max required level %u", m_maxRequiredLevel);
+        sLog.outError("AHBot Error: No online characters found. Retaining static max required level %u", m_maxRequiredLevel);
     }
 }
 
+/// 根据最大需求等级推算允许上架的物品装等上限
 void AuctionHouseBot::CalculateItemLevelCap()
 {
     if (m_maxRequiredLevel >= DEFAULT_MAX_LEVEL)
@@ -573,6 +586,7 @@ void AuctionHouseBot::CalculateItemLevelCap()
 }
 
 
+/// 解析指定品质下各物品类别的价格百分比配置
 void AuctionHouseBot::ParseItemValueConfig(char const* fieldname, std::vector<uint32>& itemValues)
 {
     std::stringstream includeStream(m_ahBotCfg.GetStringDefault(fieldname));
@@ -584,6 +598,7 @@ void AuctionHouseBot::ParseItemValueConfig(char const* fieldname, std::vector<ui
     }
 }
 
+/// 从指定掉落存储中随机抽取模板生成待上架物品并汇总数量
 void AuctionHouseBot::AddLootToItemMap(LootStore* store, std::vector<int32>& lootConfig, std::vector<uint32>& lootTemplates, std::unordered_map<uint32, uint32>& itemMap)
 {
     if (lootConfig[1] <= 0 || lootConfig[3] <= 0 || lootTemplates.empty())
@@ -603,18 +618,19 @@ void AuctionHouseBot::AddLootToItemMap(LootStore* store, std::vector<int32>& loo
 
         LootItem* lootItem;
         for (uint32 slot = 0; (lootItem = loot->GetLootItemInSlot(slot)); ++slot)
-	{
-	    ItemPrototype const* prototype = sItemStorage.LookupEntry<ItemPrototype>(lootItem->itemId);
-	    if (prototype && 
-		(prototype->RequiredLevel > m_maxRequiredLevel ||
-		 prototype->ItemLevel > m_maxItemLevel))
-	        continue;
+        {
+            ItemPrototype const* prototype = sItemStorage.LookupEntry<ItemPrototype>(lootItem->itemId);
+            if (prototype &&
+                (prototype->RequiredLevel > m_maxRequiredLevel ||
+                 prototype->ItemLevel > m_maxItemLevel))
+                continue;
 
-	    itemMap[lootItem->itemId] += lootItem->count;
-	}
+            itemMap[lootItem->itemId] += lootItem->count;
+        }
     }
 }
 
+/// 根据物品买卖价格、品质及类别配置计算基础一口价
 uint32 AuctionHouseBot::CalculateBuyoutPrice(ItemPrototype const* prototype)
 {
     uint32 buyoutPrice = prototype->BuyPrice;

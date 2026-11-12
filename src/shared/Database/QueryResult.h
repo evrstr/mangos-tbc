@@ -23,6 +23,7 @@
 #include "Util/Errors.h"
 #include "Field.h"
 
+// 数据库查询结果抽象基类，支持按行迭代与按列索引访问 | Abstract base class for database query results supporting row iteration and indexed field access
 class QueryResult
 {
     public:
@@ -31,8 +32,10 @@ class QueryResult
 
         virtual ~QueryResult() {}
 
+        // 推进到下一行数据，若已无更多行则返回 false | Advance to next row, returns false if no more rows
         virtual bool NextRow() = 0;
 
+        // 获取当前行的字段数组指针 | Fetch array of fields for the current row
         Field* Fetch() const { return mCurrentRow; }
 
         const Field& operator [](int index) const { return mCurrentRow[index]; }
@@ -48,23 +51,25 @@ class QueryResult
 
 typedef std::vector<std::string> QueryFieldNames;
 
+// 支持按列名访问字段的查询结果包装类 | QueryResult wrapper supporting field lookup by column name
 class QueryNamedResult
 {
     public:
         explicit QueryNamedResult(QueryResult* query, QueryFieldNames const& names) : mQuery(query), mFieldNames(names) {}
         ~QueryNamedResult() { delete mQuery; }
 
-        // compatible interface with QueryResult
+        // compatible interface with QueryResult | 与 QueryResult 兼容的访问接口
         bool NextRow() const { return mQuery->NextRow(); }
         Field* Fetch() const { return mQuery->Fetch(); }
         uint32 GetFieldCount() const { return mQuery->GetFieldCount(); }
         uint64 GetRowCount() const { return mQuery->GetRowCount(); }
         Field const& operator[](int index) const { return (*mQuery)[index]; }
 
-        // named access
+        // named access | 按列名访问字段
         Field const& operator[](const std::string& name) const { return mQuery->Fetch()[GetField_idx(name)]; }
         QueryFieldNames const& GetFieldNames() const { return mFieldNames; }
 
+        // 根据列名查找对应的列索引 | Find column index by field name
         uint32 GetField_idx(const std::string& name) const
         {
             for (size_t idx = 0; idx < mFieldNames.size(); ++idx)

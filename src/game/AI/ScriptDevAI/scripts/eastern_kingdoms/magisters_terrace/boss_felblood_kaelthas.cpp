@@ -21,60 +21,63 @@ SDComment: Minor adjustments required; Timers.
 SDCategory: Magisters' Terrace
 EndScriptData */
 
+// 凯尔萨斯·逐日者（Kael'thas Sunstrider）4号最终首领战 AI（魔能凤凰、重力失效与浮空战）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "magisters_terrace.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_INTRO_1                 = -1585023,
-    SAY_INTRO_2                 = -1585030,
-    SAY_PHOENIX                 = -1585024,
-    SAY_FLAMESTRIKE             = -1585025,
-    SAY_GRAVITY_LAPSE           = -1585026,
-    SAY_TIRED                   = -1585027,
-    SAY_RECAST_GRAVITY          = -1585028,
-    SAY_DEATH                   = -1585029,
+    SAY_INTRO_1                 = -1585023,                 // 开场1 台词广播 ID
+    SAY_INTRO_2                 = -1585030,                 // 开场2 台词广播 ID
+    SAY_PHOENIX                 = -1585024,                 // phoenix 台词广播 ID
+    SAY_FLAMESTRIKE             = -1585025,                 // flamestrike 台词广播 ID
+    SAY_GRAVITY_LAPSE           = -1585026,                 // gravitylapse 台词广播 ID
+    SAY_TIRED                   = -1585027,                 // tired 台词广播 ID
+    SAY_RECAST_GRAVITY          = -1585028,                 // recastgravity 台词广播 ID
+    SAY_DEATH                   = -1585029,                 // 死亡 台词广播 ID
     SAY_PYROBLAST               = -1550044,                 // reuse of text from TK
 
-    // Phase 1 spells
+    // Phase 1 spells (第 1 阶段)
     SPELL_FIREBALL              = 44189,                    // Deals 2700-3300 damage at current target
-    SPELL_FIREBALL_H            = 46164,                    //       4950-6050
-    SPELL_PHOENIX               = 44194,                    // Summons a phoenix
-    SPELL_FLAME_STRIKE          = 44192,                    // Summons the trigger + animation (projectile)
-    SPELL_FLAME_STRIKE_H        = 46162,
+    SPELL_FIREBALL_H            = 46164,                    // 4950-6050 (4950 - 6050)
+    SPELL_PHOENIX               = 44194,                    // Summons a phoenix (召唤 a phoenix)
+    SPELL_FLAME_STRIKE          = 44192,                    // Summons the trigger + animation (projectile) (召唤 the trigger + animation (projectile))
+    SPELL_FLAME_STRIKE_H        = 46162,                    // 烈焰打击h 法术 ID
     SPELL_SHOCK_BARRIER         = 46165,                    // Heroic only; 10k damage shield, followed by Pyroblast
-    SPELL_PYROBLAST             = 36819,                    // Heroic only; 45-55k fire damage
+    SPELL_PYROBLAST             = 36819,                    // Heroic only; 45-55k fire damage (Heroic仅45-55k火焰伤害)
 
-    // Phase 2 spells
+    // Phase 2 spells (第 2 阶段)
     SPELL_GRAVITY_LAPSE         = 44224,                    // Cast at the beginning of every Gravity Lapse
     SPELL_GRAVITY_LAPSE_VISUAL  = 44251,                    // Channeled; blue beam animation to every enemy in range - when removed the Gravity Lapse auras are removed from players
     SPELL_TELEPORT_CENTER       = 44218,                    // Teleport the boss in the center. Requires DB entry in spell_target_position.
     SPELL_GRAVITY_LAPSE_FLY     = 44227,                    // Hastens flyspeed and allows flying for 1 minute. Requires aura stacking exception for 44226.
     SPELL_GRAVITY_LAPSE_DOT_H   = 44226,                    // Knocks up in the air and applies a 300 DPS DoT.
-    SPELL_GRAVITY_LAPSE_DOT_N   = 49887,
-    SPELL_ARCANE_SPHERE_SUMMON  = 44265,                    // Summons 1 arcane sphere
+    SPELL_GRAVITY_LAPSE_DOT_N   = 49887,                    // gravitylapsedotn 法术 ID
+    SPELL_ARCANE_SPHERE_SUMMON  = 44265,                    // Summons 1 arcane sphere (召唤 arcane sphere)
     SPELL_POWER_FEEDBACK        = 44233,                    // Stuns him, making him take 50% more damage for 10 seconds. Cast after Gravity Lapse
-    SPELL_POWER_FEEDBACK_H      = 47109,
-    SPELL_CLEAR_FLIGHT          = 44232,
+    SPELL_POWER_FEEDBACK_H      = 47109,                    // powerfeedbackh 法术 ID
+    SPELL_CLEAR_FLIGHT          = 44232,                    // clearflight 法术 ID
 
-    // Outro spells
-    SPELL_EMOTE_TALK_EXCLAMATION = 48348,
-    SPELL_EMOTE_POINT           = 48349,
-    SPELL_EMOTE_ROAR            = 48350,
-    SPELL_SUICIDE               = 3617,
+    // Outro spells (尾声spells)
+    SPELL_EMOTE_TALK_EXCLAMATION = 48348,                   // 表情talkexclamation 法术 ID
+    SPELL_EMOTE_POINT           = 48349,                    // 表情路径点 法术 ID
+    SPELL_EMOTE_ROAR            = 48350,                    // 表情roar 法术 ID
+    SPELL_SUICIDE               = 3617,                     // 自杀 法术 ID
 
     // Summoned spells
     SPELL_ARCANE_SPHERE_PASSIVE = 44263,                    // Passive auras on Arcane Spheres
     SPELL_FLAME_STRIKE_DUMMY    = 44191,                    // Flamestrike indicator before the damage
 
     // Summoned creatures
-    NPC_FLAME_STRIKE_TRIGGER    = 24666,
-    NPC_PHOENIX                 = 24674,
-    NPC_PHOENIX_EGG             = 24675,
-    NPC_ARCANE_SPHERE           = 24708,
+    NPC_FLAME_STRIKE_TRIGGER    = 24666,                    // 烈焰打击触发 Entry ID
+    NPC_PHOENIX                 = 24674,                    // phoenix Entry ID
+    NPC_PHOENIX_EGG             = 24675,                    // phoenix龙蛋 Entry ID
+    NPC_ARCANE_SPHERE           = 24708,                    // 奥术sphere Entry ID
 
-    MAX_ARCANE_SPHERES          = 3,
+    MAX_ARCANE_SPHERES          = 3,                        // 奥术spheres 标识 ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
@@ -95,6 +98,7 @@ static const DialogueEntry aIntroDialogue[] =
 ## boss_felblood_kaelthas
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum FelbloodKaelthasActions
 {
     KAEL_ACTION_ENERGY_FEEDBACK,
@@ -111,6 +115,7 @@ enum FelbloodKaelthasActions
     KAEL_OUTRO,
 };
 
+// 首领战 AI：凯尔萨斯（felblood_kaelthas）
 struct boss_felblood_kaelthasAI : public CombatAI
 {
     boss_felblood_kaelthasAI(Creature* creature) : CombatAI(creature, KAEL_ACTION_MAX),
@@ -166,6 +171,7 @@ struct boss_felblood_kaelthasAI : public CombatAI
 
     GuidVector m_spawns;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -228,6 +234,7 @@ struct boss_felblood_kaelthasAI : public CombatAI
             SetActionReadyStatus(KAEL_ACTION_ENERGY_FEEDBACK, true);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         DespawnGuids(m_spawns);
@@ -314,6 +321,7 @@ struct boss_felblood_kaelthasAI : public CombatAI
             ResetTimer(KAEL_OUTRO, timer);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_FLAME_STRIKE_TRIGGER)
@@ -324,7 +332,7 @@ struct boss_felblood_kaelthasAI : public CombatAI
         }
         else if (summoned->GetEntry() != NPC_ARCANE_SPHERE)
         {
-            // Attack or follow target
+            // Attack or follow target (攻击orfollow目标)
             if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                 summoned->AI()->AttackStart(target);
         }
@@ -460,6 +468,7 @@ struct boss_felblood_kaelthasAI : public CombatAI
 ## mob_arcane_sphere
 ######*/
 
+// 随从/NPC AI：sphere（arcane_sphere）
 struct mob_arcane_sphereAI : public ScriptedAI
 {
     mob_arcane_sphereAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -469,9 +478,10 @@ struct mob_arcane_sphereAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
 
-    uint32 m_uiDespawnTimer;
-    uint32 m_uiChangeTargetTimer;
+    uint32 m_uiDespawnTimer;                                // Despawn 技能计时器
+    uint32 m_uiChangeTargetTimer;                           // ChangeTarget 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiDespawnTimer      = 30000;
@@ -480,6 +490,7 @@ struct mob_arcane_sphereAI : public ScriptedAI
         DoCastSpellIfCan(nullptr, SPELL_ARCANE_SPHERE_PASSIVE);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         // Should despawn when aura 44251 expires
@@ -513,6 +524,7 @@ struct mob_arcane_sphereAI : public ScriptedAI
     }
 };
 
+// 法术脚本逻辑实现：gravitylapsemgt 法术 ID（spell_gravity_lapse_mgt）
 struct spell_gravity_lapse_mgt : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -532,6 +544,7 @@ struct spell_gravity_lapse_mgt : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：clearflightmgt 法术 ID（spell_clear_flight_mgt）
 struct spell_clear_flight_mgt : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -546,6 +559,7 @@ struct spell_clear_flight_mgt : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_felblood_kaelthas
 void AddSC_boss_felblood_kaelthas()
 {
     Script* pNewScript = new Script;

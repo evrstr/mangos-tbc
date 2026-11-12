@@ -21,6 +21,8 @@ SDComment: Quest support: 1640, 1447, 4185, 6402, 6403.
 SDCategory: Stormwind City
 EndScriptData */
 
+// 暴风城（Stormwind City）联盟主城 NPC 交互与黑龙公主奥妮克希亚揭发剧情脚本
+
 /* ContentData
 npc_bartleby
 npc_dashel_stonefist
@@ -38,12 +40,14 @@ EndContentData */
 ## npc_bartleby
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    FACTION_ENEMY       = 168,
-    QUEST_BEAT          = 1640
+    FACTION_ENEMY       = 168,                              // enemy 阵营 ID
+    QUEST_BEAT          = 1640                              // beat 任务 ID
 };
 
+// 随从/NPC AI：标识 ID（bartleby）
 struct npc_bartlebyAI : public ScriptedAI
 {
     npc_bartlebyAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -51,6 +55,7 @@ struct npc_bartlebyAI : public ScriptedAI
         Reset();
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
     void DamageTaken(Unit* dealer, uint32& damage, DamageEffectType /*damagetype*/, SpellEntry const* /*spellInfo*/) override
@@ -67,6 +72,7 @@ struct npc_bartlebyAI : public ScriptedAI
     }
 };
 
+// 任务接取回调函数：npc_bartleby
 bool QuestAccept_npc_bartleby(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_BEAT)
@@ -77,6 +83,7 @@ bool QuestAccept_npc_bartleby(Player* pPlayer, Creature* pCreature, const Quest*
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_bartleby
 UnitAI* GetAI_npc_bartleby(Creature* pCreature)
 {
     return new npc_bartlebyAI(pCreature);
@@ -86,6 +93,7 @@ UnitAI* GetAI_npc_bartleby(Creature* pCreature)
 ## npc_dashel_stonefist
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum DashelStonefistData
 {
     // ids from "broadcast_text" table
@@ -94,15 +102,15 @@ enum DashelStonefistData
     SAY_PROGRESS_3_DAS          = 1713,     // It's okay, boys. Back off. You've done enough. I'll meet up with you later.
     SAY_PROGRESS_4_THU          = 1716,     // All right, boss. You sure though? Just seems like a waste of good practice.
     SAY_PROGRESS_5_THU          = 1715,     // Yeah, okay, boss. No problem.
-    // quest id
-    QUEST_MISSING_DIPLO_PT8     = 1447,
+    // quest id (任务ID)
+    QUEST_MISSING_DIPLO_PT8     = 1447,                     // missingdiplopt8 任务 ID
     // NPCs that helps Dashel
-    NPC_OLD_TOWN_THUG           = 4969,
+    NPC_OLD_TOWN_THUG           = 4969,                     // oldtownthug Entry ID
     // factions
-    FACTION_NEUTRAL             = 189,
-    FACTION_FRIENDLY_TO_ALL     = 35,
+    FACTION_NEUTRAL             = 189,                      // neutral 阵营 ID
+    FACTION_FRIENDLY_TO_ALL     = 35,                       // friendlytoall 阵营 ID
 
-    SPELL_UNKILLABLE_OFF        = 13835,
+    SPELL_UNKILLABLE_OFF        = 13835,                    // unkillableoff 法术 ID
 };
 
 float aThugSpawnPosition[][4] = {
@@ -120,6 +128,7 @@ float aThugResetPosition[][3] = {
     { -8669.338867f, 448.362976f, 99.740005f },
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum DashelStonefistActions
 {
     DASHEL_LOW_HP,
@@ -130,6 +139,7 @@ enum DashelStonefistActions
     DASHEL_EVADE_EVENT,
 };
 
+// 随从/NPC AI：stonefist（dashel_stonefist）
 struct npc_dashel_stonefistAI : public CombatAI
 {
     npc_dashel_stonefistAI(Creature* creature) : CombatAI(creature, DASHEL_ACTION_MAX)
@@ -144,7 +154,7 @@ struct npc_dashel_stonefistAI : public CombatAI
     ObjectGuid m_thugs[2];
     bool m_thugsAlive;
     // player guid to trigger: quest completed
-    ObjectGuid m_playerGuid;
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
 
     // EndEvent stages
     uint32 m_phaseThugEventStage;
@@ -155,6 +165,7 @@ struct npc_dashel_stonefistAI : public CombatAI
     // used to check if its a quest fight or not.
     bool m_questFightStarted;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -195,7 +206,7 @@ struct npc_dashel_stonefistAI : public CombatAI
 
     void StartEvent(ObjectGuid guid)
     {
-        // 2 seconds delay after quest accept npc starts attacking players.
+        // 2 seconds delay after quest accept npc starts attacking players. (2秒倒计时)
         m_playerGuid = guid;
         ResetTimer(DASHEL_START_EVENT, 2000);
         m_questFightStarted = true;
@@ -292,7 +303,7 @@ struct npc_dashel_stonefistAI : public CombatAI
                         if (thug->IsAlive())
                             DoBroadcastText(SAY_PROGRESS_5_THU, thug);
 
-                    // switch phase
+                    // switch phase (switch阶段)
                     timer = 1000;
                     break;
                 }
@@ -340,6 +351,7 @@ struct npc_dashel_stonefistAI : public CombatAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* creature) override
     {
         // If the thug died for whatever reason, clear the pointer. Otherwise, if
@@ -408,6 +420,7 @@ struct npc_dashel_stonefistAI : public CombatAI
     }
 };
 
+// 任务接取回调函数：npc_dashel_stonefist
 bool QuestAccept_npc_dashel_stonefist(Player* player, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_MISSING_DIPLO_PT8)
@@ -449,14 +462,16 @@ bool QuestAccept_npc_dashel_stonefist(Player* player, Creature* creature, const 
 ## npc_lady_katrana_prestor
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GOSSIP_ITEM_KAT_1 = -3000120,
-    GOSSIP_ITEM_KAT_2 = -3000121,
-    GOSSIP_ITEM_KAT_3 = -3000122,
-    GOSSIP_ITEM_KAT_4 = -3000123,
+    GOSSIP_ITEM_KAT_1 = -3000120,                           // 物品kat1 对话菜单选项 ID
+    GOSSIP_ITEM_KAT_2 = -3000121,                           // 物品kat2 对话菜单选项 ID
+    GOSSIP_ITEM_KAT_3 = -3000122,                           // 物品kat3 对话菜单选项 ID
+    GOSSIP_ITEM_KAT_4 = -3000123,                           // 物品kat4 对话菜单选项 ID
 };
 
+// NPC 对话交互入口函数：npc_lady_katrana_prestor
 bool GossipHello_npc_lady_katrana_prestor(Player* player, Creature* creature)
 {
     if (creature->isQuestGiver())
@@ -498,41 +513,43 @@ bool GossipSelect_npc_lady_katrana_prestor(Player* player, Creature* creature, u
 ## npc_squire_rowe
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_SIGNAL_SENT             = -1000822,
-    SAY_DISMOUNT                = -1000823,
-    SAY_WELCOME                 = -1000824,
+    SAY_SIGNAL_SENT             = -1000822,                 // signalsent 台词广播 ID
+    SAY_DISMOUNT                = -1000823,                 // dismount 台词广播 ID
+    SAY_WELCOME                 = -1000824,                 // welcome 台词广播 ID
 
-    GOSSIP_ITEM_WINDSOR         = -3000106,
+    GOSSIP_ITEM_WINDSOR         = -3000106,                 // 物品温德索尔 对话菜单选项 ID
 
-    GOSSIP_TEXT_ID_DEFAULT      = 9063,
-    GOSSIP_TEXT_ID_PROGRESS     = 9064,
-    GOSSIP_TEXT_ID_START        = 9065,
+    GOSSIP_TEXT_ID_DEFAULT      = 9063,                     // textIDdefault 对话菜单选项 ID
+    GOSSIP_TEXT_ID_PROGRESS     = 9064,                     // textIDprogress 对话菜单选项 ID
+    GOSSIP_TEXT_ID_START        = 9065,                     // textID开始 对话菜单选项 ID
 
-    NPC_WINDSOR_MOUNT           = 12581,
+    NPC_WINDSOR_MOUNT           = 12581,                    // 温德索尔坐骑 Entry ID
 
-    SPELL_BLUE_FIREWORK         = 11540,
-    SPELL_DISMISS_HORSE         = 20000,
-    SPELL_WINDSOR_INSPIRATION   = 20273,
+    SPELL_BLUE_FIREWORK         = 11540,                    // bluefirework 法术 ID
+    SPELL_DISMISS_HORSE         = 20000,                    // 解散horse 法术 ID
+    SPELL_WINDSOR_INSPIRATION   = 20273,                    // 温德索尔inspiration 法术 ID
 
-    QUEST_STORMWIND_RENDEZVOUS  = 6402,
-    QUEST_THE_GREAT_MASQUERADE  = 6403,
+    QUEST_STORMWIND_RENDEZVOUS  = 6402,                     // stormwindrendezvous 任务 ID
+    QUEST_THE_GREAT_MASQUERADE  = 6403,                     // thegreatmasquerade 任务 ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
 {
     {NPC_WINDSOR,                0,           3000},        // wait
-    {NPC_WINDSOR_MOUNT,          0,           1000},        // summon horse
+    {NPC_WINDSOR_MOUNT,          0,           1000},        // summon horse (召唤 horse)
     {SAY_DISMOUNT,               NPC_WINDSOR, 2000},
     {QUEST_STORMWIND_RENDEZVOUS, 0,           2000},        // face player
-    {QUEST_THE_GREAT_MASQUERADE, 0,           0},           // say intro to player
+    {QUEST_THE_GREAT_MASQUERADE, 0,           0},           // say intro to player (台词开场toplayer)
     {0, 0, 0},
 };
 
 static const float aWindsorSpawnLoc[3] = { -9145.68f, 373.79f, 90.64f};
 static const float aWindsorMoveLoc[3] = { -9050.39f, 443.55f, 93.05f};
 
+// 随从/NPC AI：rowe（squire_rowe）
 struct npc_squire_roweAI : public npc_escortAI, private DialogueHelper
 {
     npc_squire_roweAI(Creature* m_creature) : npc_escortAI(m_creature),
@@ -544,10 +561,12 @@ struct npc_squire_roweAI : public npc_escortAI, private DialogueHelper
 
     bool m_isEventInProgress;
 
-    ObjectGuid m_windsorGuid;
+    ObjectGuid m_windsorGuid;                               // windsor 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_WINDSOR)
@@ -655,11 +674,13 @@ struct npc_squire_roweAI : public npc_escortAI, private DialogueHelper
     void UpdateEscortAI(const uint32 uiDiff) override { DialogueUpdate(uiDiff); }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_squire_rowe
 UnitAI* GetAI_npc_squire_rowe(Creature* creature)
 {
     return new npc_squire_roweAI(creature);
 }
 
+// NPC 对话交互入口函数：npc_squire_rowe
 bool GossipHello_npc_squire_rowe(Player* player, Creature* creature)
 {
     // Allow gossip if quest 6402 is completed but not yet rewarded or 6402 is rewarded but 6403 isn't yet completed
@@ -704,74 +725,75 @@ bool GossipSelect_npc_squire_rowe(Player* player, Creature* creature, uint32 /*u
 ## npc_reginald_windsor
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_WINDSOR_QUEST_ACCEPT    = -1000825,
-    SAY_WINDSOR_GET_READY       = -1000826,
-    SAY_PRESTOR_SIEZE           = -1000827,
+    SAY_WINDSOR_QUEST_ACCEPT    = -1000825,                 // 温德索尔任务accept 台词广播 ID
+    SAY_WINDSOR_GET_READY       = -1000826,                 // 温德索尔getready 台词广播 ID
+    SAY_PRESTOR_SIEZE           = -1000827,                 // prestorsieze 台词广播 ID
 
-    SAY_JON_DIALOGUE_1          = -1000828,
-    SAY_WINDSOR_DIALOGUE_2      = -1000829,
-    SAY_WINDSOR_DIALOGUE_3      = -1000830,
-    SAY_JON_DIALOGUE_4          = -1000832,
-    SAY_JON_DIALOGUE_5          = -1000833,
-    SAY_WINDSOR_DIALOGUE_6      = -1000834,
-    SAY_WINDSOR_DIALOGUE_7      = -1000835,
-    SAY_JON_DIALOGUE_8          = -1000836,
-    SAY_JON_DIALOGUE_9          = -1000837,
-    SAY_JON_DIALOGUE_10         = -1000838,
-    SAY_JON_DIALOGUE_11         = -1000839,
-    SAY_WINDSOR_DIALOGUE_12     = -1000840,
-    SAY_WINDSOR_DIALOGUE_13     = -1000841,
+    SAY_JON_DIALOGUE_1          = -1000828,                 // jondialogue1 台词广播 ID
+    SAY_WINDSOR_DIALOGUE_2      = -1000829,                 // 温德索尔dialogue2 台词广播 ID
+    SAY_WINDSOR_DIALOGUE_3      = -1000830,                 // 温德索尔dialogue3 台词广播 ID
+    SAY_JON_DIALOGUE_4          = -1000832,                 // jondialogue4 台词广播 ID
+    SAY_JON_DIALOGUE_5          = -1000833,                 // jondialogue5 台词广播 ID
+    SAY_WINDSOR_DIALOGUE_6      = -1000834,                 // 温德索尔dialogue6 台词广播 ID
+    SAY_WINDSOR_DIALOGUE_7      = -1000835,                 // 温德索尔dialogue7 台词广播 ID
+    SAY_JON_DIALOGUE_8          = -1000836,                 // jondialogue8 台词广播 ID
+    SAY_JON_DIALOGUE_9          = -1000837,                 // jondialogue9 台词广播 ID
+    SAY_JON_DIALOGUE_10         = -1000838,                 // jondialogue10 台词广播 ID
+    SAY_JON_DIALOGUE_11         = -1000839,                 // jondialogue11 台词广播 ID
+    SAY_WINDSOR_DIALOGUE_12     = -1000840,                 // 温德索尔dialogue12 台词广播 ID
+    SAY_WINDSOR_DIALOGUE_13     = -1000841,                 // 温德索尔dialogue13 台词广播 ID
 
-    SAY_WINDSOR_BEFORE_KEEP     = -1000849,
-    SAY_WINDSOR_TO_KEEP         = -1000850,
+    SAY_WINDSOR_BEFORE_KEEP     = -1000849,                 // 温德索尔beforekeep 台词广播 ID
+    SAY_WINDSOR_TO_KEEP         = -1000850,                 // 温德索尔tokeep 台词广播 ID
 
-    SAY_WINDSOR_KEEP_1          = -1000851,
-    SAY_BOLVAR_KEEP_2           = -1000852,
-    SAY_WINDSOR_KEEP_3          = -1000853,
-    SAY_PRESTOR_KEEP_4          = -1000855,
-    SAY_PRESTOR_KEEP_5          = -1000856,
-    SAY_WINDSOR_KEEP_6          = -1000857,
-    SAY_WINDSOR_KEEP_7          = -1000859,
-    SAY_WINDSOR_KEEP_8          = -1000860,
-    SAY_PRESTOR_KEEP_9          = -1000863,
-    SAY_BOLVAR_KEEP_10          = -1000864,
-    SAY_PRESTOR_KEEP_11         = -1000865,
-    SAY_WINDSOR_KEEP_12         = -1000866,
-    SAY_PRESTOR_KEEP_13         = -1000867,
-    SAY_PRESTOR_KEEP_14         = -1000868,
-    SAY_BOLVAR_KEEP_15          = -1000869,
-    SAY_WINDSOR_KEEP_16         = -1000870,
+    SAY_WINDSOR_KEEP_1          = -1000851,                 // 温德索尔keep1 台词广播 ID
+    SAY_BOLVAR_KEEP_2           = -1000852,                 // bolvarkeep2 台词广播 ID
+    SAY_WINDSOR_KEEP_3          = -1000853,                 // 温德索尔keep3 台词广播 ID
+    SAY_PRESTOR_KEEP_4          = -1000855,                 // prestorkeep4 台词广播 ID
+    SAY_PRESTOR_KEEP_5          = -1000856,                 // prestorkeep5 台词广播 ID
+    SAY_WINDSOR_KEEP_6          = -1000857,                 // 温德索尔keep6 台词广播 ID
+    SAY_WINDSOR_KEEP_7          = -1000859,                 // 温德索尔keep7 台词广播 ID
+    SAY_WINDSOR_KEEP_8          = -1000860,                 // 温德索尔keep8 台词广播 ID
+    SAY_PRESTOR_KEEP_9          = -1000863,                 // prestorkeep9 台词广播 ID
+    SAY_BOLVAR_KEEP_10          = -1000864,                 // bolvarkeep10 台词广播 ID
+    SAY_PRESTOR_KEEP_11         = -1000865,                 // prestorkeep11 台词广播 ID
+    SAY_WINDSOR_KEEP_12         = -1000866,                 // 温德索尔keep12 台词广播 ID
+    SAY_PRESTOR_KEEP_13         = -1000867,                 // prestorkeep13 台词广播 ID
+    SAY_PRESTOR_KEEP_14         = -1000868,                 // prestorkeep14 台词广播 ID
+    SAY_BOLVAR_KEEP_15          = -1000869,                 // bolvarkeep15 台词广播 ID
+    SAY_WINDSOR_KEEP_16         = -1000870,                 // 温德索尔keep16 台词广播 ID
 
-    EMOTE_CONTEMPLATION         = -1000831,
-    EMOTE_PRESTOR_LAUGH         = -1000854,
-    EMOTE_WINDSOR_TABLETS       = -1000858,
-    EMOTE_WINDSOR_READ          = -1000861,
-    EMOTE_BOLVAR_GASP           = -1000862,
-    EMOTE_WINDSOR_DIE           = -1000871,
-    EMOTE_GUARD_TRANSFORM       = -1000872,
+    EMOTE_CONTEMPLATION         = -1000831,                 // contemplation 表情动作 ID
+    EMOTE_PRESTOR_LAUGH         = -1000854,                 // prestorlaugh 表情动作 ID
+    EMOTE_WINDSOR_TABLETS       = -1000858,                 // 温德索尔tablets 表情动作 ID
+    EMOTE_WINDSOR_READ          = -1000861,                 // 温德索尔read 表情动作 ID
+    EMOTE_BOLVAR_GASP           = -1000862,                 // bolvargasp 表情动作 ID
+    EMOTE_WINDSOR_DIE           = -1000871,                 // 温德索尔die 表情动作 ID
+    EMOTE_GUARD_TRANSFORM       = -1000872,                 // 卫士变形 表情动作 ID
 
-    GOSSIP_ITEM_REGINALD        = -3000107,
+    GOSSIP_ITEM_REGINALD        = -3000107,                 // 物品reginald 对话菜单选项 ID
 
-    GOSSIP_TEXT_ID_MASQUERADE   = 5633,
+    GOSSIP_TEXT_ID_MASQUERADE   = 5633,                     // textIDmasquerade 对话菜单选项 ID
 
-    SPELL_ONYXIA_TRANSFORM      = 20409,
-    SPELL_WINDSOR_READ          = 20358,
-    SPELL_WINDSOR_DEATH         = 20465,
-    SPELL_ONYXIA_DESPAWN        = 20466,
+    SPELL_ONYXIA_TRANSFORM      = 20409,                    // onyxia变形 法术 ID
+    SPELL_WINDSOR_READ          = 20358,                    // 温德索尔read 法术 ID
+    SPELL_WINDSOR_DEATH         = 20465,                    // 温德索尔死亡 法术 ID
+    SPELL_ONYXIA_DESPAWN        = 20466,                    // onyxia消除 法术 ID
 
-    // combat spells
-    SPELL_HAMMER_OF_JUSTICE     = 10308,
-    SPELL_SHIELD_WALL           = 871,
-    SPELL_STRONG_CLEAVE         = 8255,
+    // combat spells (战斗spells)
+    SPELL_HAMMER_OF_JUSTICE     = 10308,                    // hammerofjustice 法术 ID
+    SPELL_SHIELD_WALL           = 871,                      // 护盾wall 法术 ID
+    SPELL_STRONG_CLEAVE         = 8255,                     // strong顺劈斩 法术 ID
 
-    NPC_GUARD_ROYAL             = 1756,
-    NPC_GUARD_CITY              = 68,
-    NPC_GUARD_PATROLLER         = 1976,
-    NPC_GUARD_ONYXIA            = 12739,
+    NPC_GUARD_ROYAL             = 1756,                     // 卫士royal Entry ID
+    NPC_GUARD_CITY              = 68,                       // 卫士city Entry ID
+    NPC_GUARD_PATROLLER         = 1976,                     // 卫士patroller Entry ID
+    NPC_GUARD_ONYXIA            = 12739,                    // 卫士onyxia Entry ID
 
-    MAX_ROYAL_GUARDS            = 6,
+    MAX_ROYAL_GUARDS            = 6,                        // royalguards 标识 ID
 };
 
 static const float aGuardLocations[MAX_ROYAL_GUARDS][4] =
@@ -857,6 +879,7 @@ static const DialogueEntry aMasqueradeDialogue[] =
     {0, 0, 0},
 };
 
+// 随从/NPC AI：温德索尔（reginald_windsor）
 struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
 {
     npc_reginald_windsorAI(Creature* creature) : npc_escortAI(creature),
@@ -876,11 +899,12 @@ struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
 
     bool m_isKeepReady;
 
-    ObjectGuid m_playerGuid;
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
     ObjectGuid m_guardsGuid[MAX_ROYAL_GUARDS];
 
     GuidList m_lRoyalGuardsGuidList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
     	npc_escortAI::Reset();
@@ -904,7 +928,7 @@ struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
                 // Prepare Jonathan for the first event
                 if (Creature* jonathan = m_scriptedMap->GetSingleCreatureFromStorage(NPC_JONATHAN))
                 {
-                    // Summon 3 guards on each side and move Jonathan in the middle
+                    // Summon 3 guards on each side and move Jonathan in the middle (召唤 guards on each side and move Jonathan in the middle)
                     for (uint8 i = 0; i < MAX_ROYAL_GUARDS; ++i)
                     {
                         if (Creature* temp = m_creature->SummonCreature(NPC_GUARD_ROYAL, aGuardLocations[i][0], aGuardLocations[i][1], aGuardLocations[i][2], aGuardLocations[i][3], TEMPSPAWN_TIMED_DESPAWN, 180000))
@@ -1135,7 +1159,7 @@ struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
                 if (Creature* onyxia = m_scriptedMap->GetSingleCreatureFromStorage(NPC_PRESTOR))
                     DoScriptText(SAY_PRESTOR_KEEP_13, onyxia);
 
-                // Fake death
+                // Fake death (Fake死亡)
                 m_creature->InterruptNonMeleeSpells(true);
                 m_creature->SetHealth(0);
                 m_creature->StopMoving();
@@ -1267,10 +1291,11 @@ struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
         else
             m_cleaveTimer -= diff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 任务接取回调函数：npc_reginald_windsor
 bool QuestAccept_npc_reginald_windsor(Player* player, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_THE_GREAT_MASQUERADE)
@@ -1282,6 +1307,7 @@ bool QuestAccept_npc_reginald_windsor(Player* player, Creature* creature, const 
     return true;
 }
 
+// NPC 对话交互入口函数：npc_reginald_windsor
 bool GossipHello_npc_reginald_windsor(Player* player, Creature* creature)
 {
     bool isEventReady = false;
@@ -1319,15 +1345,17 @@ bool GossipSelect_npc_reginald_windsor(Player* player, Creature* creature, uint3
     return true;
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GO_HEAD_OF_NEFARIAN_SW = 179882,
-    GO_HEAD_OF_ONYXIA_SW = 179558,
+    GO_HEAD_OF_NEFARIAN_SW = 179882,                        // headof奈法利安sw 游戏对象 Entry ID
+    GO_HEAD_OF_ONYXIA_SW = 179558,                          // headofonyxiasw 游戏对象 Entry ID
 
-    GOSSIP_HEAD_MAT = 5754,
-    GOSSIP_HEAD_AFRA = 6027,
+    GOSSIP_HEAD_MAT = 5754,                                 // headmat 对话菜单选项 ID
+    GOSSIP_HEAD_AFRA = 6027,                                // headafra 对话菜单选项 ID
 };
 
+// NPC 对话交互入口函数：npc_major_mattingly
 bool GossipHello_npc_major_mattingly(Player* player, Creature* creature)
 {
     uint32 gossipId = creature->GetCreatureInfo()->GossipMenuId;
@@ -1340,6 +1368,7 @@ bool GossipHello_npc_major_mattingly(Player* player, Creature* creature)
     return true;
 }
 
+// NPC 对话交互入口函数：npc_field_marshal_afrasiabi
 bool GossipHello_npc_field_marshal_afrasiabi(Player* player, Creature* creature)
 {
     uint32 gossipId = creature->GetCreatureInfo()->GossipMenuId;
@@ -1352,6 +1381,7 @@ bool GossipHello_npc_field_marshal_afrasiabi(Player* player, Creature* creature)
     return true;
 }
 
+// 注册并载入脚本模块：stormwind_city
 void AddSC_stormwind_city()
 {
     Script* pNewScript = new Script;

@@ -21,66 +21,71 @@ SDComment: Transform spell has some minor core issues. Digestive Acid should be 
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：上古之神克苏恩 (C'Thun) 巨眼之柄、胃部消化与巨爪触须完整战斗 AI
+ */
+
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_WEAKENED                  = 11476,
+    EMOTE_WEAKENED                  = 11476,                // 剧情台词/喊话文本 ID
 
-    SPELL_CHECK_RESET_AURA          = 26255,
-    SPELL_RESET_ENCOUNTER           = 26257,
+    SPELL_CHECK_RESET_AURA          = 26255,                // 技能法术 ID
+    SPELL_RESET_ENCOUNTER           = 26257,                // 技能法术 ID
 
-    // ***** Phase 1 ********
-    SPELL_EYE_BEAM                  = 26134,
-    SPELL_EYE_BEAM_INIT             = 32950,                // Cast three times on victim at encounter start, then replaced by spell 26134 on random targets
-    SPELL_DARK_GLARE                = 26029,
-    SPELL_ROTATE_TRIGGER            = 26137,                // phase switch spell - triggers 26009 or 26136. These trigger the Dark Glare spell - 26029
-    SPELL_ROTATE_360_LEFT           = 26009,
-    SPELL_ROTATE_360_RIGHT          = 26136,
+    // ***** Phase 1 ******** (说明)
+    SPELL_EYE_BEAM                  = 26134,                // 技能法术 ID
+    SPELL_EYE_BEAM_INIT             = 32950,                // Cast three times on victim at encounter start, then replaced by spell 26134 on random targets (说明)
+    SPELL_DARK_GLARE                = 26029,                // 技能法术 ID
+    SPELL_ROTATE_TRIGGER            = 26137,                // phase switch spell - triggers 26009 or 26136. These trigger the Dark Glare spell - 26029 (说明)
+    SPELL_ROTATE_360_LEFT           = 26009,                // 技能法术 ID
+    SPELL_ROTATE_360_RIGHT          = 26136,                // 技能法术 ID
 
-    SPELL_SUMMON_HOOK_TENTACLES_1   = 26397,                // Periodically triggers spell 26398 which cast spell 26140 to summon NPC 15725
-    SPELL_SUMMON_HOOK_TENTACLES_2   = 26398,
-    SPELL_SUMMON_HOOK_TENTACLE      = 26140,                // Summon NPC 15725
+    SPELL_SUMMON_HOOK_TENTACLES_1   = 26397,                // Periodically triggers spell 26398 which cast spell 26140 to summon NPC 15725 (说明)
+    SPELL_SUMMON_HOOK_TENTACLES_2   = 26398,                // 技能法术 ID
+    SPELL_SUMMON_HOOK_TENTACLE      = 26140,                // Summon NPC 15725 (召唤)
 
-    SPELL_SUMMON_EYE_TENTACLES      = 26152,
-    SPELL_SUMMON_EYE_TENTACLE_1     = 26144,
-    SPELL_SUMMON_EYE_TENTACLE_2     = 26145,
-    SPELL_SUMMON_EYE_TENTACLE_3     = 26146,
-    SPELL_SUMMON_EYE_TENTACLE_4     = 26147,
-    SPELL_SUMMON_EYE_TENTACLE_5     = 26148,
-    SPELL_SUMMON_EYE_TENTACLE_6     = 26149,
-    SPELL_SUMMON_EYE_TENTACLE_7     = 26150,
-    SPELL_SUMMON_EYE_TENTACLE_8     = 26151,
+    SPELL_SUMMON_EYE_TENTACLES      = 26152,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_1     = 26144,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_2     = 26145,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_3     = 26146,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_4     = 26147,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_5     = 26148,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_6     = 26149,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_7     = 26150,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLE_8     = 26151,                // 技能法术 ID
 
-    SPELL_DESPAWN_TENTACLES         = 26399,
+    SPELL_DESPAWN_TENTACLES         = 26399,                // 技能法术 ID
 
-    SPELL_INVIS_AND_STEALTH_DETECT  = 18950,
+    SPELL_INVIS_AND_STEALTH_DETECT  = 18950,                // 技能法术 ID
 
-    // ***** Phase 2 ******
-    SPELL_CARAPACE_CTHUN            = 26156,                // Was removed from client dbcs
-    SPELL_TRANSFORM                 = 26232,
-    SPELL_CTHUN_VULNERABLE          = 26235,
-    SPELL_SUMMON_EYE_TENTACLES_P2   = 26769,
-    SPELL_GIANT_EYE_TENTACLES_1     = 26766,                // Periodically triggers 26767 that cast 26768 on random target to summon NPC 15334
-    SPELL_GIANT_EYE_TENTACLES_2     = 26767,
-    SPELL_SUMMON_GIANT_EYE_TENTACLE = 26768,                // Summon NPC 15334
-    SPELL_SUMMON_GIANT_HOOKS_1      = 26213,                // Periodically triggers 26217 that cast 26216 on random target to summon NPC 15728
-    SPELL_SUMMON_GIANT_HOOKS_2      = 26217,
-    SPELL_SUMMON_GIANT_HOOK_TENTACLE= 26216,                // Summon NPC 15728
-    SPELL_SUMMON_MOUTH_TENTACLES_1  = 26236,                // Periodically triggers 26237 that cast 26332 on random target to summon NPC 15910
-    SPELL_SUMMON_MOUTH_TENTACLES_2  = 26237,
-    SPELL_SUMMON_MOUTH_TENTACLE     = 26332,                // Summon NPC 15910 and prepare target to be teleported to stomach
-    SPELL_DIGESTIVE_ACID_TELEPORT   = 26220,                // Stomach teleport spell
-    SPELL_EXIT_STOMACH_EFFECT       = 26230,                // Complete the eject effect from the stomach towards a random location in the room
-    SPELL_PORT_OUT_STOMACH_EFFECT   = 26648,                // used to kill players inside the stomach on evade
-    SPELL_DIGESTIVE_ACID            = 26476,                // damage spell - should be handled by the map
-    SPELL_EXIT_STOMACH              = 26221,                // Summon NPC 15800 that will handle the initial knockback outside the stomach through spell 26224 (EventAI)
+    // ***** Phase 2 ****** (说明)
+    SPELL_CARAPACE_CTHUN            = 26156,                // Was removed from client dbcs (说明)
+    SPELL_TRANSFORM                 = 26232,                // 技能法术 ID
+    SPELL_CTHUN_VULNERABLE          = 26235,                // 技能法术 ID
+    SPELL_SUMMON_EYE_TENTACLES_P2   = 26769,                // 技能法术 ID
+    SPELL_GIANT_EYE_TENTACLES_1     = 26766,                // Periodically triggers 26767 that cast 26768 on random target to summon NPC 15334 (说明)
+    SPELL_GIANT_EYE_TENTACLES_2     = 26767,                // 技能法术 ID
+    SPELL_SUMMON_GIANT_EYE_TENTACLE = 26768,                // Summon NPC 15334 (召唤)
+    SPELL_SUMMON_GIANT_HOOKS_1      = 26213,                // Periodically triggers 26217 that cast 26216 on random target to summon NPC 15728 (说明)
+    SPELL_SUMMON_GIANT_HOOKS_2      = 26217,                // 技能法术 ID
+    SPELL_SUMMON_GIANT_HOOK_TENTACLE= 26216,                // Summon NPC 15728 (召唤)
+    SPELL_SUMMON_MOUTH_TENTACLES_1  = 26236,                // Periodically triggers 26237 that cast 26332 on random target to summon NPC 15910 (说明)
+    SPELL_SUMMON_MOUTH_TENTACLES_2  = 26237,                // 技能法术 ID
+    SPELL_SUMMON_MOUTH_TENTACLE     = 26332,                // Summon NPC 15910 and prepare target to be teleported to stomach (说明)
+    SPELL_DIGESTIVE_ACID_TELEPORT   = 26220,                // Stomach teleport spell (法术)
+    SPELL_EXIT_STOMACH_EFFECT       = 26230,                // Complete the eject effect from the stomach towards a random location in the room (说明)
+    SPELL_PORT_OUT_STOMACH_EFFECT   = 26648,                // used to kill players inside the stomach on evade (说明)
+    SPELL_DIGESTIVE_ACID            = 26476,                // damage spell - should be handled by the map (说明)
+    SPELL_EXIT_STOMACH              = 26221,                // Summon NPC 15800 that will handle the initial knockback outside the stomach through spell 26224 (EventAI) (说明)
 
-    NPC_WORLD_TRIGGER               = 15384,
+    NPC_WORLD_TRIGGER               = 15384,                // NPC 条目 ID
 
-    DISPLAY_ID_CTHUN_BODY           = 15786,                // Helper display id; This is needed in order to have the proper transform animation. ToDo: remove this when auras are fixed in core.
+    DISPLAY_ID_CTHUN_BODY           = 15786,                // Helper display id; This is needed in order to have the proper transform animation. ToDo: remove this when auras are fixed in core. (说明)
 
     AREATRIGGER_STOMACH_1           = 4033,
     AREATRIGGER_STOMACH_2           = 4034,
@@ -91,28 +96,30 @@ enum
 
 static const float cthunLocations[4][4] =
 {
-    { -8571.472f, 1990.2048f, -98.777855f, 1.01229095458984375f}, // Flesh Tentacles locations
+    { -8571.472f, 1990.2048f, -98.777855f, 1.01229095458984375f}, // Flesh Tentacles locations (说明)
     { -8525.083f, 1994.7125f, -98.255325f, 2.58308720588684082f},
-    { -8563.56f, 2040.69f,   -97.f,  4.9426f},          // Stomach teleport location (in)
-    { -8576.06f, 1985.8359f, 100.22033f, 6.108652f},    // Stomach eject location (out)
+    { -8563.56f, 2040.69f,   -97.f,  4.9426f},          // Stomach teleport location (in) (说明)
+    { -8576.06f, 1985.8359f, 100.22033f, 6.108652f},    // Stomach eject location (out) (说明)
 };
 
 /*######
 ## boss_eye_of_cthun
 ######*/
 
+// EyeCthunActions 战斗行为动作枚举
 enum EyeCthunActions
 {
     EYECTHUN_INIT_EYEBEAM,
-    EYECTHUN_ACTION_MAX,
+    EYECTHUN_ACTION_MAX,                                    // 战斗行为动作
     EYECTHUN_END_DARKGLARE,
 };
 
+// boss_eye_of_cthunAI 首领战斗 AI
 struct boss_eye_of_cthunAI : public CombatAI
 {
     boss_eye_of_cthunAI(Creature* creature) : CombatAI(creature, EYECTHUN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(EYECTHUN_INIT_EYEBEAM, 1u); // immediately on first combat tick
+        AddCombatAction(EYECTHUN_INIT_EYEBEAM, 1u); // immediately on first combat tick (战斗)
         AddCustomAction(EYECTHUN_END_DARKGLARE, true, [&]() { HandleEndDarkGlare(); });
     }
 
@@ -120,7 +127,7 @@ struct boss_eye_of_cthunAI : public CombatAI
 
     uint8 m_eyeBeamCount;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
 
@@ -145,7 +152,7 @@ struct boss_eye_of_cthunAI : public CombatAI
         m_creature->SetInCombatWithZone();
         AttackClosestEnemy();
 
-        // Start periodically summoning Eye and Claw (Hook) Tentacles
+        // Start periodically summoning Eye and Claw (Hook) Tentacles (说明)
         DoCastSpellIfCan(nullptr, SPELL_SUMMON_EYE_TENTACLES, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT );
         DoCastSpellIfCan(nullptr, SPELL_SUMMON_HOOK_TENTACLES_1, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
         DoCastSpellIfCan(nullptr, SPELL_CHECK_RESET_AURA, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
@@ -153,7 +160,7 @@ struct boss_eye_of_cthunAI : public CombatAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        // Allow the body to begin the transition (internal 5 secs delay)
+        // Allow the body to begin the transition (internal 5 secs delay) (说明)
         if (m_instance)
         {
             if (Creature* cthun = m_instance->GetSingleCreatureFromStorage(NPC_CTHUN))
@@ -161,9 +168,9 @@ struct boss_eye_of_cthunAI : public CombatAI
         }
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
-        // Despawn all tentacles and portals
+        // Despawn all tentacles and portals (消失)
         DoCastSpellIfCan(nullptr, SPELL_DESPAWN_TENTACLES, TRIGGERED_OLD_TRIGGERED);
 
         m_creature->RemoveAurasDueToSpell(SPELL_SUMMON_HOOK_TENTACLES_1);
@@ -177,7 +184,7 @@ struct boss_eye_of_cthunAI : public CombatAI
             m_instance->SetData(TYPE_CTHUN, FAIL);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         switch (summoned->GetEntry())
         {
@@ -190,11 +197,11 @@ struct boss_eye_of_cthunAI : public CombatAI
 
     void HandleEndDarkGlare()
     {
-        // Remove rotation auras
+        // Remove rotation auras (说明)
         m_creature->RemoveAurasDueToSpell(SPELL_ROTATE_360_LEFT);
         m_creature->RemoveAurasDueToSpell(SPELL_ROTATE_360_RIGHT);
 
-        // Switch to Eye Beam and resume targeting
+        // Switch to Eye Beam and resume targeting (说明)
         SetCombatScriptStatus(false);
         if (m_creature->GetVictim())
             m_creature->SetTarget(m_creature->GetVictim());
@@ -207,16 +214,16 @@ struct boss_eye_of_cthunAI : public CombatAI
         if (spellInfo->Id == SPELL_ROTATE_TRIGGER)
         {
             // We ignore targets during Dark Glare to control Eye of C'Thun's orientation ourselves in spells
-            // So we need custom AI management for this sub phase
+            // So we need custom AI management for this sub phase (说明)
             SetCombatScriptStatus(true);
             m_creature->SetTarget(nullptr);
 
-            // Switch to Dark Glare phase for 40 seconds
+            // Switch to Dark Glare phase for 40 seconds (说明)
             ResetTimer(EYECTHUN_END_DARKGLARE, 40000);
         }
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -240,49 +247,51 @@ struct boss_eye_of_cthunAI : public CombatAI
 ## boss_cthun
 ######*/
 
+// CthunActions 战斗行为动作枚举
 enum CthunActions
 {
     CTHUN_CLAWTENTACLEDELAY,
     CTHUN_EYETENTACLEDELAY,
-    CTHUN_ACTION_MAX,
+    CTHUN_ACTION_MAX,                                       // 战斗行为动作
     CTHUN_EMERGE,
     CTHUN_WEAKENED_END,
 };
 
+// boss_cthunAI 首领战斗 AI
 struct boss_cthunAI : public CombatAI
 {
     boss_cthunAI(Creature* creature) : CombatAI(creature, CTHUN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        // There are 30 seconds offset between Giant Eye and Giant Claw Tentacles which are both on a 60 seconds period handled by periodic spells
+        // There are 30 seconds offset between Giant Eye and Giant Claw Tentacles which are both on a 60 seconds period handled by periodic spells (说明)
         AddCombatAction(CTHUN_CLAWTENTACLEDELAY, 10000u);
         AddCombatAction(CTHUN_EYETENTACLEDELAY, 40000u);
         AddCustomAction(CTHUN_EMERGE, true, [&]() { HandleEmerge(); }, TIMER_ALWAYS);
         AddCustomAction(CTHUN_WEAKENED_END, true, [&]() { HandleEndWeaken(); }, TIMER_COMBAT_COMBAT);
-        // Set active in order to be used during the instance progress
+        // Set active in order to be used during the instance progress (说明)
         m_creature->SetActiveObjectState(true);
     }
 
     ScriptedInstance* m_instance;
 
-    // Global variables
+    // Global variables (说明)
     uint8 m_fleshTentaclesKilled;
 
-    // Body Phase
+    // Body Phase (说明)
 
     GuidList m_playersInStomachList;
 
     ObjectGuid m_stomachEnterTargetGuid;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
 
         m_fleshTentaclesKilled    = 0;
 
-        // Clear players in stomach
+        // Clear players in stomach (说明)
         m_playersInStomachList.clear();
 
-        // Reset flags
+        // Reset flags (重置)
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE);
         SetCombatMovement(false);
         SetMeleeEnabled(false);
@@ -300,12 +309,12 @@ struct boss_cthunAI : public CombatAI
         m_creature->SetInCombatWithZone();
         AttackClosestEnemy();
 
-        // Start periodically summoning Eye, Giant Eye and Mouth Tentacles
+        // Start periodically summoning Eye, Giant Eye and Mouth Tentacles (说明)
         DoSpawnTentacles();
         DoCastSpellIfCan(nullptr, SPELL_CHECK_RESET_AURA, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         // Kill any player from the stomach on evade - this is becuase C'thun cannot be soloed.
         for (auto guid : m_playersInStomachList)
@@ -334,7 +343,7 @@ struct boss_cthunAI : public CombatAI
             m_instance->SetData(TYPE_CTHUN, DONE);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         switch (summoned->GetEntry())
         {
@@ -348,7 +357,7 @@ struct boss_cthunAI : public CombatAI
 
     void SummonedCreatureJustDied(Creature* summoned) override
     {
-        // Handle Flesh Tentacle kill in stomach
+        // Handle Flesh Tentacle kill in stomach (说明)
         if (summoned->GetEntry() == NPC_FLESH_TENTACLE)
         {
             ++m_fleshTentaclesKilled;
@@ -359,13 +368,13 @@ struct boss_cthunAI : public CombatAI
 
     void DoSpawnTentacles()
     {
-        // Tentacles Party... Pleasure !
+        // Tentacles Party... Pleasure ! (说明)
         DoCastSpellIfCan(nullptr, SPELL_SUMMON_EYE_TENTACLES_P2, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT );
         DoCastSpellIfCan(nullptr, SPELL_SUMMON_MOUTH_TENTACLES_1, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT );
         ResetCombatAction(CTHUN_CLAWTENTACLEDELAY, 10000);
         ResetCombatAction(CTHUN_EYETENTACLEDELAY, 40000);
 
-        // Flesh Tentacles inside stomach, two of them
+        // Flesh Tentacles inside stomach, two of them (说明)
         m_fleshTentaclesKilled = 0;
         for (uint8 i = 0; i < MAX_FLESH_TENTACLES; ++i)
             m_creature->SummonCreature(NPC_FLESH_TENTACLE, cthunLocations[i][0], cthunLocations[i][1], cthunLocations[i][2], cthunLocations[i][3], TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -373,7 +382,7 @@ struct boss_cthunAI : public CombatAI
 
     void StopSpawningTentacles()
     {
-        // End of the tentacles everywhere. No more pleasure.
+        // End of the tentacles everywhere. No more pleasure. (说明)
         m_creature->RemoveAurasDueToSpell(SPELL_GIANT_EYE_TENTACLES_1);
         m_creature->RemoveAurasDueToSpell(SPELL_SUMMON_EYE_TENTACLES_P2);
         m_creature->RemoveAurasDueToSpell(SPELL_SUMMON_GIANT_HOOKS_1);
@@ -385,7 +394,7 @@ struct boss_cthunAI : public CombatAI
         // Transform and start C'Thun phase
         if (DoCastSpellIfCan(nullptr, SPELL_TRANSFORM) == CAST_OK)
         {
-            // Make ready for fight
+            // Make ready for fight (说明)
             SetReactState(REACT_AGGRESSIVE);
             DoCastSpellIfCan(nullptr, SPELL_CARAPACE_CTHUN, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE);
@@ -407,42 +416,42 @@ struct boss_cthunAI : public CombatAI
 
     void HandleEndWeaken()
     {
-        // Handle carapace and tentacles respawn when the vulnerability spell expires
+        // Handle carapace and tentacles respawn when the vulnerability spell expires (说明)
         DoCastSpellIfCan(nullptr, SPELL_CARAPACE_CTHUN, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
         DoCastSpellIfCan(nullptr, SPELL_CHECK_RESET_AURA, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
         DoSpawnTentacles();
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
             case CTHUN_CLAWTENTACLEDELAY:
-                // The first Giant Claw Tentacle (at phase 2 start of after weakened state) is a single isolated cast,
-                // all after are on periodic timer through dedicated spell
-                // Check for valid player
+                // The first Giant Claw Tentacle (at phase 2 start of after weakened state) is a single isolated cast, (说明)
+                // all after are on periodic timer through dedicated spell (说明)
+                // Check for valid player (玩家)
                 if (Unit* player = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_IN_LOS | SELECT_FLAG_PLAYER))
                 {
                     player->CastSpell(nullptr, SPELL_SUMMON_GIANT_HOOK_TENTACLE, TRIGGERED_OLD_TRIGGERED);
-                    // All further summons are handled in periodic spell SPELL_SUMMON_GIANT_HOOKS_1
+                    // All further summons are handled in periodic spell SPELL_SUMMON_GIANT_HOOKS_1 (说明)
                     if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_GIANT_HOOKS_1, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT ) == CAST_OK)
                         DisableCombatAction(action);
-                    // In case of failure, try another single cast
+                    // In case of failure, try another single cast (说明)
                     else
                         ResetCombatAction(action, 30000);
                 }
                 break;
             case CTHUN_EYETENTACLEDELAY:
-                // The first Giant Eye Tentacle (at phase 2 start of after weakened state, 30 after first Giant Claw Tentacle) is a single isolated cast,
-                // all after are on periodic timer through dedicated spell
-                // Check for valid player
+                // The first Giant Eye Tentacle (at phase 2 start of after weakened state, 30 after first Giant Claw Tentacle) is a single isolated cast, (说明)
+                // all after are on periodic timer through dedicated spell (说明)
+                // Check for valid player (玩家)
                 if (Unit* player = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_IN_LOS | SELECT_FLAG_PLAYER))
                 {
                     player->CastSpell(nullptr, SPELL_SUMMON_GIANT_EYE_TENTACLE, TRIGGERED_OLD_TRIGGERED);
-                    // All further summons are handled in periodic spell SPELL_GIANT_EYE_TENTACLES_1
+                    // All further summons are handled in periodic spell SPELL_GIANT_EYE_TENTACLES_1 (说明)
                     if (DoCastSpellIfCan(nullptr, SPELL_GIANT_EYE_TENTACLES_1, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT ) == CAST_OK)
                         DisableCombatAction(action);
-                    // In case of failure, try another single cast
+                    // In case of failure, try another single cast (说明)
                     else
                         ResetCombatAction(action, 30000);
                 }
@@ -457,28 +466,31 @@ struct boss_cthunAI : public CombatAI
 ## npc_giant_claw_tentacle
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SPELL_GIANT_GROUND_RUPTURE        = 26478,
-    SPELL_HAMSTRING                   = 26211,
-    SPELL_THRASH                      = 3391,
-    SPELL_SUBMERGE_VISUAL             = 28819,
-    SPELL_TELEPORT_GIANT_HOOK         = 26191,
-    SPELL_TELEPORT_GIANT_HOOK_TRIGGER = 26205,
-    SPELL_GROUND_TREMOR               = 6524,
-    SPELL_DESPAWN_TENT_PORT           = 26404,
+    SPELL_GIANT_GROUND_RUPTURE        = 26478,              // 技能法术 ID
+    SPELL_HAMSTRING                   = 26211,              // 技能法术 ID
+    SPELL_THRASH                      = 3391,               // 技能法术 ID
+    SPELL_SUBMERGE_VISUAL             = 28819,              // 技能法术 ID
+    SPELL_TELEPORT_GIANT_HOOK         = 26191,              // 技能法术 ID
+    SPELL_TELEPORT_GIANT_HOOK_TRIGGER = 26205,              // 技能法术 ID
+    SPELL_GROUND_TREMOR               = 6524,               // 技能法术 ID
+    SPELL_DESPAWN_TENT_PORT           = 26404,              // 技能法术 ID
 
-    SPELL_GROUND_RUPTURE            = 26139,
+    SPELL_GROUND_RUPTURE            = 26139,                // 技能法术 ID
 };
 
+// GiantClawActions 战斗行为动作枚举
 enum GiantClawActions
 {
     GIANTCLAW_CHECKTARGET,
-    GIANTCLAW_ACTION_MAX,
+    GIANTCLAW_ACTION_MAX,                                   // 战斗行为动作
     GIANTCLAW_RUPTURE,
     GIANTCLAW_GROUND_TREMOR,
 };
 
+// npc_giant_claw_tentacleAI NPC 脚本 AI
 struct npc_giant_claw_tentacleAI : public CombatAI
 {
     npc_giant_claw_tentacleAI(Creature* creature) : CombatAI(creature, GIANTCLAW_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -492,7 +504,7 @@ struct npc_giant_claw_tentacleAI : public CombatAI
 
     bool m_isLookingForMeleeTarget;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_isLookingForMeleeTarget = false;
 
@@ -514,14 +526,14 @@ struct npc_giant_claw_tentacleAI : public CombatAI
         m_creature->CastSpell(nullptr, SPELL_DESPAWN_TENT_PORT, TRIGGERED_OLD_TRIGGERED);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
             case GIANTCLAW_CHECKTARGET:
-                // Check every second if we are tanked
-                // If not, give 5 seconds to be tanked before teleporting to a target
-                // If there is nobody in range, spawn a new tentacle at a new target location
+                // Check every second if we are tanked (说明)
+                // If not, give 5 seconds to be tanked before teleporting to a target (说明)
+                // If there is nobody in range, spawn a new tentacle at a new target location (说明)
                 if (!m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, uint32(0), SELECT_FLAG_IN_MELEE_RANGE) && m_instance)
                 {
                     if (m_isLookingForMeleeTarget)
@@ -557,7 +569,7 @@ bool AreaTrigger_at_stomach_cthun(Player* player, AreaTriggerEntry const* at)
         if (player->IsGameMaster() || !player->IsAlive())
             return false;
 
-        // Summon the Exit Trigger NPC which will knockback the player outside the stomach
+        // Summon the Exit Trigger NPC which will knockback the player outside the stomach (说明)
         if (Creature* trigger = GetClosestCreatureWithEntry(player, NPC_WORLD_TRIGGER, 20.0f))
             trigger->CastSpell(nullptr, SPELL_EXIT_STOMACH, TRIGGERED_OLD_TRIGGERED);
 
@@ -570,7 +582,7 @@ bool AreaTrigger_at_stomach_cthun(Player* player, AreaTriggerEntry const* at)
         if (player->IsGameMaster() || !player->IsAlive())
             return false;
 
-        // Teleport player near the third area trigger
+        // Teleport player near the third area trigger (说明)
         player->NearTeleportTo(cthunLocations[3][0], cthunLocations[3][1], cthunLocations[3][2], cthunLocations[3][3]);
         return true;
     }
@@ -579,11 +591,11 @@ bool AreaTrigger_at_stomach_cthun(Player* player, AreaTriggerEntry const* at)
     if (at->id == AREATRIGGER_STOMACH_3)
     {
         // We need to check for the presence of Digestive Acid aura on player so the area trigger will only activate and knockback players coming from C'Thun's stomach
-        // The knockback spell will remove the Digestive Acid aura
+        // The knockback spell will remove the Digestive Acid aura (说明)
         if (player->IsGameMaster() || !player->IsAlive() || !player->HasAura(SPELL_DIGESTIVE_ACID))
             return false;
 
-        // Check for the trigger NPC that will cast the knockback spell
+        // Check for the trigger NPC that will cast the knockback spell (说明)
         if (Creature* trigger = GetClosestCreatureWithEntry(player, NPC_WORLD_TRIGGER, 20.0f))
             trigger->CastSpell(player, SPELL_EXIT_STOMACH_EFFECT, TRIGGERED_OLD_TRIGGERED);
 
@@ -592,7 +604,7 @@ bool AreaTrigger_at_stomach_cthun(Player* player, AreaTriggerEntry const* at)
     return false;
 }
 
-// 26152, 26769 - Summon Eye Tentacles
+// 26152, 26769 - Summon Eye Tentacles (召唤)
 struct PeriodicSummonEyeTrigger : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& /*data*/) const override
@@ -606,7 +618,7 @@ struct PeriodicSummonEyeTrigger : public AuraScript
     }
 };
 
-// 26217, 26237, 26398, 26767 - Summon Giant Hook Tentacles, Summon Mouth Tentacles, Summon Hook Tentacles, Summon Giant Eye Tentacles
+// 26217, 26237, 26398, 26767 - Summon Giant Hook Tentacles, Summon Mouth Tentacles, Summon Hook Tentacles, Summon Giant Eye Tentacles (说明)
 struct SummonCThunTentacles : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -630,7 +642,7 @@ struct SummonCThunTentacles : public SpellScript
     }
 };
 
-// 26137 - Rotate Trigger
+// 26137 - Rotate Trigger (法术 26137 - Rotate Trigger)
 struct RotateTrigger : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -643,14 +655,14 @@ struct RotateTrigger : public SpellScript
     }
 };
 
-// 26009, 26136 - Rotate 360
+// 26009, 26136 - Rotate 360 (说明)
 struct PeriodicRotate : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
     {
         if (Unit* target = aura->GetTarget())
         {
-            // Clear target before changing orientation
+            // Clear target before changing orientation (目标)
             target->SetTarget(nullptr);
 
             float newAngle = target->GetOrientation();
@@ -669,7 +681,7 @@ struct PeriodicRotate : public AuraScript
     }
 };
 
-// 26205 - Teleport Giant Hook Tentacle Trigger
+// 26205 - Teleport Giant Hook Tentacle Trigger (法术 26205 - Teleport Giant Hook Tentacle Trigger)
 struct HookTentacleTrigger : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -678,7 +690,7 @@ struct HookTentacleTrigger : public SpellScript
         {
             if (Unit* caster = spell->GetCaster())
             {
-                // Caster will need to despawn and players cannot despawn
+                // Caster will need to despawn and players cannot despawn (说明)
                 if (caster->IsCreature())
                     return;
 
@@ -686,7 +698,7 @@ struct HookTentacleTrigger : public SpellScript
                 {
                     caster->CastSpell(target, SPELL_TELEPORT_GIANT_HOOK, TRIGGERED_OLD_TRIGGERED);
 
-                    // Self kill after spawning new tentacle
+                    // Self kill after spawning new tentacle (说明)
                     caster->AI()->SetCombatScriptStatus(true);
                     caster->SetTarget(nullptr);
                     caster->CastSpell(nullptr, SPELL_SUBMERGE_VISUAL, TRIGGERED_OLD_TRIGGERED);
@@ -700,7 +712,7 @@ struct HookTentacleTrigger : public SpellScript
     }
 };
 
-// 26230 - Exit Stomach
+// 26230 - Exit Stomach (法术 26230 - Exit Stomach)
 struct ExitStomach : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -718,21 +730,21 @@ struct ExitStomach : public SpellScript
     }
 };
 
-// 26256 - Check Reset
+// 26256 - Check Reset (法术 26256 - Check Reset)
 struct CheckReset : public SpellScript
 {
     void OnSuccessfulFinish(Spell* spell) const override
     {
-        // If we have at least one target, do nothing
+        // If we have at least one target, do nothing (说明)
         if (Unit* target = spell->GetUnitTarget())
             return;
-        // Else: reset the encounter
+        // Else: reset the encounter (重置)
         if (Unit* caster = spell->GetCaster())
             caster->CastSpell(nullptr, SPELL_RESET_ENCOUNTER, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
-// 26332 - Summon Mouth Tentacle
+// 26332 - Summon Mouth Tentacle (法术 26332 - Summon Mouth Tentacle)
 struct CThunMouthTentacle : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -748,7 +760,7 @@ struct CThunMouthTentacle : public AuraScript
     }
 };
 
-// 26476 - Digestive Acid
+// 26476 - Digestive Acid (法术 26476 - Digestive Acid)
 struct DigestiveAcidPeriodic : public AuraScript
 {
     void OnPeriodicCalculateAmount(Aura* aura, uint32& /*amount*/) const override
@@ -757,7 +769,7 @@ struct DigestiveAcidPeriodic : public AuraScript
         {
             if (Unit* target = aura->GetTarget())
             {
-                // On every tick of the periodic damage, a new stack of Digestive Acid is applied
+                // On every tick of the periodic damage, a new stack of Digestive Acid is applied (说明)
                 if (Unit* caster = aura->GetCaster())
                     caster->CastSpell(target, SPELL_DIGESTIVE_ACID, TRIGGERED_OLD_TRIGGERED);
             }
@@ -765,7 +777,7 @@ struct DigestiveAcidPeriodic : public AuraScript
     }
 };
 
-// 26399 - Despawn Tentacles
+// 26399 - Despawn Tentacles (法术 26399 - Despawn Tentacles)
 struct DespawnTentacles : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -776,7 +788,7 @@ struct DespawnTentacles : public SpellScript
     }
 };
 
-// 26404 - Despawn Tent Port
+// 26404 - Despawn Tent Port (法术 26404 - Despawn Tent Port)
 struct DespawnTentPort : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -787,7 +799,7 @@ struct DespawnTentPort : public SpellScript
     }
 };
 
-// 26586 - Birth
+// 26586 - Birth (法术 26586 - Birth)
 struct BirthTentacles : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -810,7 +822,7 @@ struct BirthTentacles : public SpellScript
     }
 };
 
-// 26140 - Summon Hook Tentacle
+// 26140 - Summon Hook Tentacle (法术 26140 - Summon Hook Tentacle)
 struct SummonHookTentacle : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -819,7 +831,7 @@ struct SummonHookTentacle : public SpellScript
     }
 };
 
-// 26216 - Summon Giant Hook Tentacles
+// 26216 - Summon Giant Hook Tentacles (法术 26216 - Summon Giant Hook Tentacles)
 struct SummonGiantHookTentacles : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -828,7 +840,7 @@ struct SummonGiantHookTentacles : public SpellScript
     }
 };
 
-// 26150 - Summon Eye Tentacle
+// 26150 - Summon Eye Tentacle (法术 26150 - Summon Eye Tentacle)
 struct SummonEyeTentacle : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -837,7 +849,7 @@ struct SummonEyeTentacle : public SpellScript
     }
 };
 
-// 26768 - Summon Giant Eye Tentacles
+// 26768 - Summon Giant Eye Tentacles (法术 26768 - Summon Giant Eye Tentacles)
 struct SummonGiantEyeTentacles : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -846,7 +858,7 @@ struct SummonGiantEyeTentacles : public SpellScript
     }
 };
 
-void AddSC_boss_cthun()
+void AddSC_boss_cthun() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_eye_of_cthun";

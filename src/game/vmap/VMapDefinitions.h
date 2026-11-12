@@ -19,18 +19,20 @@
 #ifndef _VMAPDEFINITIONS_H
 #define _VMAPDEFINITIONS_H
 
+// 液体网格单个格子的世界边长（约 4.1667 码）
 #define LIQUID_TILE_SIZE (533.333f / 128.f)
 
 namespace VMAP
 {
-    const char VMAP_MAGIC[] = "VMAP_7.0";                   // used in final vmap files
-    const char RAW_VMAP_MAGIC[] = "VMAPs05";                // used in extracted vmap files with raw data
-    const char GAMEOBJECT_MODELS[] = "temp_gameobject_models";
+    const char VMAP_MAGIC[] = "VMAP_7.0";                   // used in final vmap files (成品 VMAP 文件魔数版本标识)
+    const char RAW_VMAP_MAGIC[] = "VMAPs05";                // used in extracted vmap files with raw data (原始提取文件魔数版本标识)
+    const char GAMEOBJECT_MODELS[] = "temp_gameobject_models"; // GameObject 碰撞模型清单文件名
 
-    // defined in TileAssembler.cpp currently...
+    // defined in TileAssembler.cpp currently... (从文件读取指定块魔数并校验)
     bool readChunk(FILE* rf, char* dest, const char* compare, uint32 len);
 }
 
+// 核心服务与独立工具（如 mmap_generator）的断言/日志宏适配
 #ifndef NO_CORE_FUNCS
 #include "Util/Errors.h"
 #include "Log/Log.h"

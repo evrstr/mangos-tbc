@@ -21,22 +21,25 @@ SDComment: Some parts are not complete - requires additional research. Brewmaide
 SDCategory: Blackrock Depths
 EndScriptData */
 
+// 科林·烈酒（Coren Direbrew）美酒节节日首领 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                       = -1230034,
+    SAY_AGGRO                       = -1230034,             // 开战 台词广播 ID
 
-    // spells
-    SPELL_DIREBREW_DISARM           = 47310,
-    SPELL_SUMMON_DIREBREW_MINION    = 47375,
-    SPELL_DIREBREW_CHARGE           = 47718,
+    // spells (技能法术)
+    SPELL_DIREBREW_DISARM           = 47310,                // 烈酒缴械 法术 ID
+    SPELL_SUMMON_DIREBREW_MINION    = 47375,                // 召唤烈酒minion 法术 ID
+    SPELL_DIREBREW_CHARGE           = 47718,                // 烈酒冲锋 法术 ID
     SPELL_SUMMON_MOLE_MACHINE       = 47691,            // triggers 47690
-    SPELL_SUMMON_MOLE_MACHINE_MINION_SUMMONER = 47690,
+    SPELL_SUMMON_MOLE_MACHINE_MINION_SUMMONER = 47690,      // 召唤molemachineminionsummoner 法术 ID
 
     // summoned auras
-    SPELL_PORT_TO_COREN             = 52850,
+    SPELL_PORT_TO_COREN             = 52850,                // portto科林 法术 ID
 
     // other summoned spells - currently not used in script
     // SPELL_CHUCK_MUG               = 50276,
@@ -45,24 +48,25 @@ enum
     // SPELL_SEND_FIRST_MUG          = 47333,            // triggers 47345
     SPELL_SEND_SECOND_MUG           = 47339,             // triggers 47340 - spell triggered by 47344
     // SPELL_BREWMAIDEN_DESPAWN_AURA = 48186,            // purpose unk
-    SPELL_DIREBREW_MINION_KNOCKBACK = 50313,
+    SPELL_DIREBREW_MINION_KNOCKBACK = 50313,                // 烈酒minion击退 法术 ID
 
-    SPELL_DIREBREWS_DISARM_PRECAST  = 47407,
-    SPELL_DIREBREWS_DISARM_GROW     = 47409,
+    SPELL_DIREBREWS_DISARM_PRECAST  = 47407,                // direbrews缴械precast 法术 ID
+    SPELL_DIREBREWS_DISARM_GROW     = 47409,                // direbrews缴械grow 法术 ID
 
-    // npcs
-    NPC_ILSA_DIREBREW               = 26764,
-    NPC_URSULA_DIREBREW             = 26822,
-    NPC_DARK_IRON_ANTAGONIST        = 23795,
+    // npcs (相关 NPC)
+    NPC_ILSA_DIREBREW               = 26764,                // ilsa烈酒 Entry ID
+    NPC_URSULA_DIREBREW             = 26822,                // ursula烈酒 Entry ID
+    NPC_DARK_IRON_ANTAGONIST        = 23795,                // dark黑铁antagonist Entry ID
 
     // other
-    FACTION_HOSTILE                 = 736,
+    FACTION_HOSTILE                 = 736,                  // hostile 阵营 ID
 
-    QUEST_INSULT_COREN              = 12062,
+    QUEST_INSULT_COREN              = 12062,                // insult科林 任务 ID
 
-    MAX_DIREBREW_MINIONS            = 3,
+    MAX_DIREBREW_MINIONS            = 3,                    // 烈酒minions 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum CorenActions
 {
     COREN_SPAWN_ILSA,
@@ -73,6 +77,7 @@ enum CorenActions
     COREN_ATTACK_TIMER,
 };
 
+// 首领战 AI：烈酒（coren_direbrew）
 struct boss_coren_direbrewAI : public CombatAI
 {
     boss_coren_direbrewAI(Creature* creature) : CombatAI(creature, COREN_ACTION_MAX)
@@ -103,6 +108,7 @@ struct boss_coren_direbrewAI : public CombatAI
     ObjectGuid m_targetPlayer;
     GuidVector m_guids;
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -148,6 +154,7 @@ struct boss_coren_direbrewAI : public CombatAI
             creature->ForcedDespawn();
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         CombatAI::EnterEvadeMode();
@@ -159,7 +166,7 @@ struct boss_coren_direbrewAI : public CombatAI
         switch (action)
         {
             case COREN_SPAWN_ILSA:
-                // Spawn Ilsa
+                // Spawn Ilsa (生成Ilsa)
                 if (m_creature->GetHealthPercent() < 66.0f)
                 {
                     m_creature->SummonCreature(NPC_ILSA_DIREBREW, 889.1403f, -130.9002f, -49.660107f, 5.427973747253417968f, TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -167,7 +174,7 @@ struct boss_coren_direbrewAI : public CombatAI
                 }
                 break;
             case COREN_SPAWN_URSULA:
-                // Spawn Ursula
+                // Spawn Ursula (生成Ursula)
                 if (m_creature->GetHealthPercent() < 33.0f)
                 {
                     m_creature->SummonCreature(NPC_URSULA_DIREBREW, 894.956f, -127.81718f, -49.659885f, 5.270894527435302734f, TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -217,6 +224,7 @@ bool QuestRewarded_npc_coren_direbrew(Player* player, Creature* creature, Quest 
     return true;
 }
 
+// 法术脚本逻辑实现：标识 ID（RequestSecondMug）
 struct RequestSecondMug : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -225,6 +233,7 @@ struct RequestSecondMug : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（DirebrewDisarm）
 struct DirebrewDisarm : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -247,6 +256,7 @@ struct DirebrewDisarmPrecast : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SummonMoleMachineTargetPicker）
 struct SummonMoleMachineTargetPicker : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -260,6 +270,7 @@ struct SummonMoleMachineTargetPicker : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SummonDirebrewMinion）
 struct SummonDirebrewMinion : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -268,6 +279,7 @@ struct SummonDirebrewMinion : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_coren_direbrew
 void AddSC_boss_coren_direbrew()
 {
     Script* pNewScript = new Script;

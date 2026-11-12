@@ -59,6 +59,7 @@
  * An array with all the different handlers for taking care of
  * the various aura types that are defined in AuraType.
  */
+// AuraType 到 Aura::Handle* 成员函数指针的全局分发表
 pAuraHandler AuraHandler[TOTAL_AURAS] =
 {
     &Aura::HandleNULL,                                      //  0 SPELL_AURA_NONE
@@ -327,6 +328,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS] =
 
 static AuraType const frozenAuraTypes[] = { SPELL_AURA_MOD_ROOT, SPELL_AURA_MOD_STUN, SPELL_AURA_NONE };
 
+// Aura 构造函数：计算初始数值（含随机后缀附魔与法术加成）、初始化修饰器并应用周期急速修正
 Aura::Aura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster, Item* castItem) :
     m_spellmod(nullptr), m_periodicTimer(0), m_periodicTick(0), m_removeMode(AURA_REMOVE_BY_DEFAULT),
     m_effIndex(eff), m_positive(false), m_isPeriodic(false), m_isAreaAura(false),
@@ -394,12 +396,14 @@ Aura::Aura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* curr
         m_periodicTimer = m_modifier.periodictime;
 }
 
+// Aura 析构函数：释放脚本存储对象与关联 SpellModifier
 Aura::~Aura()
 {
     delete m_storage;
     delete m_spellmod;
 }
 
+// AreaAura 构造函数：解析光环半径、确定区域光环作用类型（队伍/友方/敌方/宠物/主人）并豁免图腾
 AreaAura::AreaAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target,
                    Unit* caster, Item* castItem, uint32 originalRankSpellId)
     : Aura(spellproto, eff, currentDamage, currentBasePoints, holder, target, caster, castItem), m_originalRankSpellId(originalRankSpellId)
@@ -445,10 +449,12 @@ AreaAura::AreaAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 con
         m_modifier.m_auraname = SPELL_AURA_NONE;
 }
 
+// AreaAura 析构函数
 AreaAura::~AreaAura()
 {
 }
 
+// 区域光环脚本目标过滤钩子
 bool AreaAura::OnAreaAuraCheckTarget(Unit* target) const
 {
     if (AuraScript* script = GetAuraScript())
@@ -456,16 +462,19 @@ bool AreaAura::OnAreaAuraCheckTarget(Unit* target) const
     return true;
 }
 
+// PersistentAreaAura 构造函数：标记为地面动态对象驱动的持久区域光环
 PersistentAreaAura::PersistentAreaAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target,
                                        Unit* caster, Item* castItem) : Aura(spellproto, eff, currentDamage, currentBasePoints, holder, target, caster, castItem)
 {
     m_isPersistent = true;
 }
 
+// PersistentAreaAura 析构函数
 PersistentAreaAura::~PersistentAreaAura()
 {
 }
 
+// 工厂函数：按效果类型创建 AreaAura 或普通 Aura，并在 OnAuraInit 前预设脚本值
 Aura* CreateAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster, Item* castItem, uint64 scriptValue)
 {
     Aura* aura = nullptr;
@@ -480,11 +489,13 @@ Aura* CreateAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const
     return aura;
 }
 
+// 工厂函数：创建并初始化 SpellAuraHolder 光环容器
 SpellAuraHolder* CreateSpellAuraHolder(SpellEntry const* spellproto, Unit* target, WorldObject* caster, Item* castItem /*= nullptr*/, SpellEntry const* triggeredBy /*= nullptr*/)
 {
     return new SpellAuraHolder(spellproto, target, caster, castItem, triggeredBy);
 }
 
+// 设置光环修饰器类型、基础数值、叠层总数值、周期时间及杂项参数
 void Aura::SetModifier(AuraType type, int32 amount, uint32 periodicTime, int32 miscValue)
 {
     m_modifier.m_auraname = type;
@@ -494,6 +505,7 @@ void Aura::SetModifier(AuraType type, int32 amount, uint32 periodicTime, int32 m
     m_modifier.periodictime = periodicTime;
 }
 
+// 每帧更新周期光环倒计时，到期时累加跳数并触发 PeriodicTick
 void Aura::Update(uint32 diff)
 {
     if (m_isPeriodic)
@@ -509,6 +521,7 @@ void Aura::Update(uint32 diff)
     }
 }
 
+// 区域光环更新：施法者端搜索半径内新目标施加光环，受影响端校验距离/阵营/小队关系并移除失效光环
 void AreaAura::Update(uint32 diff)
 {
     // update for the caster of the aura
@@ -765,6 +778,7 @@ void AreaAura::Update(uint32 diff)
     }
 }
 
+// 持久区域光环更新：校验施法者与对应 DynamicObject 存在性及距离，离开法阵即移除光环
 void PersistentAreaAura::Update(uint32 diff)
 {
     bool remove = true;
@@ -795,6 +809,7 @@ void PersistentAreaAura::Update(uint32 diff)
     Aura::Update(diff);
 }
 
+// 判断单个光环是否需要随角色存库（排除他人区域光环与持久法阵光环）
 bool Aura::IsSaveToDbAura() const
 {
     if (IsAreaAura() && GetHolder()->GetCasterGuid() != GetTarget()->GetObjectGuid())
@@ -806,6 +821,7 @@ bool Aura::IsSaveToDbAura() const
     return true;
 }
 
+// 应用或移除光环效果：按顺序触发脚本钩子、分发 AuraHandler 并维护属性缩放注册
 void Aura::ApplyModifier(bool apply, bool Real)
 {
     AuraType aura = m_modifier.m_auraname;
@@ -825,6 +841,7 @@ void Aura::ApplyModifier(bool apply, bool Real)
         GetTarget()->RegisterScalingAura(this, apply);
 }
 
+// 根据施法者当前属性重算动态缩放光环的数值并热更新生效
 void Aura::UpdateAuraScaling()
 {
     if (Unit* caster = GetCaster())
@@ -844,11 +861,13 @@ void Aura::UpdateAuraScaling()
     }
 }
 
+// 从 spell_affect 表查询当前光环影响的目标法术家族掩码
 ClassFamilyMask Aura::GetAuraSpellClassMask() const
 {
     return sSpellMgr.GetSpellAffectMask(GetId(), GetEffIndex());
 }
 
+// 判断指定法术是否受当前光环（SpellModifier 或 spell_affect）影响
 bool Aura::isAffectedOnSpell(SpellEntry const* spellProto) const
 {
     if (m_affectOverriden)
@@ -868,6 +887,7 @@ bool Aura::isAffectedOnSpell(SpellEntry const* spellProto) const
     return spellProto->IsFitToFamilyMask(mask);
 }
 
+// 校验目标法术与命中/暴击/吸收扩展标志是否满足当前光环的 Proc 触发条件
 bool Aura::CanProcFrom(SpellEntry const* spell, uint32 EventProcEx, uint32 procEx, bool damaging, bool absorbing, bool useClassMask) const
 {
     // Check EffectClassMask
@@ -913,6 +933,7 @@ bool Aura::CanProcFrom(SpellEntry const* spell, uint32 EventProcEx, uint32 procE
     return mask.IsFitToFamilyMask(spell->SpellFamilyFlags);
 }
 
+// 在指定单位上重新施放受当前 SpellMod 影响的永久被动或区域光环
 void Aura::ReapplyAffectedPassiveAuras(Unit* target, bool owner_mode)
 {
     // we need store cast item guids for self casted spells
@@ -970,6 +991,7 @@ struct ReapplyAffectedPassiveAurasHelper
     Aura* aura;
 };
 
+// 触发自身、受控宠物/图腾及小队成员身上受影响被动光环的重算刷新
 void Aura::ReapplyAffectedPassiveAuras()
 {
     // not reapply spell mods with charges (use original value because processed and at remove)
@@ -1004,6 +1026,7 @@ void Aura::ReapplyAffectedPassiveAuras()
                     ReapplyAffectedPassiveAuras(member, false);
 }
 
+// 根据触发法术的隐式目标类型自动解析触发施法者与触发目标
 void Aura::PickTargetsForSpellTrigger(Unit*& triggerCaster, Unit*& triggerTarget, WorldObject*& triggerTargetObject, SpellEntry const* spellInfo)
 {
     // automatic caster - target resolution
@@ -1040,6 +1063,7 @@ void Aura::PickTargetsForSpellTrigger(Unit*& triggerCaster, Unit*& triggerTarget
     }
 }
 
+// 构建目标与自定义基础点数并异步启动周期触发的子法术
 void Aura::CastTriggeredSpell(PeriodicTriggerData& data)
 {
     Spell* spell = new Spell(data.trueCaster ? data.trueCaster : data.caster, data.spellInfo, data.triggerFlags, data.trueCaster ? data.trueCaster->GetObjectGuid() : data.caster->GetObjectGuid(), GetSpellProto());
@@ -1078,8 +1102,9 @@ void Aura::CastTriggeredSpell(PeriodicTriggerData& data)
 }
 
 /*********************************************************/
-/***               BASIC AURA FUNCTION                 ***/
+/***               BASIC AURA FUNCTION（基础光环函数）    ***/
 /*********************************************************/
+// 处理器：添加/移除玩家法术修饰器（SPELL_AURA_ADD_FLAT_MODIFIER / ADD_PCT_MODIFIER）并刷新受影响被动
 void Aura::HandleAddModifier(bool apply, bool Real)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER || !Real)
@@ -1124,6 +1149,7 @@ void Aura::HandleAddModifier(bool apply, bool Real)
     ReapplyAffectedPassiveAuras();
 }
 
+// 周期触发法术总控：处理火焰石、图腾/职业特殊定时触发法术，并调用脚本 OnPeriodicTrigger
 void Aura::TriggerSpell()
 {
     ObjectGuid casterGUID = GetCasterGuid();
@@ -2043,6 +2069,7 @@ void Aura::TriggerSpell()
     }
 }
 
+// 周期触发带自定义数值法术（SPELL_AURA_PERIODIC_TRIGGER_SPELL_WITH_VALUE）
 void Aura::TriggerSpellWithValue()
 {
     ObjectGuid casterGUID = GetCasterGuid();
@@ -2080,9 +2107,10 @@ void Aura::TriggerSpellWithValue()
 }
 
 /*********************************************************/
-/***                  AURA EFFECTS                     ***/
+/***                  AURA EFFECTS（具体光环效果处理器） ***/
 /*********************************************************/
 
+// 处理器：通用 Dummy 光环（处理各类特殊任务、副本机制、职业天赋与物品触发逻辑）
 void Aura::HandleAuraDummy(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -3010,6 +3038,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
     }
 }
 
+// 处理器：坐骑光环（挂载/卸载坐骑模型并处理飞行或召唤坐骑附加逻辑）
 void Aura::HandleAuraMounted(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -3042,6 +3071,7 @@ void Aura::HandleAuraMounted(bool apply, bool Real)
     }
 }
 
+// 处理器：水上行走状态开关
 void Aura::HandleAuraWaterWalk(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -3051,6 +3081,7 @@ void Aura::HandleAuraWaterWalk(bool apply, bool Real)
     GetTarget()->SetWaterWalk(apply);
 }
 
+// 处理器：缓落术（降低下落速度）状态开关
 void Aura::HandleAuraFeatherFall(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -3060,6 +3091,7 @@ void Aura::HandleAuraFeatherFall(bool apply, bool Real)
     GetTarget()->SetFeatherFall(apply);
 }
 
+// 处理器：漂浮/悬停移动标志开关
 void Aura::HandleAuraHover(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -3069,6 +3101,7 @@ void Aura::HandleAuraHover(bool apply, bool Real)
     GetTarget()->SetHover(apply);
 }
 
+// 处理器：水下呼吸能力（设置/清除水下呼吸无限或延长标志）
 void Aura::HandleWaterBreathing(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -3082,6 +3115,7 @@ void Aura::HandleWaterBreathing(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：调整玩家水下呼吸条消耗速率倍率
 void Aura::HandleModWaterBreathing(bool /*apply*/, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -3090,6 +3124,7 @@ void Aura::HandleModWaterBreathing(bool /*apply*/, bool /*Real*/)
         static_cast<Player*>(target)->SetWaterBreathingIntervalMultiplier(target->GetTotalAuraMultiplier(SPELL_AURA_MOD_WATER_BREATHING));
 }
 
+// 处理器：变形姿态光环（切换模型、解除定身/减速/水上行走、变更能量条并联动变形加成）
 void Aura::HandleAuraModShapeshift(bool apply, bool Real)
 {
     if (!Real)
@@ -3383,6 +3418,7 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
     }
 }
 
+// 处理器：外观变身光环（变羊/变蛙/生物变形，替换生物模型并在需要时禁用动作栏或重算尺寸）
 void Aura::HandleAuraTransform(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -3508,6 +3544,7 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
     }
 }
 
+// 处理器：强制修改玩家对特定阵营的声望敌友反应
 void Aura::HandleForceReaction(bool apply, bool Real)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -3529,6 +3566,7 @@ void Aura::HandleForceReaction(bool apply, bool Real)
         player->StopAttackFaction(faction_id);
 }
 
+// 处理器：增减指定专业/武器/骑术等技能等级加成
 void Aura::HandleAuraModSkill(bool apply, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -3544,6 +3582,7 @@ void Aura::HandleAuraModSkill(bool apply, bool /*Real*/)
     target->ModifySkillBonus(skillId, (apply ? amount : -amount), permanent);
 }
 
+// 处理器：引导期间击杀目标时给予灵魂碎片等物品（移除时生成物品）
 void Aura::HandleChannelDeathItem(bool apply, bool Real)
 {
     if (Real && !apply)
@@ -3600,6 +3639,7 @@ void Aura::HandleChannelDeathItem(bool apply, bool Real)
     }
 }
 
+// 处理器：心灵视界/绑定视野（将施法者视角绑定到目标单位）
 void Aura::HandleBindSight(bool apply, bool /*Real*/)
 {
     Unit* caster = GetCaster();
@@ -3613,6 +3653,7 @@ void Aura::HandleBindSight(bool apply, bool /*Real*/)
         camera.ResetView();
 }
 
+// 处理器：鹰眼术/远视术（将施法者视角移动到动态视野对象处）
 void Aura::HandleFarSight(bool apply, bool /*Real*/)
 {
     Unit* caster = GetCaster();
@@ -3626,6 +3667,7 @@ void Aura::HandleFarSight(bool apply, bool /*Real*/)
         camera.ResetView();
 }
 
+// 处理器：小地图追踪指定类型生物
 void Aura::HandleAuraTrackCreatures(bool apply, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -3637,6 +3679,7 @@ void Aura::HandleAuraTrackCreatures(bool apply, bool /*Real*/)
         GetTarget()->RemoveFlag(PLAYER_TRACK_CREATURES, uint32(1) << (m_modifier.m_miscvalue - 1));
 }
 
+// 处理器：小地图追踪草药/矿物/宝箱等资源点
 void Aura::HandleAuraTrackResources(bool apply, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -3648,6 +3691,7 @@ void Aura::HandleAuraTrackResources(bool apply, bool /*Real*/)
         GetTarget()->RemoveFlag(PLAYER_TRACK_RESOURCES, uint32(1) << (m_modifier.m_miscvalue - 1));
 }
 
+// 处理器：小地图追踪潜行目标
 void Aura::HandleAuraTrackStealthed(bool apply, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -3656,6 +3700,7 @@ void Aura::HandleAuraTrackStealthed(bool apply, bool /*Real*/)
     GetTarget()->ApplyModByteFlag(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_FLAGS, PLAYER_FIELD_BYTE_TRACK_STEALTHED, apply);
 }
 
+// 处理器：按百分比缩放目标体型模型大小
 void Aura::HandleAuraModScale(bool /*apply*/, bool /*Real*/)
 {
     int32 value = GetTarget()->GetTotalAuraModifier(SPELL_AURA_MOD_SCALE);
@@ -3665,6 +3710,7 @@ void Aura::HandleAuraModScale(bool /*apply*/, bool /*Real*/)
     GetTarget()->UpdateModelData();
 }
 
+// 处理器：精神控制/附身控制目标单位并接管其移动与动作
 void Aura::HandleModPossess(bool apply, bool Real)
 {
     if (!Real)
@@ -3765,6 +3811,7 @@ void Aura::HandleModPossess(bool apply, bool Real)
     }
 }
 
+// 处理器：野兽之眼（控制自己的宠物移动与视野）
 void Aura::HandleModPossessPet(bool apply, bool Real)
 {
     if (!Real)
@@ -3789,6 +3836,7 @@ void Aura::HandleModPossessPet(bool apply, bool Real)
         caster->Uncharm(target);
 }
 
+// 处理器：魅惑/奴役目标使其成为施法者的临时受控宠物或奴仆
 void Aura::HandleModCharm(bool apply, bool Real)
 {
     if (!Real)
@@ -3857,6 +3905,7 @@ void Aura::HandleModCharm(bool apply, bool Real)
 }
 
 
+// 处理器：群体范围魅惑控制效果
 void Aura::HandleAoECharm(bool apply, bool Real)
 {
     if (!Real)
@@ -3879,6 +3928,7 @@ void Aura::HandleAoECharm(bool apply, bool Real)
         caster->Uncharm(target, GetId());
 }
 
+// 处理器：迷惑/致盲效果（使目标进入随机游荡状态并中断攻击）
 void Aura::HandleModConfuse(bool apply, bool Real)
 {
     if (!Real)
@@ -3893,6 +3943,7 @@ void Aura::HandleModConfuse(bool apply, bool Real)
     GetTarget()->getHostileRefManager().HandleSuppressed(apply);
 }
 
+// 处理器：恐惧效果（使目标进入惊慌逃跑状态并中断攻击）
 void Aura::HandleModFear(bool apply, bool Real)
 {
     if (!Real)
@@ -3910,6 +3961,7 @@ void Aura::HandleModFear(bool apply, bool Real)
 #endif
 }
 
+// 处理器：假死效果（设置假死标志、清除仇恨/目标并同步生命状态）
 void Aura::HandleFeignDeath(bool apply, bool Real)
 {
     if (!Real)
@@ -3954,6 +4006,7 @@ void Aura::HandleFeignDeath(bool apply, bool Real)
         target->SetFeignDeath(false);
 }
 
+// 处理器：缴械效果（禁用主手武器攻击能力并重算攻强/武器伤害）
 void Aura::HandleAuraModDisarm(bool apply, bool Real)
 {
     if (!Real)
@@ -3981,6 +4034,7 @@ void Aura::HandleAuraModDisarm(bool apply, bool Real)
     target->UpdateDamagePhysical(BASE_ATTACK);
 }
 
+// 处理器：眩晕效果（冻结行动、打断施法并更新单位昏迷状态）
 void Aura::HandleAuraModStun(bool apply, bool Real)
 {
     if (!Real)
@@ -4092,6 +4146,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
     }
 }
 
+// 处理器：潜行效果（更新潜行等级、可见性、脱战潜行及潜行速度修正）
 void Aura::HandleModStealth(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -4174,16 +4229,19 @@ void Aura::HandleModStealth(bool apply, bool Real)
     }
 }
 
+// 处理器：修改侦测潜行能力等级
 void Aura::HandleModStealthDetect(bool apply, bool /*Real*/)
 {
     GetTarget()->GetVisibilityData().AddStealthDetectionStrength(StealthType(m_modifier.m_miscvalue), apply ? m_modifier.m_amount : -m_modifier.m_amount);
 }
 
+// 处理器：修改自身潜行隐蔽等级
 void Aura::HandleModStealthLevel(bool apply, bool /*Real*/)
 {
     GetTarget()->GetVisibilityData().AddStealthStrength(StealthType(m_modifier.m_miscvalue), apply ? m_modifier.m_amount : -m_modifier.m_amount);
 }
 
+// 处理器：隐身效果（设置隐身学派与等级并刷新周围可见性）
 void Aura::HandleInvisibility(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -4232,6 +4290,7 @@ void Aura::HandleInvisibility(bool apply, bool Real)
         target->UpdateVisibilityAndView();
 }
 
+// 处理器：反隐身侦测效果（提高对隐身单位的侦测等级并刷新可见性）
 void Aura::HandleInvisibilityDetect(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -4255,6 +4314,7 @@ void Aura::HandleInvisibilityDetect(bool apply, bool Real)
         target->GetMap()->AddUpdateCreateObject(const_cast<Player*>(target->GetClientControlling()));
 }
 
+// 处理器：情缘侦测（Detect Amore）视觉可见性切换
 void Aura::HandleDetectAmore(bool apply, bool /*real*/)
 {
     if (!GetTarget()->IsPlayer())
@@ -4263,6 +4323,7 @@ void Aura::HandleDetectAmore(bool apply, bool /*real*/)
     GetTarget()->ApplyModByteFlag(PLAYER_FIELD_BYTES2, 1, convertEnumToFlag(GetMiscValue()), apply);
 }
 
+// 处理器：定身效果（禁止移动并通知客户端与 AI 更新移动状态）
 void Aura::HandleAuraModRoot(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -4314,6 +4375,7 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
     target->SetImmobilizedState(apply);
 }
 
+// 处理器：沉默效果（禁止施放指定学派法术并打断当前可被打断的施法）
 void Aura::HandleAuraModSilence(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -4362,6 +4424,7 @@ void Aura::HandleAuraModSilence(bool apply, bool Real)
     }
 }
 
+// 处理器：按法术学派调整产生威胁值的百分比倍率
 void Aura::HandleModThreat(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -4404,6 +4467,7 @@ void Aura::HandleModThreat(bool apply, bool Real)
             ApplyPercentModFloatVar(target->m_threatModifier[x], float(m_modifier.m_amount), apply);
 }
 
+// 处理器：向施法者额外附加或减少指定威胁值系数
 void Aura::HandleAuraModTotalThreat(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -4423,6 +4487,7 @@ void Aura::HandleAuraModTotalThreat(bool apply, bool Real)
     target->getHostileRefManager().threatTemporaryFade(caster, m_modifier.m_amount, apply);
 }
 
+// 处理器：嘲讽光环（强迫生物攻击施法者并在光环结束时清除固定仇恨目标）
 void Aura::HandleModTaunt(bool /*apply*/, bool Real)
 {
     // only at real add/remove aura
@@ -4443,6 +4508,7 @@ void Aura::HandleModTaunt(bool /*apply*/, bool Real)
 /*********************************************************/
 /***                  MODIFY SPEED                     ***/
 /*********************************************************/
+// 处理器：提高地面移动速度（重算跑速并通知客户端）
 void Aura::HandleAuraModIncreaseSpeed(bool /*apply*/, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -4452,6 +4518,7 @@ void Aura::HandleAuraModIncreaseSpeed(bool /*apply*/, bool Real)
     GetTarget()->UpdateSpeed(MOVE_RUN, true);
 }
 
+// 处理器：提高地面坐骑移动速度
 void Aura::HandleAuraModIncreaseMountedSpeed(bool /*apply*/, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -4461,6 +4528,7 @@ void Aura::HandleAuraModIncreaseMountedSpeed(bool /*apply*/, bool Real)
     GetTarget()->UpdateSpeed(MOVE_RUN, true);
 }
 
+// 处理器：提高飞行速度（支持非坐骑/坐骑飞行速度修正）
 void Aura::HandleAuraModIncreaseFlightSpeed(bool apply, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -4482,6 +4550,7 @@ void Aura::HandleAuraModIncreaseFlightSpeed(bool apply, bool Real)
     target->UpdateSpeed(MOVE_FLIGHT, true);
 }
 
+// 处理器：提高游泳移动速度
 void Aura::HandleAuraModIncreaseSwimSpeed(bool /*apply*/, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -4491,6 +4560,7 @@ void Aura::HandleAuraModIncreaseSwimSpeed(bool /*apply*/, bool Real)
     GetTarget()->UpdateSpeed(MOVE_SWIM, true);
 }
 
+// 处理器：降低移动速度（减速/诱捕，重算所有速度类型）
 void Aura::HandleAuraModDecreaseSpeed(bool /*apply*/, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -4505,6 +4575,7 @@ void Aura::HandleAuraModDecreaseSpeed(bool /*apply*/, bool Real)
     target->UpdateSpeed(MOVE_FLIGHT, true);
 }
 
+// 处理器：强制使用常规移动速度（如狂暴姿态/特定免疫加速状态）
 void Aura::HandleAuraModUseNormalSpeed(bool /*apply*/, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -4522,6 +4593,7 @@ void Aura::HandleAuraModUseNormalSpeed(bool /*apply*/, bool Real)
 /***                     IMMUNITY                      ***/
 /*********************************************************/
 
+// 处理器：赋予或移除对单一法术机制（昏迷/定身/恐惧等）的免疫及已有效果清理
 void Aura::HandleModMechanicImmunity(bool apply, bool /*Real*/)
 {
     uint32 misc  = m_modifier.m_miscvalue;
@@ -4585,6 +4657,7 @@ void Aura::HandleModMechanicImmunity(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：赋予或移除对多种法术机制位掩码的免疫
 void Aura::HandleModMechanicImmunityMask(bool apply, bool /*Real*/)
 {
     uint32 mechanic  = m_modifier.m_miscvalue;
@@ -4596,6 +4669,7 @@ void Aura::HandleModMechanicImmunityMask(bool apply, bool /*Real*/)
 }
 
 // this method is called whenever we add / remove aura which gives m_target some imunity to some spell effect
+// 处理器：赋予或移除对特定 SpellEffect 的免疫
 void Aura::HandleAuraModEffectImmunity(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -4617,6 +4691,7 @@ void Aura::HandleAuraModEffectImmunity(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：赋予或移除对特定 AuraType 状态的免疫并驱散同类已有负面光环
 void Aura::HandleAuraModStateImmunity(bool apply, bool Real)
 {
     if (apply && Real && GetSpellProto()->HasAttribute(SPELL_ATTR_EX_IMMUNITY_PURGES_EFFECT))
@@ -4637,6 +4712,7 @@ void Aura::HandleAuraModStateImmunity(bool apply, bool Real)
     GetTarget()->ApplySpellImmune(this, IMMUNITY_STATE, m_modifier.m_miscvalue, apply);
 }
 
+// 处理器：赋予或移除对指定法术学派的免疫（如圣盾术/寒冰屏障，清理对应负面效果）
 void Aura::HandleAuraModSchoolImmunity(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -4692,6 +4768,7 @@ void Aura::HandleAuraModSchoolImmunity(bool apply, bool Real)
     }
 }
 
+// 处理器：赋予或移除对指定法术学派伤害的免疫
 void Aura::HandleAuraModDmgImmunity(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -4704,6 +4781,7 @@ void Aura::HandleAuraModDmgImmunity(bool apply, bool /*Real*/)
             caster->CastSpell(target, 41377, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 处理器：赋予或移除对指定驱散类型（魔法/诅咒/疾病/中毒）的免疫
 void Aura::HandleAuraModDispelImmunity(bool apply, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -4713,6 +4791,7 @@ void Aura::HandleAuraModDispelImmunity(bool apply, bool Real)
     GetTarget()->ApplySpellDispelImmunity(this, DispelType(m_modifier.m_miscvalue), apply);
 }
 
+// 处理器：维护目标身上的触发型被动光环列表（如法术/攻击触发额外法术）
 void Aura::HandleAuraProcTriggerSpell(bool apply, bool Real)
 {
     if (!Real)
@@ -4737,6 +4816,7 @@ void Aura::HandleAuraProcTriggerSpell(bool apply, bool Real)
     }
 }
 
+// 处理器：猎人印记/被追踪状态标记（在小地图向施法者显示位置）
 void Aura::HandleAuraModStalked(bool apply, bool /*Real*/)
 {
     // used by spells: Hunter's Mark, Mind Vision, Syndicate Tracker (MURP) DND
@@ -4750,6 +4830,7 @@ void Aura::HandleAuraModStalked(bool apply, bool /*Real*/)
 /***                   PERIODIC                        ***/
 /*********************************************************/
 
+// 处理器：激活/关闭周期触发法术标记
 void Aura::HandlePeriodicTriggerSpell(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
@@ -4859,26 +4940,31 @@ void Aura::HandlePeriodicTriggerSpell(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：激活/关闭带自定义数值的周期触发法术标记
 void Aura::HandlePeriodicTriggerSpellWithValue(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
 }
 
+// 处理器：激活/关闭周期恢复能量/法力标记
 void Aura::HandlePeriodicEnergize(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
 }
 
+// 处理器：激活/关闭周期法力燃烧标记
 void Aura::HandleAuraPowerBurn(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
 }
 
+// 处理器：愈合祷言专用跳转充能光环占位处理
 void Aura::HandlePrayerOfMending(bool /*apply*/, bool /*Real*/)
 {
 
 }
 
+// 处理器：周期 Dummy 光环（激活周期跳动并在特定法术施加/移除时处理初始状态）
 void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -4945,6 +5031,7 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
     m_isPeriodic = apply;
 }
 
+// 处理器：激活/关闭周期治疗（HoT）标记
 void Aura::HandlePeriodicHeal(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
@@ -4975,6 +5062,7 @@ void Aura::HandlePeriodicHeal(bool apply, bool /*Real*/)
             target->CastSpell(nullptr, 43422, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 处理器：周期伤害（DoT）光环（激活周期标记、快照法伤/AP 加成并同步客户端 DoT 状态）
 void Aura::HandlePeriodicDamage(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -5100,11 +5188,13 @@ void Aura::HandlePeriodicDamage(bool apply, bool Real)
     }
 }
 
+// 处理器：激活/关闭按最大生命百分比造成周期伤害的标记
 void Aura::HandlePeriodicDamagePCT(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
 }
 
+// 处理器：激活/关闭周期生命吸取标记
 void Aura::HandlePeriodicLeech(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
@@ -5126,6 +5216,7 @@ void Aura::HandlePeriodicLeech(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：激活/关闭周期法力吸取标记
 void Aura::HandlePeriodicManaLeech(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
@@ -5143,6 +5234,7 @@ void Aura::HandlePeriodicManaLeech(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：激活/关闭生命通道（消耗自身生命治疗宠物）周期标记
 void Aura::HandlePeriodicHealthFunnel(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
@@ -5172,6 +5264,7 @@ void Aura::HandlePeriodicHealthFunnel(bool apply, bool /*Real*/)
 /***        RESISTANCE        ***/
 /********************************/
 
+// 处理器：独占型抗性/护甲加成（同类型光环按互斥规则叠加并重算抗性）
 void Aura::HandleAuraModResistanceExclusive(bool apply, bool /*Real*/)
 {
     if (!m_modifier.m_amount)
@@ -5219,6 +5312,7 @@ void Aura::HandleAuraModResistanceExclusive(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：固定值增减指定学派抗性或护甲（并同步更新宠物的护甲/抗性继承）
 void Aura::HandleAuraModResistance(bool apply, bool /*Real*/)
 {
     if (!m_modifier.m_amount)
@@ -5238,6 +5332,7 @@ void Aura::HandleAuraModResistance(bool apply, bool /*Real*/)
         }
     }
 }
+// 处理器：按百分比增减总抗性或护甲
 void Aura::HandleModResistancePercent(bool apply, bool /*Real*/)
 {
     if (!m_modifier.m_amount)
@@ -5258,6 +5353,7 @@ void Aura::HandleModResistancePercent(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：增减基础护甲/抗性数值
 void Aura::HandleModBaseResistance(bool apply, bool /*Real*/)
 {
     if (!m_modifier.m_amount)
@@ -5272,6 +5368,7 @@ void Aura::HandleModBaseResistance(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：按百分比增减基础护甲/抗性（如厚皮、熊形态护甲加成）
 void Aura::HandleAuraModBaseResistancePercent(bool apply, bool /*Real*/)
 {
     if (!m_modifier.m_amount)
@@ -5290,6 +5387,7 @@ void Aura::HandleAuraModBaseResistancePercent(bool apply, bool /*Real*/)
 /***           STAT           ***/
 /********************************/
 
+// 处理器：增减单一或全部基础属性（力量/敏捷/耐力/智力/精神）
 void Aura::HandleAuraModStat(bool apply, bool /*Real*/)
 {
     if (m_modifier.m_miscvalue < -2 || m_modifier.m_miscvalue > 4)
@@ -5341,6 +5439,7 @@ void Aura::HandleAuraModStat(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：按百分比增减基础属性（影响基础属性部分）
 void Aura::HandleModPercentStat(bool apply, bool /*Real*/)
 {
     if (m_modifier.m_miscvalue < -1 || m_modifier.m_miscvalue > 4)
@@ -5360,6 +5459,7 @@ void Aura::HandleModPercentStat(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：按主属性百分比提高法术伤害加成（触发玩家法伤重算）
 void Aura::HandleModSpellDamagePercentFromStat(bool /*apply*/, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -5371,6 +5471,7 @@ void Aura::HandleModSpellDamagePercentFromStat(bool /*apply*/, bool /*Real*/)
     ((Player*)GetTarget())->UpdateSpellDamageBonus();
 }
 
+// 处理器：按主属性百分比提高治疗效果加成（触发玩家治疗重算）
 void Aura::HandleModSpellHealingPercentFromStat(bool /*apply*/, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -5380,12 +5481,14 @@ void Aura::HandleModSpellHealingPercentFromStat(bool /*apply*/, bool /*Real*/)
     ((Player*)GetTarget())->UpdateSpellHealingBonus();
 }
 
+// 处理器：修改目标身上光环的被驱散抵抗几率
 void Aura::HandleAuraModDispelResist(bool apply, bool Real)
 {
     if (!Real || !apply)
         return;
 }
 
+// 处理器：按攻击强度百分比转化为法术伤害加成
 void Aura::HandleModSpellDamagePercentFromAttackPower(bool /*apply*/, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -5397,6 +5500,7 @@ void Aura::HandleModSpellDamagePercentFromAttackPower(bool /*apply*/, bool /*Rea
     ((Player*)GetTarget())->UpdateSpellDamageBonus();
 }
 
+// 处理器：按攻击强度百分比转化为治疗效果加成
 void Aura::HandleModSpellHealingPercentFromAttackPower(bool /*apply*/, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -5406,6 +5510,7 @@ void Aura::HandleModSpellHealingPercentFromAttackPower(bool /*apply*/, bool /*Re
     ((Player*)GetTarget())->UpdateSpellHealingBonus();
 }
 
+// 处理器：修改固定数值的法术治疗效果加成
 void Aura::HandleModHealingDone(bool /*apply*/, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -5415,6 +5520,7 @@ void Aura::HandleModHealingDone(bool /*apply*/, bool /*Real*/)
     ((Player*)GetTarget())->UpdateSpellHealingBonus();
 }
 
+// 处理器：按百分比增减总属性（如王者祝福，影响基础与装备总和）
 void Aura::HandleModTotalPercentStat(bool apply, bool /*Real*/)
 {
     if (m_modifier.m_miscvalue < -1 || m_modifier.m_miscvalue > 4)
@@ -5448,6 +5554,7 @@ void Aura::HandleModTotalPercentStat(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：按某项基础属性百分比转化为护甲或抗性（如护甲与智力转换）
 void Aura::HandleAuraModResistenceOfStatPercent(bool /*apply*/, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -5468,6 +5575,7 @@ void Aura::HandleAuraModResistenceOfStatPercent(bool /*apply*/, bool /*Real*/)
 /********************************/
 /***      HEAL & ENERGIZE     ***/
 /********************************/
+// 处理器：激活/关闭基于总生命百分比的周期回血（如唤醒/吃喝等）
 void Aura::HandleAuraModTotalHealthPercentRegen(bool apply, bool /*Real*/)
 {
     m_isPeriodic = apply;
@@ -5480,6 +5588,7 @@ void Aura::HandleAuraModTotalHealthPercentRegen(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：激活/关闭基于总法力百分比的周期回蓝（如唤醒/法力之潮）
 void Aura::HandleAuraModTotalManaPercentRegen(bool apply, bool /*Real*/)
 {
     if (m_modifier.periodictime == 0)
@@ -5497,6 +5606,7 @@ void Aura::HandleAuraModTotalManaPercentRegen(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：修改非战斗生命恢复速度（主要为进食回血）
 void Aura::HandleModRegen(bool apply, bool /*Real*/)        // eating
 {
     if (m_modifier.periodictime == 0)
@@ -5506,6 +5616,7 @@ void Aura::HandleModRegen(bool apply, bool /*Real*/)        // eating
     m_isPeriodic = apply;
 }
 
+// 处理器：修改固定能量/法力恢复速度（如喝水回蓝、智慧祝福/5回装备）
 void Aura::HandleModPowerRegen(bool apply, bool Real)       // drinking
 {
     if (!Real)
@@ -5529,6 +5640,7 @@ void Aura::HandleModPowerRegen(bool apply, bool Real)       // drinking
     m_isPeriodic = apply;
 }
 
+// 处理器：按百分比修改法力/能量恢复速度
 void Aura::HandleModPowerRegenPCT(bool /*apply*/, bool Real)
 {
     // spells required only Real aura add/remove
@@ -5545,6 +5657,7 @@ void Aura::HandleModPowerRegenPCT(bool /*apply*/, bool Real)
         static_cast<Player*>(GetTarget())->UpdateEnergyRegen();
 }
 
+// 处理器：按百分比调整目标受到的治疗效果（如致死打击/生命之树光环）
 void Aura::HandleModHealingPCT(bool apply, bool /*real*/)
 {
     switch (GetId())
@@ -5560,6 +5673,7 @@ void Aura::HandleModHealingPCT(bool apply, bool /*real*/)
     }
 }
 
+// 处理器：按精神等基础属性百分比转化为每 5 秒法力恢复
 void Aura::HandleModManaRegen(bool /*apply*/, bool Real)
 {
     // spells required only Real aura add/remove
@@ -5573,6 +5687,7 @@ void Aura::HandleModManaRegen(bool /*apply*/, bool Real)
     ((Player*)GetTarget())->UpdateManaRegen();
 }
 
+// 处理器：语言理解光环（使单位可听懂/使用特定语言）
 void Aura::HandleComprehendLanguage(bool apply, bool /*Real*/)
 {
     if (apply)
@@ -5581,6 +5696,7 @@ void Aura::HandleComprehendLanguage(bool apply, bool /*Real*/)
         GetTarget()->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_COMPREHEND_LANG);
 }
 
+// 处理器：固定值增减最大生命上限并按比例或等量调整当前生命值
 void Aura::HandleAuraModIncreaseHealth(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -5663,6 +5779,7 @@ void Aura::HandleAuraModIncreaseHealth(bool apply, bool Real)
     }
 }
 
+// 处理器：增减最大生命上限（如命令怒吼）并在超过上限时裁剪当前生命
 void Aura::HandleAuraModIncreaseMaxHealth(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5679,6 +5796,7 @@ void Aura::HandleAuraModIncreaseMaxHealth(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：固定值增减最大法力/能量/怒气上限
 void Aura::HandleAuraModIncreaseEnergy(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5689,6 +5807,7 @@ void Aura::HandleAuraModIncreaseEnergy(bool apply, bool /*Real*/)
     target->HandleStatModifier(unitMod, TOTAL_VALUE, float(m_removeMode == AURA_REMOVE_BY_GAINED_STACK ? m_modifier.m_recentAmount : m_modifier.m_amount), apply);
 }
 
+// 处理器：按百分比增减最大能量/法力上限
 void Aura::HandleAuraModIncreaseEnergyPercent(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5700,6 +5819,7 @@ void Aura::HandleAuraModIncreaseEnergyPercent(bool apply, bool /*Real*/)
     target->ModifyPower(powerType, apply ? m_modifier.m_amount : -m_modifier.m_amount);
 }
 
+// 处理器：按百分比增减最大生命上限（支持不保持当前血量比例的特殊属性）
 void Aura::HandleAuraModIncreaseHealthPercent(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5723,6 +5843,7 @@ void Aura::HandleAuraModIncreaseHealthPercent(bool apply, bool /*Real*/)
 /***          FIGHT           ***/
 /********************************/
 
+// 处理器：增减招架几率百分比
 void Aura::HandleAuraModParryPercent(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5736,6 +5857,7 @@ void Aura::HandleAuraModParryPercent(bool apply, bool /*Real*/)
     ((Player*)target)->UpdateParryPercentage();
 }
 
+// 处理器：增减闪避几率百分比
 void Aura::HandleAuraModDodgePercent(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5750,6 +5872,7 @@ void Aura::HandleAuraModDodgePercent(bool apply, bool /*Real*/)
     // sLog.outError("BONUS DODGE CHANCE: + %f", float(m_modifier.m_amount));
 }
 
+// 处理器：增减盾牌格挡几率百分比
 void Aura::HandleAuraModBlockPercent(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5764,6 +5887,7 @@ void Aura::HandleAuraModBlockPercent(bool apply, bool /*Real*/)
     // sLog.outError("BONUS BLOCK CHANCE: + %f", float(m_modifier.m_amount));
 }
 
+// 处理器：允许在施法 5 秒回蓝抑制期间保持一定比例的法力恢复
 void Aura::HandleAuraModRegenInterrupt(bool /*apply*/, bool Real)
 {
     // spells required only Real aura add/remove
@@ -5776,6 +5900,7 @@ void Aura::HandleAuraModRegenInterrupt(bool /*apply*/, bool Real)
     ((Player*)GetTarget())->UpdateManaRegen();
 }
 
+// 处理器：增减近战/远程物理暴击率百分比
 void Aura::HandleAuraModCritPercent(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -5811,6 +5936,7 @@ void Aura::HandleAuraModCritPercent(bool apply, bool Real)
     }
 }
 
+// 处理器：增减物理攻击命中率百分比
 void Aura::HandleModHitChance(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5829,6 +5955,7 @@ void Aura::HandleModHitChance(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：增减指定学派法术命中率百分比
 void Aura::HandleModSpellHitChance(bool apply, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() == TYPEID_PLAYER)
@@ -5841,6 +5968,7 @@ void Aura::HandleModSpellHitChance(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：增减全法术暴击率百分比（非玩家则同步更新攻击暴击字段）
 void Aura::HandleModSpellCritChance(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -5859,6 +5987,7 @@ void Aura::HandleModSpellCritChance(bool apply, bool Real)
     ((Player*)target)->UpdateAllSpellCritChances();
 }
 
+// 处理器：增减指定法术学派暴击率百分比
 void Aura::HandleModSpellCritChanceShool(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -5883,6 +6012,7 @@ void Aura::HandleModSpellCritChanceShool(bool apply, bool Real)
 /***         ATTACK SPEED     ***/
 /********************************/
 
+// 处理器：按百分比增减施法速度（修改 UNIT_MOD_CAST_SPEED）
 void Aura::HandleModCastingSpeed(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5903,6 +6033,7 @@ void Aura::HandleModCastingSpeed(bool apply, bool /*Real*/)
     target->ApplyCastTimePercentMod(float(m_modifier.m_amount), apply);
 }
 
+// 处理器：同时增减近战与远程物理攻击急速百分比
 void Aura::HandleModMeleeRangedSpeedPct(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5927,6 +6058,7 @@ void Aura::HandleModMeleeRangedSpeedPct(bool apply, bool /*Real*/)
     target->ApplyAttackTimePercentMod(RANGED_ATTACK, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：全急速效果（同时加快近战、远程攻击与法术施法速度）
 void Aura::HandleModCombatSpeedPct(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5936,11 +6068,13 @@ void Aura::HandleModCombatSpeedPct(bool apply, bool /*Real*/)
     target->ApplyAttackTimePercentMod(RANGED_ATTACK, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：增减基础攻击间隔（非百分比急速）
 void Aura::HandleModAttackSpeed(bool apply, bool /*Real*/)
 {
     GetTarget()->ApplyAttackTimePercentMod(BASE_ATTACK, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：按百分比增减近战攻击速度
 void Aura::HandleModMeleeSpeedPct(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -5951,11 +6085,13 @@ void Aura::HandleModMeleeSpeedPct(bool apply, bool /*Real*/)
         target->AI()->SendAIEvent(AI_EVENT_CUSTOM_C, target, target, apply);
 }
 
+// 处理器：按百分比增减远程攻击急速
 void Aura::HandleAuraModRangedHaste(bool apply, bool /*Real*/)
 {
     GetTarget()->ApplyAttackTimePercentMod(RANGED_ATTACK, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：远程箭袋/弹药袋提供的远程攻速加成
 void Aura::HandleRangedAmmoHaste(bool apply, bool /*Real*/)
 {
     if (!GetTarget()->IsPlayer())
@@ -5998,11 +6134,13 @@ void Aura::HandleRangedAmmoHaste(bool apply, bool /*Real*/)
 /***        ATTACK POWER      ***/
 /********************************/
 
+// 处理器：固定值增减近战攻击强度
 void Aura::HandleAuraModAttackPower(bool apply, bool /*Real*/)
 {
     GetTarget()->HandleStatModifier(UNIT_MOD_ATTACK_POWER, TOTAL_VALUE, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：固定值增减远程攻击强度
 void Aura::HandleAuraModRangedAttackPower(bool apply, bool /*Real*/)
 {
     if ((GetTarget()->getClassMask() & CLASSMASK_WAND_USERS) != 0)
@@ -6011,12 +6149,14 @@ void Aura::HandleAuraModRangedAttackPower(bool apply, bool /*Real*/)
     GetTarget()->HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：按百分比增减近战攻击强度
 void Aura::HandleAuraModAttackPowerPercent(bool apply, bool /*Real*/)
 {
     // UNIT_FIELD_ATTACK_POWER_MULTIPLIER = multiplier - 1
     GetTarget()->HandleStatModifier(UNIT_MOD_ATTACK_POWER, TOTAL_PCT, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：按百分比增减远程攻击强度
 void Aura::HandleAuraModRangedAttackPowerPercent(bool apply, bool /*Real*/)
 {
     if ((GetTarget()->getClassMask() & CLASSMASK_WAND_USERS) != 0)
@@ -6026,6 +6166,7 @@ void Aura::HandleAuraModRangedAttackPowerPercent(bool apply, bool /*Real*/)
     GetTarget()->HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_PCT, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：按指定基础属性百分比转化为远程攻击强度
 void Aura::HandleAuraModRangedAttackPowerOfStatPercent(bool /*apply*/, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6040,6 +6181,7 @@ void Aura::HandleAuraModRangedAttackPowerOfStatPercent(bool /*apply*/, bool Real
 /********************************/
 /***        DAMAGE BONUS      ***/
 /********************************/
+// 处理器：固定值增减物理武器伤害或指定学派法术伤害（并联动宠物与德鲁伊野性攻强）
 void Aura::HandleModDamageDone(bool apply, bool Real)
 {
     Unit* target = GetTarget();
@@ -6122,6 +6264,7 @@ void Aura::HandleModDamageDone(bool apply, bool Real)
     }
 }
 
+// 处理器：按百分比增减物理或法术学派造成的总伤害
 void Aura::HandleModDamagePercentDone(bool apply, bool Real)
 {
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "AURA MOD DAMAGE type:%u negative:%u", m_modifier.m_miscvalue, m_positive ? 0 : 1);
@@ -6188,6 +6331,7 @@ void Aura::HandleModDamagePercentDone(bool apply, bool Real)
             target->CastSpell(target, 38639, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 处理器：按百分比增减副手武器伤害
 void Aura::HandleModOffhandDamagePercent(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6203,6 +6347,7 @@ void Aura::HandleModOffhandDamagePercent(bool apply, bool Real)
 /***        POWER COST        ***/
 /********************************/
 
+// 处理器：按法术学派百分比增减法术资源消耗倍率
 void Aura::HandleModPowerCostPCT(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6221,6 +6366,7 @@ void Aura::HandleModPowerCostPCT(bool apply, bool Real)
             target->CastSpell(target, 38638, TRIGGERED_OLD_TRIGGERED);
 }
 
+// 处理器：按法术学派固定值增减法术资源消耗
 void Aura::HandleModPowerCost(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6236,6 +6382,7 @@ void Aura::HandleModPowerCost(bool apply, bool Real)
 /***                    OTHERS                         ***/
 /*********************************************************/
 
+// 辅助函数：根据当前变形姿态（熊/猫/枭兽/生命之树/防御/狂暴/潜行/幽魂狼等）施加或移除对应隐含被动光环与技能栏切换
 void Aura::HandleShapeshiftBoosts(bool apply)
 {
     uint32 spellId1 = 0;
@@ -6375,6 +6522,7 @@ void Aura::HandleShapeshiftBoosts(bool apply)
     }
 }
 
+// 处理器：野兽知识/共鸣效果（允许查看目标生物详细属性）
 void Aura::HandleAuraEmpathy(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -6398,6 +6546,7 @@ void Aura::HandleAuraEmpathy(bool apply, bool /*Real*/)
     }
 }
 
+// 处理器：不可追踪状态（在小地图追踪中隐藏自身）
 void Aura::HandleAuraUntrackable(bool apply, bool /*Real*/)
 {
     if (apply)
@@ -6406,6 +6555,7 @@ void Aura::HandleAuraUntrackable(bool apply, bool /*Real*/)
         GetTarget()->RemoveVisFlags(UNIT_VIS_FLAG_UNTRACKABLE);
 }
 
+// 处理器：平心/和平效果（禁止普通攻击与攻击性技能，保留移动）
 void Aura::HandleAuraModPacify(bool apply, bool /*Real*/)
 {
     if (apply)
@@ -6414,12 +6564,14 @@ void Aura::HandleAuraModPacify(bool apply, bool /*Real*/)
         GetTarget()->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
 }
 
+// 处理器：同时施加平心与沉默效果（完全禁用物理与法术攻击）
 void Aura::HandleAuraModPacifyAndSilence(bool apply, bool Real)
 {
     HandleAuraModPacify(apply, Real);
     HandleAuraModSilence(apply, Real);
 }
 
+// 处理器：灵魂形态（死亡跑尸幽灵状态与移速/可视性切换）
 void Aura::HandleAuraGhost(bool apply, bool /*Real*/)
 {
     Unit* target = GetTarget();
@@ -6450,6 +6602,7 @@ void Aura::HandleAuraGhost(bool apply, bool /*Real*/)
         player->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_STATUS);
 }
 
+// 处理器：允许飞行状态（通知客户端启用/禁用自由飞行移动能力）
 void Aura::HandleAuraAllowFlight(bool apply, bool Real)
 {
     // all applied/removed only at real aura add/remove
@@ -6459,6 +6612,7 @@ void Aura::HandleAuraAllowFlight(bool apply, bool Real)
     GetTarget()->SetCanFly(apply);
 }
 
+// 处理器：增减战斗等级评分（暴击/命中/急速/韧性/躲闪/招架/格挡/精准等）
 void Aura::HandleModRating(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6473,6 +6627,7 @@ void Aura::HandleModRating(bool apply, bool Real)
             ((Player*)GetTarget())->ApplyRatingMod(CombatRating(rating), m_modifier.m_amount, apply);
 }
 
+// 处理器：强制单位持续向前移动（发送客户端强行前移包）
 void Aura::HandleForceMoveForward(bool apply, bool Real)
 {
     if (!Real)
@@ -6484,6 +6639,7 @@ void Aura::HandleForceMoveForward(bool apply, bool Real)
         GetTarget()->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FORCE_MOVE);
 }
 
+// 处理器：增减精准等级/精准值（触发精准重算）
 void Aura::HandleAuraModExpertise(bool /*apply*/, bool /*Real*/)
 {
     if (GetTarget()->GetTypeId() != TYPEID_PLAYER)
@@ -6493,6 +6649,7 @@ void Aura::HandleAuraModExpertise(bool /*apply*/, bool /*Real*/)
     ((Player*)GetTarget())->UpdateExpertise(OFF_ATTACK);
 }
 
+// 处理器：法术穿透/破甲效果（降低目标对指定学派的抗性或护甲）
 void Aura::HandleModTargetResistance(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6509,6 +6666,7 @@ void Aura::HandleModTargetResistance(bool apply, bool Real)
         target->ApplyModInt32Value(PLAYER_FIELD_MOD_TARGET_RESISTANCE, m_modifier.m_amount, apply);
 }
 
+// 处理器：固定值或百分比增减盾牌格挡值
 void Aura::HandleShieldBlockValue(bool apply, bool /*Real*/)
 {
     BaseModType modType = FLAT_MOD;
@@ -6519,6 +6677,7 @@ void Aura::HandleShieldBlockValue(bool apply, bool /*Real*/)
         ((Player*)GetTarget())->HandleBaseModValue(SHIELD_BLOCK_VALUE, modType, float(m_modifier.m_amount), apply);
 }
 
+// 处理器：死亡或切换目标后保留连击点数（如部分特殊机制）
 void Aura::HandleAuraRetainComboPoints(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6537,6 +6696,7 @@ void Aura::HandleAuraRetainComboPoints(bool apply, bool Real)
             target->AddComboPoints(unit, -m_modifier.m_amount);
 }
 
+// 处理器：使单位处于不可攻击/无敌不可选中状态
 void Aura::HandleModUnattackable(bool Apply, bool Real)
 {
     if (Real && Apply)
@@ -6545,6 +6705,7 @@ void Aura::HandleModUnattackable(bool Apply, bool Real)
     GetTarget()->ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNTARGETABLE, Apply);
 }
 
+// 处理器：救赎之魂光环（变身救赎天使免耗蓝治疗，光环结束时正式死亡）
 void Aura::HandleSpiritOfRedemption(bool apply, bool Real)
 {
     // spells required only Real aura add/remove
@@ -6577,6 +6738,7 @@ void Aura::HandleSpiritOfRedemption(bool apply, bool Real)
         target->CastSpell(nullptr, 27965, TRIGGERED_OLD_TRIGGERED); // Suicide
 }
 
+// 处理器：法术护盾吸收效果（注册吸收光环并在真正在线时同步吸收视觉/日志）
 void Aura::HandleSchoolAbsorb(bool apply, bool Real)
 {
     if (!Real)
@@ -6599,6 +6761,7 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
     }
 }
 
+// 周期光环主跳动入口：按 AuraType 分发周期伤害、吸取、治疗、回蓝/吸蓝、能量恢复及周期触发法术
 void Aura::PeriodicTick()
 {
     Unit* target = GetTarget();
@@ -6610,6 +6773,7 @@ void Aura::PeriodicTick()
 
     switch (m_modifier.m_auraname)
     {
+        // 周期伤害与百分比周期伤害（DoT）跳动结算：免疫/法伤加成/护甲/韧性/吸收抵抗与日志发送
         case SPELL_AURA_PERIODIC_DAMAGE:
         case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
         {
@@ -6763,6 +6927,7 @@ void Aura::PeriodicTick()
                 m_scriptValue += pdamage;
             break;
         }
+        // 周期生命吸取与生命通道（吸血/输血）跳动结算
         case SPELL_AURA_PERIODIC_LEECH:
         case SPELL_AURA_PERIODIC_HEALTH_FUNNEL:
         {
@@ -6859,6 +7024,7 @@ void Aura::PeriodicTick()
             caster->getHostileRefManager().threatAssist(caster, gain * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true);
             break;
         }
+        // 周期治疗（HoT）与百分比周期生命恢复跳动结算
         case SPELL_AURA_PERIODIC_HEAL:
         case SPELL_AURA_OBS_MOD_HEALTH:
         {
@@ -6918,6 +7084,7 @@ void Aura::PeriodicTick()
             Unit::ProcDamageAndSpell(ProcSystemArguments(pCaster, target, procAttacker, procVictim, procEx, gain, 0, BASE_ATTACK, spellProto, nullptr, gain, true));
             break;
         }
+        // 周期法力/能量吸取跳动结算（含术士吸取法力对宠物回蓝加成）
         case SPELL_AURA_PERIODIC_MANA_LEECH:
         {
             // don't damage target if not alive, possible death persistent effects
@@ -6995,6 +7162,7 @@ void Aura::PeriodicTick()
             }
             break;
         }
+        // 周期能量/法力恢复跳动结算
         case SPELL_AURA_PERIODIC_ENERGIZE:
         {
             // don't energize target if not alive, possible death persistent effects
@@ -7042,6 +7210,7 @@ void Aura::PeriodicTick()
                     target->RemoveAurasDueToSpell(GetId());
             break;
         }
+        // 百分比周期法力恢复跳动结算（如唤醒）
         case SPELL_AURA_OBS_MOD_MANA:
         {
             // don't energize target if not alive, possible death persistent effects
@@ -7200,6 +7369,7 @@ void Aura::PeriodicTick()
     OnPeriodicTickEnd();
 }
 
+// 周期 Dummy 光环跳动处理器：执行特定法术 ID 的定时逻辑及脚本 OnPeriodicDummy 钩子
 void Aura::PeriodicDummyTick()
 {
     SpellEntry const* spell = GetSpellProto();
@@ -7436,6 +7606,7 @@ void Aura::PeriodicDummyTick()
     OnPeriodicDummy();
 }
 
+// 处理器：阻止目标怪物逃跑（如诅咒/减速防止低血量逃窜）
 void Aura::HandlePreventFleeing(bool apply, bool Real)
 {
     if (!Real)
@@ -7452,6 +7623,7 @@ void Aura::HandlePreventFleeing(bool apply, bool Real)
     }
 }
 
+// 处理器：法力护盾光环（用魔法值按比例吸收伤害）
 void Aura::HandleManaShield(bool apply, bool Real)
 {
     if (!Real)
@@ -7485,6 +7657,7 @@ void Aura::HandleManaShield(bool apply, bool Real)
     }
 }
 
+// 处理器：竞技场准备阶段状态（免消耗施法并在结束时同步清除准备标记）
 void Aura::HandleArenaPreparation(bool apply, bool Real)
 {
     if (!Real)
@@ -7508,6 +7681,7 @@ void Aura::HandleArenaPreparation(bool apply, bool Real)
     }
 }
 
+// 处理器：镜像外观克隆效果（复制施法者外观到目标生物）
 void Aura::HandleAuraMirrorImage(bool apply, bool Real)
 {
     if (!Real)
@@ -7549,6 +7723,7 @@ void Aura::HandleAuraMirrorImage(bool apply, bool Real)
     }
 }
 
+// 处理器：反嘲讽光环（压制对施法者的攻击偏好，结束时恢复威胁排序）
 void Aura::HandleAuraDetaunt(bool /*Apply*/, bool Real)
 {
     // only at real add/remove aura
@@ -7563,6 +7738,7 @@ void Aura::HandleAuraDetaunt(bool /*Apply*/, bool Real)
     caster->TauntUpdate();
 }
 
+// 处理器：安全坠落效果（提高免伤摔落高度并同步通知客户端）
 void Aura::HandleAuraSafeFall(bool Apply, bool Real)
 {
     // implemented in WorldSession::HandleMovementOpcodes
@@ -7572,6 +7748,7 @@ void Aura::HandleAuraSafeFall(bool Apply, bool Real)
         ((Player*)GetTarget())->ActivateTaxiPathTo(506, GetId()); // on DB load flight path is initiated on its own after its safe to do so
 }
 
+// 处理器：临时覆写单位阵营 ID（移除时恢复原始阵营）
 void Aura::HandleFactionOverride(bool apply, bool Real)
 {
     if (!Real)
@@ -7589,11 +7766,13 @@ void Aura::HandleFactionOverride(bool apply, bool Real)
     target->RemoveUnattackableTargets();
 }
 
+// 处理器：覆写职业脚本标记（特殊状态处理，具体效果分散于各系统）
 void Aura::HandleOverrideClassScript(bool apply, bool /*real*/)
 {
     GetTarget()->RegisterOverrideScriptAura(this, m_modifier.m_miscvalue, apply);
 }
 
+// 处理器：相位切换光环（改变单位所处位面掩码并刷新周围可见性）
 void Aura::HandleAuraPhase(bool apply, bool real)
 {
     if (!real)
@@ -7603,6 +7782,7 @@ void Aura::HandleAuraPhase(bool apply, bool real)
         pet->SetPhaseMask(apply ? GetMiscValue() : 1u);
 }
 
+// 检查当前 Aura 是否是所属 SpellAuraHolder 中唯一残留的有效光环
 bool Aura::IsLastAuraOnHolder()
 {
     for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -7611,6 +7791,7 @@ bool Aura::IsLastAuraOnHolder()
     return true;
 }
 
+// 检查当前光环或其所属法术是否具备指定的法术机制（Mechanic）
 bool Aura::HasMechanic(uint32 mechanic) const
 {
     return GetSpellProto()->Mechanic == mechanic ||
@@ -7647,6 +7828,7 @@ inline bool IsRemovedOnShapeshiftLost(SpellEntry const* spellproto, ObjectGuid c
     /*TODO: investigate spellid 24864  or (SpellFamilyName = 7 and EffectApplyAuraName_1 = 49 and stances = 0)*/
 }
 
+// SpellAuraHolder 构造函数：计算持续时间、永久性、被动/死后保留属性、追踪类型及初始叠层
 SpellAuraHolder::SpellAuraHolder(SpellEntry const* spellproto, Unit* target, WorldObject* caster, Item* castItem, SpellEntry const* triggeredBy) :
     m_spellProto(spellproto), m_target(target),
     m_castItemGuid(castItem ? castItem->GetObjectGuid() : ObjectGuid()), m_triggeredBy(triggeredBy),
@@ -7711,16 +7893,19 @@ SpellAuraHolder::SpellAuraHolder(SpellEntry const* spellproto, Unit* target, Wor
     OnHolderInit(caster);
 }
 
+// 将单个 Aura 挂载到容器指定效果槽位
 void SpellAuraHolder::AddAura(Aura* aura, SpellEffectIndex index)
 {
     m_auras[index] = aura;
 }
 
+// 清空容器指定效果槽位上的 Aura 指针
 void SpellAuraHolder::RemoveAura(SpellEffectIndex index)
 {
     m_auras[index] = nullptr;
 }
 
+// 对容器内所有有效 Aura 依次应用或移除修饰器
 void SpellAuraHolder::ApplyAuraModifiers(bool apply, bool real)
 {
     for (int32 i = 0; i < MAX_EFFECT_INDEX && !IsDeleted(); ++i)
@@ -7728,6 +7913,7 @@ void SpellAuraHolder::ApplyAuraModifiers(bool apply, bool real)
             aur->ApplyModifier(apply, real);
 }
 
+// 容器挂载核心流程：分配客户端可见光环槽位、写入更新字段、同步持续时间与 AuraState 状态
 void SpellAuraHolder::_AddSpellAuraHolder()
 {
     if (!GetId())
@@ -7808,7 +7994,7 @@ void SpellAuraHolder::_AddSpellAuraHolder()
     UpdateAuraDuration();
 
     //*****************************************************
-    // Update target aura state flag (at 1 aura apply)
+    // Update target aura state flag (at 1 aura apply)（挂载时更新目标 AuraState 标记与姿态状态）
     // TODO: Make it easer
     //*****************************************************
     // Sitdown on apply aura req seated
@@ -7843,6 +8029,7 @@ void SpellAuraHolder::_AddSpellAuraHolder()
         m_target->ModifyAuraState(AURA_STATE_DEADLY_POISON, true);
 }
 
+// 容器卸载核心流程：清理无限持续触发法术、释放槽位、更新递减记录、清理状态标志与事件冷却
 void SpellAuraHolder::_RemoveSpellAuraHolder()
 {
     // Remove all triggered by aura spells vs unlimited duration
@@ -7895,7 +8082,7 @@ void SpellAuraHolder::_RemoveSpellAuraHolder()
         m_target->UpdateAuraForGroup(slot);
 
         //*****************************************************
-        // Update target aura state flag (at last aura remove)
+        // Update target aura state flag (at last aura remove)（移除最后一个相关光环时清理 AuraState 标记）
         //*****************************************************
         uint32 removeState = 0;
         ClassFamilyMask removeFamilyFlag = m_spellProto->SpellFamilyFlags;
@@ -7955,6 +8142,7 @@ void SpellAuraHolder::_RemoveSpellAuraHolder()
     }
 }
 
+// 清理当前光环周期触发产生的永久性子光环
 void SpellAuraHolder::CleanupTriggeredSpells()
 {
     for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -7983,6 +8171,7 @@ void SpellAuraHolder::CleanupTriggeredSpells()
     }
 }
 
+// 增减光环叠加层数；当层数降至 0 或以下时返回 true 表示需要移除容器
 bool SpellAuraHolder::ModStackAmount(int32 num, Unit* newCaster)
 {
     uint32 protoStackAmount = m_spellProto->StackAmount;
@@ -8006,6 +8195,7 @@ bool SpellAuraHolder::ModStackAmount(int32 num, Unit* newCaster)
     return false;
 }
 
+// 设置光环叠加层数、变更施法者归属、按层数重算各效果数值并刷新持续时间
 void SpellAuraHolder::SetStackAmount(uint32 stackAmount, Unit* newCaster)
 {
     Unit* target = GetTarget();
@@ -8066,6 +8256,7 @@ void SpellAuraHolder::SetStackAmount(uint32 stackAmount, Unit* newCaster)
         RefreshHolder();
 }
 
+// 根据 m_casterGuid 解析当前地图中的光环施法者单位指针
 Unit* SpellAuraHolder::GetCaster() const
 {
     if (m_casterGuid == m_target->GetObjectGuid())
@@ -8080,6 +8271,7 @@ Unit* SpellAuraHolder::GetCaster() const
     return m_target->GetMap()->GetUnit(m_casterGuid);
 }
 
+// 判断两个由主/副手武器附魔或道具触发的增益是否允许在目标身上共存
 bool SpellAuraHolder::IsWeaponBuffCoexistableWith(SpellAuraHolder const* ref) const
 {
     // only item casted spells
@@ -8115,6 +8307,7 @@ bool SpellAuraHolder::IsWeaponBuffCoexistableWith(SpellAuraHolder const* ref) co
     return ref->GetCastItemGuid() && ref->GetCastItemGuid() != GetCastItemGuid();
 }
 
+// 判断该光环容器是否需要在客户端 Buff/Debuff 栏占用可见槽位
 bool SpellAuraHolder::IsNeedVisibleSlot(Unit const* caster) const
 {
     bool totemAura = caster && caster->GetTypeId() == TYPEID_UNIT && ((Creature*)caster)->IsTotem();
@@ -8145,6 +8338,7 @@ bool SpellAuraHolder::IsNeedVisibleSlot(Unit const* caster) const
     return !m_isPassive || totemAura;
 }
 
+// 处理特定法术施加或移除时的联动附加法术（如连携触发、状态收尾法术）
 void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply, AuraRemoveMode mode)
 {
     std::vector<uint32> boostSpells;
@@ -8268,6 +8462,7 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply, AuraRemoveMode mode)
     }
 }
 
+// SpellAuraHolder 析构函数：释放容器内全部 Aura 实例
 SpellAuraHolder::~SpellAuraHolder()
 {
     // note: auras in delete list won't be affected since they clear themselves from holder when adding to deletedAuraslist
@@ -8275,6 +8470,7 @@ SpellAuraHolder::~SpellAuraHolder()
         delete m_auras[i];
 }
 
+// 容器每帧更新：驱动内部各 Aura 周期跳动、扣减剩余时间、处理每秒耗蓝及心跳抵抗
 void SpellAuraHolder::Update(uint32 diff)
 {
     if (m_skipUpdate)
@@ -8331,12 +8527,14 @@ void SpellAuraHolder::Update(uint32 diff)
     }
 }
 
+// 将光环剩余时间重置为最大持续时间并强制同步给客户端
 void SpellAuraHolder::RefreshHolder()
 {
     SetAuraDuration(GetAuraMaxDuration());
     ForceUpdateAuraDuration();
 }
 
+// 设置光环最大持续时间并按需取消永久标记
 void SpellAuraHolder::SetAuraMaxDuration(int32 duration)
 {
     m_maxDuration = duration;
@@ -8349,6 +8547,7 @@ void SpellAuraHolder::SetAuraMaxDuration(int32 duration)
     }
 }
 
+// 设置光环触发充能次数，同步更新 SpellModifier 充能与客户端层数显示
 void SpellAuraHolder::SetAuraCharges(uint32 charges, bool update)
 {
     if (m_procCharges == charges)
@@ -8364,6 +8563,7 @@ void SpellAuraHolder::SetAuraCharges(uint32 charges, bool update)
         UpdateAuraApplication();
 }
 
+// 消耗一次光环充能并在最后一次充能用尽时返回 true
 bool SpellAuraHolder::DropAuraCharge()
 {
     if (m_procCharges == 0)
@@ -8385,6 +8585,7 @@ bool SpellAuraHolder::DropAuraCharge()
     return m_procCharges == 0;
 }
 
+// 将容器内所有 SpellModifier 的充能数同步恢复为当前 m_procCharges
 void SpellAuraHolder::ResetSpellModCharges()
 {
     for (uint8 i = 0; i < MAX_EFFECT_INDEX; i++)
@@ -8393,6 +8594,7 @@ void SpellAuraHolder::ResetSpellModCharges()
                 spellMod->charges = m_procCharges;
 }
 
+// 检查容器内是否包含指定 modId 的法术修饰器
 bool SpellAuraHolder::HasModifier(const uint64& modId) const
 {
     for (uint8 i = 0; i < MAX_EFFECT_INDEX; i++)
@@ -8402,6 +8604,7 @@ bool SpellAuraHolder::HasModifier(const uint64& modId) const
     return false;
 }
 
+// 检查光环容器是否包含指定的法术机制（Mechanic）
 bool SpellAuraHolder::HasMechanic(uint32 mechanic) const
 {
     if (mechanic == m_spellProto->Mechanic)
@@ -8413,6 +8616,7 @@ bool SpellAuraHolder::HasMechanic(uint32 mechanic) const
     return false;
 }
 
+// 检查光环容器是否匹配指定的法术机制位掩码
 bool SpellAuraHolder::HasMechanicMask(uint32 mechanicMask) const
 {
     if (mechanicMask & convertEnumToFlag(m_spellProto->Mechanic))
@@ -8424,6 +8628,7 @@ bool SpellAuraHolder::HasMechanicMask(uint32 mechanicMask) const
     return false;
 }
 
+// 根据驱散掩码与施法者敌友关系判断该光环容器是否可被驱散
 bool SpellAuraHolder::IsDispellableByMask(uint32 dispelMask, Unit const* caster, SpellEntry const* spellInfo) const
 {
     if ((1 << GetSpellProto()->Dispel) & dispelMask)
@@ -8442,6 +8647,7 @@ bool SpellAuraHolder::IsDispellableByMask(uint32 dispelMask, Unit const* caster,
     return false;
 }
 
+// 检查容器内是否包含任意周期性跳动的光环
 bool SpellAuraHolder::HasPeriodicAura() const
 {
     for (Aura* aura : m_auras)
@@ -8451,6 +8657,7 @@ bool SpellAuraHolder::HasPeriodicAura() const
     return false;
 }
 
+// 检查容器内是否包含持久区域光环（PersistentAreaAura）
 bool SpellAuraHolder::IsPersistent() const
 {
     for (auto aur : m_auras)
@@ -8460,6 +8667,7 @@ bool SpellAuraHolder::IsPersistent() const
     return false;
 }
 
+// 检查容器内是否包含区域光环（AreaAura / GameObjectAura）
 bool SpellAuraHolder::IsAreaAura() const
 {
     for (auto aur : m_auras)
@@ -8469,6 +8677,7 @@ bool SpellAuraHolder::IsAreaAura() const
     return false;
 }
 
+// 判断光环容器整体是否为增益（所有子 Aura 均为正面效果时返回 true）
 bool SpellAuraHolder::IsPositive() const
 {
     for (auto aur : m_auras)
@@ -8478,6 +8687,7 @@ bool SpellAuraHolder::IsPositive() const
     return true;
 }
 
+// 检查容器的 3 个效果槽位是否均为空
 bool SpellAuraHolder::IsEmptyHolder() const
 {
     for (auto m_aura : m_auras)
@@ -8486,6 +8696,7 @@ bool SpellAuraHolder::IsEmptyHolder() const
     return true;
 }
 
+// 判断该光环容器在玩家下线时是否应持久化保存到数据库（排除被动、物品、单目标及世界 Buff）
 bool SpellAuraHolder::IsSaveToDbHolder() const
 {
     if (IsPassive() || IsChanneledSpell(GetSpellProto()) || IsItemAura(GetSpellProto()))
@@ -8528,6 +8739,7 @@ bool SpellAuraHolder::IsSaveToDbHolder() const
     return true;
 }
 
+// 检查容器内是否包含魅惑/控制类光环
 bool SpellAuraHolder::IsCharm() const
 {
     for (auto m_aura : m_auras)
@@ -8536,6 +8748,7 @@ bool SpellAuraHolder::IsCharm() const
     return false;
 }
 
+// 从施法者的单目标追踪表中注销当前光环
 void SpellAuraHolder::UnregisterAndCleanupTrackedAuras()
 {
     TrackedAuraType trackedType = GetTrackedAuraType();
@@ -8551,6 +8764,7 @@ void SpellAuraHolder::UnregisterAndCleanupTrackedAuras()
     m_trackedAuraType = TRACK_AURA_TYPE_NOT_TRACKED;
 }
 
+// 更新目标 UNIT_FIELD_AURAFLAGS 字段中对应槽位的效果掩码与可取消标志
 void SpellAuraHolder::SetAuraFlag(uint32 slot, bool add)
 {
     uint32 index    = slot / 4;
@@ -8575,6 +8789,7 @@ void SpellAuraHolder::SetAuraFlag(uint32 slot, bool add)
     m_target->SetUInt32Value(UNIT_FIELD_AURAFLAGS + index, val);
 }
 
+// 更新目标 UNIT_FIELD_AURALEVELS 字段中对应槽位的施法者等级
 void SpellAuraHolder::SetAuraLevel(uint32 slot, uint32 level)
 {
     uint32 index    = slot / 4;
@@ -8585,11 +8800,13 @@ void SpellAuraHolder::SetAuraLevel(uint32 slot, uint32 level)
     m_target->SetUInt32Value(UNIT_FIELD_AURALEVELS + index, val);
 }
 
+// 标记跳过创建当帧的首次更新，避免新施加光环在同一游戏帧立刻扣减时间
 void SpellAuraHolder::SetCreationDelayFlag()
 {
     m_skipUpdate = true;
 }
 
+// 检查容器内是否存在指定 AuraType 的子光环
 bool SpellAuraHolder::HasAuraType(AuraType type)
 {
     for (auto m_aura : m_auras)
@@ -8598,6 +8815,7 @@ bool SpellAuraHolder::HasAuraType(AuraType type)
     return false;
 }
 
+// 更新目标 UNIT_FIELD_AURAAPPLICATIONS 中的光环层数/充能显示值
 void SpellAuraHolder::UpdateAuraApplication()
 {
     if (m_auraSlot >= MAX_AURAS)
@@ -8614,6 +8832,7 @@ void SpellAuraHolder::UpdateAuraApplication()
     m_target->SetUInt32Value(UNIT_FIELD_AURAAPPLICATIONS + index, val);
 }
 
+// 向玩家施法者发送 SMSG_CLEAR_EXTRA_AURA_INFO 清除目标面板上的计时提示
 void SpellAuraHolder::ClearExtraAuraInfo(Unit* caster)
 {
     if (caster && caster->GetTypeId() == TYPEID_PLAYER)
@@ -8625,6 +8844,7 @@ void SpellAuraHolder::ClearExtraAuraInfo(Unit* caster)
     }
 }
 
+// 向光环宿主及施法者同步最新光环剩余时间
 void SpellAuraHolder::UpdateAuraDuration()
 {
     // not send in case player loading - on load is sent differently
@@ -8644,6 +8864,7 @@ void SpellAuraHolder::UpdateAuraDuration()
     }
 }
 
+// 玩家登录加载光环时向其下发初始持续时间数据包
 void SpellAuraHolder::LoginAuraDuration()
 {
     // target is currently logging in player and only send what he needs
@@ -8652,6 +8873,7 @@ void SpellAuraHolder::LoginAuraDuration()
         SendAuraDurationToCaster(static_cast<Player*>(m_target));
 }
 
+// 刷新或修改持续时间后强制向宿主和施法者推送剩余时间更新包
 void SpellAuraHolder::ForceUpdateAuraDuration()
 {
     if (GetAuraSlot() >= MAX_AURAS)
@@ -8668,6 +8890,7 @@ void SpellAuraHolder::ForceUpdateAuraDuration()
     }
 }
 
+// 向宿主玩家发送 SMSG_UPDATE_AURA_DURATION 更新指定槽位倒计时
 void SpellAuraHolder::SendAuraDuration()
 {
     if (!m_target->IsPlayer())
@@ -8679,6 +8902,7 @@ void SpellAuraHolder::SendAuraDuration()
     static_cast<Player*>(m_target)->SendDirectMessage(data);
 }
 
+// 构造发往施法者的 SMSG_SET_EXTRA_AURA_INFO 数据包
 WorldPacket SpellAuraHolder::BuildAuraDurationToCaster(uint32 slot)
 {
     WorldPacket data(SMSG_SET_EXTRA_AURA_INFO, (8 + 1 + 4 + 4 + 4));
@@ -8690,6 +8914,7 @@ WorldPacket SpellAuraHolder::BuildAuraDurationToCaster(uint32 slot)
     return data;
 }
 
+// 直接向施法者发送额外光环持续时间数据包
 void SpellAuraHolder::SendAuraDurationToCaster(Player* caster, uint32 slot)
 {
     WorldPacket data = BuildAuraDurationToCaster(slot);
@@ -8697,6 +8922,7 @@ void SpellAuraHolder::SendAuraDurationToCaster(Player* caster, uint32 slot)
     caster->SendDirectMessage(data);
 }
 
+// 向施法者发送 SMSG_SET_EXTRA_AURA_INFO_NEED_UPDATE 强制刷新其目标面板计时
 void SpellAuraHolder::SendAuraDurationToCasterNeedUpdate(Player* caster)
 {
     WorldPacket data(SMSG_SET_EXTRA_AURA_INFO_NEED_UPDATE, (8 + 1 + 4 + 4 + 4));
@@ -8708,16 +8934,19 @@ void SpellAuraHolder::SendAuraDurationToCasterNeedUpdate(Player* caster)
     caster->GetSession()->SendPacket(data);
 }
 
+// 检查当前光环容器的内置触发冷却（ICD）是否已就绪
 bool SpellAuraHolder::IsProcReady(TimePoint const& now) const
 {
     return m_procCooldown < now;
 }
 
+// 设置光环内置触发冷却到期时间点
 void SpellAuraHolder::SetProcCooldown(std::chrono::milliseconds cooldown, TimePoint const& now)
 {
     m_procCooldown = now + cooldown;
 }
 
+// 初始化心跳抵抗（Heartbeat Resist）触发几率与检测间隔
 void SpellAuraHolder::SetHeartbeatResist(uint32 chance, int32 originalDuration, uint32 drLevel)
 {
     // NOTE: This is an experimental approximation of heartbeat resist mechanics, more research is required
@@ -8729,6 +8958,7 @@ void SpellAuraHolder::SetHeartbeatResist(uint32 chance, int32 originalDuration, 
     m_heartbeatResistTimer = m_heartbeatResistInterval;
 }
 
+// 周期推进心跳抵抗计时器，判定成功时提前打破控制光环
 void SpellAuraHolder::UpdateHeartbeatResist(uint32 diff)
 {
     if (m_heartbeatResistChance == 0.0f || !m_heartbeatResistInterval || m_heartbeatResistTimer <= 0)
@@ -8757,16 +8987,19 @@ void SpellAuraHolder::UpdateHeartbeatResist(uint32 diff)
     }
 }
 
+// GameObjectAura 构造函数：标记为由游戏对象施加的区域光环
 GameObjectAura::GameObjectAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, GameObject* /*caster*/)
     : Aura(spellproto, eff, currentDamage, currentBasePoints, holder, target, nullptr)
 {
     m_isAreaAura = true;
 }
 
+// GameObjectAura 析构函数
 GameObjectAura::~GameObjectAura()
 {    
 }
 
+// 游戏对象区域光环更新：若源 GameObject 已消失则移除该光环容器
 void GameObjectAura::Update(uint32 diff)
 {
     Aura::Update(diff);
@@ -8776,18 +9009,21 @@ void GameObjectAura::Update(uint32 diff)
         target->RemoveSpellAuraHolder(GetHolder());
 }
 
+// 脚本钩子：光环容器初始化完成后调用
 void SpellAuraHolder::OnHolderInit(WorldObject* caster)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnHolderInit(this, caster);
 }
 
+// 脚本钩子：光环容器被驱散时调用
 void SpellAuraHolder::OnDispel(Unit* dispeller, uint32 dispellingSpellId, uint32 originalStacks)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnDispel(this, dispeller, dispellingSpellId, originalStacks);
 }
 
+// 计算光环初始效果值（例如吸收盾类光环叠加法术治疗强度系数与等级惩罚）
 uint32 Aura::CalculateAuraEffectValue(Unit* caster, Unit* /*target*/, SpellEntry const* spellProto, SpellEffectIndex effIdx, uint32 value)
 {
     switch (spellProto->EffectApplyAuraName[effIdx])
@@ -8808,12 +9044,14 @@ uint32 Aura::CalculateAuraEffectValue(Unit* caster, Unit* /*target*/, SpellEntry
     return value;
 }
 
+// 脚本钩子：Aura 构造完毕后初始化脚本状态
 void Aura::OnAuraInit()
 {
     if (AuraScript* script = GetAuraScript())
         script->OnAuraInit(this);
 }
 
+// 脚本钩子：允许脚本动态计算或覆写光环数值
 int32 Aura::OnAuraValueCalculate(Unit* caster, int32 currentValue, Item* castItem)
 {
     if (AuraScript* script = GetAuraScript())
@@ -8824,30 +9062,35 @@ int32 Aura::OnAuraValueCalculate(Unit* caster, int32 currentValue, Item* castIte
     return currentValue;
 }
 
+// 脚本钩子：参与计算光环对伤害结果的额外加成或倍率
 void Aura::OnDamageCalculate(Unit* attacker, Unit* victim, int32& advertisedBenefit, float& totalMod)
 {
     if (AuraScript* script = GetAuraScript())
         return script->OnDamageCalculate(this, attacker, victim, advertisedBenefit, totalMod);
 }
 
+// 脚本钩子：参与调整暴击几率
 void Aura::OnCritChanceCalculate(Unit const* victim, float& chance, SpellEntry const* spellInfo)
 {
     if (AuraScript* script = GetAuraScript())
         return script->OnCritChanceCalculate(this, victim, chance, spellInfo);
 }
 
+// 脚本钩子：在 AuraHandler 执行前（施加）或执行后（移除）回调
 void Aura::OnApply(bool apply)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnApply(this, apply);
 }
 
+// 脚本钩子：在 AuraHandler 执行后（施加）或执行前（移除）回调
 void Aura::OnAfterApply(bool apply)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnAfterApply(this, apply);
 }
 
+// 脚本钩子：自定义 Proc 触发前条件检查
 bool Aura::OnCheckProc(ProcExecutionData& data)
 {
     if (AuraScript* script = GetAuraScript())
@@ -8855,6 +9098,7 @@ bool Aura::OnCheckProc(ProcExecutionData& data)
     return true;
 }
 
+// 脚本钩子：执行自定义 Proc 触发逻辑
 SpellAuraProcResult Aura::OnProc(ProcExecutionData& data)
 {
     if (AuraScript* script = GetAuraScript())
@@ -8862,30 +9106,35 @@ SpellAuraProcResult Aura::OnProc(ProcExecutionData& data)
     return SPELL_AURA_PROC_OK;
 }
 
+// 脚本钩子：处理护盾吸收、反伤、免死与消耗充能逻辑
 void Aura::OnAbsorb(int32& currentAbsorb, int32& remainingDamage, uint32& reflectedSpellId, int32& reflectDamage, bool& preventedDeath, bool& dropCharge, DamageEffectType damageType)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnAbsorb(this, currentAbsorb, remainingDamage, reflectedSpellId, reflectDamage, preventedDeath, dropCharge, damageType);
 }
 
+// 脚本钩子：处理法力吸收护盾数值计算
 void Aura::OnManaAbsorb(int32& currentAbsorb)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnManaAbsorb(this, currentAbsorb);
 }
 
+// 脚本钩子：防致死光环拦截致命伤害回调
 void Aura::OnAuraDeathPrevention(int32& remainingDamage)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnAuraDeathPrevention(this, remainingDamage);
 }
 
+// 脚本钩子：在周期跳动结算前动态调整当前跳数值
 void Aura::OnPeriodicCalculateAmount(uint32& amount)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnPeriodicCalculateAmount(this, amount);
 }
 
+// 脚本钩子：光环周期心跳回调
 void Aura::OnHeartbeat()
 {
     // TODO: move HB resist here
@@ -8893,6 +9142,7 @@ void Aura::OnHeartbeat()
         script->OnHeartbeat(this);
 }
 
+// 脚本钩子：当启用 m_affectOverriden 时判断光环是否作用于目标法术
 bool Aura::OnAffectCheck(SpellEntry const* spellInfo) const
 {
     if (AuraScript* script = GetAuraScript())
@@ -8900,6 +9150,7 @@ bool Aura::OnAffectCheck(SpellEntry const* spellInfo) const
     return false;
 }
 
+// 脚本钩子：获取光环脚本提供的自定义整型值（如变形覆写模型 ID）
 uint32 Aura::GetAuraScriptCustomizationValue()
 {
     if (AuraScript* script = GetAuraScript())
@@ -8907,6 +9158,7 @@ uint32 Aura::GetAuraScriptCustomizationValue()
     return 0;
 }
 
+// 脚本接口：强制启用或修改光环的周期跳动间隔（0 表示关闭周期）
 void Aura::ForcePeriodicity(uint32 periodicTime)
 {
     if (periodicTime == 0)
@@ -8917,18 +9169,21 @@ void Aura::ForcePeriodicity(uint32 periodicTime)
     m_periodicTimer = periodicTime;
 }
 
+// 脚本钩子：周期触发子法术前允许修改触发参数与目标
 void Aura::OnPeriodicTrigger(PeriodicTriggerData& data)
 {
     if (AuraScript* script = GetAuraScript())
         script->OnPeriodicTrigger(this, data);
 }
 
+// 脚本钩子：执行周期 Dummy 光环的自定义跳动逻辑
 void Aura::OnPeriodicDummy()
 {
     if (AuraScript* script = GetAuraScript())
         script->OnPeriodicDummy(this);
 }
 
+// 脚本钩子：周期跳动结束收尾回调
 void Aura::OnPeriodicTickEnd()
 {
     if (AuraScript* script = GetAuraScript())

@@ -21,43 +21,47 @@ SDComment: Timers; Some details may need adjustments.
 SDCategory: Zul'Aman
 EndScriptData */
 
+// 埃基尔松（Akil'zon）鹰之化身首领战 AI（电气风暴全团集合躲避避雷针、召唤掠食猛禽）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulaman.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_EVENT1              = -1568024,
-    SAY_EVENT2              = -1568025,
-    SAY_AGGRO               = -1568026,
-    SAY_SUMMON              = -1568027,
-    SAY_SUMMON_ALT          = -1568028,
-    SAY_ENRAGE              = -1568029,
-    SAY_SLAY1               = 23233,
-    SAY_SLAY2               = 23234,
-    SAY_DEATH               = -1568032,
-    EMOTE_STORM             = -1568033,
+    SAY_EVENT1              = -1568024,                     // event1 台词广播 ID
+    SAY_EVENT2              = -1568025,                     // event2 台词广播 ID
+    SAY_AGGRO               = -1568026,                     // 开战 台词广播 ID
+    SAY_SUMMON              = -1568027,                     // 召唤 台词广播 ID
+    SAY_SUMMON_ALT          = -1568028,                     // 召唤alt 台词广播 ID
+    SAY_ENRAGE              = -1568029,                     // 狂暴 台词广播 ID
+    SAY_SLAY1               = 23233,                        // slay1 台词广播 ID
+    SAY_SLAY2               = 23234,                        // slay2 台词广播 ID
+    SAY_DEATH               = -1568032,                     // 死亡 台词广播 ID
+    EMOTE_STORM             = -1568033,                     // storm 表情动作 ID
 
-    SPELL_STATIC_DISRUPTION = 43622,
-    SPELL_CALL_LIGHTNING    = 43661,
-    SPELL_GUST_OF_WIND      = 43621,
-    SPELL_ELECTRICAL_STORM  = 43648,
-    SPELL_BERSERK           = 45078,
+    SPELL_STATIC_DISRUPTION = 43622,                        // staticdisruption 法术 ID
+    SPELL_CALL_LIGHTNING    = 43661,                        // 呼唤闪电 法术 ID
+    SPELL_GUST_OF_WIND      = 43621,                        // gustofwind 法术 ID
+    SPELL_ELECTRICAL_STORM  = 43648,                        // electricalstorm 法术 ID
+    SPELL_BERSERK           = 45078,                        // 狂暴 法术 ID
 
     // spell used by eagles
-    SPELL_EAGLE_SWOOP       = 44732,
-    SOUND_EAGLE_SWOOP       = 12196,
+    SPELL_EAGLE_SWOOP       = 44732,                        // eagleswoop 法术 ID
+    SOUND_EAGLE_SWOOP       = 12196,                        // eagleswoop 音效 ID
 
-    NPC_SOARING_EAGLE       = 24858,
-    MAX_EAGLE_COUNT         = 8,
+    NPC_SOARING_EAGLE       = 24858,                        // soaringeagle Entry ID
+    MAX_EAGLE_COUNT         = 8,                            // eaglecount 标识 ID
 
-    PATH_ID_EAGLE_1         = 1,
-    PATH_ID_EAGLE_2         = 2,
-    PATH_ID_EAGLE_3         = 3,
-    PATH_ID_EAGLE_4         = 4,
+    PATH_ID_EAGLE_1         = 1,                            // IDeagle1 标识 ID
+    PATH_ID_EAGLE_2         = 2,                            // IDeagle2 标识 ID
+    PATH_ID_EAGLE_3         = 3,                            // IDeagle3 标识 ID
+    PATH_ID_EAGLE_4         = 4,                            // IDeagle4 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum AkilzonActions
 {
     AKILZON_ACTION_BERSERK,
@@ -83,6 +87,7 @@ static Position eagleSummonPositions[] =
     {381.914f,  1433.974f, 91.65897f, 6.053235f},
 };
 
+// 首领战 AI：标识 ID（akilzon）
 struct boss_akilzonAI : public CombatAI
 {
     boss_akilzonAI(Creature* creature) : CombatAI(creature, AKILZON_ACTION_MAX), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData())), m_eagles(MAX_EAGLE_COUNT)
@@ -109,6 +114,7 @@ struct boss_akilzonAI : public CombatAI
     instance_zulaman* m_instance;
     GuidVector m_eagles;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -136,12 +142,14 @@ struct boss_akilzonAI : public CombatAI
         m_instance->SetData(TYPE_AKILZON, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_AKILZON, FAIL);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SOARING_EAGLE)
@@ -169,6 +177,7 @@ struct boss_akilzonAI : public CombatAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SOARING_EAGLE)
@@ -267,6 +276,7 @@ struct boss_akilzonAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：eagle（soaring_eagle）
 struct mob_soaring_eagleAI : public ScriptedAI
 {
     mob_soaring_eagleAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -279,8 +289,9 @@ struct mob_soaring_eagleAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
 
-    uint32 m_uiEagleSwoopTimer;
+    uint32 m_uiEagleSwoopTimer;                             // EagleSwoop 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiEagleSwoopTimer = urand(4000, 12000);
@@ -291,6 +302,7 @@ struct mob_soaring_eagleAI : public ScriptedAI
         m_creature->SetInCombatWithZone();
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 type, uint32 pointId) override
     {
         if (type != EFFECT_MOTION_TYPE || pointId != SPELL_EAGLE_SWOOP)
@@ -329,6 +341,7 @@ struct mob_soaring_eagleAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (!m_creature->SelectHostileTarget())
@@ -351,6 +364,7 @@ struct mob_soaring_eagleAI : public ScriptedAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（TeleportSelf）
 struct TeleportSelf : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -359,6 +373,7 @@ struct TeleportSelf : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_akilzon
 void AddSC_boss_akilzon()
 {
     Script* pNewScript = new Script;

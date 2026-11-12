@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: GO_Scripts
 SD%Complete: 100
-SDComment: Quest support: 1920, 1960, 5097, 5098
+SDComment: Quest support: 1920, 1960, 5097, 5098 (世界通用游戏对象交互与世界事件音效发射器脚本)
 SDCategory: Game Objects
 EndScriptData */
 
@@ -36,7 +36,7 @@ EndContentData */
 #include "Grids/GridNotifiersImpl.h"
 
 /*######
-## go_ethereum_prison
+## go_ethereum_prison (伊斯利囚笼：虚空风暴解救各阵营俘虏并给予声望)
 ######*/
 
 enum
@@ -219,6 +219,7 @@ struct npc_ethereum_prisonerAI : public ScriptedAI
     }
 };
 
+// 伊斯利囚笼使用回调：随机释放不同阵营 NPC 并给予声望奖励
 bool GOUse_go_ethereum_prison(Player* player, GameObject* go)
 {
     if (Creature* prisoner = GetClosestCreatureWithEntry(go, NPC_PRISONER, 1.f))
@@ -231,9 +232,10 @@ bool GOUse_go_ethereum_prison(Player* player, GameObject* go)
 }
 
 /*######
-## go_ethereum_stasis
+## go_ethereum_stasis (伊斯利静滞牢笼：释放精英或稀有生物)
 ######*/
 
+// 伊斯利静滞牢笼使用回调
 bool GOUse_go_ethereum_stasis(Player* player, GameObject* go)
 {
     if (Creature* prisoner = GetClosestCreatureWithEntry(go, NPC_PRISONER_GROUP, 1.f))
@@ -245,6 +247,7 @@ bool GOUse_go_ethereum_stasis(Player* player, GameObject* go)
     return false;
 }
 
+// 甲级静滞牢笼使用回调
 bool GOUse_go_stasis_chamber_alpha(Player* player, GameObject* go)
 {
     if (Creature* prisoner = GetClosestCreatureWithEntry(go, NPC_PRISONER_GROUP, 1.f))
@@ -257,7 +260,7 @@ bool GOUse_go_stasis_chamber_alpha(Player* player, GameObject* go)
 }
 
 /*######
-## go_jump_a_tron
+## go_jump_a_tron (52区跳跃追踪者)
 ######*/
 
 enum
@@ -266,6 +269,7 @@ enum
     NPC_JUMP_A_TRON   = 19041
 };
 
+// 跳跃追踪者使用回调：为玩家弹射施法
 bool GOUse_go_jump_a_tron(Player* pPlayer, GameObject* pGo)
 {
     if (Creature* pCreature = GetClosestCreatureWithEntry(pGo, NPC_JUMP_A_TRON, INTERACTION_DISTANCE))
@@ -275,7 +279,7 @@ bool GOUse_go_jump_a_tron(Player* pPlayer, GameObject* pGo)
 }
 
 /*######
-## go_andorhal_tower
+## go_andorhal_tower (安多哈尔防御塔信标：点亮四座通灵塔)
 ######*/
 
 enum
@@ -292,6 +296,7 @@ enum
     GO_ANDORHAL_TOWER_4                      = 176097
 };
 
+// 安多哈尔防御塔火炬使用回调
 bool GOUse_go_andorhal_tower(Player* pPlayer, GameObject* pGo)
 {
     if (pPlayer->GetQuestStatus(QUEST_ALL_ALONG_THE_WATCHTOWERS_ALLIANCE) == QUEST_STATUS_INCOMPLETE || pPlayer->GetQuestStatus(QUEST_ALL_ALONG_THE_WATCHTOWERS_HORDE) == QUEST_STATUS_INCOMPLETE)
@@ -353,6 +358,7 @@ enum BellHourlyObjects
     GO_KARAZHAN_BELL = 182064
 };
 
+// 节日大钟 AI (go_ai_bell)：新年与节日整点钟声敲响与广播
 struct go_ai_bell : public GameObjectAI
 {
     go_ai_bell(GameObject* go) : GameObjectAI(go), m_bellTolls(0), m_bellSound(GetBellSound(go)), m_bellTimer(0), m_playTo(GetBellZoneOrArea(go))
@@ -485,6 +491,7 @@ enum
     MUSIC_DARKMOON_FAIRE_MUSIC = 8440
 };
 
+// 暗月马戏团背景音乐播放 AI (go_ai_dmf_music)
 struct go_ai_dmf_music : public GameObjectAI
 {
     go_ai_dmf_music(GameObject* go) : GameObjectAI(go)
@@ -557,6 +564,7 @@ enum BrewfestMusicEvents
     EVENT_BM_START_MUSIC    = 2
 };
 
+// 美酒节背景音乐播放 AI (go_brewfest_music)
 struct go_brewfest_music : public GameObjectAI
 {
     go_brewfest_music(GameObject* go) : GameObjectAI(go), m_zoneTeam(GetZoneAlignment(go)), m_rand(0)
@@ -687,6 +695,7 @@ enum MidsummerMusicEvents
     EVENT_MM_START_MUSIC = 1
 };
 
+// 仲夏火焰节背景音乐播放 AI (go_midsummer_music)
 struct go_midsummer_music : public GameObjectAI
 {
     go_midsummer_music(GameObject* go) : GameObjectAI(go)
@@ -737,6 +746,7 @@ enum PirateDayMusicEvents
     EVENT_PDM_START_MUSIC = 1
 };
 
+// 海盗日背景音乐播放 AI (go_pirate_day_music)
 struct go_pirate_day_music : public GameObjectAI
 {
     go_pirate_day_music(GameObject* go) : GameObjectAI(go)
@@ -784,7 +794,7 @@ bool TrapTargetSearch(Unit* unit)
 }
 
 /*##################
-## go_elemental_rift
+## go_elemental_rift (四大元素入侵裂隙)
 ##################*/
 
 enum
@@ -801,6 +811,7 @@ enum
     GO_AIR_ELEMENTAL_RIFT       = 179667,
 };
 
+// 元素入侵裂隙 AI (go_elemental_rift)：生成元素生物与裂隙守护者
 struct go_elemental_rift : public GameObjectAI
 {
     go_elemental_rift(GameObject* go) : GameObjectAI(go), m_uiElementalTimer(urand(0, 30 * IN_MILLISECONDS)) {}
@@ -909,6 +920,7 @@ enum
     GO_NEFARIAN_A                   = 179882,
 };
 
+// 黑龙公主奥妮克希亚/奈法利安龙头悬挂旗帜 AI (go_dragon_head)：获得屠龙者的咆哮世界增益
 struct go_dragon_head : public GameObjectAI
 {
     go_dragon_head(GameObject* go) : GameObjectAI(go) {}
@@ -992,6 +1004,7 @@ enum
     NPC_RIFT_SPAWN = 6492
 };
 
+// 封印箱游戏对象 AI (go_containment)
 struct go_containment : public GameObjectAI
 {
     go_containment(GameObject* go) : GameObjectAI(go), m_activated(false), m_startTimer(2000) {}
@@ -1197,6 +1210,7 @@ struct RitualOfSoulsDummy : public SpellScript
     }
 };
 
+// 注册世界游戏对象脚本
 void AddSC_go_scripts()
 {
     Script* pNewScript = new Script;

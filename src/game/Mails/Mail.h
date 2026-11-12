@@ -44,36 +44,36 @@ class Item;
 class Object;
 class Player;
 
-#define MAIL_BODY_ITEM_TEMPLATE 8383                        ///< - plain letter, A Dusty Unsent Letter: 889
-/// The maximal amount of items a mail can contain.
+#define MAIL_BODY_ITEM_TEMPLATE 8383                        ///< - plain letter, A Dusty Unsent Letter: 889 (普通信件物品模板 ID)
+/// The maximal amount of items a mail can contain. (单封邮件最多可附带 12 件物品)
 #define MAX_MAIL_ITEMS 12
 /**
- * The type of the mail.
+ * The type of the mail. (邮件发送者来源类型，共有 5 种)
  * A mail can have 5 Different Types.
  */
 enum MailMessageType
 {
-    MAIL_NORMAL         = 0,
-    MAIL_AUCTION        = 2,
-    MAIL_CREATURE       = 3,                                /// client send CMSG_CREATURE_QUERY on this mailmessagetype
-    MAIL_GAMEOBJECT     = 4,                                /// client send CMSG_GAMEOBJECT_QUERY on this mailmessagetype
-    MAIL_ITEM           = 5,                                /// client send CMSG_ITEM_QUERY on this mailmessagetype
+    MAIL_NORMAL         = 0,                                // 普通玩家邮件
+    MAIL_AUCTION        = 2,                                // 拍卖行邮件
+    MAIL_CREATURE       = 3,                                /// client send CMSG_CREATURE_QUERY on this mailmessagetype (生物/NPC 邮件)
+    MAIL_GAMEOBJECT     = 4,                                /// client send CMSG_GAMEOBJECT_QUERY on this mailmessagetype (游戏对象邮件)
+    MAIL_ITEM           = 5,                                /// client send CMSG_ITEM_QUERY on this mailmessagetype (物品触发邮件)
 };
 /**
- * A Mask representing the status of the mail.
+ * A Mask representing the status of the mail. (邮件状态检查标志位掩码)
  */
 enum MailCheckMask
 {
-    MAIL_CHECK_MASK_NONE        = 0x00,                     /// Nothing.
-    MAIL_CHECK_MASK_READ        = 0x01,                     /// This mail was read.
-    MAIL_CHECK_MASK_RETURNED    = 0x02,                     /// This mail was returned. No allow return mail.
-    MAIL_CHECK_MASK_COPIED      = 0x04,                     /// This mail was copied. No allow make item copy from mail text.
-    MAIL_CHECK_MASK_COD_PAYMENT = 0x08,                     /// This mail is payable on delivery.
-    MAIL_CHECK_MASK_HAS_BODY    = 0x10,                     /// This mail has body text.
+    MAIL_CHECK_MASK_NONE        = 0x00,                     /// Nothing. (未读/无特殊标记)
+    MAIL_CHECK_MASK_READ        = 0x01,                     /// This mail was read. (已阅读)
+    MAIL_CHECK_MASK_RETURNED    = 0x02,                     /// This mail was returned. No allow return mail. (退信，不允许再次退回)
+    MAIL_CHECK_MASK_COPIED      = 0x04,                     /// This mail was copied. No allow make item copy from mail text. (已抄录正文，不允许再生成信件物品)
+    MAIL_CHECK_MASK_COD_PAYMENT = 0x08,                     /// This mail is payable on delivery. (货到付款邮件)
+    MAIL_CHECK_MASK_HAS_BODY    = 0x10,                     /// This mail has body text. (包含正文文本)
 };
 
 /**
- * The different types of Stationaries that exist for mails.
+ * The different types of Stationaries that exist for mails. (邮件信纸背景样式，源自 Stationery.dbc)
  * They have been gathered from Stationery.dbc
  */
 enum MailStationery
@@ -86,29 +86,29 @@ enum MailStationery
     MAIL_STATIONERY_CHR     = 65,
 };
 /**
- * Representation of the State of a mail.
+ * Representation of the State of a mail. (邮件内存同步状态)
  */
 enum MailState
 {
-    MAIL_STATE_UNCHANGED = 1,
-    MAIL_STATE_CHANGED   = 2,
-    MAIL_STATE_DELETED   = 3
+    MAIL_STATE_UNCHANGED = 1,                               // 未修改
+    MAIL_STATE_CHANGED   = 2,                               // 已修改待入库
+    MAIL_STATE_DELETED   = 3                                // 已删除待清理
 };
 /**
- * Answers contained in mails from auctionhouses.
+ * Answers contained in mails from auctionhouses. (拍卖行系统邮件子类型)
  */
 enum MailAuctionAnswers
 {
-    AUCTION_OUTBIDDED           = 0,
-    AUCTION_WON                 = 1,
-    AUCTION_SUCCESSFUL          = 2,
-    AUCTION_EXPIRED             = 3,
-    AUCTION_CANCELLED_TO_BIDDER = 4,
-    AUCTION_CANCELED            = 5,
-    AUCTION_SALE_PENDING        = 6
+    AUCTION_OUTBIDDED           = 0,                        // 竞价被超越退款
+    AUCTION_WON                 = 1,                        // 竞拍中标得物
+    AUCTION_SUCCESSFUL          = 2,                        // 拍卖售出得款
+    AUCTION_EXPIRED             = 3,                        // 拍卖流拍退货
+    AUCTION_CANCELLED_TO_BIDDER = 4,                        // 拍卖被卖家取消退款给买家
+    AUCTION_CANCELED            = 5,                        // 拍卖被取消退货给卖家
+    AUCTION_SALE_PENDING        = 6                         // 拍卖成交待到账通知
 };
 /**
- * A class to represent the sender of a mail.
+ * A class to represent the sender of a mail. (邮件发件人描述类：封装发件类型、GUID/模板 ID 与信纸样式)
  */
 class MailSender
 {
@@ -146,7 +146,7 @@ class MailSender
         MailStationery m_stationery;
 };
 /**
- * A class to represent the receiver of a mail.
+ * A class to represent the receiver of a mail. (邮件收件人描述类：兼容在线玩家指针与离线玩家 GUID)
  */
 class MailReceiver
 {
@@ -175,7 +175,7 @@ class MailReceiver
         ObjectGuid m_receiver_guid;
 };
 /**
- * The class to represent the draft of a mail.
+ * The class to represent the draft of a mail. (邮件草稿构造器：用于组装主题、正文、模板、金币、COD 与附件物品并投递或退信)
  */
 class MailDraft
 {
@@ -286,7 +286,7 @@ struct MailItemInfo
 
 typedef std::vector<MailItemInfo> MailItemInfoVec;
 /**
- * Structure that holds an actual mail.
+ * Structure that holds an actual mail. (邮箱中已投递的单封邮件运行时实体)
  */
 struct Mail
 {

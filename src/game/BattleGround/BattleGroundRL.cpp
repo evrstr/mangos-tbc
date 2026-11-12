@@ -32,16 +32,17 @@ BattleGroundRL::BattleGroundRL()
     m_startDelayTimes[BG_STARTING_EVENT_THIRD]  = BG_START_DELAY_15S;
     m_startDelayTimes[BG_STARTING_EVENT_FOURTH] = BG_START_DELAY_NONE;
 
-    // we must set messageIds
+    // we must set messageIds (配置开战前各阶段倒计时公告文本 ID)
     m_startMessageIds[BG_STARTING_EVENT_FIRST]  = LANG_ARENA_ONE_MINUTE;
     m_startMessageIds[BG_STARTING_EVENT_SECOND] = LANG_ARENA_THIRTY_SECONDS;
     m_startMessageIds[BG_STARTING_EVENT_THIRD]  = LANG_ARENA_FIFTEEN_SECONDS;
     m_startMessageIds[BG_STARTING_EVENT_FOURTH] = LANG_ARENA_HAS_BEGUN;
 }
 
+// 重置洛丹伦废墟竞技场并启用存活人数 HUD 世界状态
 void BattleGroundRL::Reset()
 {
-    // call parent's class reset
+    // call parent's class reset (调用基类重置)
     BattleGround::Reset();
 
     GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_ARENA_RL_HUD_ENABLED, 1);
@@ -50,18 +51,20 @@ void BattleGroundRL::Reset()
     GetBgMap()->GetVariableManager().SetVariableData(WORLD_STATE_ARENA_RL_HORDE_ALIVE, true, 0, 0);
 }
 
+// 开战时打开双方准备室大门
 void BattleGroundRL::StartingEventOpenDoors()
 {
     OpenDoorEvent(BG_EVENT_DOOR);
 }
 
+// 玩家进场：创建积分记录并刷新双方存活人数
 void BattleGroundRL::AddPlayer(Player* plr)
 {
     BattleGround::AddPlayer(plr);
-    // create score and add it to map, default values are set in constructor
+    // create score and add it to map, default values are set in constructor (创建积分对象并加入记分表)
     BattleGroundRLScore* sc = new BattleGroundRLScore;
 
-    // Needed for scoreboard if player leaves.
+    // Needed for scoreboard if player leaves. (记录竞技场所属阵营供结算界面使用)
     sc->Team = plr->GetBGTeam();
 
     m_playerScores[plr->GetObjectGuid()] = sc;
@@ -70,6 +73,7 @@ void BattleGroundRL::AddPlayer(Player* plr)
     GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_ARENA_RL_HORDE_ALIVE, GetAlivePlayersCountByTeam(HORDE));
 }
 
+// 玩家离场时更新双方存活人数并检查胜负
 void BattleGroundRL::RemovePlayer(Player* /*plr*/, ObjectGuid /*guid*/)
 {
     if (GetStatus() == STATUS_WAIT_LEAVE)
@@ -81,6 +85,7 @@ void BattleGroundRL::RemovePlayer(Player* /*plr*/, ObjectGuid /*guid*/)
     CheckArenaWinConditions();
 }
 
+// 玩家被击杀时更新双方存活人数并检查胜负
 void BattleGroundRL::HandleKillPlayer(Player* player, Player* killer)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -100,6 +105,7 @@ void BattleGroundRL::HandleKillPlayer(Player* player, Player* killer)
     CheckArenaWinConditions();
 }
 
+// 玩家掉出洛丹伦废墟竞技场地图下方时传回场地中心安全坐标
 bool BattleGroundRL::HandlePlayerUnderMap(Player* player)
 {
     player->TeleportTo(GetMapId(), 1285.810547f, 1667.896851f, 39.957642f, player->GetOrientation());

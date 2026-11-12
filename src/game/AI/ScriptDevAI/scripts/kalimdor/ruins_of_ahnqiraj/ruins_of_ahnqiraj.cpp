@@ -21,6 +21,10 @@ SDComment: It's not clear if the Rajaxx event should reset if Andorov dies, or p
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟 (Ruins of Ahn'Qiraj) 副本主逻辑与拉贾克斯攻城波次管理
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 
@@ -48,7 +52,7 @@ bool instance_ruins_of_ahnqiraj::IsEncounterInProgress() const
 
 void instance_ruins_of_ahnqiraj::OnPlayerEnter(Player* /*player*/)
 {
-    // Spawn andorov if necessary
+    // Spawn andorov if necessary (刷新)
     if (GetData(TYPE_KURINNAXX) == DONE)
         DoSpawnAndorovIfCan();
 }
@@ -114,9 +118,9 @@ void instance_ruins_of_ahnqiraj::OnCreatureEvade(Creature* creature)
         case NPC_AYAMISS:   SetData(TYPE_AYAMISS, FAIL);   break;
         case NPC_OSSIRIAN:  SetData(TYPE_OSSIRIAN, FAIL);  break;
         case NPC_RAJAXX:
-            // Rajaxx yells on evade
-            // DoScriptText(SAY_DEAGGRO, creature); - unconfirmed
-        // no break;
+            // Rajaxx yells on evade (说明)
+            // DoScriptText(SAY_DEAGGRO, creature); - unconfirmed (说明)
+        // no break; (无 break 直落)
         case NPC_COLONEL_ZERRAN:
         case NPC_MAJOR_PAKKON:
         case NPC_MAJOR_YEGGETH:
@@ -180,7 +184,7 @@ void instance_ruins_of_ahnqiraj::OnCreatureRespawn(Creature* creature)
 
 void instance_ruins_of_ahnqiraj::OnCreatureGroupDespawn(CreatureGroup* group, Creature* /*creature*/)
 {
-    // last wave makes rajaxx attack immediately
+    // last wave makes rajaxx attack immediately (波次)
     if (group->GetGroupEntry().StringId == instance->GetMapDataContainer().GetStringId("AQ20_ZERRAN"))
     {
         if (GetData(TYPE_RAJAXX) != IN_PROGRESS)
@@ -198,9 +202,9 @@ void instance_ruins_of_ahnqiraj::SetData(uint32 type, uint32 data)
             if (data == DONE)
             {
                 DoSpawnAndorovIfCan();
-                // Yell after kurinnaxx
+                // Yell after kurinnaxx (说明)
                 if (Creature* ossirian = GetSingleCreatureFromStorage(NPC_OSSIRIAN))
-                    DoScriptText(SAY_OSSIRIAN_INTRO, ossirian); // targets kurinnaxx in sniff
+                    DoScriptText(SAY_OSSIRIAN_INTRO, ossirian); // targets kurinnaxx in sniff (说明)
             }
             m_encounter[type] = data;
             break;
@@ -223,7 +227,7 @@ void instance_ruins_of_ahnqiraj::SetData(uint32 type, uint32 data)
             {
                 GuidVector crystals;
                 GetGameObjectGuidVectorFromStorage(GO_OSSIRIAN_CRYSTAL, crystals);
-                for (uint32 i = 1; i < crystals.size(); ++i) // skip first
+                for (uint32 i = 1; i < crystals.size(); ++i) // skip first (说明)
                 {
                     if (GameObject* go = instance->GetGameObject(crystals[i]))
                     {
@@ -231,7 +235,7 @@ void instance_ruins_of_ahnqiraj::SetData(uint32 type, uint32 data)
                         go->SetForcedDespawn();
                     }
                 }
-                m_goEntryGuidCollection[GO_OSSIRIAN_CRYSTAL].resize(1); // keeps first
+                m_goEntryGuidCollection[GO_OSSIRIAN_CRYSTAL].resize(1); // keeps first (说明)
             }
             m_encounter[type] = data;
             break;
@@ -316,18 +320,18 @@ void instance_ruins_of_ahnqiraj::Update(uint32 diff)
 
 void instance_ruins_of_ahnqiraj::DoSortArmyWaves()
 {
-    // send the first wave
+    // send the first wave (波次)
     m_currentArmyWave = 0;
     DoSendNextArmyWave();
 }
 
 void instance_ruins_of_ahnqiraj::DoSendNextArmyWave()
 {
-    // The next army wave is sent into battle after 2 min or after the previous wave is finished
+    // The next army wave is sent into battle after 2 min or after the previous wave is finished (说明)
     if (GetData(TYPE_RAJAXX) != IN_PROGRESS)
         return;
 
-    // The last wave is General Rajaxx itself
+    // The last wave is General Rajaxx itself (说明)
     if (m_currentArmyWave == MAX_ARMY_WAVES)
     {
         if (Creature* rajaxx = GetSingleCreatureFromStorage(NPC_RAJAXX))
@@ -358,20 +362,20 @@ void instance_ruins_of_ahnqiraj::DoSendNextArmyWave()
             }
         }
 
-        // Yell on each wave (except the first 2)
+        // Yell on each wave (except the first 2) (说明)
         if (aArmySortingParameters[m_currentArmyWave].m_uiYellEntry)
         {
             if (Creature* pRajaxx = GetSingleCreatureFromStorage(NPC_RAJAXX))
                 DoScriptText(aArmySortingParameters[m_currentArmyWave].m_uiYellEntry, pRajaxx);
         }
-        // on wowwiki it states that there were 3 min between the waves, but this was reduced in later patches
+        // on wowwiki it states that there were 3 min between the waves, but this was reduced in later patches (说明)
         m_armyDelayTimer = 3 * MINUTE * IN_MILLISECONDS;
     }
 
     ++m_currentArmyWave;
 }
 
-void AddSC_instance_ruins_of_ahnqiraj()
+void AddSC_instance_ruins_of_ahnqiraj() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_ruins_of_ahnqiraj";

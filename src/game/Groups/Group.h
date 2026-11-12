@@ -37,32 +37,35 @@ class DungeonPersistentState;
 class Field;
 class Unit;
 
-#define MAX_GROUP_SIZE 5
-#define MAX_RAID_SIZE 40
-#define MAX_RAID_SUBGROUPS (MAX_RAID_SIZE / MAX_GROUP_SIZE)
-#define TARGET_ICON_COUNT 8
+#define MAX_GROUP_SIZE 5                                    // 普通小队最大人数
+#define MAX_RAID_SIZE 40                                    // 团队最大人数
+#define MAX_RAID_SUBGROUPS (MAX_RAID_SIZE / MAX_GROUP_SIZE) // 团队最大子小队数（8 队）
+#define TARGET_ICON_COUNT 8                                 // 团队目标标记图标数量（骷髅/叉/方块等 8 个）
 
+/// 队伍成员在线/状态掩码（用于 SMSG_PARTY_MEMBER_STATS）
 enum GroupMemberStatus
 {
-    MEMBER_STATUS_OFFLINE   = 0x0000,
-    MEMBER_STATUS_ONLINE    = 0x0001,                       // Lua_UnitIsConnected
-    MEMBER_STATUS_PVP       = 0x0002,                       // Lua_UnitIsPVP
-    MEMBER_STATUS_DEAD      = 0x0004,                       // Lua_UnitIsDead
-    MEMBER_STATUS_GHOST     = 0x0008,                       // Lua_UnitIsGhost
-    MEMBER_STATUS_PVP_FFA   = 0x0010,                       // Lua_UnitIsPVPFreeForAll
-    MEMBER_STATUS_ZONE_OUT  = 0x0020,                       // Lua_GetPlayerMapPosition
-    MEMBER_STATUS_AFK       = 0x0040,                       // Lua_UnitIsAFK
-    MEMBER_STATUS_DND       = 0x0080,                       // Lua_UnitIsDND
+    MEMBER_STATUS_OFFLINE   = 0x0000,                       // 离线
+    MEMBER_STATUS_ONLINE    = 0x0001,                       // Lua_UnitIsConnected (在线)
+    MEMBER_STATUS_PVP       = 0x0002,                       // Lua_UnitIsPVP (开启 PvP)
+    MEMBER_STATUS_DEAD      = 0x0004,                       // Lua_UnitIsDead (死亡)
+    MEMBER_STATUS_GHOST     = 0x0008,                       // Lua_UnitIsGhost (灵魂状态)
+    MEMBER_STATUS_PVP_FFA   = 0x0010,                       // Lua_UnitIsPVPFreeForAll (自由 PvP 区域)
+    MEMBER_STATUS_ZONE_OUT  = 0x0020,                       // Lua_GetPlayerMapPosition (不在同一地图/世界外)
+    MEMBER_STATUS_AFK       = 0x0040,                       // Lua_UnitIsAFK (暂离)
+    MEMBER_STATUS_DND       = 0x0080,                       // Lua_UnitIsDND (请勿打扰)
 };
 
 GroupMemberStatus GetGroupMemberStatus(const Player* member);
 
+/// 队伍类型标志
 enum GroupType
 {
-    GROUP_FLAG_NORMAL = 0,
-    GROUP_FLAG_RAID   = 1
+    GROUP_FLAG_NORMAL = 0,                                  // 普通 5 人小队
+    GROUP_FLAG_RAID   = 1                                   // 团队（最多 40 人）
 };
 
+/// 团队成员权限掩码（助理、主助理、主坦克）
 enum GroupFlagMask
 {
     GROUP_ASSISTANT      = 0x01,
@@ -70,57 +73,62 @@ enum GroupFlagMask
     GROUP_MAIN_TANK      = 0x04,
 };
 
+/// 队员状态同步增量更新掩码
 enum GroupUpdateFlags
 {
-    GROUP_UPDATE_FLAG_NONE              = 0x00000000,       // nothing
-    GROUP_UPDATE_FLAG_STATUS            = 0x00000001,       // uint16, flags
-    GROUP_UPDATE_FLAG_CUR_HP            = 0x00000002,       // uint16
-    GROUP_UPDATE_FLAG_MAX_HP            = 0x00000004,       // uint16
-    GROUP_UPDATE_FLAG_POWER_TYPE        = 0x00000008,       // uint8
-    GROUP_UPDATE_FLAG_CUR_POWER         = 0x00000010,       // uint16
-    GROUP_UPDATE_FLAG_MAX_POWER         = 0x00000020,       // uint16
-    GROUP_UPDATE_FLAG_LEVEL             = 0x00000040,       // uint16
-    GROUP_UPDATE_FLAG_ZONE              = 0x00000080,       // uint16 area id
-    GROUP_UPDATE_FLAG_POSITION          = 0x00000100,       // int16, int16
-    GROUP_UPDATE_FLAG_AURAS             = 0x00000200,       // uint64 mask, for each bit set uint16 spellid + uint8 aura flags
-    GROUP_UPDATE_FLAG_PET_GUID          = 0x00000400,       // uint64 pet guid
-    GROUP_UPDATE_FLAG_PET_NAME          = 0x00000800,       // pet name, nullptr terminated string
-    GROUP_UPDATE_FLAG_PET_MODEL_ID      = 0x00001000,       // uint16, model id
-    GROUP_UPDATE_FLAG_PET_CUR_HP        = 0x00002000,       // uint16 pet cur health
-    GROUP_UPDATE_FLAG_PET_MAX_HP        = 0x00004000,       // uint16 pet max health
-    GROUP_UPDATE_FLAG_PET_POWER_TYPE    = 0x00008000,       // uint8 pet power type
-    GROUP_UPDATE_FLAG_PET_CUR_POWER     = 0x00010000,       // uint16 pet cur power
-    GROUP_UPDATE_FLAG_PET_MAX_POWER     = 0x00020000,       // uint16 pet max power
-    GROUP_UPDATE_FLAG_PET_AURAS         = 0x00040000,       // uint64 mask, for each bit set uint16 spellid + uint8 aura flags, pet auras...
-    GROUP_UPDATE_PET                    = 0x0007FC00,       // all pet flags
-    GROUP_UPDATE_FULL                   = 0x0007FFFF,       // all known flags
+    GROUP_UPDATE_FLAG_NONE              = 0x00000000,       // nothing (无更新)
+    GROUP_UPDATE_FLAG_STATUS            = 0x00000001,       // uint16, flags (在线/死亡/PvP 等状态标志)
+    GROUP_UPDATE_FLAG_CUR_HP            = 0x00000002,       // uint16 (当前生命值)
+    GROUP_UPDATE_FLAG_MAX_HP            = 0x00000004,       // uint16 (最大生命值)
+    GROUP_UPDATE_FLAG_POWER_TYPE        = 0x00000008,       // uint8 (能量类型)
+    GROUP_UPDATE_FLAG_CUR_POWER         = 0x00000010,       // uint16 (当前能量值)
+    GROUP_UPDATE_FLAG_MAX_POWER         = 0x00000020,       // uint16 (最大能量值)
+    GROUP_UPDATE_FLAG_LEVEL             = 0x00000040,       // uint16 (角色等级)
+    GROUP_UPDATE_FLAG_ZONE              = 0x00000080,       // uint16 area id (所在区域 ID)
+    GROUP_UPDATE_FLAG_POSITION          = 0x00000100,       // int16, int16 (二维坐标 X/Y)
+    GROUP_UPDATE_FLAG_AURAS             = 0x00000200,       // uint64 mask, for each bit set uint16 spellid + uint8 aura flags (光环列表)
+    GROUP_UPDATE_FLAG_PET_GUID          = 0x00000400,       // uint64 pet guid (宠物 GUID)
+    GROUP_UPDATE_FLAG_PET_NAME          = 0x00000800,       // pet name, nullptr terminated string (宠物名称)
+    GROUP_UPDATE_FLAG_PET_MODEL_ID      = 0x00001000,       // uint16, model id (宠物模型 ID)
+    GROUP_UPDATE_FLAG_PET_CUR_HP        = 0x00002000,       // uint16 pet cur health (宠物当前生命)
+    GROUP_UPDATE_FLAG_PET_MAX_HP        = 0x00004000,       // uint16 pet max health (宠物最大生命)
+    GROUP_UPDATE_FLAG_PET_POWER_TYPE    = 0x00008000,       // uint8 pet power type (宠物能量类型)
+    GROUP_UPDATE_FLAG_PET_CUR_POWER     = 0x00010000,       // uint16 pet cur power (宠物当前能量)
+    GROUP_UPDATE_FLAG_PET_MAX_POWER     = 0x00020000,       // uint16 pet max power (宠物最大能量)
+    GROUP_UPDATE_FLAG_PET_AURAS         = 0x00040000,       // uint64 mask, for each bit set uint16 spellid + uint8 aura flags, pet auras... (宠物光环列表)
+    GROUP_UPDATE_PET                    = 0x0007FC00,       // all pet flags (所有宠物状态标志)
+    GROUP_UPDATE_FULL                   = 0x0007FFFF,       // all known flags (全量更新标志)
 };
 
 #define GROUP_UPDATE_FLAGS_COUNT          20
 // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19
 static const uint8 GroupUpdateLength[GROUP_UPDATE_FLAGS_COUNT] = { 0, 2, 2, 2, 1, 2, 2, 2, 2, 4, 8, 8, 1, 2, 2, 2, 1, 2, 2, 8};
 
+/// 队伍与副本持久化状态的绑定记录
 struct InstanceGroupBind
 {
     DungeonPersistentState* state;
     bool perm;
     /* permanent InstanceGroupBinds exist iff the leader has a permanent
        PlayerInstanceBind for the same instance. */
+    // 当且仅当队长在同一副本上持有永久绑定时，队伍绑定才为永久绑定
     InstanceGroupBind() : state(nullptr), perm(false) {}
 };
 
 /** request member stats checken **/
 /** todo: uninvite people that not accepted invite **/
+/// 小队与团队核心类：管理成员增删、队长选举、子小队调整、拾取模式、目标标记、副本绑定及击杀经验奖励
 class Group
 {
     public:
+        /// 队员槽位持久化信息（离线成员同样保留在 m_memberSlots 中）
         struct MemberSlot
         {
-            ObjectGuid  guid;
-            std::string name;
-            uint8       group;
-            bool        assistant;
-            uint32      lastMap;
+            ObjectGuid  guid;                               // 成员玩家 GUID
+            std::string name;                               // 成员名称
+            uint8       group;                              // 所在子小队索引（0..7）
+            bool        assistant;                          // 是否为团队助理
+            uint32      lastMap;                            // 上次已知所在地图 ID
         };
         typedef std::list<MemberSlot> MemberSlotList;
         typedef MemberSlotList::const_iterator member_citerator;
@@ -134,7 +142,7 @@ class Group
         Group();
         ~Group();
 
-        // group manipulation methods
+        // group manipulation methods (队伍创建、加载、邀请与解散接口)
         bool   Create(ObjectGuid guid, const char* name);
         bool   LoadGroupFromDB(Field* fields);
         bool   LoadMemberFromDB(uint32 guidLow, uint8 subgroup, bool assistant);
@@ -143,7 +151,7 @@ class Group
         void   RemoveAllInvites();
         bool   AddLeaderInvite(Player* player);
         bool   AddMember(ObjectGuid guid, const char* name);
-        uint32 RemoveMember(ObjectGuid guid, uint8 method); // method: 0=just remove, 1=kick
+        uint32 RemoveMember(ObjectGuid guid, uint8 method); // method: 0=just remove, 1=kick (移除成员：0=主动离队，1=被踢出)
         void   ChangeLeader(ObjectGuid guid);
         void   Disband(bool hideDestroy = false);
 
@@ -202,7 +210,7 @@ class Group
             return mslot->group;
         }
 
-        // some additional raid methods
+        // some additional raid methods (团队扩展管理方法：转团、排队检查、子小队调整、主坦/主助理、目标标记)
         void ConvertToRaid();
 
         void SetBattlegroundGroup(BattleGround* bg) { m_bgGroup = bg; }
@@ -240,26 +248,29 @@ class Group
 
         void SetTargetIcon(uint8 id, ObjectGuid targetGuid);
 
+        /// 副本难度与重置管理
         void SetDifficulty(Difficulty difficulty);
         Difficulty GetDifficulty() const { return m_difficulty; }
         bool InCombatToInstance(uint32 instanceId);
         void ResetInstances(InstanceResetMethod method, Player* SendMsgTo);
 
+        /// 同步与广播方法（成员列表、离线队长自动移交、就位确认、范围广播）
         void SendTargetIconList(WorldSession* session) const;
         void SendUpdateTo(Player* player);
         void SendUpdate();
         void UpdatePlayerOutOfRange(Player* pPlayer);
         void UpdatePlayerOnlineStatus(Player* player, bool online = true);
         void UpdateOfflineLeader(time_t time, uint32 delay);
-        // ignore: GUID of player that will be ignored
+        // ignore: GUID of player that will be ignored (ignore 为需跳过的玩家 GUID)
         void BroadcastPacket(WorldPacket const& packet, bool ignorePlayersInBGRaid, int group = -1, ObjectGuid ignore = ObjectGuid()) const;
         void BroadcastPacketInRange(WorldObject const* who, WorldPacket const& packet, bool ignorePlayersInBGRaid, int group = -1, ObjectGuid ignore = ObjectGuid()) const;
         void BroadcastReadyCheck(WorldPacket const& packet) const;
         void OfflineReadyCheck();
 
+        /// 击杀奖励分发（经验值、任务计数、声望与荣誉）
         void RewardGroupAtKill(Unit* pVictim, Player* player_tap);
 
-        // Loot
+        // Loot (拾取分配方式、队长分配者与品质阈值)
         void SetLootMethod(LootMethod method) { m_lootMethod = method; }
         void SetMasterLooterGuid(ObjectGuid guid) { m_masterLooterGuid = guid; }
         void SetLootThreshold(ItemQualities threshold) { m_lootThreshold = threshold; }
@@ -272,6 +283,7 @@ class Group
         void LinkMember(GroupReference* pRef) { m_memberMgr.insertFirst(pRef); }
         void DelinkMember(GroupReference* /*pRef*/) const { }
 
+        /// 副本进度绑定与解绑
         InstanceGroupBind* BindToInstance(DungeonPersistentState* state, bool permanent, bool load = false);
         void UnbindInstance(uint32 mapid, uint8 difficulty, bool unload = false);
         InstanceGroupBind* GetBoundInstance(uint32 mapid);

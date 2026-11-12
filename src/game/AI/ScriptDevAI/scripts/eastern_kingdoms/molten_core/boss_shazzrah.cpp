@@ -20,19 +20,23 @@ SD%Complete: 75
 SDCategory: Molten Core
 EndScriptData */
 
+// 沙斯拉尔（Shazzrah）6号首领战 AI（闪现奥爆、法术反弹与沙斯拉尔的诅咒）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_ARCANE_EXPLOSION          = 19712,
-    SPELL_SHAZZRAH_CURSE            = 19713,
-    SPELL_MAGIC_GROUNDING           = 19714,
-    SPELL_COUNTERSPELL              = 19715,
-    SPELL_GATE_OF_SHAZZRAH          = 23138                 // effect spell: 23139
+    SPELL_ARCANE_EXPLOSION          = 19712,                // 奥术爆炸 法术 ID
+    SPELL_SHAZZRAH_CURSE            = 19713,                // 沙斯拉尔诅咒 法术 ID
+    SPELL_MAGIC_GROUNDING           = 19714,                // magicgrounding 法术 ID
+    SPELL_COUNTERSPELL              = 19715,                // counterspell 法术 ID
+    SPELL_GATE_OF_SHAZZRAH          = 23138                 // effect spell: 23139 (效果法术23139)
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ShazzrahActions
 {
     SHAZZRAH_ARCANE_EXPLOSION,
@@ -43,6 +47,7 @@ enum ShazzrahActions
     SHAZZRAH_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（shazzrah）
 struct boss_shazzrahAI : public CombatAI
 {
     boss_shazzrahAI(Creature* creature) : CombatAI(creature, SHAZZRAH_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -69,6 +74,7 @@ struct boss_shazzrahAI : public CombatAI
             m_instance->SetData(TYPE_SHAZZRAH, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -77,7 +83,7 @@ struct boss_shazzrahAI : public CombatAI
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
-        if (eventType == AI_EVENT_CUSTOM_A) // succesful teleport
+        if (eventType == AI_EVENT_CUSTOM_A) // succesful teleport (succesful传送)
         {
             DoResetThreat();
             DoCastSpellIfCan(nullptr, SPELL_ARCANE_EXPLOSION);
@@ -123,6 +129,7 @@ struct boss_shazzrahAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_shazzrah
 void AddSC_boss_shazzrah()
 {
     Script* pNewScript = new Script;

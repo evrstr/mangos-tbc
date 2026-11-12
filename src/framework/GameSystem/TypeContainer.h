@@ -22,6 +22,7 @@
 /*
  * Here, you'll find a series of containers that allow you to hold multiple
  * types of object at the same time.
+ * 本文件提供一系列编译期多类型容器模板，用于同时存储并分派多种不同类型的对象。
  */
 
 #include <cassert>
@@ -31,6 +32,7 @@
 #include "Utilities/TypeList.h"
 #include "GameSystem/GridRefManager.h"
 
+/// 基于哈希表（unordered_map）的多类型元素存储节点
 template<class OBJECT, class KEY_TYPE>
 struct ContainerUnorderedMap
 {
@@ -49,6 +51,7 @@ struct ContainerUnorderedMap< TypeList<H, T>, KEY_TYPE >
     ContainerUnorderedMap<T, KEY_TYPE> _TailElements;
 };
 
+/// 基于 TypeList 的多类型哈希映射容器，支持按具体类型插入、查找与删除
 template<class OBJECT_TYPES, class KEY_TYPE = OBJECT_HANDLE>
 class TypeUnorderedMapContainer
 {
@@ -88,8 +91,8 @@ class TypeUnorderedMapContainer
 
         ContainerUnorderedMap<OBJECT_TYPES, KEY_TYPE> i_elements;
 
-        // Helpers
-        // Insert helpers
+        // Helpers | 递归分派辅助函数
+        // Insert helpers | 插入辅助函数
         template<class SPECIFIC_TYPE>
         static bool insert(ContainerUnorderedMap<SPECIFIC_TYPE, KEY_TYPE>& elements, KEY_TYPE handle, SPECIFIC_TYPE* obj)
         {
@@ -122,7 +125,7 @@ class TypeUnorderedMapContainer
             return ret ? ret : TypeUnorderedMapContainer::insert(elements._TailElements, handle, obj);
         }
 
-        // Find helpers
+        // Find helpers | 查找辅助函数
         template<class SPECIFIC_TYPE>
         static SPECIFIC_TYPE* find(ContainerUnorderedMap<SPECIFIC_TYPE, KEY_TYPE>& elements, KEY_TYPE hdl, SPECIFIC_TYPE* /*obj*/)
         {
@@ -151,7 +154,7 @@ class TypeUnorderedMapContainer
             return ret ? ret : TypeUnorderedMapContainer::find(elements._TailElements, hdl, (SPECIFIC_TYPE*)nullptr);
         }
 
-        // Erase helpers
+        // Erase helpers | 删除辅助函数
         template<class SPECIFIC_TYPE>
         static bool erase(ContainerUnorderedMap<SPECIFIC_TYPE, KEY_TYPE>& elements, KEY_TYPE handle, SPECIFIC_TYPE* /*obj*/)
         {
@@ -184,6 +187,7 @@ class TypeUnorderedMapContainer
  * @class ContainerMapList is a multi-type container for map elements
  * By itself it's meaningless but collaborating with TypeContainers,
  * it becomes the most powerful container in the whole system.
+ * ContainerMapList 是用于地图元素的多类型链表容器（按 TypeList 递归展开各类型的 GridRefManager）。
  */
 template<class OBJECT>
 struct ContainerMapList
@@ -192,7 +196,7 @@ struct ContainerMapList
 };
 
 template<>
-struct ContainerMapList<TypeNull>                           /* nothing is in type null */
+struct ContainerMapList<TypeNull>                           /* nothing is in type null | 空类型终止符不含元素 */
 {
 };
 
@@ -210,6 +214,7 @@ struct ContainerMapList<TypeList<H, T> >
  * determined at compile time.  This is probably the most complicated
  * class and do its simplest thing, that is, holds objects
  * of different types.
+ * TypeMapContainer 在编译期确定所容纳的固定类型集合，用于集中存储多种不同类型的地图对象。
  */
 
 template<class OBJECT_TYPES>
@@ -217,10 +222,11 @@ class TypeMapContainer
 {
     public:
 
+        /// 统计指定具体类型在容器中的元素数量
         template<class SPECIFIC_TYPE>
         size_t Count() const { return MaNGOS::Count(i_elements, (SPECIFIC_TYPE*)nullptr); }
 
-        /// inserts a specific object into the container
+        /// inserts a specific object into the container | 向容器中插入指定类型的对象
         template<class SPECIFIC_TYPE>
         bool insert(SPECIFIC_TYPE* obj)
         {
@@ -228,7 +234,7 @@ class TypeMapContainer
             return (t != nullptr);
         }
 
-        ///  Removes the object from the container, and returns the removed object
+        /// Removes the object from the container, and returns the removed object | 从容器中移除指定对象
         template<class SPECIFIC_TYPE>
         bool remove(SPECIFIC_TYPE* obj)
         {

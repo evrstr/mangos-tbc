@@ -21,73 +21,76 @@ SDComment: A few spells are not working proper yet; Shadow image script needs im
 SDCategory: Sunwell Plateau
 EndScriptData */
 
+// 艾瑞达双子（Eredar Twins: 奥蕾塞丝与萨洛拉丝）4号首领战 AI（暗怒与火环协同、共用生命池与一方死亡激怒）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 #include <sstream>
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_INTRO_1                             = -1580044,
-    SAY_INTRO_2                             = -1580045,
+    SAY_INTRO_1                             = -1580044,     // 开场1 台词广播 ID
+    SAY_INTRO_2                             = -1580045,     // 开场2 台词广播 ID
 
-    SAY_SACROLASH_SHADOW_NOVA               = -1580052,
-    SAY_SACROLASH_EMPOWER                   = -1580053,
-    SAY_SACROLASH_KILL_1                    = 25519,
-    SAY_SACROLASH_KILL_2                    = 25520,
-    SAY_SACROLASH_DEAD                      = -1580056,
-    SAY_SACROLASH_BERSERK                   = -1580057,
+    SAY_SACROLASH_SHADOW_NOVA               = -1580052,     // 萨洛拉丝暗影新星 台词广播 ID
+    SAY_SACROLASH_EMPOWER                   = -1580053,     // 萨洛拉丝empower 台词广播 ID
+    SAY_SACROLASH_KILL_1                    = 25519,        // 萨洛拉丝击杀1 台词广播 ID
+    SAY_SACROLASH_KILL_2                    = 25520,        // 萨洛拉丝击杀2 台词广播 ID
+    SAY_SACROLASH_DEAD                      = -1580056,     // 萨洛拉丝dead 台词广播 ID
+    SAY_SACROLASH_BERSERK                   = -1580057,     // 萨洛拉丝狂暴 台词广播 ID
 
-    SAY_ALYTHESS_CANFLAGRATION              = -1580058,
-    SAY_ALYTHESS_EMPOWER                    = -1580059,
-    SAY_ALYTHESS_KILL_1                     = 25514,
-    SAY_ALYTHESS_KILL_2                     = 25515,
-    SAY_ALYTHESS_DEAD                       = -1580062,
-    SAY_ALYTHESS_BERSERK                    = -1580063,
+    SAY_ALYTHESS_CANFLAGRATION              = -1580058,     // alythesscanflagration 台词广播 ID
+    SAY_ALYTHESS_EMPOWER                    = -1580059,     // alythessempower 台词广播 ID
+    SAY_ALYTHESS_KILL_1                     = 25514,        // alythess击杀1 台词广播 ID
+    SAY_ALYTHESS_KILL_2                     = 25515,        // alythess击杀2 台词广播 ID
+    SAY_ALYTHESS_DEAD                       = -1580062,     // alythessdead 台词广播 ID
+    SAY_ALYTHESS_BERSERK                    = -1580063,     // alythess狂暴 台词广播 ID
 
-    SAY_EMOTE_SHADOW_NOVA                   = -1580117,
-    SAY_EMOTE_CONFLAGRATION                 = -1580118,
+    SAY_EMOTE_SHADOW_NOVA                   = -1580117,     // 表情暗影新星 台词广播 ID
+    SAY_EMOTE_CONFLAGRATION                 = -1580118,     // 表情conflagration 台词广播 ID
 
     // Shared spells
-    SPELL_TWINS_ENRAGE                      = 46587,
+    SPELL_TWINS_ENRAGE                      = 46587,        // twins狂暴 法术 ID
     SPELL_EMPOWER                           = 45366,        // Cast on self when the twin sister dies
-    SPELL_DARK_FLAME                        = 45345,
+    SPELL_DARK_FLAME                        = 45345,        // dark烈焰 法术 ID
 
-    // Sacrolash spells
+    // Sacrolash spells (萨洛拉丝spells)
     SPELL_DARK_TOUCHED                      = 45347,        // Player debuff; removed by shadow damage
-    SPELL_SHADOW_BLADES                     = 45248,        // 10 secs
-    SPELL_SHADOW_NOVA                       = 45329,        // 30-35 secs
+    SPELL_SHADOW_BLADES                     = 45248,        // 10 secs (10秒倒计时)
+    SPELL_SHADOW_NOVA                       = 45329,        // 30-35 secs (30 - 35 secs)
     SPELL_CONFOUNDING_BLOW                  = 45256,        // Daze; 25 secs
     SPELL_SHADOW_NOVA_UNK                   = 45332,        // Unknown
-    SPELL_DUAL_WEILD                        = 42459,
-    SPELL_SHADOWFORM                        = 45455,
+    SPELL_DUAL_WEILD                        = 42459,        // dualweild 法术 ID
+    SPELL_SHADOWFORM                        = 45455,        // shadowform 法术 ID
 
-    // Shadow Image spells
+    // Shadow Image spells (暗影影像spells)
     // NPC_SHADOW_IMAGE                        = 25214,
-    SPELL_SUMMON_SHADOW_IMAGES              = 45258,
-    SPELL_SHADOWFURY                        = 45270,
-    SPELL_DARK_STRIKE                       = 45271,
-    SPELL_SHADOWSTEP                        = 45273,
-    SPELL_IMAGE_VISUAL                      = 45263,
+    SPELL_SUMMON_SHADOW_IMAGES              = 45258,        // 召唤暗影images 法术 ID
+    SPELL_SHADOWFURY                        = 45270,        // shadowfury 法术 ID
+    SPELL_DARK_STRIKE                       = 45271,        // dark打击 法术 ID
+    SPELL_SHADOWSTEP                        = 45273,        // 暗影步 法术 ID
+    SPELL_IMAGE_VISUAL                      = 45263,        // 影像视觉特效 法术 ID
 
     // Alythess spells
     SPELL_PYROGENICS                        = 45230,        // Self buff; 15secs
     SPELL_FLAME_TOUCHED                     = 45348,        // Player debuff; removed by shadow damage
-    SPELL_CONFLAGRATION                     = 45342,        // 30-35 secs
-    SPELL_CONFLAGRATION_TICK                = 46768,
+    SPELL_CONFLAGRATION                     = 45342,        // 30-35 secs (30 - 35 secs)
+    SPELL_CONFLAGRATION_TICK                = 46768,        // conflagrationtick 法术 ID
     SPELL_BLAZE                             = 45235,        // On main target every 3 secs; should trigger 45236 which leaves a fire on the ground
-    SPELL_BLAZE_SUMMON                      = 45236,
+    SPELL_BLAZE_SUMMON                      = 45236,        // 烈焰召唤 法术 ID
     SPELL_FLAME_SEAR                        = 46771,        // A few random targets debuff
     SPELL_CONFLAGRATION_UNK                 = 45333,        // Unknown
-    SPELL_FIREFORM                          = 45457,
+    SPELL_FIREFORM                          = 45457,        // fireform 法术 ID
 
     SPELL_DARK_FLAME_AURA_ALYTHESS          = 47300,        // Aura buff that make flame touched spell proc - for Alythess
     SPELL_DARK_FLAME_AURA_SCAROLASH         = 45343,        // Aura buff that make dark touched spell proc  - for Scarolash
 
-    SPELL_BURN                              = 45246,
+    SPELL_BURN                              = 45246,        // burn 法术 ID
 
-    SPELL_INSTAKILL_TWINS                   = 29878,
+    SPELL_INSTAKILL_TWINS                   = 29878,        // instakilltwins 法术 ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
@@ -101,6 +104,7 @@ static const DialogueEntry aIntroDialogue[] =
 ## boss_alythess
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum AlythessActions
 {
     ALYTHESS_ENRAGE,
@@ -112,6 +116,7 @@ enum AlythessActions
     ALYTHESS_DELAY,
 };
 
+// 首领战 AI：标识 ID（alythess）
 struct boss_alythessAI : public CombatAI
 {
     boss_alythessAI(Creature* creature) : CombatAI(creature, ALYTHESS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -133,6 +138,7 @@ struct boss_alythessAI : public CombatAI
     DialogueHelper m_introDialogue;
     TimePoint m_aggro;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -147,6 +153,7 @@ struct boss_alythessAI : public CombatAI
         m_creature->SetCorpseDelay(120);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
@@ -279,6 +286,7 @@ struct boss_alythessAI : public CombatAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         m_introDialogue.DialogueUpdate(diff);
@@ -290,6 +298,7 @@ struct boss_alythessAI : public CombatAI
 ## boss_sacrolash
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SacrolashActions
 {
     SACROLASH_ENRAGE,
@@ -301,6 +310,7 @@ enum SacrolashActions
     SACROLASH_DELAY,
 };
 
+// 首领战 AI：标识 ID（sacrolash）
 struct boss_sacrolashAI : public CombatAI
 {
     boss_sacrolashAI(Creature* creature) : CombatAI(creature, SACROLASH_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -322,6 +332,7 @@ struct boss_sacrolashAI : public CombatAI
     ScriptedInstance* m_instance;
     TimePoint m_aggro;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -336,6 +347,7 @@ struct boss_sacrolashAI : public CombatAI
         m_creature->SetCorpseDelay(120);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
@@ -490,6 +502,7 @@ struct boss_sacrolashAI : public CombatAI
         return m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, nullptr, SELECT_FLAG_PLAYER);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SHADOW_IMAGE)
@@ -501,17 +514,19 @@ struct boss_sacrolashAI : public CombatAI
 ## npc_shadow_image
 ######*/
 
+// 随从/NPC AI：影像（shadow_image）
 struct npc_shadow_imageAI : public ScriptedAI
 {
     npc_shadow_imageAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())) { Reset(); }
 
     uint32 m_uiChosenAbility;
-    uint32 m_uiSuicideTimer;
-    uint32 m_uiAbilityTimer;
+    uint32 m_uiSuicideTimer;                                // Suicide 技能计时器
+    uint32 m_uiAbilityTimer;                                // Ability 技能计时器
     uint8 m_uiDarkStrikes;
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         // Choose only one spell for attack
@@ -534,7 +549,7 @@ struct npc_shadow_imageAI : public ScriptedAI
         DoResetThreat();
         if (Creature* sacrolash = m_instance->GetSingleCreatureFromStorage(NPC_SACROLASH))
         {
-            if (Unit* target = static_cast<boss_sacrolashAI*>(sacrolash->AI())->GetRandomTargetAtDist(10.0f)) // Attack random range target
+            if (Unit* target = static_cast<boss_sacrolashAI*>(sacrolash->AI())->GetRandomTargetAtDist(10.0f)) // Attack random range target (攻击randomrange目标)
             {
                 m_creature->AddThreat(target, 1000000.f);
                 m_creature->AI()->AttackStart(target);
@@ -544,6 +559,7 @@ struct npc_shadow_imageAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         // Suicide on timer; this is needed because of the cast time
@@ -600,6 +616,7 @@ struct npc_shadow_imageAI : public ScriptedAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（BlazeTwins）
 struct BlazeTwins : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -678,6 +695,7 @@ struct DarkFlameFireAura : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（FlameSear）
 struct FlameSear : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -686,6 +704,7 @@ struct FlameSear : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_eredar_twins
 void AddSC_boss_eredar_twins()
 {
     Script* pNewScript = new Script;

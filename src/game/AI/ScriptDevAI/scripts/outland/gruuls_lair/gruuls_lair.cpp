@@ -21,24 +21,32 @@ SDComment:
 SDCategory: Gruul's Lair
 EndScriptData */
 
+// 格鲁尔的巢穴副本数据管理实现
+/* 副本概述：
+ * 格鲁尔的巢穴是位于刀锋山的 25 人团队副本，包含莫加尔大王与屠龙者格鲁尔两个首领。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "gruuls_lair.h"
 
 /* Gruuls Lair encounters:
-1 - High King Maulgar event
-2 - Gruul event
+1 - High King Maulgar event (1 - 莫加尔大王事件)
+2 - Gruul event (2 - 屠龙者格鲁尔事件)
 */
 
+// 构造函数：初始化格鲁尔的巢穴副本数据
 instance_gruuls_lair::instance_gruuls_lair(Map* pMap) : ScriptedInstance(pMap)
 {
     Initialize();
 }
 
+// 初始化遭遇战进度数组
 void instance_gruuls_lair::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
 }
 
+// 检查是否有首领遭遇战处于进行中状态
 bool instance_gruuls_lair::IsEncounterInProgress() const
 {
     for (uint32 i : m_auiEncounter)
@@ -48,12 +56,14 @@ bool instance_gruuls_lair::IsEncounterInProgress() const
     return false;
 }
 
+// 生物创建回调：记录莫加尔大王 GUID
 void instance_gruuls_lair::OnCreatureCreate(Creature* pCreature)
 {
     if (pCreature->GetEntry() == NPC_MAULGAR)
         m_npcEntryGuidStore[NPC_MAULGAR] = pCreature->GetObjectGuid();
 }
 
+// 游戏对象创建回调：恢复大门开启状态
 void instance_gruuls_lair::OnObjectCreate(GameObject* pGo)
 {
     switch (pGo->GetEntry())
@@ -71,6 +81,7 @@ void instance_gruuls_lair::OnObjectCreate(GameObject* pGo)
     m_goEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
+// 设置遭遇战状态数据并触发大门/存盘
 void instance_gruuls_lair::SetData(uint32 uiType, uint32 uiData)
 {
     switch (uiType)
@@ -100,6 +111,7 @@ void instance_gruuls_lair::SetData(uint32 uiType, uint32 uiData)
     }
 }
 
+// 获取遭遇战状态数据
 uint32 instance_gruuls_lair::GetData(uint32 uiType) const
 {
     if (uiType < MAX_ENCOUNTER)
@@ -108,6 +120,7 @@ uint32 instance_gruuls_lair::GetData(uint32 uiType) const
     return 0;
 }
 
+// 读取副本存盘数据
 void instance_gruuls_lair::Load(const char* chrIn)
 {
     if (!chrIn)
@@ -129,11 +142,13 @@ void instance_gruuls_lair::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
+// 获取格鲁尔的巢穴副本数据实例
 InstanceData* GetInstanceData_instance_gruuls_lair(Map* pMap)
 {
     return new instance_gruuls_lair(pMap);
 }
 
+// 注册格鲁尔的巢穴副本脚本
 void AddSC_instance_gruuls_lair()
 {
     Script* pNewScript = new Script;

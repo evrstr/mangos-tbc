@@ -1,48 +1,63 @@
 [Git GUIDE] Advanced use
+[Git 指南] 高级用法
 ========================
 
 This guide is meant to help and provide information for those who want dig into the Git depths and explore its mysteries!
+本指南旨在为希望深入了解 Git 机制、探索其高级功能的读者提供帮助与参考信息。
 
 It is likely very much possible, that many of these things can be done with GUIs, but this topic expects that the command line interfact (Git Bash) is used!
+其中许多操作其实也可以通过图形界面完成，但本篇假设你使用的是命令行界面（Git Bash）！
 
 Have phun with Git :)
+祝你玩转 Git :)
 
 Setup Git for ScriptDev2
+为 ScriptDev2 配置 Git
 ------------------------
 
 "Copy" the offical branch to your system
+将官方分支“复制”到你的本地系统
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Execute this within your <MaNGOS>/src/bindings directory
+在你的 `<MaNGOS>/src/bindings` 目录中执行以下命令：
 
 `$ git clone git://github.com/scriptdev2/scriptdev2.git ScriptDev2` +
 and `$ cd` into it.
+然后用 `$ cd` 进入该目录。
 
 Setup some individual configuration
+设置个人配置
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Username and Email
+用户名和邮箱
 ^^^^^^^^^^^^^^^^^^
 
 `$ git config --global user.name "Your (Nick)Name"` +
 `$ git config --global user.email "some@email.adress"`
 
 Make life more colorful
+启用彩色输出
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 `$ git config --global color.ui "auto"`
 
 Change the default editor
+修改默认编辑器
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Thanks to DasBlub and Zor for help with this. This is just an example for notepad++, so you might need to adapt to your needs (especially the path)
+感谢 DasBlub 和 Zor 对此提供的帮助。以下仅为 Notepad++ 的配置示例，你可能需要根据自己的实际情况调整（尤其是程序路径）：
 
 `$ git config --global core.editor "'C:/Program Files/Notepad++/notepad++.exe' -multiInst -notabbar -nosession -noPlugin"`
 
 Lineendings-configuration
+换行符配置
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is actually fairly dependend from own wishes - if you feel uneasy, stay with default values
+这实际上很大程度上取决于个人偏好——如果你不确定，保持默认值即可。
 
 Windows
 +++++++
@@ -57,46 +72,64 @@ Windows
 `$ git config core.eol native`
 
 Whitespace pre-commit hook
+空白字符提交前检查钩子（pre-commit hook）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is really nice to force you to not commit code with corrupt whitespace (Needs to be set-up for every repository individually)
+这能很好地避免你在提交代码时带入错误的空白字符（需要针对每个仓库单独启用）。
 
 `$ cp .git/hooks/pre-commit.sample .git/hooks/pre-commit` +
 This activates the default pre-commit hook, if the file doesn't exist, update your git-version (and after your repo)
+该命令会激活默认的 pre-commit 钩子；如果该示例文件不存在，请先升级你的 Git 版本（之后再处理你的仓库）。
 
 Use an external merge-tool
+使用外部合并工具
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 see http://getmangos.com/community/forum/27/source-code-management/TODOTODO[_Freghar_'s Thread]
+参见 http://getmangos.com/community/forum/27/source-code-management/TODOTODO[_Freghar_ 的帖子]。
 
 KDiff3 (not kdiff or kdiff2)
+KDiff3（注意不是 kdiff 或 kdiff2）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Reasons why to use http://kdiff3.sourceforge.net/doc/merging.html[KDiff3]:
+使用 http://kdiff3.sourceforge.net/doc/merging.html[KDiff3] 的原因：
 
 - has a fairly good visual interface and works on both windows and linux
+  （拥有相当友好的可视化界面，且同时支持 Windows 和 Linux）
 - you can get it from http://sourceforge.net/project/showf...ease_id=501369[TODO]
+  （可从 http://sourceforge.net/project/showf...ease_id=501369[TODO] 获取）
 - to make sure git can find it, for example on windows if you installed it to `c:/Program Files/KDiff3` +
 `$ git config mergetool.kdiff3.path "c:/Program Files/KDiff3/kdiff3.exe"`        <- either that or you could add `c:/Program Files/KDiff3` to your path
+  （确保 Git 能找到它；例如在 Windows 下若安装到 `c:/Program Files/KDiff3`，可执行上述命令，或者将 `c:/Program Files/KDiff3` 加入环境变量 PATH）
 - make it the default mergetool: +
 `$ git config merge.tool kdiff3`
+  （将其设为默认合并工具）
 
 Tortoise(Git) Merge
 ^^^^^^^^^^^^^^^^^^^
 
 Reasons why to use http://code.google.com/p/tortoisegit/[TortoiseGit]:
+使用 http://code.google.com/p/tortoisegit/[TortoiseGit] 的原因：
 
 - similar to well known TortoiseSVN software (a nice GUI tool for Git anyways)
+  （与广为人知的 TortoiseSVN 相似，本身也是一款不错的 Git 图形界面工具）
 - does not require any further configuration to work as default merge tool (provided no other is installed)
+  （无需额外配置即可作为默认合并工具使用，前提是未安装其他合并工具）
 
 Tortoise Merge
 ^^^^^^^^^^^^^^
 
 Reasons why to use http://tortoisesvn.tigris.org/TortoiseMerge.html[TortoiseMerge]
+使用 http://tortoisesvn.tigris.org/TortoiseMerge.html[TortoiseMerge] 的原因：
 
 - Good visual interface, only works on windows
+  （良好的可视化界面，仅支持 Windows）
 - Download and install http://tortoisesvn.net/downloads[TortoiseSVN]
+  （下载并安装 http://tortoisesvn.net/downloads[TortoiseSVN]）
 - In `C:\Program Files\TortoiseSVN\bin` create a file named TortMer.bat and add the following:
+  （在 `C:\Program Files\TortoiseSVN\bin` 目录中创建名为 `TortMer.bat` 的文件，并写入以下内容：）
 +
 ----
 @ECHO OFF
@@ -105,107 +138,162 @@ TortoiseMerge.exe /base:"%PWD%/%1" /theirs:"%PWD%/%2" /mine:"%PWD%/%3" /merged:"
 +
 - add a custom merge tool to git that runs this batch file +
 `$ git config mergetool.tortoise.cmd ' "cmd.exe" "/CTortMer.bat" "$BASE" "$REMOTE" "$LOCAL" "$MERGED" '`
+  （向 Git 添加一个调用该批处理文件的自定义合并工具）
 - make it the default mergetool +
 `$ git config merge.tool tortoise`
+  （将其设为默认合并工具）
 
 Some Links
+相关链接
 ----------
 
 http://git-scm.com/ - Contains nearly everything one might want :)
+http://git-scm.com/ - 几乎涵盖你可能需要的全部资料 :)
 
 Obtaining Git
+获取 Git
 ~~~~~~~~~~~~~
 
 For *nix you should get Git from your distribution software repository.
+在类 Unix（*nix）系统上，建议直接通过发行版的软件仓库安装 Git。
 
 For Windows yout can get http://code.google.com/p/msysgit/downloads/list[mysysgit] - you would probably want Git-w.x.y.z.previewYYYYMMDD.exe
+在 Windows 上可获取 http://code.google.com/p/msysgit/downloads/list[mysysgit] —— 通常选择 `Git-w.x.y.z.previewYYYYMMDD.exe` 安装包。
 
 Some Graphical User-Interfaces
+部分图形界面工具
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (Not recommanded, but might make you happy)
+（一般不推荐完全依赖 GUI，但它们可能会让你用得更顺手）
 
 http://code.google.com/p/tortoisegit/[TortoiseGit] - Similar to TortoiseSVN Shell-Extention based GUI
+http://code.google.com/p/tortoisegit/[TortoiseGit] - 类似 TortoiseSVN、基于资源管理器外壳扩展的图形界面。
 
 http://www.syntevo.com/smartgit/index.html[SmartGit] - More classical GUI, looks nice
+http://www.syntevo.com/smartgit/index.html[SmartGit] - 更加传统的独立窗口图形界面，外观美观。
 
 Documentation-Links
+文档链接
 ~~~~~~~~~~~~~~~~~~~
 
 http://www.kernel.org/pub/software/scm/git/docs/everyday.html - Small overview of common commands
+（常用命令简要概览）
 
 http://git-scm.com/course/svn.html - SVN Crash Course, especially for *nix user
+（SVN 转向 Git 速成教程，尤其适合 *nix 用户）
 
 http://book.git-scm.com/ - Very nice, including flash videos about most topics
+（非常优秀的教材，包含多数主题的 Flash 视频教程）
 
 http://progit.org/book/ - A bit more detailed
+（内容更为详尽的《Pro Git》电子书）
 
 
 http://getmangos.com/community/forum/27/source-code-management/ - Collection of various topics on MaNGOS
+（MaNGOS 论坛源码管理板块各类主题合集）
 
 What is this Git about?
+Git 究竟是什么？
 ~~~~~~~~~~~~~~~~~~~~~~
 
 http://www.youtube.com/watch?v=4XpnKHJAok8[Google TechTalk by _L. Torvalds_]
+（_L. Torvalds_ 的 Google 技术演讲）
 
 http://www.youtube.com/watch?v=8dhZ9BXQgc4[Google TechTalk by _R. Schwartz_]
+（_R. Schwartz_ 的 Google 技术演讲）
 
 https://git.wiki.kernel.org/index.php/GitSvnComparison[Compate Git vs. SVN]
+（Git 与 SVN 对比）
 
 Most important Git-commands
+最重要的 Git 命令
 ---------------------------
 
 Based on _Freghar_'s Thread
+整理自 _Freghar_ 的帖子
 
 Remark that all these commands display a very exhaustive help page with ` --help`
+注意：所有这些命令加上 `--help` 参数都会显示非常详尽的帮助手册。
 
 [horizontal]
 `$ git clone` :: downloads a fresh repo.
+  （克隆并下载一个全新的仓库）
 `$ git pull` :: is a shortcut for fetch and merge.
+  （fetch 与 merge 的快捷组合命令）
 `$ git log` :: displays the history
+  （显示提交历史记录）
 `$ git show` :: shows the most recent commit
+  （显示最近一次提交的详情）
 `$ git commit` :: commits your changes (always local)
+  （提交你的修改，始终仅作用于本地仓库）
 `$ git checkout` :: switches the source to a specific version (local branch or commit)
+  （将源码切换到指定版本，如本地分支或某次提交）
 `$ git merge` :: merges changes from one point into current branch
+  （将某一节点/分支的变更合并到当前分支）
 `$ git reset` :: leaves you on the current branch but changes what the branch "points to".
+  （保持留在当前分支，但修改该分支所指向的提交）
 
 Workflow with Git
+Git 工作流
 -----------------
 
 *Commit early, commit often*
+*尽早提交，频繁提交*
 
 [horizontal]
 `$ git pull` :: to be on recent version
+  （拉取更新以保持处于最新版本）
 `$ git checkout -b <NewBranchName>` :: create a new branch for the work
+  （为当前工作创建并切换到一个新分支）
 Suggestion:: Create for _every_ project an own branch, this makes maintaining way easier!
+  （建议：为*每一个*独立任务/项目都创建自己的分支，这会让维护工作轻松得多！）
 <edit some files> ::
+  （编辑若干文件）
 +
 `$ git diff` :: see what is done since last commit
+  （查看自上次提交以来所做的修改）
 `$ git commit -a -m "Some Commit Message"` :: this is only locally
+  （提交修改，仅保存在本地）
 <edit and commit more> ::
+  （继续编辑并多次提交）
 +
 `$ git diff master` :: see what is done compared to master branch
+  （查看当前分支与 master 分支相比的差异）
 `$ git checkout master` :: change to master branch
+  （切换回 master 分支）
 `$ git pull` :: there was an update in master, now we pulled this, tested it, and now we want to get our working branch up-to-date
+  （master 分支有上游更新；现在我们已经拉取并测试通过，接下来要把工作分支也同步到最新）
 `$ git checkout <BranchName>` :: switch back to our working branch
+  （切换回我们的工作分支）
 `$ git rebase master` :: set to state of master and rebase the own commits on top
+  （将工作分支基底更新到最新的 master 状态，并将自己的提交变基到其顶部）
 `$ git format-patch master --stdout > fileName.patch` :: Creates a nice formated patch into file "fileName.patch"
+  （生成格式良好的补丁并输出到 `fileName.patch` 文件）
 
 Create and apply patches
+创建与应用补丁
 ------------------------
 
 Create patches
+创建补丁
 ~~~~~~~~~~~~~~
 
 `$ git format-patch master` - creates a patchfile for every commit that diffs from master (includes author information)
+（为与 master 存在差异的每一次提交分别生成一个补丁文件，包含作者信息）
 
 `$ git format-patch master --std.out > someFilename.patch` - creates an incremental patchfile, containing information of each individual commit
+（创建一个增量补丁文件，包含各独立提交的信息；注：实际标准参数为 `--stdout`）
 
 Apply patches
+应用补丁
 ~~~~~~~~~~~~~
 
 `$ patch -X -d. < someFilename.patch`  - applies a patch in Git(X = 1) or SVN (X = 0) format to current workspace
+（将 Git（X = 1，即 `-p1`）或 SVN（X = 0，即 `-p0`）格式的补丁应用到当前工作区）
 
 `$ git apply someFilename.patch`  - applies a Git-patch to current workspace
+（将 Git 补丁直接应用到当前工作区）
 
 `$ git am someFilename.patch`  - applies and commits a Git-patch with commit information (created by format-patch)
+（应用并自动提交由 `format-patch` 生成的包含提交信息的 Git 补丁）

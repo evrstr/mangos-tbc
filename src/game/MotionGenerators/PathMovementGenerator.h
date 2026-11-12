@@ -26,6 +26,7 @@
 
 #include <vector>
 
+/// 抽象路径移动生成器基类：按分段样条顺序执行 WaypointPath（支持单程分段等待与无等待循环路径）
 class AbstractPathMovementGenerator : public MovementGenerator
 {
     public:
@@ -41,23 +42,25 @@ class AbstractPathMovementGenerator : public MovementGenerator
         void UnitSpeedChanged() override { m_speedChanged = true; }
 
     protected:
+        /// 到达某路点时触发节点脚本与 AI MovementInform 通知
         virtual void MovementInform(Unit& unit);
 
     protected:
-        WaypointPath m_path;
-        int32 m_pathIndex;
-        Movement::PointsArray m_spline;
-        std::optional<float> m_orientation;
-        ShortTimeTracker m_timer;
-        bool m_cyclic;
-        bool m_firstCycle;
-        uint32 m_startPoint;
-        ObjectGuid m_guid;
+        WaypointPath m_path;                 // 完整路点表（本地拷贝，避免运行时 WaypointManager 改写导致悬垂指针）
+        int32 m_pathIndex;                   // 当前待到达的路点索引
+        Movement::PointsArray m_spline;      // 当前分段样条控制点数组
+        std::optional<float> m_orientation;  // 本段终点朝向
+        ShortTimeTracker m_timer;            // 路点停留计时器
+        bool m_cyclic;                       // 是否整条路径闭环循环
+        bool m_firstCycle;                   // 是否仍处于首个循环周期
+        uint32 m_startPoint;                 // 首轮入环起始路点索引
+        ObjectGuid m_guid;                   // 关联脚本触发目标对象 GUID
 
     private:
         bool m_speedChanged;
 };
 
+/// 固定路径移动生成器（PATH_MOTION_TYPE）：沿预设点列或数据库路径进行平滑/线性分段移动
 class FixedPathMovementGenerator : public AbstractPathMovementGenerator
 {
     public:
@@ -75,9 +78,11 @@ class FixedPathMovementGenerator : public AbstractPathMovementGenerator
 
         MovementGeneratorType GetMovementGeneratorType() const override { return PATH_MOTION_TYPE; }
 
+        /// 动态调整当前路点的暂停等待时间
         void AddToPathPauseTime(int32 waitTimeDiff, bool force);
 
     protected:
+        /// 使用 MoveSplineInit 发射当前分段样条
         virtual bool Move(Unit& unit) const;
 
     protected:
@@ -86,6 +91,7 @@ class FixedPathMovementGenerator : public AbstractPathMovementGenerator
         uint32 m_forcedMovement;
 };
 
+/// 飞行管理员航线移动生成器（TAXI_MOTION_TYPE）：接管客户端控制并沿玩家航线节点飞行
 class TaxiMovementGenerator : public AbstractPathMovementGenerator
 {
     public:
@@ -99,6 +105,7 @@ class TaxiMovementGenerator : public AbstractPathMovementGenerator
 
         MovementGeneratorType GetMovementGeneratorType() const override { return TAXI_MOTION_TYPE; }
 
+        /// 加载下一段飞行航线样条并继续飞行
         bool Resume(Unit& unit);
 
     protected:

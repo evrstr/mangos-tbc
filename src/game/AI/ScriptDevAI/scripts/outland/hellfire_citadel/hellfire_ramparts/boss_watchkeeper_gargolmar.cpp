@@ -21,9 +21,15 @@ SDComment: Research Overpower Usage
 SDCategory: Hellfire Citadel, Hellfire Ramparts
 EndScriptData */
 
+// 巡视者加戈尔玛（地狱火城墙一号首领）
+/* 遭遇战概述：
+ * 巡视者加戈尔玛是邪兽人守望者，战斗中会施放突进、横扫并在低血量时呼叫随从治疗。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_TAUNT                   = 13999,
@@ -45,6 +51,7 @@ enum
     NPC_HELLFIRE_WATCHER = 17309,
 };
 
+// GargolmarActions // order based on priority 相关枚举
 enum GargolmarActions // order based on priority
 {
     GARGOLMAR_ACTION_YELL_FOR_HEAL,
@@ -55,6 +62,7 @@ enum GargolmarActions // order based on priority
     GARGOLMAR_ACTION_MAX
 };
 
+// boss_watchkeeper_gargolmarAI 逻辑实现
 struct boss_watchkeeper_gargolmarAI : public CombatAI
 {
     boss_watchkeeper_gargolmarAI(Creature* creature) : CombatAI(creature, GARGOLMAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -98,6 +106,7 @@ struct boss_watchkeeper_gargolmarAI : public CombatAI
         }
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 2))
@@ -108,6 +117,7 @@ struct boss_watchkeeper_gargolmarAI : public CombatAI
         }
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (!m_HasTaunted && m_creature->IsWithinDistInMap(who, 60.0f))
@@ -119,11 +129,13 @@ struct boss_watchkeeper_gargolmarAI : public CombatAI
         ScriptedAI::MoveInLineOfSight(who);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoPlaySoundToSet(m_creature, SOUND_DIE);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -179,6 +191,7 @@ struct boss_watchkeeper_gargolmarAI : public CombatAI
     }
 };
 
+// 注册 boss_watchkeeper_gargolmar 脚本
 void AddSC_boss_watchkeeper_gargolmar()
 {
     Script* pNewScript = new Script;

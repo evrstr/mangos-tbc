@@ -21,10 +21,16 @@ SDComment: pre-event not made
 SDCategory: Hellfire Citadel, Blood Furnace
 EndScriptData */
 
+// 布洛戈克（鲜血熔炉二号首领）
+/* 遭遇战概述：
+ * 布洛戈克被关押在大型毒气牢房中，玩家拉下开关后击退四波兽人牢犯，随后布洛戈克破门而出释放剧毒云雾。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blood_furnace.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = 14259,
@@ -54,11 +60,13 @@ enum
     POINT_EVENT_COMBAT              = 7,
 };
 
+// BroggokActions 相关枚举
 enum BroggokActions
 {
     BROGGOK_ACTION_MAX,
 };
 
+// boss_broggokAI 逻辑实现
 struct boss_broggokAI : public CombatAI
 {
     boss_broggokAI(Creature* creature) : CombatAI(creature, BROGGOK_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -75,6 +83,7 @@ struct boss_broggokAI : public CombatAI
         CombatAI::EnterEvadeMode();
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_IN_COMBAT_TRIGGER)
@@ -118,6 +127,7 @@ struct boss_broggokAI : public CombatAI
     }
 };
 
+// FelOrcAction 相关枚举
 enum FelOrcAction
 {
     FEL_ORC_ACTION_MAX,
@@ -129,6 +139,7 @@ struct npc_fel_orc : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (urand(0, 4) == 0)
@@ -146,6 +157,7 @@ struct npc_fel_orc : public CombatAI
         }
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         CombatAI::JustReachedHome();
@@ -156,6 +168,7 @@ struct npc_fel_orc : public CombatAI
     }
 };
 
+// 注册 boss_broggok 脚本
 void AddSC_boss_broggok()
 {
     Script* pNewScript = new Script;

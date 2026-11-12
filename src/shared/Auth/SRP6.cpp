@@ -60,6 +60,7 @@ void SRP6::CalculateProof(std::string username)
 
     // The client hashes s, A and B on 32 bytes and K on 40 bytes, whatever their value: a number with leading zero
     // bytes must not be hashed shorter
+    // | 客户端固定按 32 字节哈希 s、A、B，按 40 字节哈希 K（无论实际有效位长，前导零字节不可省略）
     sha.Initialize();
     sha.UpdateData(hash, 20);
     sha.UpdateData(t4, Sha1Hash::GetLength());
@@ -75,7 +76,7 @@ bool SRP6::CalculateSessionKey(uint8* lp_A, int l)
 {
     A.SetBinary(lp_A, l);
 
-    // SRP safeguard: abort if A==0
+    // SRP safeguard: abort if A==0 | SRP 安全校验：A 为 0 时必须中止认证
     if (A.isZero())
         return false;
 
@@ -110,7 +111,7 @@ bool SRP6::CalculateVerifier(const std::string& rI, const char* salt)
     BigNumber I;
     I.SetHexStr(rI.c_str());
 
-    // in case of leading zeros in the rI hash, restore them
+    // in case of leading zeros in the rI hash, restore them | 若 rI 哈希存在前导零字节，在此补齐还原完整 20 字节摘要
     uint8 mDigest[Sha1Hash::GetLength()];
     memset(mDigest, 0, Sha1Hash::GetLength());
     if (I.GetNumBytes() <= Sha1Hash::GetLength())
@@ -136,6 +137,8 @@ void SRP6::HashSessionKey(void)
 {
     // Same interleave as the client: S as 32 little-endian bytes, without its leading zero bytes, and without one more
     // byte if the remaining length is odd. The even and odd bytes are hashed apart and interleaved back into K (40 bytes).
+    // | 与客户端一致的交错哈希算法：将 S 转为 32 字节小端序后跳过前导零；
+    // | 若剩余长度仍为奇数则再跳过 1 字节，随后将奇偶位字节分别做 SHA-1 并交错拼合为 40 字节会话密钥 K。
     const std::vector<uint8> t = S.AsByteArray(32);
     size_t skip = 0;
     while (skip < t.size() && t[skip] == 0)
@@ -172,6 +175,7 @@ bool SRP6::Proof(uint8* lp_M, int l)
 {
     // Needs a minimum length l for M's byte array to
     // avoid memcmp accessing data out of bounds!
+    // | 需保证 M 的字节数组至少具有长度 l，避免 memcmp 越界读取
     if (!memcmp(M.AsByteArray(l).data(), lp_M, l))
         return false;
 
@@ -195,7 +199,7 @@ bool SRP6::ProofVerifier(std::string vC)
 
 void SRP6::Finalize(Sha1Hash& sha)
 {
-    // A on 32 bytes, M on 20, K on 40: the sizes the client uses
+    // A on 32 bytes, M on 20, K on 40: the sizes the client uses | A 取 32 字节、M 取 20 字节、K 取 40 字节：与客户端算法长度一致
     sha.Initialize();
     sha.UpdateData(A.AsByteArray(32));
     sha.UpdateData(M.AsByteArray(20));

@@ -21,6 +21,15 @@ SDComment:
 SDCategory: Black Temple
 EndScriptData */
 
+// 伊利丹·怒风（黑暗神殿最终首领）
+/* 遭遇战概述：
+ * 伊利丹·怒风是黑暗神殿的统治者，背叛者与外域之王，战斗分为四个宏大阶段：
+ * 阶段一（人类形态）：施放剪切（压制生命上限）、烈焰撕裂、画地为牢与寄生暗影魔；
+ * 阶段二（飞天神剑）：将埃辛诺斯战刃掷于地面唤醒两只强大的埃辛诺斯烈焰，由坦克拉住击杀；
+ * 阶段三（恶魔变形）：变身为巨大的恶魔形态，召唤暗影恶魔并施放烈焰爆炸与恐怖暗影箭雨；
+ * 阶段四（玛维助战）：守望者玛维·影歌介入战斗，玩家可引导伊利丹踩入影歌陷阱令其瘫痪并提高承受伤害。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
@@ -30,6 +39,7 @@ EndScriptData */
 // #define NO_SHADOWFIEND
 // #define NO_SHEAR
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     /************* Quotes and Sounds ***********************/
@@ -316,6 +326,7 @@ static const DialogueEntry aEpilogueDialogue[] =
 };
 
 /*** Phase Names ***/
+// IllidanPhase 相关枚举
 enum IllidanPhase
 {
     PHASE_1_AKAMA,
@@ -326,6 +337,7 @@ enum IllidanPhase
     PHASE_TRANSITION,
 };
 
+// PhaseTransition 相关枚举
 enum PhaseTransition
 {
     PHASETRANSITION_NONE,
@@ -370,6 +382,7 @@ static const Position aEyeBlastPos[] =
     {708.8524f, 342.2623f, 353.0794f, 0.0},
 };
 
+// IllidanActions 相关枚举
 enum IllidanActions
 {
     ILLIDAN_ACTION_BERSERK,
@@ -399,6 +412,7 @@ enum IllidanActions
 ## boss_illidan_stormrage
 ######*/
 
+// boss_illidan_stormrageAI 逻辑实现
 struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
 {
     boss_illidan_stormrageAI(Creature* creature) : CombatAI(creature, ILLIDAN_ACTIONS_MAX),
@@ -458,6 +472,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
 
     GuidVector m_cageTrapVisualGuids;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -515,6 +530,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         reader.PSendSysMessage("Boss Illidan, current uiPhase = %u", m_phase);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (m_instance)
@@ -532,6 +548,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
                     creature->CastSpell(nullptr, SPELL_RANGE_MARKER, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -551,6 +568,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
             respawnDelay = 10;
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance->GetData(TYPE_ILLIDAN) != FAIL) // akama died
@@ -562,6 +580,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 miscValue) override
     {
         if (eventType == AI_EVENT_CUSTOM_A) // encounter wipe
@@ -762,6 +781,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -1187,6 +1207,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         return true;
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -1357,6 +1378,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         DialogueUpdate(diff);
@@ -1368,12 +1390,14 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
 ## npc_akama_illidan
 ######*/
 
+// AkamaStages 相关枚举
 enum AkamaStages
 {
     AKAMA_STAGE_COUNCIL = 0,
     AKAMA_STAGE_ILLIDAN = 1,
 };
 
+// AkamaActions 相关枚举
 enum AkamaActions
 {
     AKAMA_ACTION_HEAL,
@@ -1384,6 +1408,7 @@ enum AkamaActions
     AKAMA_OUTRO_ACTIONS,
 };
 
+// npc_akama_illidanAI 逻辑实现
 struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
 {
     npc_akama_illidanAI(Creature* creature) : CombatAI(creature, AKAMA_ACTION_MAX),
@@ -1423,6 +1448,7 @@ struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
 
     uint32 m_outroStage;
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A) // council died
@@ -1662,6 +1688,7 @@ struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
             ResetTimer(AKAMA_OUTRO_ACTIONS, timer);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -1690,6 +1717,7 @@ struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -1708,6 +1736,7 @@ struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         DialogueUpdate(diff);
@@ -1716,6 +1745,7 @@ struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
     }
 };
 
+// NPC 对话开始交互回调
 bool GossipHello_npc_akama_illidan(Player* player, Creature* creature)
 {
     // Before climbing the stairs
@@ -1734,6 +1764,7 @@ bool GossipHello_npc_akama_illidan(Player* player, Creature* creature)
     return true;
 }
 
+// NPC 对话选项选择回调
 bool GossipSelect_npc_akama_illidan(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
 {
     if (action == GOSSIP_ACTION_INFO_DEF + 1 || action == GOSSIP_ACTION_INFO_DEF + 2)
@@ -1751,6 +1782,7 @@ bool GossipSelect_npc_akama_illidan(Player* player, Creature* creature, uint32 /
 ## boss_maiev
 ######*/
 
+// MaievActions 相关枚举
 enum MaievActions
 {
     MAIEV_ACTION_SHADOW_STRIKE,
@@ -1760,6 +1792,7 @@ enum MaievActions
     MAIEV_ACTION_TRAP,
 };
 
+// boss_maievAI 逻辑实现
 struct boss_maievAI : public CombatAI, private DialogueHelper
 {
     boss_maievAI(Creature* creature) : CombatAI(creature, MAIEV_ACTION_MAX), DialogueHelper(aEpilogueDialogue), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_outro(false)
@@ -1794,6 +1827,7 @@ struct boss_maievAI : public CombatAI, private DialogueHelper
     bool m_hasYelledTrap;
     bool m_outro;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_hasYelledTrap = false;
@@ -1811,6 +1845,7 @@ struct boss_maievAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 miscValue) override
     {
         if (eventType == AI_EVENT_CUSTOM_A) // illidan transitioned
@@ -1834,6 +1869,7 @@ struct boss_maievAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* victim) override
     {
         // Dummy function - used to start the epilogue
@@ -1900,6 +1936,7 @@ struct boss_maievAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -1930,6 +1967,7 @@ struct boss_maievAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         DialogueUpdate(diff);
@@ -1941,12 +1979,14 @@ struct boss_maievAI : public CombatAI, private DialogueHelper
 ## npc_cage_trap_trigger
 ######*/
 
+// npc_cage_trap_triggerAI 逻辑实现
 struct npc_cage_trap_triggerAI : public ScriptedAI
 {
     npc_cage_trap_triggerAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
 
     bool m_active;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_active = false;
@@ -1963,6 +2003,7 @@ struct npc_cage_trap_triggerAI : public ScriptedAI
         }
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
 #ifndef PRENERF_2_1
@@ -1987,6 +2028,7 @@ struct npc_cage_trap_triggerAI : public ScriptedAI
 ## npc_flame_of_azzinoth
 ######*/
 
+// FlameActions 相关枚举
 enum FlameActions
 {
     FLAME_ACTION_WRATH_CHECK,
@@ -1997,6 +2039,7 @@ enum FlameActions
     FLAME_ACTION_ATTACK,
 };
 
+// npc_flame_of_azzinothAI 逻辑实现
 struct npc_flame_of_azzinothAI : public CombatAI
 {
     npc_flame_of_azzinothAI(Creature* creature) : CombatAI(creature, FLAME_ACTION_MAX), m_instance(static_cast<instance_black_temple*>(creature->GetInstanceData()))
@@ -2015,6 +2058,7 @@ struct npc_flame_of_azzinothAI : public CombatAI
 
     instance_black_temple* m_instance;
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_BLAZE)
@@ -2034,6 +2078,7 @@ struct npc_flame_of_azzinothAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -2079,6 +2124,7 @@ struct npc_flame_of_azzinothAI : public CombatAI
 ## npc_shadow_demon
 ######*/
 
+// npc_shadow_demonAI 逻辑实现
 struct npc_shadow_demonAI : public ScriptedAI
 {
     npc_shadow_demonAI(Creature* creature) : ScriptedAI(creature)
@@ -2091,6 +2137,7 @@ struct npc_shadow_demonAI : public ScriptedAI
 
     ObjectGuid m_targetGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
     void AttackStart(Unit* who) override
@@ -2106,12 +2153,14 @@ struct npc_shadow_demonAI : public ScriptedAI
         FindNewTarget();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (Player* player = m_creature->GetMap()->GetPlayer(m_targetGuid))
             player->RemoveAurasByCasterSpell(SPELL_PARALYZE, m_creature->GetObjectGuid());
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A && m_creature->IsAlive()) // Channel ended for any reason
@@ -2164,6 +2213,7 @@ struct npc_shadow_demonAI : public ScriptedAI
 ## npc_blade_of_azzinoth
 ######*/
 
+// npc_blade_of_azzinothAI 逻辑实现
 struct npc_blade_of_azzinothAI : public ScriptedAI
 {
     npc_blade_of_azzinothAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -2173,12 +2223,14 @@ struct npc_blade_of_azzinothAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
     // Do-Nothing-But-Stand-There
     void AttackStart(Unit* /*who*/) override { }
     void MoveInLineOfSight(Unit* /*who*/) override { }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         // Summon a Flame pear each blade
@@ -2186,6 +2238,7 @@ struct npc_blade_of_azzinothAI : public ScriptedAI
             DoCastSpellIfCan(summoned, SPELL_AZZINOTH_CHANNEL);
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         // Inform Illidan when a flame is killed
@@ -2206,6 +2259,7 @@ struct npc_blade_of_azzinothAI : public ScriptedAI
     void UpdateAI(const uint32 /*diff*/) override { }
 };
 
+// npc_parasitic_shadowfiendAI 逻辑实现
 struct npc_parasitic_shadowfiendAI : public ScriptedAI
 {
     npc_parasitic_shadowfiendAI(Creature* creature) : ScriptedAI(creature, 0), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -2239,6 +2293,7 @@ struct npc_parasitic_shadowfiendAI : public ScriptedAI
     ScriptedInstance* m_instance;
     SelectAttackingTargetParams m_params;
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
     void JustRespawned() override
@@ -2250,6 +2305,7 @@ struct npc_parasitic_shadowfiendAI : public ScriptedAI
     }
 };
 
+// 游戏对象使用交互回调
 bool GOUse_go_cage_trap(Player* /*player*/, GameObject* go)
 {
     Creature* trapTrigger = GetClosestCreatureWithEntry(go, NPC_CAGE_TRAP_DISTURB_TRIGGER, 3.f);
@@ -2268,8 +2324,10 @@ bool GOUse_go_cage_trap(Player* /*player*/, GameObject* go)
     return true;
 }
 
+// ParasiticShadowfiendAura 法术脚本
 struct ParasiticShadowfiendAura : public SpellScript, public AuraScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_1) // on hit despawn
@@ -2280,6 +2338,7 @@ struct ParasiticShadowfiendAura : public SpellScript, public AuraScript
         }
     }
 
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -2288,6 +2347,7 @@ struct ParasiticShadowfiendAura : public SpellScript, public AuraScript
     }
 };
 
+// ShadowPrison 法术脚本
 struct ShadowPrison : public SpellScript
 {
     void OnRadiusCalculate(Spell* /*spell*/, SpellEffectIndex /*effIdx*/, bool /*targetB*/, float& radius) const override
@@ -2302,6 +2362,7 @@ struct ShadowPrison : public SpellScript
         return false;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_2 && spell->GetUnitTarget())
@@ -2312,6 +2373,7 @@ struct ShadowPrison : public SpellScript
     }
 };
 
+// 注册 boss_illidan 脚本
 void AddSC_boss_illidan()
 {
     Script* pNewScript = new Script;

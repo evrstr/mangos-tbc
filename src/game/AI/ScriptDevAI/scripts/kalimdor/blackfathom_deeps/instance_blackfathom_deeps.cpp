@@ -21,6 +21,10 @@ SDComment: Quest support: 6921
 SDCategory: Blackfathom Deeps
 EndScriptData */
 
+/**
+ * 黑暗深渊 (Blackfathom Deeps) 副本数据管理脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackfathom_deeps.h"
 
@@ -83,7 +87,7 @@ void instance_blackfathom_deeps::DoSpawnMobs(uint8 uiWaveIndex)
         if (i.m_uiWaveIndex != uiWaveIndex)
             continue;
 
-        // Summon mobs at positions
+        // Summon mobs at positions (召唤)
         for (uint8 j = 0; j < MAX_COUNT_POS; ++j)
         {
             for (uint8 k = 0; k < i.m_aCountAndPos[j].m_uiCount; ++k)
@@ -94,7 +98,7 @@ void instance_blackfathom_deeps::DoSpawnMobs(uint8 uiWaveIndex)
                 float fPosZ = aSpawnLocations[uiPos].z;
                 float fPosO = aSpawnLocations[uiPos].o;
 
-                // Adapt fPosY slightly in case of higher summon-counts
+                // Adapt fPosY slightly in case of higher summon-counts (说明)
                 if (i.m_aCountAndPos[j].m_uiCount > 1)
                     fPosY = fPosY - INTERACTION_DISTANCE / 2 + k * INTERACTION_DISTANCE / i.m_aCountAndPos[j].m_uiCount;
 
@@ -112,7 +116,7 @@ void instance_blackfathom_deeps::SetData(uint32 uiType, uint32 uiData)
 {
     switch (uiType)
     {
-        case TYPE_KELRIS:                                   // EventAI must set instance data (1,3) at his death
+        case TYPE_KELRIS:                                   // EventAI must set instance data (1,3) at his death (说明)
             if (m_auiEncounter[0] != DONE && uiData == DONE)
                 m_auiEncounter[0] = uiData;
             break;
@@ -184,7 +188,7 @@ void instance_blackfathom_deeps::OnCreatureDeath(Creature* pCreature)
     if (pCreature->GetEntry() == NPC_BARON_AQUANIS)
         SetData(TYPE_AQUANIS, DONE);
 
-    // Only use this function if shrine event is in progress
+    // Only use this function if shrine event is in progress (仅在祭坛事件进行中时调用此函数)
     if (m_auiEncounter[1] != IN_PROGRESS)
         return;
 
@@ -208,14 +212,14 @@ void instance_blackfathom_deeps::OnCreatureDeath(Creature* pCreature)
         SetData(TYPE_SHRINE, DONE);
 }
 
-// Check if all the summoned event mobs are dead
+// Check if all the summoned event mobs are dead (检查所有召唤出的事件怪物是否全部阵亡)
 bool instance_blackfathom_deeps::IsWaveEventFinished() const
 {
-    // If not all fires are lighted return
+    // If not all fires are lighted return (若未点燃全部火盆则返回)
     if (m_uiWaveCounter < MAX_FIRES)
         return false;
 
-    // Check if all mobs are dead
+    // Check if all mobs are dead (检查所有怪物是否均已死亡)
     for (const auto& m_lWaveMobsGuid : m_lWaveMobsGuids)
     {
         if (!m_lWaveMobsGuid.empty())
@@ -227,7 +231,7 @@ bool instance_blackfathom_deeps::IsWaveEventFinished() const
 
 void instance_blackfathom_deeps::Update(uint32 uiDiff)
 {
-    // Only use this function if shrine event is in progress
+    // Only use this function if shrine event is in progress (仅在祭坛事件进行中时调用此函数)
     if (m_auiEncounter[1] != IN_PROGRESS)
         return;
 
@@ -246,7 +250,7 @@ void instance_blackfathom_deeps::Update(uint32 uiDiff)
     }
 }
 
-InstanceData* GetInstanceData_instance_blackfathom_deeps(Map* pMap)
+InstanceData* GetInstanceData_instance_blackfathom_deeps(Map* pMap) // 创建并返回副本数据实例
 {
     return new instance_blackfathom_deeps(pMap);
 }
@@ -285,7 +289,7 @@ bool GOUse_go_fathom_stone(Player* pPlayer, GameObject* pGo)
     return false;
 }
 
-void AddSC_instance_blackfathom_deeps()
+void AddSC_instance_blackfathom_deeps() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_blackfathom_deeps";

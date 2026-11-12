@@ -20,7 +20,7 @@
 #include "Spells/SpellAuras.h"
 #include "Spells/SpellMgr.h"
 
-// 5246 - Intimidating Shout
+// 5246 - Intimidating Shout (破胆怒吼：非效果 0 排除了当前主目标，使其原地畏缩而周围敌人逃跑)
 struct IntimidatingShout : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex eff) const override
@@ -31,10 +31,10 @@ struct IntimidatingShout : public SpellScript
     }
 };
 
-// 5308 - Execute
+// 5308 - Execute (斩杀：按当前怒气换算额外伤害并施放真实伤害子法术 20647)
 struct WarriorExecute : public SpellScript
 {
-    void OnCast(Spell* spell) const override // confirmed main spell can not hit and child still hits
+    void OnCast(Spell* spell) const override // confirmed main spell can not hit and child still hits (确认主技能未命中时子法术仍可单独判定命中)
     {
         int32 basePoints0 = spell->GetCaster()->CalculateSpellEffectValue(spell->m_targets.getUnitTarget(), spell->m_spellInfo, SpellEffectIndex(0))
             + int32((spell->GetCaster()->GetPower(POWER_RAGE)) * spell->m_spellInfo->DmgMultiplier[0]);
@@ -42,7 +42,7 @@ struct WarriorExecute : public SpellScript
     }
 };
 
-// 20647 - Execute
+// 20647 - Execute (斩杀伤害结算：仅当命中目标时才清空全部剩余怒气)
 struct WarriorExecuteDamage : public SpellScript
 {
     void OnHit(Spell* spell, SpellMissInfo missInfo) const override
@@ -52,7 +52,7 @@ struct WarriorExecuteDamage : public SpellScript
     }
 };
 
-// 34428 - Victory Rush
+// 34428 - Victory Rush (乘胜追击：消耗乘胜追击光环状态并按总攻强百分比计算伤害)
 struct VictoryRush : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -66,7 +66,7 @@ struct VictoryRush : public SpellScript
     }
 };
 
-// 20243 - Devastate
+// 20243 - Devastate (毁灭打击：未满破甲层数时自动施放破甲，已满层则刷新持续时间，并按破甲层数加成伤害与威胁)
 struct Devastate : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -76,11 +76,11 @@ struct Devastate : public SpellScript
 
         Unit* unitTarget = spell->GetUnitTarget();
         Unit* caster = spell->GetCaster();
-        // Sunder Armor
+        // Sunder Armor (查找目标身上已存在的破甲攻击光环)
         Aura* sunder = unitTarget->GetAura(SPELL_AURA_MOD_RESISTANCE, SPELLFAMILY_WARRIOR, uint64(0x0000000000004000), caster->GetObjectGuid());
 
         // 44452 unknown use
-        // apply sunder armor first
+        // apply sunder armor first (若无破甲或未满 5 层，先叠加一层最高级破甲)
         if (!sunder || sunder->GetStackAmount() < sunder->GetSpellProto()->StackAmount)
         {
             uint32 sunderId = static_cast<Player*>(caster)->LookupHighestLearnedRank(7386);
@@ -88,7 +88,7 @@ struct Devastate : public SpellScript
                 caster->CastSpell(unitTarget, sunderId, TRIGGERED_IGNORE_HIT_CALCULATION | TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_COSTS);
         }
 
-        // Devastate bonus and sunder armor refresh, additional threat
+        // Devastate bonus and sunder armor refresh, additional threat (刷新满层破甲并按层数计算附加伤害和每层 14 点仇恨)
         if (sunder)
         {
             if (sunder->GetStackAmount() == sunder->GetSpellProto()->StackAmount)
@@ -102,12 +102,12 @@ struct Devastate : public SpellScript
     }
 };
 
-// 20230 - Retaliation
+// 20230 - Retaliation (反击风暴：仅对非背面来袭的近战攻击触发反击法术 20240)
 struct RetaliationWarrior : public AuraScript
 {
     SpellAuraProcResult OnProc(Aura* /*aura*/, ProcExecutionData& procData) const override
     {
-        // check attack comes not from behind
+        // check attack comes not from behind (来自背面的攻击无法触发反击)
         if (procData.victim->IsFacingTargetsBack(procData.attacker))
             return SPELL_AURA_PROC_FAILED;
 
@@ -116,7 +116,7 @@ struct RetaliationWarrior : public AuraScript
     }
 };
 
-// 29707 - Heroic Strike
+// 29707 - Heroic Strike (英勇打击：目标身上存在减速效果时附加额外伤害)
 struct HeroicStrike : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -130,7 +130,7 @@ struct HeroicStrike : public SpellScript
         {
             if ((*iter)->GetSpellProto()->SpellIconID == 15 && (*iter)->GetSpellProto()->Dispel == 0)
             {
-                // formula based on tooltip
+                // formula based on tooltip (目标处于晕眩/减速状态时附加基础效果 0 伤害)
                 spell->SetDamage(spell->GetDamage() + spell->m_spellInfo->EffectBasePoints[EFFECT_INDEX_0]);
                 break;
             }
@@ -138,6 +138,7 @@ struct HeroicStrike : public SpellScript
     }
 };
 
+// 注册战士职业法术脚本
 void LoadWarriorScripts()
 {
     RegisterSpellScript<IntimidatingShout>("spell_intimidating_shout");

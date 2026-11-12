@@ -21,6 +21,11 @@ SDComment: Timers may need adjustments
 SDCategory: Tempest Keep, The Botanica
 EndScriptData */
 
+// 迁跃扭木（生态船最终首领）
+/* 遭遇战概述：
+ * 迁跃扭木是庞大的被腐化古树，施放踩踏震击，并不断召唤林精树苗走向自身以吞噬回血。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
@@ -28,6 +33,7 @@ EndScriptData */
 # boss_warp_splinter
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                   = 20024,
@@ -54,11 +60,13 @@ enum
 // static const uint32 saplingsSummonSpells[10] = {34727, 34730, 34731, 34732, 34733, 34734, 34735, 34736, 34737, 34739};
 static const uint32 saplingsSummonSpells[6] = { 34727, 34731, 34733, 34734, 34736, 34739 }; // actually ones used on retail
 
+// WarpSplinterActions 相关枚举
 enum WarpSplinterActions
 {
     WARP_SPLINTER_ACTION_MAX,
 };
 
+// boss_warp_splinterAI 逻辑实现
 struct boss_warp_splinterAI : public CombatAI
 {
     boss_warp_splinterAI(Creature* creature) : CombatAI(creature, WARP_SPLINTER_ACTION_MAX), m_isRegularMode(creature->GetMap()->IsRegularDifficulty())
@@ -70,6 +78,7 @@ struct boss_warp_splinterAI : public CombatAI
 
     GuidVector m_saplings;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -77,16 +86,19 @@ struct boss_warp_splinterAI : public CombatAI
         m_creature->RemoveGuardians();
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SAPLING)
@@ -112,6 +124,7 @@ struct boss_warp_splinterAI : public CombatAI
         DoBroadcastText(urand(0, 1) ? SAY_SUMMON_1 : SAY_SUMMON_2, m_creature);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -124,12 +137,15 @@ struct boss_warp_splinterAI : public CombatAI
 /*#####
 # mob_treant (Sapling)
 #####*/
+// npc_saplingAI 逻辑实现
 struct npc_saplingAI  : public ScriptedAI
 {
     npc_saplingAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
+    // 受到法术命中回调
     void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
     {
         if (spellInfo->Id == SPELL_ANCESTRAL_LIFE)
@@ -144,6 +160,7 @@ struct npc_saplingAI  : public ScriptedAI
     }
 };
 
+// 注册 boss_warp_splinter 脚本
 void AddSC_boss_warp_splinter()
 {
     Script* pNewScript = new Script;

@@ -44,32 +44,33 @@ class CreatureGroup;
 struct GameEventCreatureData;
 enum class VisibilityDistanceType : uint32;
 
+// 生物扩展标志位（对应 creature_template.ExtraFlags）
 enum CreatureFlagsExtra
 {
-    CREATURE_EXTRA_FLAG_INSTANCE_BIND          = 0x00000001,       // 1 creature kill bind instance with killer and killer's group
-    CREATURE_EXTRA_FLAG_NO_AGGRO_ON_SIGHT      = 0x00000002,       // 2 no aggro (ignore faction/reputation hostility)
-    CREATURE_EXTRA_FLAG_NO_PARRY               = 0x00000004,       // 4 creature can't parry
-    CREATURE_EXTRA_FLAG_NO_PARRY_HASTEN        = 0x00000008,       // 8 creature can't counter-attack at parry
-    CREATURE_EXTRA_FLAG_NO_BLOCK               = 0x00000010,       // 16 creature can't block
-    CREATURE_EXTRA_FLAG_RUN_DURING_WANDER      = 0x00000020,       // 32 15% chance during wander (random movement)
-    CREATURE_EXTRA_FLAG_SPECIAL                = 0x00000040,       // 64 Loaded into the world on start
-    CREATURE_EXTRA_FLAG_INVISIBLE              = 0x00000080,       // 128 creature is always invisible for player (mostly trigger creatures)
-    CREATURE_EXTRA_FLAG_UNUSED3                = 0x00000100,       // 256
-    CREATURE_EXTRA_FLAG_AGGRO_ZONE             = 0x00000200,       // 512 creature sets itself in combat with zone on aggro
-    CREATURE_EXTRA_FLAG_GUARD                  = 0x00000400,       // 1024 creature is a guard
-    CREATURE_EXTRA_FLAG_NO_CALL_ASSIST         = 0x00000800,       // 2048 creature shouldn't call for assistance on aggro
-    CREATURE_EXTRA_FLAG_ACTIVE                 = 0x00001000,       // 4096 creature is active object. Grid of this creature will be loaded and creature set as active
-    CREATURE_EXTRA_FLAG_MMAP_FORCE_ENABLE      = 0x00002000,       // 8192 creature is forced to use MMaps
-    CREATURE_EXTRA_FLAG_MMAP_FORCE_DISABLE     = 0x00004000,       // 16384 creature is forced to NOT use MMaps
-    CREATURE_EXTRA_FLAG_WALK_IN_WATER          = 0x00008000,       // 32768 creature is forced to walk in water even it can swim
-    CREATURE_EXTRA_FLAG_CIVILIAN               = 0x00010000,       // 65536 CreatureInfo->civilian substitute (for new expansions)
-    CREATURE_EXTRA_FLAG_NO_MELEE               = 0x00020000,       // 131072 creature can't melee
-    CREATURE_EXTRA_FLAG_FORCE_ATTACKING_CAPABILITY = 0x00080000,   // 524288 SetForceAttackingCapability(true); for nonattackable, nontargetable creatures that should be able to attack nontheless
-    CREATURE_EXTRA_FLAG_DYNGUID                = 0x00100000,       // 1048576 Temporary transition flag - spawns of this entry use dynguid system
-    CREATURE_EXTRA_FLAG_COUNT_SPAWNS           = 0x00200000,       // 2097152 count creature spawns in Map*
-    CREATURE_EXTRA_FLAG_UNUSED4                = 0x00400000,       // 4194304
-    CREATURE_EXTRA_FLAG_DUAL_WIELD_FORCED      = 0x00800000,       // 8388606 creature is alwyas dual wielding (even if unarmed)
-    CREATURE_EXTRA_FLAG_UNUSED5                = 0x01000000,       // 16777216
+    CREATURE_EXTRA_FLAG_INSTANCE_BIND          = 0x00000001,       // 1 creature kill bind instance with killer and killer's group (击杀后将击杀者及其队伍绑定到当前副本进度)
+    CREATURE_EXTRA_FLAG_NO_AGGRO_ON_SIGHT      = 0x00000002,       // 2 no aggro (ignore faction/reputation hostility) (不主动拉仇恨，忽略阵营/声望敌对)
+    CREATURE_EXTRA_FLAG_NO_PARRY               = 0x00000004,       // 4 creature can't parry (无法招架)
+    CREATURE_EXTRA_FLAG_NO_PARRY_HASTEN        = 0x00000008,       // 8 creature can't counter-attack at parry (招架后不触发加速反击)
+    CREATURE_EXTRA_FLAG_NO_BLOCK               = 0x00000010,       // 16 creature can't block (无法格挡)
+    CREATURE_EXTRA_FLAG_RUN_DURING_WANDER      = 0x00000020,       // 32 15% chance during wander (random movement) (随机游荡时有 15% 概率使用奔跑)
+    CREATURE_EXTRA_FLAG_SPECIAL                = 0x00000040,       // 64 Loaded into the world on start (服务器启动时即保持特殊活跃加载)
+    CREATURE_EXTRA_FLAG_INVISIBLE              = 0x00000080,       // 128 creature is always invisible for player (mostly trigger creatures) (对玩家始终隐身，常用于触发器生物)
+    CREATURE_EXTRA_FLAG_UNUSED3                = 0x00000100,       // 256 (保留未使用)
+    CREATURE_EXTRA_FLAG_AGGRO_ZONE             = 0x00000200,       // 512 creature sets itself in combat with zone on aggro (进入战斗时使整个区域进入战斗状态)
+    CREATURE_EXTRA_FLAG_GUARD                  = 0x00000400,       // 1024 creature is a guard (守卫生物标志)
+    CREATURE_EXTRA_FLAG_NO_CALL_ASSIST         = 0x00000800,       // 2048 creature shouldn't call for assistance on aggro (进入战斗时不呼叫周围友军协助)
+    CREATURE_EXTRA_FLAG_ACTIVE                 = 0x00001000,       // 4096 creature is active object. Grid of this creature will be loaded and creature set as active (永久活跃对象，强制保持所在网格加载)
+    CREATURE_EXTRA_FLAG_MMAP_FORCE_ENABLE      = 0x00002000,       // 8192 creature is forced to use MMaps (强制启用寻路网格 MMap)
+    CREATURE_EXTRA_FLAG_MMAP_FORCE_DISABLE     = 0x00004000,       // 16384 creature is forced to NOT use MMaps (强制禁用寻路网格 MMap)
+    CREATURE_EXTRA_FLAG_WALK_IN_WATER          = 0x00008000,       // 32768 creature is forced to walk in water even it can swim (即使可游泳也强制在水中步行)
+    CREATURE_EXTRA_FLAG_CIVILIAN               = 0x00010000,       // 65536 CreatureInfo->civilian substitute (for new expansions) (平民标志)
+    CREATURE_EXTRA_FLAG_NO_MELEE               = 0x00020000,       // 131072 creature can't melee (禁止近战攻击)
+    CREATURE_EXTRA_FLAG_FORCE_ATTACKING_CAPABILITY = 0x00080000,   // 524288 SetForceAttackingCapability(true); for nonattackable, nontargetable creatures that should be able to attack nontheless (允许不可攻击/不可选中的生物主动发起攻击)
+    CREATURE_EXTRA_FLAG_DYNGUID                = 0x00100000,       // 1048576 Temporary transition flag - spawns of this entry use dynguid system (使用动态 GUID 系统刷怪)
+    CREATURE_EXTRA_FLAG_COUNT_SPAWNS           = 0x00200000,       // 2097152 count creature spawns in Map* (在 Map 中统计该 Entry 的刷怪数量)
+    CREATURE_EXTRA_FLAG_UNUSED4                = 0x00400000,       // 4194304 (保留未使用)
+    CREATURE_EXTRA_FLAG_DUAL_WIELD_FORCED      = 0x00800000,       // 8388606 creature is alwyas dual wielding (even if unarmed) (强制双持，即使空手)
+    CREATURE_EXTRA_FLAG_UNUSED5                = 0x01000000,       // 16777216 (保留未使用)
 };
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
@@ -79,12 +80,12 @@ enum CreatureFlagsExtra
 #pragma pack(push,1)
 #endif
 
-#define MAX_KILL_CREDIT 2
-#define MAX_CREATURE_MODEL 4
-#define USE_DEFAULT_DATABASE_LEVEL  0                   // just used to show we don't want to force the new creature level and use the level stored in db
-#define MINIMUM_LOOTING_TIME (2 * MINUTE * IN_MILLISECONDS) // give player enough time to pick loot
+#define MAX_KILL_CREDIT 2                                   // 击杀任务计数槽位上限
+#define MAX_CREATURE_MODEL 4                                // 生物模板最大候选模型数
+#define USE_DEFAULT_DATABASE_LEVEL  0                   // just used to show we don't want to force the new creature level and use the level stored in db (使用数据库默认等级范围)
+#define MINIMUM_LOOTING_TIME (2 * MINUTE * IN_MILLISECONDS) // give player enough time to pick loot (尸体最短保留拾取时间)
 
-// from `creature_template` table
+// from `creature_template` table (生物模板信息，对应数据库 creature_template 表)
 struct CreatureInfo
 {
     uint32  Entry;
@@ -269,13 +270,15 @@ struct EquipmentInfoRaw
     uint32  equipslot[3];
 };
 
+// 刷怪点附加标志位（对应 creature_spawn_template）
 enum SpawnFlags
 {
-    SPAWN_FLAG_RUN_ON_SPAWN     = 0x01,
-    SPAWN_FLAG_HOVER            = 0x02,
-    SPAWN_FLAG_DISABLE_GRAVITY  = 0x04,
+    SPAWN_FLAG_RUN_ON_SPAWN     = 0x01,                     // 出生时默认开启奔跑模式
+    SPAWN_FLAG_HOVER            = 0x02,                     // 出生时启用悬停标志
+    SPAWN_FLAG_DISABLE_GRAVITY  = 0x04,                     // 出生时禁用重力
 };
 
+// 刷怪点覆写模板数据
 struct CreatureSpawnTemplate
 {
     uint32 entry;
@@ -295,7 +298,7 @@ struct CreatureSpawnTemplate
     bool IsGravityDisabled() const { return (spawnFlags & SPAWN_FLAG_DISABLE_GRAVITY) != 0; }
 };
 
-// from `creature` table
+// from `creature` table (地图静态刷怪点配置，对应数据库 creature 表)
 struct CreatureData
 {
     uint32 id;                                              // entry in creature_template
@@ -329,7 +332,7 @@ enum SplineFlags
     SPLINEFLAG_FLYING       = 0x0000200,
 };
 
-// from `creature_addon` and `creature_template_addon`tables
+// from `creature_addon` and `creature_template_addon`tables (生物附加光环与姿态数据)
 struct CreatureDataAddon
 {
     uint32 guidOrEntry;
@@ -341,7 +344,7 @@ struct CreatureDataAddon
     uint32 const* auras;                                    // loaded as char* "spell1 spell2 ... "
 };
 
-// Bases values for given Level and UnitClass
+// Bases values for given Level and UnitClass (按等级与职业划分的生物基础属性表)
 struct CreatureClassLvlStats
 {
     uint32  BaseHealth;
@@ -358,6 +361,7 @@ struct CreatureClassLvlStats
     uint32  Spirit;
 };
 
+// 生物模型几何参数与性别关联信息
 struct CreatureModelInfo
 {
     uint32 modelid;
@@ -415,15 +419,16 @@ struct AreaTriggerLocale
     std::vector<std::string> StatusFailed;
 };
 
+// 生物栖息环境/移动能力掩码
 enum InhabitTypeValues
 {
-    INHABIT_GROUND = 1,
-    INHABIT_WATER  = 2,
-    INHABIT_AIR    = 4,
-    INHABIT_ANYWHERE = INHABIT_GROUND | INHABIT_WATER | INHABIT_AIR
+    INHABIT_GROUND = 1,                                     // 陆地行走
+    INHABIT_WATER  = 2,                                     // 水中游泳
+    INHABIT_AIR    = 4,                                     // 空中飞行
+    INHABIT_ANYWHERE = INHABIT_GROUND | INHABIT_WATER | INHABIT_AIR // 全地形通行
 };
 
-// Enums used by StringTextData::Type (CreatureEventAI)
+// Enums used by StringTextData::Type (CreatureEventAI) (生物喊话/表情类型枚举)
 enum ChatType
 {
     CHAT_TYPE_SAY               = 0,
@@ -438,15 +443,16 @@ enum ChatType
     CHAT_TYPE_MAX
 };
 
+// 生物生命/能量恢复控制标志
 enum RegenStatsFlags
 {
-    REGEN_FLAG_HEALTH_IN_COMBAT     = 0x001, // placeholder for future
-    REGEN_FLAG_HEALTH               = 0x002,
-    REGEN_FLAG_POWER_IN_COMBAT      = 0x004,
-    REGEN_FLAG_POWER                = 0x008,
+    REGEN_FLAG_HEALTH_IN_COMBAT     = 0x001, // placeholder for future (战斗中回血预留标志)
+    REGEN_FLAG_HEALTH               = 0x002,                // 允许脱战回血
+    REGEN_FLAG_POWER_IN_COMBAT      = 0x004,                // 允许战斗中回蓝/回能
+    REGEN_FLAG_POWER                = 0x008,                // 允许脱战回蓝/回能
 };
 
-// Vendors
+// Vendors (商人出售物品条目及列表容器)
 struct VendorItem
 {
     VendorItem(uint32 _item, uint32 _maxcount, uint32 _incrtime, uint32 _ExtendedCost, uint16 _conditionId)
@@ -499,6 +505,7 @@ struct VendorItemCount
 
 typedef std::list<VendorItemCount> VendorItemCounts;
 
+// 训练师可教授法术条目
 struct TrainerSpell
 {
     TrainerSpell() : spell(0), spellCost(0), reqSkill(0), reqSkillValue(0), reqLevel(0), learnedSpell(0), conditionId(0), isProvidedReqLevel(false) {}
@@ -559,6 +566,7 @@ enum VirtualItemInfoByteOffset
     VIRTUAL_ITEM_INFO_1_OFFSET_SHEATH        = 1,
 };
 
+// 生物生成坐标计算辅助结构
 struct CreatureCreatePos
 {
     public:
@@ -583,32 +591,36 @@ struct CreatureCreatePos
         float m_dist;
 };
 
+// 生物子类型标识（避免使用 dynamic_cast 区分 Pet/Totem/TemporarySummon）
 enum CreatureSubtype
 {
-    CREATURE_SUBTYPE_GENERIC,                               // new Creature
-    CREATURE_SUBTYPE_PET,                                   // new Pet
-    CREATURE_SUBTYPE_TOTEM,                                 // new Totem
-    CREATURE_SUBTYPE_TEMPORARY_SUMMON,                      // new TemporarySummon
+    CREATURE_SUBTYPE_GENERIC,                               // new Creature (普通生物)
+    CREATURE_SUBTYPE_PET,                                   // new Pet (宠物)
+    CREATURE_SUBTYPE_TOTEM,                                 // new Totem (图腾)
+    CREATURE_SUBTYPE_TEMPORARY_SUMMON,                      // new TemporarySummon (临时召唤物)
 };
 
-enum TemporaryFactionFlags                                  // Used at real faction changes
+// 临时阵营变更时的恢复与单位标志联动策略
+enum TemporaryFactionFlags                                  // Used at real faction changes (用于临时修改阵营时的恢复策略与标志切换)
 {
-    TEMPFACTION_NONE                    = 0x00,             // When no flag is used in temporary faction change, faction will be persistent. It will then require manual change back to default/another faction when changed once
-    TEMPFACTION_RESTORE_RESPAWN         = 0x01,             // Default faction will be restored at respawn
-    TEMPFACTION_RESTORE_COMBAT_STOP     = 0x02,             // ... at CombatStop() (happens at creature death, at evade or custom scripte among others)
-    TEMPFACTION_RESTORE_REACH_HOME      = 0x04,             // ... at reaching home in home movement (evade), if not already done at CombatStop()
-    TEMPFACTION_TOGGLE_NON_ATTACKABLE   = 0x08,             // Remove UNIT_FLAG_SPAWNING(0x02) when faction is changed (reapply when temp-faction is removed)
-    TEMPFACTION_TOGGLE_IMMUNE_TO_PLAYER = 0x10,             // Remove UNIT_FLAG_IMMUNE_TO_PLAYER(0x100, 256) when faction is changed (reapply when temp-faction is removed)
-    TEMPFACTION_TOGGLE_IMMUNE_TO_NPC    = 0x20,             // Remove UNIT_FLAG_IMMUNE_TO_NPC(0x200, 512) when faction is changed (reapply when temp-faction is removed)
-    TEMPFACTION_TOGGLE_PACIFIED         = 0x40,             // Remove UNIT_FLAG_PACIFIED(0x20000) when faction is changed (reapply when temp-faction is removed)
-    TEMPFACTION_TOGGLE_NOT_SELECTABLE   = 0x80,             // Remove UNIT_FLAG_UNINTERACTIBLE(0x2000000) when faction is changed (reapply when temp-faction is removed)
+    TEMPFACTION_NONE                    = 0x00,             // When no flag is used in temporary faction change, faction will be persistent. It will then require manual change back to default/another faction when changed once (持久变更，需手动恢复)
+    TEMPFACTION_RESTORE_RESPAWN         = 0x01,             // Default faction will be restored at respawn (重生时恢复默认阵营)
+    TEMPFACTION_RESTORE_COMBAT_STOP     = 0x02,             // ... at CombatStop() (happens at creature death, at evade or custom scripte among others) (脱离战斗/死亡时恢复)
+    TEMPFACTION_RESTORE_REACH_HOME      = 0x04,             // ... at reaching home in home movement (evade), if not already done at CombatStop() (归位到达出生点时恢复)
+    TEMPFACTION_TOGGLE_NON_ATTACKABLE   = 0x08,             // Remove UNIT_FLAG_SPAWNING(0x02) when faction is changed (reapply when temp-faction is removed) (变更时切换不可攻击标志)
+    TEMPFACTION_TOGGLE_IMMUNE_TO_PLAYER = 0x10,             // Remove UNIT_FLAG_IMMUNE_TO_PLAYER(0x100, 256) when faction is changed (reapply when temp-faction is removed) (变更时切换免疫玩家标志)
+    TEMPFACTION_TOGGLE_IMMUNE_TO_NPC    = 0x20,             // Remove UNIT_FLAG_IMMUNE_TO_NPC(0x200, 512) when faction is changed (reapply when temp-faction is removed) (变更时切换免疫 NPC 标志)
+    TEMPFACTION_TOGGLE_PACIFIED         = 0x40,             // Remove UNIT_FLAG_PACIFIED(0x20000) when faction is changed (reapply when temp-faction is removed) (变更时切换安抚标志)
+    TEMPFACTION_TOGGLE_NOT_SELECTABLE   = 0x80,             // Remove UNIT_FLAG_UNINTERACTIBLE(0x2000000) when faction is changed (reapply when temp-faction is removed) (变更时切换不可选中标志)
     TEMPFACTION_ALL,
 };
 
+// 非玩家生物实体类（NPC、怪物、首领及各类召唤物基类）
 class Creature : public Unit
 {
     public:
 
+        // 生命周期、世界注册、创建与数据库初始化
         explicit Creature(CreatureSubtype subtype = CREATURE_SUBTYPE_GENERIC);
         virtual ~Creature() override;
 
@@ -765,6 +777,7 @@ class Creature : public Unit
         virtual void DeleteFromDB();                        // overwrited in Pet
         static void DeleteFromDB(uint32 lowguid, CreatureData const* data);
 
+        // 掉落状态、拾取归属权与尸体清理计时
         void PrepareBodyLootState(Unit* killer);
         CreatureLootStatus GetLootStatus() const { return m_lootStatus; }
         virtual void InspectingLoot() override;
@@ -785,6 +798,7 @@ class Creature : public Unit
         SpellEntry const* ReachWithSpellAttack(Unit* pVictim);
         SpellEntry const* ReachWithSpellCure(Unit* pVictim);
 
+        // 呼救支援、仇恨交互、移动与重生控制
         void CallForHelp(float radius);
         void CallAssistance();
         void CallAssistance(Unit* enemy);
@@ -985,87 +999,88 @@ class Creature : public Unit
         // vendor items
         VendorItemCounts m_vendorItemCounts;
 
-        uint32 m_gossipMenuId;
-        uint32 m_lootMoney;
-        ObjectGuid m_lootRecipientGuid;                     // player who will have rights for looting if m_lootGroupRecipient==0 or group disbanded
-        uint32 m_lootGroupRecipientId;                      // group who will have rights for looting if set and exist
-        CreatureLootStatus m_lootStatus;                    // loot status (used to know when we could loot, pickpocket or skin)
-        uint32 m_corpseAccelerationDecayDelay;              // time for ReduceCorpseDecayTimer
+        uint32 m_gossipMenuId;                              // 默认对话菜单 ID
+        uint32 m_lootMoney;                                 // 尸体可拾取金币数
+        ObjectGuid m_lootRecipientGuid;                     // player who will have rights for looting if m_lootGroupRecipient==0 or group disbanded (拥有拾取权的玩家 GUID)
+        uint32 m_lootGroupRecipientId;                      // group who will have rights for looting if set and exist (拥有拾取权的队伍 ID)
+        CreatureLootStatus m_lootStatus;                    // loot status (used to know when we could loot, pickpocket or skin) (当前掉落/偷窃/剥皮状态)
+        uint32 m_corpseAccelerationDecayDelay;              // time for ReduceCorpseDecayTimer (加速尸体腐烂延迟毫秒数)
 
-        /// Timers
-        TimePoint m_corpseExpirationTime;                   // (msecs) time point of corpse decay
-        time_t m_respawnTime;                               // (secs) time of next respawn
-        uint32 m_respawnDelay;                              // (secs) delay between corpse disappearance and respawning
-        bool m_respawnOverriden;
-        bool m_respawnOverrideOnce;
-        uint32 m_corpseDelay;                               // (secs) delay between death and corpse disappearance
-        TimePoint m_pickpocketRestockTime;                  // (msecs) time point of pickpocket restock
-        bool m_canAggro;                                    // controls response of creature to attacks
-        bool m_checkForHelp;                                // controls checkforhelp in ai
-        float m_respawnradius;
-        uint32 m_interactionPauseTimer;                     // (msecs) waypoint pause time when interacted with
+        /// Timers (尸体腐烂、重生与偷窃补货计时器)
+        TimePoint m_corpseExpirationTime;                   // (msecs) time point of corpse decay (尸体过期消失时间点)
+        time_t m_respawnTime;                               // (secs) time of next respawn (下次重生时间戳)
+        uint32 m_respawnDelay;                              // (secs) delay between corpse disappearance and respawning (重生间隔秒数)
+        bool m_respawnOverriden;                            // 是否覆盖了默认重生延迟
+        bool m_respawnOverrideOnce;                         // 重生延迟覆盖是否仅生效一次
+        uint32 m_corpseDelay;                               // (secs) delay between death and corpse disappearance (尸体保留秒数)
+        TimePoint m_pickpocketRestockTime;                  // (msecs) time point of pickpocket restock (偷窃物品刷新时间点)
+        bool m_canAggro;                                    // controls response of creature to attacks (是否允许拉取仇恨)
+        bool m_checkForHelp;                                // controls checkforhelp in ai (是否允许 AI 响应呼救)
+        float m_respawnradius;                              // 重生后随机游荡半径
+        uint32 m_interactionPauseTimer;                     // (msecs) waypoint pause time when interacted with (玩家交互时路径点暂停毫秒数)
 
-        CreatureSubtype m_subtype;                          // set in Creatures subclasses for fast it detect without dynamic_cast use
+        CreatureSubtype m_subtype;                          // set in Creatures subclasses for fast it detect without dynamic_cast use (生物子类型标记)
         void RegeneratePower(float timerMultiplier);
         virtual void RegenerateHealth();
-        MovementGeneratorType m_defaultMovementType;
-        uint32 m_equipmentId;
-        uint32 m_detectionRange;
+        MovementGeneratorType m_defaultMovementType;        // 默认移动生成器类型
+        uint32 m_equipmentId;                               // 当前装备模板 ID
+        uint32 m_detectionRange;                            // 视野仇恨探测距离
 
-        // below fields has potential for optimization
-        bool m_AlreadyCallAssistance;
-        bool m_canCallForAssistance;
-        uint32 m_temporaryFactionFlags;                     // used for real faction changes (not auras etc)
+        // below fields has potential for optimization (阵营、AI、属性倍率与脚本状态字段)
+        bool m_AlreadyCallAssistance;                       // 是否已呼叫过协助
+        bool m_canCallForAssistance;                        // 是否允许呼叫协助
+        uint32 m_temporaryFactionFlags;                     // used for real faction changes (not auras etc) (临时阵营变更标志)
 
-        uint32 m_originalEntry;
+        uint32 m_originalEntry;                             // 原始生物模板 Entry（用于 ResetEntry 还原）
 
-        Position m_combatStartPos;                          // after combat contains last position
-        Position m_respawnPos;
+        Position m_combatStartPos;                          // after combat contains last position (进入战斗时的起始位置/最后脱战位置)
+        Position m_respawnPos;                              // 重生基准坐标
 
-        uint32 m_gameEventVendorId;                         // game event creature data vendor id override
+        uint32 m_gameEventVendorId;                         // game event creature data vendor id override (游戏事件覆写的商人模板 ID)
 
-        uint32 m_immunitySet;
+        uint32 m_immunitySet;                               // 当前启用的免疫集合 ID
 
-        std::unique_ptr<UnitAI> m_ai;
-        bool m_isInvisible;
-        bool m_ignoreMMAP;
-        bool m_forceAttackingCapability;                    // can attack even if not selectable/not attackable
-        bool m_noReputation;
+        std::unique_ptr<UnitAI> m_ai;                       // 生物 AI 实例指针
+        bool m_isInvisible;                                 // 强制隐身标记
+        bool m_ignoreMMAP;                                  // 忽略 MMap 寻路标记
+        bool m_forceAttackingCapability;                    // can attack even if not selectable/not attackable (即使不可选中/不可攻击也允许发起攻击)
+        bool m_noReputation;                                // 击杀不提供声望标记
 
-        CreatureSettings m_settings;
+        CreatureSettings m_settings;                        // 生物静态/动态行为设置集合
 
-        // Script logic
-        bool m_countSpawns;
+        // Script logic (脚本控制逻辑)
+        bool m_countSpawns;                                 // 是否统计刷怪数量
 
-        // spell scripting persistency
+        // spell scripting persistency (法术脚本命中记录)
         std::set<uint32> m_hitBySpells;
 
-        // Spell Lists
+        // Spell Lists (技能列表管理器)
         CreatureSpellList m_spellList;
 
-        CreatureGroup* m_creatureGroup;
+        CreatureGroup* m_creatureGroup;                     // 所属生物编队指针
 
-        ObjectGuid m_killer;
+        ObjectGuid m_killer;                                // 击杀者 GUID
 
-        bool m_imposedCooldown;
+        bool m_imposedCooldown;                             // 是否处于外部强加的施法冷却中
 
-        bool m_delayedPetSpells;
+        bool m_delayedPetSpells;                            // 是否延迟加载宠物技能
 
-        float m_healthMultiplier;
-        float m_damageMultiplier;
-        float m_baseAP;
-        float m_baseRAP;
+        float m_healthMultiplier;                           // 生命值倍率系数
+        float m_damageMultiplier;                           // 伤害倍率系数
+        float m_baseAP;                                     // 基础近战攻击强度
+        float m_baseRAP;                                    // 基础远程攻击强度
 
     private:
-        GridReference<Creature> m_gridRef;
-        CreatureInfo const* m_creatureInfo;                 // in heroic mode can different from sObjectMgr::GetCreatureTemplate(GetEntry())
+        GridReference<Creature> m_gridRef;                  // 地图网格链表引用
+        CreatureInfo const* m_creatureInfo;                 // in heroic mode can different from sObjectMgr::GetCreatureTemplate(GetEntry()) (当前难度对应的生物模板指针)
 
-        CreatureInfo const* m_mountInfo;
-        float m_modelRunSpeed;
+        CreatureInfo const* m_mountInfo;                    // 坐骑生物模板指针
+        float m_modelRunSpeed;                              // 模型默认奔跑速度
 
-        bool m_combatOnlyStealth;
+        bool m_combatOnlyStealth;                           // 仅战斗期间生效的潜行标记
 };
 
+// 延迟强制消失异步事件（挂载到 EventProcessor）
 class ForcedDespawnDelayEvent : public BasicEvent
 {
     public:

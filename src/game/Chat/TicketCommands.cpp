@@ -24,6 +24,7 @@
 #include "Mails/Mail.h"
 #include "Tools/Language.h"
 
+/// 将 GMTicketMgr 命令执行结果映射为本地化错误提示并输出
 inline static bool HandleTicketMgrCommandResult(ChatHandler &ch, uint32 ticketId, GMTicketMgr::CommandResult result)
 {
     MangosStrings error;
@@ -42,6 +43,7 @@ inline static bool HandleTicketMgrCommandResult(ChatHandler &ch, uint32 ticketId
     return false;
 }
 
+/// 丢弃指定 GM 工单并附带处理结语
 bool ChatHandler::HandleTicketDiscardCommand(char* args)
 {
     uint32 ticketId;
@@ -69,6 +71,7 @@ bool ChatHandler::HandleTicketDiscardCommand(char* args)
     return true;
 }
 
+/// 将指定工单上报至更高权限等级的 GM
 bool ChatHandler::HandleTicketEscalateCommand(char* args)
 {
     uint32 ticketId;
@@ -86,6 +89,7 @@ bool ChatHandler::HandleTicketEscalateCommand(char* args)
     return true;
 }
 
+/// 传送至工单提交时记录的场景坐标
 bool ChatHandler::HandleTicketGoCommand(char* args)
 {
     uint32 ticketId;
@@ -105,6 +109,7 @@ bool ChatHandler::HandleTicketGoCommand(char* args)
     return HandleGoHelper(m_session->GetPlayer(), ticket->GetMapId(), ticket->GetPositionX(), ticket->GetPositionY(), &z, &o);
 }
 
+/// 传送至工单提交者当前所在位置
 bool ChatHandler::HandleTicketGoNameCommand(char* args)
 {
     uint32 ticketId;
@@ -125,6 +130,7 @@ bool ChatHandler::HandleTicketGoNameCommand(char* args)
     return result;
 }
 
+/// 为指定工单添加内部 GM 备注
 bool ChatHandler::HandleTicketNoteCommand(char* args)
 {
     uint32 ticketId;
@@ -143,6 +149,7 @@ bool ChatHandler::HandleTicketNoteCommand(char* args)
     return true;
 }
 
+/// 读取并打印指定工单的详细内容
 bool ChatHandler::HandleTicketReadCommand(char* args)
 {
     uint32 ticketId;
@@ -162,6 +169,7 @@ bool ChatHandler::HandleTicketReadCommand(char* args)
     return true;
 }
 
+/// 标记指定工单为已解决并附带结案说明
 bool ChatHandler::HandleTicketResolveCommand(char* args)
 {
     uint32 ticketId;
@@ -189,6 +197,7 @@ bool ChatHandler::HandleTicketResolveCommand(char* args)
     return true;
 }
 
+/// 将指定工单归类到指定的 GMTicketCategory
 bool ChatHandler::HandleTicketSortCommand(char* args)
 {
     uint32 ticketId;
@@ -214,6 +223,7 @@ bool ChatHandler::HandleTicketSortCommand(char* args)
     return false;
 }
 
+/// 通过工单系统向提交玩家发送密语/回复邮件
 bool ChatHandler::HandleTicketWhisperCommand(char* args)
 {
     uint32 ticketId;
@@ -241,11 +251,13 @@ bool ChatHandler::HandleTicketWhisperCommand(char* args)
     return true;
 }
 
+/// `.ticket` 主命令默认转发至读取工单
 bool ChatHandler::HandleTicketCommand(char* args)
 {
     return HandleTicketReadCommand(args);
 }
 
+/// 列出当前工单队列（支持数量上限、分类过滤及仅在线玩家筛选）
 bool ChatHandler::HandleTicketsListCommand(char* args)
 {
     std::ostringstream output;
@@ -289,6 +301,7 @@ bool ChatHandler::HandleTicketsListCommand(char* args)
     return true;
 }
 
+/// 开启或关闭全服 GM 工单队列系统
 bool ChatHandler::HandleTicketsQueueCommand(char *args)
 {
     bool value;
@@ -305,9 +318,10 @@ bool ChatHandler::HandleTicketsQueueCommand(char *args)
     return true;
 }
 
+/// `.tickets` 主命令：无参/数字/online 作为列表别名，on/off 则切换当前 GM 接单状态
 bool ChatHandler::HandleTicketsCommand(char* args)
 {
-    // Detect cases when used as an alias for "ticket list"
+    // Detect cases when used as an alias for "ticket list" | 识别作为“ticket list”别名的参数形式
     {
         if (!args || !*args)
             return HandleTicketsListCommand(args);

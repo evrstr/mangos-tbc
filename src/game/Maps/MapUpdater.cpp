@@ -19,12 +19,14 @@
 #include "MapUpdater.h"
 #include "MapWorkers.h"
 
+// 构造函数：立即启动指定数量的地图更新工作线程
 MapUpdater::MapUpdater(size_t num_threads) : _cancelationToken(false), pending_requests(0)
 {
     for (size_t i = 0; i < num_threads; ++i)
         _workerThreads.push_back(std::thread(&MapUpdater::WorkerThread, this));
 }
 
+// 若尚未激活工作线程池，则创建指定数量的工作线程
 void MapUpdater::activate(size_t num_threads)
 {
     if (activated())
@@ -34,6 +36,7 @@ void MapUpdater::activate(size_t num_threads)
         _workerThreads.push_back(std::thread(&MapUpdater::WorkerThread, this));
 }
 
+// 发出取消信号、唤醒队列阻塞线程并等待所有工作线程结束
 void MapUpdater::deactivate()
 {
     _cancelationToken = true;
@@ -44,6 +47,7 @@ void MapUpdater::deactivate()
         thread.join();
 }
 
+// 阻塞等待直至所有已调度的更新任务执行完毕
 void MapUpdater::wait()
 {
     std::unique_lock<std::mutex> lock(_lock);
@@ -52,17 +56,20 @@ void MapUpdater::wait()
         _condition.wait(lock);
 }
 
+// 先等待当前任务完成，再关闭并回收线程池
 void MapUpdater::join()
 {
     wait();
     deactivate();
 }
 
+// 返回工作线程池是否已初始化并运行
 bool MapUpdater::activated()
 {
     return _workerThreads.size() > 0;
 }
 
+// 任务完成回调：递减未完成计数并通知等待主线程
 void MapUpdater::update_finished()
 {
     std::lock_guard<std::mutex> lock(_lock);
@@ -71,6 +78,7 @@ void MapUpdater::update_finished()
     _condition.notify_all();
 }
 
+// 提交一个 Worker 任务到线程安全队列并增加待处理计数
 void MapUpdater::schedule_update(Worker* worker)
 {
     std::lock_guard<std::mutex> lock(_lock);
@@ -79,6 +87,7 @@ void MapUpdater::schedule_update(Worker* worker)
     _queue.Push(std::move(worker));
 }
 
+// 工作线程主循环：持续从队列取出 Worker 并执行，收到取消令牌时退出
 void MapUpdater::WorkerThread()
 {
     while (true)

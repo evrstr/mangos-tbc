@@ -21,21 +21,25 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 勒西什尔（Broodlord Lashlayer）3号首领战 AI（致死打击与击退减仇恨）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1469000,
-    SAY_LEASH                   = -1469001,
+    SAY_AGGRO                   = -1469000,                 // 开战 台词广播 ID
+    SAY_LEASH                   = -1469001,                 // leash 台词广播 ID
 
-    SPELL_CLEAVE                = 15284,
-    SPELL_KNOCK_AWAY            = 18670,
-    SPELL_BLAST_WAVE            = 23331,
-    SPELL_MORTAL_STRIKE         = 24573,
+    SPELL_CLEAVE                = 15284,                    // 顺劈斩 法术 ID
+    SPELL_KNOCK_AWAY            = 18670,                    // knockaway 法术 ID
+    SPELL_BLAST_WAVE            = 23331,                    // 冲击wave 法术 ID
+    SPELL_MORTAL_STRIKE         = 24573,                    // mortal打击 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum BroodlordActions
 {
     BROODLORD_CLEAVE,
@@ -45,6 +49,7 @@ enum BroodlordActions
     BROODLORD_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（broodlord）
 struct boss_broodlordAI : public CombatAI
 {
     boss_broodlordAI(Creature* creature) : CombatAI(creature, BROODLORD_ACTION_MAX), m_instance(static_cast<instance_blackwing_lair*>(creature->GetInstanceData()))
@@ -76,6 +81,7 @@ struct boss_broodlordAI : public CombatAI
             m_instance->SetData(TYPE_LASHLAYER, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -119,6 +125,7 @@ struct boss_broodlordAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_broodlord
 void AddSC_boss_broodlord()
 {
     Script* pNewScript = new Script;

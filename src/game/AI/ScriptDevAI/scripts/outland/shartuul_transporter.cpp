@@ -19,6 +19,7 @@
 #include "Spells/Scripts/SpellScript.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// Possession 相关枚举
 enum Possession
 {
     SPELL_POSSESSION_TRANSFER_P1 = 40503,
@@ -28,11 +29,13 @@ enum Possession
     SPELL_CHARM_P3 = 40523,
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_FEL_FLAMES = 40561,
 };
 
+// PunisherActions 相关枚举
 enum PunisherActions
 {
     PUNISHER_POSSESSION_TRANSFER,
@@ -41,6 +44,7 @@ enum PunisherActions
     PUNISHER_ATTACK_DELAY,
 };
 
+// npc_doomguard_punisherAI 逻辑实现
 struct npc_doomguard_punisherAI : public CombatAI
 {
     npc_doomguard_punisherAI(Creature* creature) : CombatAI(creature, PUNISHER_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -52,6 +56,7 @@ struct npc_doomguard_punisherAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_SHADOWFORM, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -88,12 +93,14 @@ struct npc_doomguard_punisherAI : public CombatAI
         SetActionReadyStatus(PUNISHER_POSSESSION_TRANSFER, true);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SHARTUUL, EVENT_FAIL);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -110,6 +117,7 @@ struct npc_doomguard_punisherAI : public CombatAI
     }
 };
 
+// ShivanActions 相关枚举
 enum ShivanActions
 {
     SHIVAN_POSSESSION_TRANSFER,
@@ -118,6 +126,7 @@ enum ShivanActions
     SHIVAN_OOC_ANIM,
 };
 
+// npc_shivan_assassinAI 逻辑实现
 struct npc_shivan_assassinAI : public CombatAI
 {
     npc_shivan_assassinAI(Creature* creature) : CombatAI(creature, SHIVAN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -129,6 +138,7 @@ struct npc_shivan_assassinAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_SHADOWFORM, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -162,6 +172,7 @@ struct npc_shivan_assassinAI : public CombatAI
             m_instance->SetData(TYPE_SHARTUUL, EVENT_FAIL);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -182,6 +193,7 @@ struct npc_shivan_assassinAI : public CombatAI
         SetActionReadyStatus(SHIVAN_POSSESSION_TRANSFER, true);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -194,6 +206,7 @@ struct npc_shivan_assassinAI : public CombatAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_FEL_FIREBALL = 40633,
@@ -202,6 +215,7 @@ enum
     SPELL_TONGUE_LASH = 42002,
 };
 
+// EyeActions 相关枚举
 enum EyeActions
 {
     EYE_DARK_GLARE,
@@ -212,6 +226,7 @@ enum EyeActions
     EYE_ATTACK_DELAY,
 };
 
+// npc_eye_of_shartuulAI 逻辑实现
 struct npc_eye_of_shartuulAI : public CombatAI
 {
     npc_eye_of_shartuulAI(Creature* creature) : CombatAI(creature, EYE_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -224,6 +239,7 @@ struct npc_eye_of_shartuulAI : public CombatAI
         AddCustomAction(EYE_ATTACK_DELAY, true, [&]() { HandleAttackDelay(); });
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -262,12 +278,14 @@ struct npc_eye_of_shartuulAI : public CombatAI
         m_creature->Suicide();
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SHARTUUL, EVENT_FAIL);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -295,6 +313,7 @@ struct npc_eye_of_shartuulAI : public CombatAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_RAMPAGING_CHARGE  = 41939,
@@ -302,6 +321,7 @@ enum
     SPELL_LACERATING_BITE   = 41940,
 };
 
+// DreadmawActions 相关枚举
 enum DreadmawActions
 {
     DREADMAW_RAMPAGING_CHARGE,
@@ -310,6 +330,7 @@ enum DreadmawActions
     DREADMAW_ATTACK_DELAY,
 };
 
+// npc_dreadmawAI 逻辑实现
 struct npc_dreadmawAI : public CombatAI
 {
     npc_dreadmawAI(Creature* creature) : CombatAI(creature, DREADMAW_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -320,6 +341,7 @@ struct npc_dreadmawAI : public CombatAI
         AddCustomAction(DREADMAW_ATTACK_DELAY, true, [&]() { HandleAttackDelay(); });
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -358,18 +380,21 @@ struct npc_dreadmawAI : public CombatAI
         m_creature->Suicide();
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SHARTUUL, EVENT_FAIL);
     }
 
+    // 法术命中目标回调
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
         if (spellInfo->Id == SPELL_LACERATING_BITE)
             DoScriptText(SAY_DREADMAW_LASH, m_creature, target);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -386,6 +411,7 @@ struct npc_dreadmawAI : public CombatAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_SHADOW_BOLT = 41069,
@@ -396,6 +422,7 @@ enum
     SPELL_INCINERATE = 41960,
 };
 
+// ShartuulActions 相关枚举
 enum ShartuulActions
 {
     SHARTUUL_TELEPORT,
@@ -407,6 +434,7 @@ enum ShartuulActions
     SHARTUUL_HANDLE_FIGHT_START,
 };
 
+// npc_shartuulAI 逻辑实现
 struct npc_shartuulAI : public CombatAI
 {
     npc_shartuulAI(Creature* creature) : CombatAI(creature, SHARTUUL_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_fightSequenceStage(0)
@@ -422,6 +450,7 @@ struct npc_shartuulAI : public CombatAI
         SetRangedMode(true, 30.f, TYPE_FULL_CASTER);
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -483,12 +512,14 @@ struct npc_shartuulAI : public CombatAI
                 HandleFightSequence();
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SHARTUUL, EVENT_FAIL);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -513,8 +544,10 @@ struct npc_shartuulAI : public CombatAI
     }
 };
 
+// PossessionTransfer 光环脚本
 struct PossessionTransfer : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (aura->GetEffIndex() != EFFECT_INDEX_2)
@@ -578,8 +611,10 @@ bool ProcessEventId_CharmShivan(uint32 /*uiEventId*/, Object* pSource, Object* /
     return true;
 }
 
+// TouchOfMadness 法术脚本
 struct TouchOfMadness : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (!spell->GetUnitTarget())
@@ -589,8 +624,10 @@ struct TouchOfMadness : public SpellScript
     }
 };
 
+// MadnessRift 法术脚本
 struct MadnessRift : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -605,8 +642,10 @@ struct MadnessRift : public SpellScript
     }
 };
 
+// EredarPreGateBeam 光环脚本
 struct EredarPreGateBeam : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -619,8 +658,10 @@ struct EredarPreGateBeam : public AuraScript
     }
 };
 
+// ThrowAxe 法术脚本
 struct ThrowAxe : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (!spell->GetUnitTarget() || effIdx != EFFECT_INDEX_1)
@@ -629,13 +670,16 @@ struct ThrowAxe : public SpellScript
     }
 };
 
+// SuperJump 法术脚本
 struct SuperJump : public SpellScript
 {
+    // 触发施法回调
     void OnCast(Spell* spell) const override
     {
         spell->GetCaster()->CastSpell(nullptr, spell->m_spellInfo->EffectTriggerSpell[EFFECT_INDEX_2], TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_1 && spell->GetUnitTarget())
@@ -643,16 +687,20 @@ struct SuperJump : public SpellScript
     }
 };
 
+// CleansingFlame 法术脚本
 struct CleansingFlame : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         spell->GetCaster()->RemoveAurasDueToSpell(SPELL_LACERATING_BITE);
     }
 };
 
+// RampagingCharge 法术脚本
 struct RampagingCharge : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_1)
@@ -660,6 +708,7 @@ struct RampagingCharge : public SpellScript
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     ITEM_CHARGED_CRYSTAL_FOCUS = 32578,
@@ -678,6 +727,7 @@ enum
     SPELL_BOMBING_RUN   = 41076,
 };
 
+// CheckCrystalFocusSpell 法术脚本
 struct CheckCrystalFocusSpell : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -692,6 +742,7 @@ struct CheckCrystalFocusSpell : public SpellScript
 
 struct AbsorbLife : public CheckCrystalFocusSpell
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_0)
@@ -704,6 +755,7 @@ struct AbsorbLife : public CheckCrystalFocusSpell
 
 struct ShartuulDiveBomb : public CheckCrystalFocusSpell
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_0)
@@ -714,8 +766,10 @@ struct ShartuulDiveBomb : public CheckCrystalFocusSpell
     }
 };
 
+// FlyingAttackAura 光环脚本
 struct FlyingAttackAura : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -725,8 +779,10 @@ struct FlyingAttackAura : public AuraScript
     }
 };
 
+// ShartuulFireballBarrage 法术脚本
 struct ShartuulFireballBarrage : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_0 || !spell->GetUnitTarget())
@@ -738,6 +794,7 @@ struct ShartuulFireballBarrage : public SpellScript
 
 struct ChaosStrike : public CheckCrystalFocusSpell
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_0)
@@ -750,14 +807,17 @@ struct ChaosStrike : public CheckCrystalFocusSpell
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_SIPHON_LIFE = 41597,
     SPELL_DARK_MENDING = 41938,
 };
 
+// ChaosStrikeDamage 法术脚本
 struct ChaosStrikeDamage : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -782,8 +842,10 @@ struct ChaosStrikeDamage : public SpellScript
     }
 };
 
+// ChaosStrikeTransform 法术脚本
 struct ChaosStrikeTransform : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_2)
@@ -793,8 +855,10 @@ struct ChaosStrikeTransform : public SpellScript
     }
 };
 
+// DeathBlast 法术脚本
 struct DeathBlast : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_1 && spell->GetUnitTarget())
@@ -808,8 +872,10 @@ struct DeathBlast : public SpellScript
     }
 };
 
+// Iceblast 法术脚本
 struct Iceblast : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -821,6 +887,7 @@ struct Iceblast : public SpellScript
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_ASPECT_OF_THE_FLAME   = 41593,
@@ -828,8 +895,10 @@ enum
     SPELL_ASPECT_OF_THE_SHADOW  = 41595,
 };
 
+// ShivanShapeshiftForm 光环脚本
 struct ShivanShapeshiftForm : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         Unit* target = aura->GetTarget();
@@ -855,8 +924,10 @@ struct ShivanShapeshiftForm : public AuraScript
     }
 };
 
+// BuildPortableFelCannon 光环脚本
 struct BuildPortableFelCannon : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply && aura->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
@@ -871,6 +942,7 @@ struct BuildPortableFelCannon : public AuraScript
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_SUMMON_STUN_ZONE_GRAPHIC_NS = 40776,
@@ -885,6 +957,7 @@ struct StunField : public ScriptedAI
 {
     StunField(Creature* creature) : ScriptedAI(creature) {}
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         SetCombatMovement(false);
@@ -897,14 +970,17 @@ struct StunField : public ScriptedAI
         m_creature->CastSpell(nullptr, SPELL_SUMMON_STUN_ZONE_GRAPHIC_WE, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         m_creature->CastSpell(summoned, SPELL_STUN_ROPE_ATTUNEMENT, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
+// StunRopeAttunement 法术脚本
 struct StunRopeAttunement : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -916,6 +992,7 @@ struct StunRopeAttunement : public SpellScript
     }
 };
 
+// 注册 shartuul_transporter 脚本
 void AddSC_shartuul_transporter()
 {
     Script* pNewScript = new Script;

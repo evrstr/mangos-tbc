@@ -15,41 +15,48 @@
  */
 
 
+/**
+ * 海加尔峰战役：阿兹加洛 (Azgalor) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "hyjal.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_ENTER = -1534067,
-    SAY_KILL1 = 18253,
-    SAY_KILL2 = 18254,
-    SAY_KILL3 = 18255,
-    SAY_DOOM1 = -1534071,
-    SAY_DOOM2 = -1534072,
-    SAY_DEATH = -1534073,
+    SAY_ENTER = -1534067,                                   // 剧情台词/喊话文本 ID
+    SAY_KILL1 = 18253,                                      // 剧情台词/喊话文本 ID
+    SAY_KILL2 = 18254,                                      // 剧情台词/喊话文本 ID
+    SAY_KILL3 = 18255,                                      // 剧情台词/喊话文本 ID
+    SAY_DOOM1 = -1534071,                                   // 剧情台词/喊话文本 ID
+    SAY_DOOM2 = -1534072,                                   // 剧情台词/喊话文本 ID
+    SAY_DEATH = -1534073,                                   // 剧情台词/喊话文本 ID
 
-    // abilities
-    SPELL_CLEAVE            = 31345,
-    SPELL_RAIN_OF_FIRE      = 31340,
-    SPELL_HOWL_OF_AZGALOR   = 31344,
-    SPELL_DOOM              = 31347,
-    SPELL_ENRAGE            = 26662,
+    // abilities (首领技能列表)
+    SPELL_CLEAVE            = 31345,                        // 技能法术：顺劈斩
+    SPELL_RAIN_OF_FIRE      = 31340,                        // 技能法术：火焰之雨
+    SPELL_HOWL_OF_AZGALOR   = 31344,                        // 技能法术 ID
+    SPELL_DOOM              = 31347,                        // 技能法术 ID
+    SPELL_ENRAGE            = 26662,                        // 技能法术：激怒/狂暴
 };
 
+// AzgalorActions 战斗行为动作枚举
 enum AzgalorActions
 {
-    AZGALOR_ACTION_CLEAVE,
+    AZGALOR_ACTION_CLEAVE,                                  // 战斗行为动作
     AZGALOR_RAIN_OF_FIRE,
     AZGALOR_HOWL_OF_AZGALOR,
     AZGALOR_DOOM,
     AZGALOR_ENRAGE,
-    AZGALOR_ACTION_MAX,
+    AZGALOR_ACTION_MAX,                                     // 战斗行为动作
 };
 
-static const float SPELL_RAIN_OF_FIRE_MINRANGE = 0;             // 0 yards from boss
-static const float SPELL_RAIN_OF_FIRE_MAXRANGE = 34;            // 34 yards from boss
+static const float SPELL_RAIN_OF_FIRE_MINRANGE = 0;             // 0 yards from boss (说明)
+static const float SPELL_RAIN_OF_FIRE_MAXRANGE = 34;            // 34 yards from boss (说明)
 
+// boss_azgalorAI 首领战斗 AI
 struct boss_azgalorAI : public CombatAI
 {
     boss_azgalorAI(Creature* creature) : CombatAI(creature, AZGALOR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -78,7 +85,7 @@ struct boss_azgalorAI : public CombatAI
             case AZGALOR_HOWL_OF_AZGALOR: return 30000;
             case AZGALOR_DOOM: return urand(45000, 55000);
             case AZGALOR_ENRAGE: return 600000;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅为满足编译器要求，实际不会发生)
         }
     }
 
@@ -91,7 +98,7 @@ struct boss_azgalorAI : public CombatAI
             case AZGALOR_HOWL_OF_AZGALOR: return urand(18000, 20000);
             case AZGALOR_DOOM: return urand(45000, 55000);
             case AZGALOR_ENRAGE: return 300000;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅为满足编译器要求，实际不会发生)
         }
     }
 
@@ -114,7 +121,7 @@ struct boss_azgalorAI : public CombatAI
             DoScriptText(urand(0, 1) ? SAY_DOOM1 : SAY_DOOM2, m_creature);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -163,7 +170,7 @@ struct AzgalorDoom : public SpellScript
     }
 };
 
-void AddSC_boss_azgalor()
+void AddSC_boss_azgalor() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_azgalor";

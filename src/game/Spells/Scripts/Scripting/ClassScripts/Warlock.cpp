@@ -22,12 +22,14 @@
 
 enum
 {
-    SPELL_UNSTABLE_AFFLICTION_SILENCE = 31117,
+    SPELL_UNSTABLE_AFFLICTION_SILENCE = 31117,              // 痛苦无常被驱散后的沉默与反噬伤害法术
 };
 
+// 暗影之拥减益法术列表与可维持暗影之拥的 DoT 法术列表
 static uint32 const shadowEmbraceSpellList[5] = { 32386,32388,32389,32390,32391 };
 static uint32 const causesShadowEmbraceSpellList[23] = { 172,6222,6223,7648,11671,11672,25311,27216,18265,18879,18880,18881,27264,30911,27243,980,1014,6217,11711,11712,11713,27218 };
 
+// 当施法者最后一个触发“暗影之拥”的 DoT 从目标身上移除时，同步移除“暗影之拥”光环
 void RemoveShadowEmbraceIfNecessary(Aura* aura)
 {
     bool hasOtherShadowEmbraceCausingAuras = false;
@@ -41,7 +43,7 @@ void RemoveShadowEmbraceIfNecessary(Aura* aura)
         }
     }
 
-    if (!hasOtherShadowEmbraceCausingAuras) // siphon life
+    if (!hasOtherShadowEmbraceCausingAuras) // siphon life (检查生命虹吸等周期吸取类 DoT)
     {
         Unit::AuraList const& auraPeriodicDmg = aura->GetTarget()->GetAurasByType(SPELL_AURA_PERIODIC_LEECH);
         for (Unit::AuraList::const_iterator itr = auraPeriodicDmg.begin(); itr != auraPeriodicDmg.end(); ++itr)
@@ -55,6 +57,7 @@ void RemoveShadowEmbraceIfNecessary(Aura* aura)
     }
 
     // if this is the final Shadow Embrace causing DoT being removed, also remove Shadow Embrace if found
+    // 若目标不再有来自同一施法者的暗影之拥关联 DoT，则清除暗影之拥
     if (!hasOtherShadowEmbraceCausingAuras)
     {
         uint32 shadowEmbraceSpellId = 0;
@@ -72,29 +75,29 @@ void RemoveShadowEmbraceIfNecessary(Aura* aura)
     }
 }
 
-// 30108 - Unstable Affliction
+// 30108 - Unstable Affliction (痛苦无常：被驱散时对驱散者造成 9 倍单跳基础伤害并沉默)
 struct UnstableAffliction : public AuraScript
 {
     void OnDispel(SpellAuraHolder* holder, Unit* dispeller, uint32 /*dispellingSpellId*/, uint32 /*originalStacks*/) const override
     {
-        // use clean value for initial damage
+        // use clean value for initial damage (使用未受加成污染的原始基础值)
         int32 damage = holder->GetSpellProto()->CalculateSimpleValue(EFFECT_INDEX_0);
         damage *= 9;
 
-        // backfire damage and silence - confirmed to have original caster
+        // backfire damage and silence - confirmed to have original caster (保留原施法者 GUID 以正确触发法伤/爆击等归属)
         dispeller->CastCustomSpell(dispeller, SPELL_UNSTABLE_AFFLICTION_SILENCE, &damage, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, holder->GetCasterGuid());
     }
 };
 
-// 980 - Curse of Agony
+// 980 - Curse of Agony (痛苦诅咒：前 4 跳为 0.5 倍、中间 4 跳为 1 倍、后 4 跳为 1.5 倍递增伤害)
 struct CurseOfAgony : public AuraScript
 {
     void OnPeriodicCalculateAmount(Aura* aura, uint32& amount) const override
     {
-        // 1..4 ticks, 1/2 from normal tick damage
+        // 1..4 ticks, 1/2 from normal tick damage (第 1~4 跳为标准每跳伤害的一半)
         if (aura->GetAuraTicks() <= 4)
             amount = amount / 2;
-        // 9..12 ticks, 3/2 from normal tick damage
+        // 9..12 ticks, 3/2 from normal tick damage (第 9~12 跳为标准每跳伤害的 1.5 倍)
         else if (aura->GetAuraTicks() >= 9)
             amount += (amount + 1) / 2; // +1 prevent 0.5 damage possible lost at 1..4 ticks
         // 5..8 ticks have normal tick damage
@@ -107,21 +110,21 @@ struct CurseOfAgony : public AuraScript
     }
 };
 
-// 1122 - Inferno (Summon)
+// 1122 - Inferno (Summon) (地狱火召唤：短暂定身、施加奴役恶魔、释放地狱火落地晕与献祭光环)
 struct InfernoWarlockSummon : public SpellScript
 {
     void OnSummon(Spell* spell, Creature* summon) const override
     {
         // Enslave demon effect, without mana cost and cooldown
-        summon->CastSpell(nullptr, 22707, TRIGGERED_OLD_TRIGGERED); // short root spell on infernal from sniffs
+        summon->CastSpell(nullptr, 22707, TRIGGERED_OLD_TRIGGERED); // short root spell on infernal from sniffs (召唤短暂定身)
         spell->GetCaster()->CastSpell(summon, 20882, TRIGGERED_OLD_TRIGGERED);
-        summon->CastSpell(nullptr, 22703, TRIGGERED_NONE); // Inferno effect - in wotlk cast automatically
+        summon->CastSpell(nullptr, 22703, TRIGGERED_NONE); // Inferno effect - in wotlk cast automatically (地狱火落地伤害与眩晕)
         summon->AI()->DoCastSpellIfCan(nullptr, 19483, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
-        summon->CastSpell(nullptr, 22764, TRIGGERED_NONE); // aggro spell
+        summon->CastSpell(nullptr, 22764, TRIGGERED_NONE); // aggro spell (落地索敌)
     }
 };
 
-// 1454 - Life Tap
+// 1454 - Life Tap (生命分流：计算自身法伤加成下的血量消耗，按强化生命分流和法力喂养天赋返还法力)
 struct LifeTap : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -164,9 +167,9 @@ struct LifeTap : public SpellScript
             {
                 switch ((*itr)->GetSpellProto()->Id)
                 {
-                    case 28830: // Plagueheart Rainment - reduce hp cost
+                    case 28830: // Plagueheart Rainment - reduce hp cost (T3 套装降低生命消耗)
                         break;
-                        // Improved Life Tap
+                        // Improved Life Tap (强化生命分流提高转化法力值)
                     default: mana = ((*itr)->GetModifier()->m_amount + 100) * mana / 100; break;
                 }
             }
@@ -174,7 +177,7 @@ struct LifeTap : public SpellScript
 
         caster->CastCustomSpell(nullptr, 31818, &mana, nullptr, nullptr, TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_HIDE_CAST_IN_COMBAT_LOG);
 
-        // Mana Feed
+        // Mana Feed (法力喂养天赋：按比例同步为恶魔宠物恢复法力)
         int32 manaFeedVal = caster->CalculateSpellEffectValue(caster, spell->m_spellInfo, EFFECT_INDEX_1);
         manaFeedVal = manaFeedVal * mana / 100;
         if (manaFeedVal > 0 && caster->GetPet())
@@ -182,7 +185,7 @@ struct LifeTap : public SpellScript
     }
 };
 
-// 5699 - Create Healthstone
+// 5699 - Create Healthstone (制造治疗石：根据“强化治疗石”天赋等级决定生成物品 ID，并检查背包唯一性)
 struct CreateHealthStoneWarlock : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -228,6 +231,7 @@ struct CreateHealthStoneWarlock : public SpellScript
             }
         }
 
+        // 各等级治疗石对应普通 / 强化 1 级 / 强化 2 级物品 ID 查找表
         static uint32 const itypes[6][3] =
         {
             { 5512, 19004, 19005},              // Minor Healthstone
@@ -257,7 +261,7 @@ struct CreateHealthStoneWarlock : public SpellScript
     }
 };
 
-// 35696 - Demonic Knowledge
+// 35696 - Demonic Knowledge (恶魔知识：根据宠物耐力与智力总和的 4%/8%/12% 提高主人法术伤害)
 struct DemonicKnowledge : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
@@ -275,7 +279,7 @@ struct DemonicKnowledge : public AuraScript
     }
 };
 
-// 25228 - Soul Link
+// 25228 - Soul Link (灵魂链接：将第 0 效果修正为提高造成的全伤害百分比)
 struct SoulLink : public AuraScript
 {
     void OnAuraInit(Aura* aura) const override
@@ -285,7 +289,7 @@ struct SoulLink : public AuraScript
     }
 };
 
-// 18265 - Siphon Life
+// 18265 - Siphon Life (生命虹吸：光环移除时检查是否需同步清除暗影之拥)
 struct SiphonLife : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -295,7 +299,7 @@ struct SiphonLife : public AuraScript
     }
 };
 
-// 172 - Corruption
+// 172 - Corruption (腐蚀术：光环移除时检查是否需同步清除暗影之拥)
 struct Corruption : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -305,7 +309,7 @@ struct Corruption : public AuraScript
     }
 };
 
-// 126 - Eye of Kilrogg (Summon)
+// 126 - Eye of Kilrogg (Summon) (基尔罗格之眼：召唤后施放视觉/隐形关联被动 2585)
 struct EyeOfKilrogg : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -314,7 +318,7 @@ struct EyeOfKilrogg : public SpellScript
     }
 };
 
-// 603 - Curse of Doom
+// 603 - Curse of Doom (厄运诅咒：禁止对玩家施放；目标死于该效果时有几率召唤末日守卫)
 struct CurseOfDoom : public SpellScript, public AuraScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -334,7 +338,7 @@ struct CurseOfDoom : public SpellScript, public AuraScript
     }
 };
 
-// 18662 - Curse of Doom Effect
+// 18662 - Curse of Doom Effect (厄运诅咒召唤末日守卫效果：召唤后附加控制/束缚法术)
 struct CurseOfDoomEffect : public SpellScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -343,7 +347,7 @@ struct CurseOfDoomEffect : public SpellScript
     }
 };
 
-// 18788 - Demonic Sacrifice
+// 18788 - Demonic Sacrifice (恶魔牺牲：根据被献祭恶魔宠物的生物条目赋予对应强力增益)
 struct DemonicSacrifice : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -354,11 +358,11 @@ struct DemonicSacrifice : public SpellScript
         uint32 spellId;
         switch (entry)
         {
-            case 416: spellId = 18789; break;   // imp
-            case 417: spellId = 18792; break;   // fellhunter
-            case 1860: spellId = 18790; break;  // void
-            case 1863: spellId = 18791; break;  // succubus
-            case 17252: spellId = 35701; break; // fellguard
+            case 416: spellId = 18789; break;   // imp (小鬼 -> 15% 火伤)
+            case 417: spellId = 18792; break;   // fellhunter (地狱猎犬 -> 每 4 秒回蓝)
+            case 1860: spellId = 18790; break;  // void (虚空行者 -> 每 4 秒回血)
+            case 1863: spellId = 18791; break;  // succubus (魅魔 -> 15% 暗伤)
+            case 17252: spellId = 35701; break; // fellguard (恶魔卫士 -> 10% 暗火伤与回蓝)
             default: sLog.outError("EffectInstaKill: Unhandled creature entry (%u) case.", entry); return;
         }
 
@@ -366,7 +370,7 @@ struct DemonicSacrifice : public SpellScript
     }
 };
 
-// 19505 - Devour Magic
+// 19505 - Devour Magic (吞噬魔法：施法前检查目标身上是否存在可驱散的魔法 Buff/Debuff)
 struct DevourMagic : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -389,10 +393,10 @@ struct DevourMagic : public SpellScript
 
 enum
 {
-    SPELL_SEED_DAMAGE = 27285,
+    SPELL_SEED_DAMAGE = 27285,                              // 腐蚀之种爆炸 AoE 伤害法术
 };
 
-// 27243 - Seed of Corruption
+// 27243 - Seed of Corruption (腐蚀之种：目标死亡或累计受到足够伤害时引爆 AoE 并同步检查暗影之拥)
 struct SeedOfCorruption : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -414,13 +418,13 @@ struct SeedOfCorruption : public AuraScript
         if (aura->GetEffIndex() != EFFECT_INDEX_1)
             return SPELL_AURA_PROC_OK;
         Modifier* mod = procData.triggeredByAura->GetModifier();
-        // if damage is more than need
+        // if damage is more than need (累计伤害达到阈值则移除光环并引爆)
         if (mod->m_amount <= (int32)procData.damage)
         {
             // remember guid before aura delete
             ObjectGuid casterGuid = procData.triggeredByAura->GetCasterGuid();
 
-            // Remove aura (before cast for prevent infinite loop handlers)
+            // Remove aura (before cast for prevent infinite loop handlers) (先移除光环防止无限递归触发)
             procData.victim->RemoveAurasByCasterSpell(procData.triggeredByAura->GetId(), procData.triggeredByAura->GetCasterGuid());
 
             // Cast finish spell (triggeredByAura already not exist!)
@@ -429,13 +433,13 @@ struct SeedOfCorruption : public AuraScript
             return SPELL_AURA_PROC_OK;              // no hidden cooldown
         }
 
-        // Damage counting
+        // Damage counting (扣减剩余伤害阈值)
         mod->m_amount -= procData.damage;
         return SPELL_AURA_PROC_OK;
     }
 };
 
-// 27285 - Seed of Corruption
+// 27285 - Seed of Corruption (腐蚀之种引爆伤害目标检查)
 struct SeedOfCorruptionDamage : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -446,7 +450,7 @@ struct SeedOfCorruptionDamage : public SpellScript
     }
 };
 
-// 30293 - Soul Leech
+// 30293 - Soul Leech (灵魂榨取：按触发伤害的百分比触发回血)
 struct SoulLeech : public AuraScript
 {
     SpellAuraProcResult OnProc(Aura* aura, ProcExecutionData& procData) const override
@@ -458,6 +462,7 @@ struct SoulLeech : public AuraScript
     }
 };
 
+// 诅咒类 PvP 持续时间递减（玩家对战时限制为 12 秒）
 struct CurseDiminishingDuration : public AuraScript
 {
     int32 OnDurationCalculate(WorldObject const* caster, Unit const* target, int32 duration) const override
@@ -468,7 +473,7 @@ struct CurseDiminishingDuration : public AuraScript
     }
 };
 
-// 17804 - Soul Siphon
+// 17804 - Soul Siphon (灵魂虹吸：按目标身上术士痛苦系效果数量（含堆叠）提高吸取生命伤害)
 struct SoulSiphon : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -479,11 +484,11 @@ struct SoulSiphon : public AuraScript
 
     void OnDamageCalculate(Aura* aura, Unit* attacker, Unit* victim, int32& /*advertisedBenefit*/, float& totalMod) const override
     {
-        // effect 1 m_amount
+        // effect 1 m_amount (最大增伤百分比上限)
         int32 maxPercent = aura->GetModifier()->m_amount;
-        // effect 0 m_amount
+        // effect 0 m_amount (每个痛苦效果提供的增伤步长)
         int32 stepPercent = attacker->CalculateSpellEffectValue(attacker, aura->GetSpellProto(), EFFECT_INDEX_0);
-        // count affliction effects and calc additional damage in percentage
+        // count affliction effects and calc additional damage in percentage (统计目标身上的术士痛苦类减益总层数)
         int32 modPercent = 0;
         Unit::SpellAuraHolderMap const& victimAuras = victim->GetSpellAuraHolderMap();
         for (const auto& victimAura : victimAuras)
@@ -502,7 +507,7 @@ struct SoulSiphon : public AuraScript
     }
 };
 
-// 37384 - Improved Corruption and Immolate
+// 37384 - Improved Corruption and Immolate (T5 套装：腐蚀术/献祭触发对应增伤减益)
 struct ImprovedCorruptionAndImmolate : public AuraScript
 {
     SpellAuraProcResult OnProc(Aura* /*aura*/, ProcExecutionData& procData) const override
@@ -519,7 +524,7 @@ struct ImprovedCorruptionAndImmolate : public AuraScript
     }
 };
 
-// 37401, 37402 - Improved Corruption and Immolate
+// 37401, 37402 - Improved Corruption and Immolate (目标受到指定法术易伤加成光环)
 struct IncreasedSpellDamageTakenWarlock : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -533,6 +538,7 @@ struct IncreasedSpellDamageTakenWarlock : public AuraScript
     }
 };
 
+// 注册术士职业法术脚本
 void LoadWarlockScripts()
 {
     RegisterSpellScript<UnstableAffliction>("spell_unstable_affliction");

@@ -29,9 +29,10 @@
 //       if this class definition not complite then VS for x64 release use different size for
 //       struct OpcodeHandler in this header and Opcode.cpp and get totally wrong data from
 //       table opcodeTable in source when Opcode.h included but WorldSession.h not included
+// 注意：此处必须引入完整的 WorldSession 定义，否则在不同编译单元中成员函数指针大小可能不一致，导致 opcodeTable 内存布局错乱
 #include "Server/WorldSession.h"
 
-/// List of Opcodes
+/// List of Opcodes | TBC 2.4.3 协议操作码枚举（CMSG 客户端上行 / SMSG 服务端下行 / MSG 双向）
 enum Opcodes
 {
     MSG_NULL_ACTION                                 = 0x000,
@@ -1097,41 +1098,44 @@ enum Opcodes
 };
 
 // Don't forget to change this value and add opcode name to Opcodes.cpp when you add new opcode!
+// 新增操作码时切记同步更新 NUM_MSG_TYPES 及 Opcodes.cpp 中的 opcodeTable 映射表
 #define NUM_MSG_TYPES 0x424
 
-/// Player state
+/// Player state | 允许接收该操作码的会话状态要求
 enum SessionStatus
 {
-    STATUS_AUTHED = 0,                                      // Player authenticated (_player==nullptr, m_playerRecentlyLogout = false or will be reset before handler call)
-    STATUS_LOGGEDIN,                                        // Player in game (_player!=nullptr, inWorld())
-    STATUS_TRANSFER,                                        // Player transferring to another map (_player!=nullptr, !inWorld())
-    STATUS_LOGGEDIN_OR_RECENTLY_LOGGEDOUT,                  // _player!= nullptr or _player==nullptr && m_playerRecentlyLogout)
-    STATUS_NEVER,                                           // Opcode not accepted from client (deprecated or server side only)
-    STATUS_UNHANDLED                                        // We don' handle this opcode yet
+    STATUS_AUTHED = 0,                                      // Player authenticated (_player==nullptr, m_playerRecentlyLogout = false or will be reset before handler call) | 已通过账号认证（尚未进入角色或刚登出）
+    STATUS_LOGGEDIN,                                        // Player in game (_player!=nullptr, inWorld()) | 角色已登录并在游戏世界中
+    STATUS_TRANSFER,                                        // Player transferring to another map (_player!=nullptr, !inWorld()) | 角色正在跨地图传送中
+    STATUS_LOGGEDIN_OR_RECENTLY_LOGGEDOUT,                  // _player!= nullptr or _player==nullptr && m_playerRecentlyLogout) | 角色在线或处于刚登出宽限窗口内
+    STATUS_NEVER,                                           // Opcode not accepted from client (deprecated or server side only) | 服务端不接收（仅下行包或已废弃）
+    STATUS_UNHANDLED                                        // We don' handle this opcode yet | 暂未实现处理逻辑
 };
 
+/// 数据包线程调度策略
 enum PacketProcessing
 {
-    PROCESS_INPLACE = 0,                                    // process packet whenever we receive it - mostly for non-handled or non-implemented packets
-    PROCESS_THREADUNSAFE,                                   // packet is not thread-safe - process it in World::UpdateSessions()
-    PROCESS_THREADSAFE,                                     // packet is thread-safe - process it in Map::Update()
-    PROCESS_MAP_THREAD,                                     // packet is map thread safe
-    PROCESS_IMMEDIATE,                                      // packet is network thread safe
+    PROCESS_INPLACE = 0,                                    // process packet whenever we receive it - mostly for non-handled or non-implemented packets | 就地处理（多用于空处理器或未实现包）
+    PROCESS_THREADUNSAFE,                                   // packet is not thread-safe - process it in World::UpdateSessions() | 非线程安全：须在世界主线程 World::UpdateSessions() 中处理
+    PROCESS_THREADSAFE,                                     // packet is thread-safe - process it in Map::Update() | 线程安全：可在地图工作线程 Map::Update() 中处理
+    PROCESS_MAP_THREAD,                                     // packet is map thread safe | 地图线程安全：随所在地图线程处理
+    PROCESS_IMMEDIATE,                                      // packet is network thread safe | 网络线程安全：在网络收包上下文中立即处理
 };
 
 class WorldPacket;
 
+/// 操作码分发描述符
 struct OpcodeHandler
 {
-    char const* name;
-    SessionStatus status;
-    PacketProcessing packetProcessing;
-    void (WorldSession::*handler)(WorldPacket& recvPacket);
+    char const* name;                                       ///< 操作码名称字符串
+    SessionStatus status;                                   ///< 会话状态前置要求
+    PacketProcessing packetProcessing;                      ///< 线程安全与处理队列类型
+    void (WorldSession::*handler)(WorldPacket& recvPacket); ///< 对应的 WorldSession 处理函数指针
 };
 
 extern OpcodeHandler opcodeTable[NUM_MSG_TYPES];
 
-/// Lookup opcode name for human understandable logging
+/// Lookup opcode name for human understandable logging | 根据操作码数值查找可读名称字符串（用于日志输出）
 inline const char* LookupOpcodeName(uint16 id)
 {
     if (id >= NUM_MSG_TYPES)

@@ -21,10 +21,16 @@ SDComment: Implementing in SD2 due to some complex behavior
 SDCategory: Coilfang Resevoir, Underbog
 EndScriptData */
 
+// 沼地领主穆斯拉克（幽暗沼泽三号首领）
+/* 遭遇战概述：
+ * 沼地领主穆斯拉克携猎犬克劳参战，施放瞄准射击、多重射击与陷阱。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "underbog.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO_1 = 17506,
@@ -54,6 +60,7 @@ enum
     SPELL_FRENZY = 34971,
 };
 
+// MuselekActions 相关枚举
 enum MuselekActions
 {
     MUSELEK_TRAP_ONE,
@@ -67,6 +74,7 @@ enum MuselekActions
     MUSELEK_ACTION_MAX,
 };
 
+// boss_swamplord_muselekAI 逻辑实现
 struct boss_swamplord_muselekAI : public CombatAI
 {
     boss_swamplord_muselekAI(Creature* creature) : CombatAI(creature, MUSELEK_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -89,6 +97,7 @@ struct boss_swamplord_muselekAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -110,6 +119,7 @@ struct boss_swamplord_muselekAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -195,6 +205,7 @@ struct boss_swamplord_muselekAI : public CombatAI
                     claw->getThreatManager().modifyThreatPercent(target, (0 - urand(30, 99))); // Freezing trap messes with bear aggro
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         uint8 yell = urand(0, 2);
@@ -212,6 +223,7 @@ struct boss_swamplord_muselekAI : public CombatAI
         }	
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (Creature* claw = m_instance->GetSingleCreatureFromStorage(NPC_CLAW))
@@ -219,6 +231,7 @@ struct boss_swamplord_muselekAI : public CombatAI
         DoBroadcastText(SAY_DEATH, m_creature);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override 
     {
         if (Creature *claw = m_instance->GetSingleCreatureFromStorage(NPC_CLAW))
@@ -231,8 +244,10 @@ struct boss_swamplord_muselekAI : public CombatAI
 };
 
 // 34662 - Bear Command
+// BearCommand 法术脚本
 struct BearCommand : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* claw = spell->GetUnitTarget();
@@ -258,6 +273,7 @@ struct BearCommand : public SpellScript
     }
 };
 
+// 注册 boss_swamplord_muselek 脚本
 void AddSC_boss_swamplord_muselek()
 {
     Script* pNewScript = new Script;

@@ -23,47 +23,51 @@ ILLHOOF_ACTION_SACRIFICE random topaggro + 1 post 2.1. else 0
 SDCategory: Karazhan
 EndScriptData */
 
+// 特雷斯坦·邪蹄（Terestian Illhoof）首领战 AI（恶魔之链束缚献祭与小鬼狂潮）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_SLAY1                   = 15145,
-    SAY_SLAY2                   = 15146,
-    SAY_DEATH                   = 15137,
-    SAY_AGGRO                   = 15141,
-    SAY_SACRIFICE1              = 15147,
-    SAY_SACRIFICE2              = 15148,
-    SAY_SUMMON1                 = 15150,
-    SAY_SUMMON2                 = 15151,
-    SAY_KILREK_DEATH            = 13582,
+    SAY_SLAY1                   = 15145,                    // slay1 台词广播 ID
+    SAY_SLAY2                   = 15146,                    // slay2 台词广播 ID
+    SAY_DEATH                   = 15137,                    // 死亡 台词广播 ID
+    SAY_AGGRO                   = 15141,                    // 开战 台词广播 ID
+    SAY_SACRIFICE1              = 15147,                    // sacrifice1 台词广播 ID
+    SAY_SACRIFICE2              = 15148,                    // sacrifice2 台词广播 ID
+    SAY_SUMMON1                 = 15150,                    // summon1 台词广播 ID
+    SAY_SUMMON2                 = 15151,                    // summon2 台词广播 ID
+    SAY_KILREK_DEATH            = 13582,                    // kilrek死亡 台词广播 ID
 
-    // spells
-    SPELL_SUMMON_DEMONCHAINS    = 30120,                    // Summons demonic chains that maintain the ritual of sacrifice.
+    // spells (技能法术)
+    SPELL_SUMMON_DEMONCHAINS    = 30120,                    // Summons demonic chains that maintain the ritual of sacrifice. (召唤 demonic chains that maintain the ritual of sacrifice.)
     SPELL_SHADOW_BOLT           = 30055,                    // Hurls a bolt of dark magic at an enemy, inflicting Shadow damage.
     SPELL_SACRIFICE             = 30115,                    // Teleports and adds the debuff
     SPELL_BERSERK               = 32965,                    // Increases attack speed by 75%. Periodically casts Shadow Bolt Volley.
-    SPELL_SUMMON_IMP            = 30066,                    // Summons Kil'rek
+    SPELL_SUMMON_IMP            = 30066,                    // Summons Kil'rek (召唤 Kil'rek)
     SPELL_FIENDISH_PORTAL       = 30171,                    // Opens portal and summons Fiendish Portal, 2 sec cast
     SPELL_FIENDISH_PORTAL_1     = 30179,                    // Opens portal and summons Fiendish Portal, instant cast
 
-    // Chains spells
-    SPELL_DEMON_CHAINS          = 30206,                    // Instant - Visual Effect
+    // Chains spells (锁链spells)
+    SPELL_DEMON_CHAINS          = 30206,                    // Instant - Visual Effect (Instant-视觉特效效果)
 
-    // Portal spells
-    SPELL_SUMMON_FIENDISH_IMP   = 30184,
+    // Portal spells (传送门spells)
+    SPELL_SUMMON_FIENDISH_IMP   = 30184,                    // 召唤fiendishimp 法术 ID
 
     // Kilrek
     SPELL_BROKEN_PACT           = 30065,                    // All damage taken increased by 25%, TODO: Sends AI event for Imp Timer
 
     // summoned npcs
-    NPC_DEMONCHAINS             = 17248,
-    NPC_FIENDISHIMP             = 17267,
-    NPC_PORTAL                  = 17265,
-    NPC_KILREK                  = 17229
+    NPC_DEMONCHAINS             = 17248,                    // demonchains Entry ID
+    NPC_FIENDISHIMP             = 17267,                    // fiendishimp Entry ID
+    NPC_PORTAL                  = 17265,                    // 传送门 Entry ID
+    NPC_KILREK                  = 17229                     // kilrek Entry ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum IllhoofActions
 {
     ILLHOOF_ACTION_SUMMON_KILREK,
@@ -72,6 +76,7 @@ enum IllhoofActions
     ILLHOOF_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（terestian）
 struct boss_terestianAI : public CombatAI
 {
     boss_terestianAI(Creature* creature) : CombatAI(creature, ILLHOOF_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -84,12 +89,13 @@ struct boss_terestianAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
-    ObjectGuid m_kilrekGuid;
-    ObjectGuid m_sacrificeGuid;
-    ObjectGuid m_chainsGuid;
+    ObjectGuid m_kilrekGuid;                                // kilrek 实体 GUID
+    ObjectGuid m_sacrificeGuid;                             // sacrifice 实体 GUID
+    ObjectGuid m_chainsGuid;                                // chains 实体 GUID
     
-    bool m_bSummonedPortals;
+    bool m_bSummonedPortals;                                // SummonedPortals 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -105,11 +111,12 @@ struct boss_terestianAI : public CombatAI
             case ILLHOOF_ACTION_SUMMON_KILREK: return 30000;
 #else
             case ILLHOOF_ACTION_SUMMON_KILREK: return 45000;
-#endif
-            default: return 0; // never occurs but for compiler
+#endif                                                      // 结束头文件防重复包含宏
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
+     // 施法事件回调
      void OnSpellCast(SpellEntry const* spellInfo, Unit* target) override
     {
         switch (spellInfo->Id)
@@ -149,6 +156,7 @@ struct boss_terestianAI : public CombatAI
             m_instance->SetData(TYPE_TERESTIAN, IN_PROGRESS);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         Creature* kilrek = m_creature->GetMap()->GetAnyTypeCreature(m_kilrekGuid);
@@ -165,6 +173,7 @@ struct boss_terestianAI : public CombatAI
         Reset();
     }
     
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -195,6 +204,7 @@ struct boss_terestianAI : public CombatAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -240,6 +250,7 @@ struct Sacrifice : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_terestian_illhoof
 void AddSC_boss_terestian_illhoof()
 {
     Script* pNewScript = new Script;

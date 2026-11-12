@@ -21,67 +21,72 @@ SDComment: Viscidus globs miss their speed update while they move to the center.
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：维希度斯 (Viscidus) 冰冻硬化与物理击碎分裂首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 常量与事件枚举
 enum
 {
-    // emotes
-    EMOTE_SLOW                  = -1531041,
-    EMOTE_FREEZE                = -1531042,
-    EMOTE_FROZEN                = -1531043,
-    EMOTE_CRACK                 = -1531044,
-    EMOTE_SHATTER               = -1531045,
-    EMOTE_EXPLODE               = -1531046,
+    // emotes (说明)
+    EMOTE_SLOW                  = -1531041,                 // 剧情台词/喊话文本 ID
+    EMOTE_FREEZE                = -1531042,                 // 剧情台词/喊话文本 ID
+    EMOTE_FROZEN                = -1531043,                 // 剧情台词/喊话文本 ID
+    EMOTE_CRACK                 = -1531044,                 // 剧情台词/喊话文本 ID
+    EMOTE_SHATTER               = -1531045,                 // 剧情台词/喊话文本 ID
+    EMOTE_EXPLODE               = -1531046,                 // 剧情台词/喊话文本 ID
 
-    // Timer spells
-    SPELL_POISON_SHOCK          = 25993,
-    SPELL_POISONBOLT_VOLLEY     = 25991,
-    SPELL_TOXIN                 = 26575,                    // Triggers toxin cloud - 25989
+    // Timer spells (计时器法术)
+    SPELL_POISON_SHOCK          = 25993,                    // 技能法术 ID
+    SPELL_POISONBOLT_VOLLEY     = 25991,                    // 技能法术 ID
+    SPELL_TOXIN                 = 26575,                    // Triggers toxin cloud - 25989 (说明)
 
-    // Debuffs gained by the boss on frost damage
-    SPELL_VISCIDUS_SLOWED       = 26034,
-    SPELL_VISCIDUS_SLOWED_MORE  = 26036,
-    SPELL_VISCIDUS_FREEZE       = 25937,
+    // Debuffs gained by the boss on frost damage (说明)
+    SPELL_VISCIDUS_SLOWED       = 26034,                    // 技能法术 ID
+    SPELL_VISCIDUS_SLOWED_MORE  = 26036,                    // 技能法术 ID
+    SPELL_VISCIDUS_FREEZE       = 25937,                    // 技能法术 ID
 
-    // Proc spells handling the various stages based on hits
-    SPELL_MEMBRANE_VISCIDUS     = 25994,                    // Damage reduction spell - removed from DBC (readded)
-    SPELL_VISCIDUS_WEAKNESS     = 25926,                    // Aura which procs at damage - triggers the slow spells - removed from DBC (readded)
+    // Proc spells handling the various stages based on hits (说明)
+    SPELL_MEMBRANE_VISCIDUS     = 25994,                    // Damage reduction spell - removed from DBC (readded) (说明)
+    SPELL_VISCIDUS_WEAKNESS     = 25926,                    // Aura which procs at damage - triggers the slow spells - removed from DBC (readded) (说明)
 
-    // When frost damage exceeds a certain limit, then boss explodes
-    SPELL_VISCIDUS_EXPLODE      = 25938,
-    SPELL_VISCIDUS_SUICIDE_TRIGGER = 26003,                 // Cast when Viscidus shatters and is below 10% HP - triggers 26002
-    SPELL_VISCIDUS_SUICIDE      = 26002,                    // Actual suicide spell
-    SPELL_HATE_TO_ZERO          = 20538,
+    // When frost damage exceeds a certain limit, then boss explodes (说明)
+    SPELL_VISCIDUS_EXPLODE      = 25938,                    // 技能法术 ID
+    SPELL_VISCIDUS_SUICIDE_TRIGGER = 26003,                 // Cast when Viscidus shatters and is below 10% HP - triggers 26002 (说明)
+    SPELL_VISCIDUS_SUICIDE      = 26002,                    // Actual suicide spell (法术)
+    SPELL_HATE_TO_ZERO          = 20538,                    // 技能法术 ID
 
-    // Spell for globs
-    SPELL_REJOIN_VISCIDUS       = 25896,
-    SPELL_SUMMON_GLOBS          = 25885,                    // summons npc 15667 using spells from 25865 to 25884; All spells have target coords
-    SPELL_VISCIDUS_SHRINKS_1    = 25893,                    // removed from DBC (readded)
-    SPELL_VISCIDUS_SHRINKS_2    = 27934,                    // removed from DBC (readded)
-    SPELL_DESPAWN_GLOBS         = 26608,                    // removed from DBC (readded)
-    SPELL_VISCIDUS_GROWS        = 25897,                    // removed from DBC (readded)
+    // Spell for globs (法术)
+    SPELL_REJOIN_VISCIDUS       = 25896,                    // 技能法术 ID
+    SPELL_SUMMON_GLOBS          = 25885,                    // summons npc 15667 using spells from 25865 to 25884; All spells have target coords (说明)
+    SPELL_VISCIDUS_SHRINKS_1    = 25893,                    // removed from DBC (readded) (已从 DBC 中移除（重新添加）)
+    SPELL_VISCIDUS_SHRINKS_2    = 27934,                    // removed from DBC (readded) (已从 DBC 中移除（重新添加）)
+    SPELL_DESPAWN_GLOBS         = 26608,                    // removed from DBC (readded) (已从 DBC 中移除（重新添加）)
+    SPELL_VISCIDUS_GROWS        = 25897,                    // removed from DBC (readded) (已从 DBC 中移除（重新添加）)
 
-//    SPELL_VISCIDUS_TELEPORT     = 25904,                    // Unknown usage - removed from DBC (readded)
-    SPELL_SUMMON_TRIGGER        = 26564,                    // summons 15992 - removed from DBC (readded)
+// SPELL_VISCIDUS_TELEPORT     = 25904,                    // Unknown usage - removed from DBC (readded) (说明)
+    SPELL_SUMMON_TRIGGER        = 26564,                    // summons 15992 - removed from DBC (readded) (说明)
 
-    // Spell for Toxic Slime (green poisonous clouds)
-    SPELL_SUMMON_TOXIC_SLIME    = 26584,
-    SPELL_SUMMON_TOXIC_SLIME_2  = 26577,
-    SPELL_DESPAWN_TOXIC_SLIMES  = 26585,
+    // Spell for Toxic Slime (green poisonous clouds) (说明)
+    SPELL_SUMMON_TOXIC_SLIME    = 26584,                    // 技能法术 ID
+    SPELL_SUMMON_TOXIC_SLIME_2  = 26577,                    // 技能法术 ID
+    SPELL_DESPAWN_TOXIC_SLIMES  = 26585,                    // 技能法术 ID
 
-    // Make Viscidus invisible and passive
-    SPELL_STUN_SELF             = 25900,
-    SPELL_INVIS_SELF            = 25905,
-    SPELL_INVIS_STALKER         = 27933,
+    // Make Viscidus invisible and passive (说明)
+    SPELL_STUN_SELF             = 25900,                    // 技能法术 ID
+    SPELL_INVIS_SELF            = 25905,                    // 技能法术 ID
+    SPELL_INVIS_STALKER         = 27933,                    // 技能法术 ID
 
-    NPC_GLOB_OF_VISCIDUS        = 15667,
+    NPC_GLOB_OF_VISCIDUS        = 15667,                    // NPC 条目 ID
 
-    MAX_VISCIDUS_GLOBS          = 20,                       // there are 20 summoned globs; each glob = 5% hp
+    MAX_VISCIDUS_GLOBS          = 20,                       // there are 20 summoned globs; each glob = 5% hp (说明)
 
-    // hitcounts
+    // hitcounts (说明)
     HITCOUNT_SLOW               = 100,
     HITCOUNT_SLOW_MORE          = 150,
     HITCOUNT_FREEZE             = 200,
@@ -89,7 +94,7 @@ enum
     HITCOUNT_SHATTER            = 100,
     HITCOUNT_EXPLODE            = 150,
 
-    // phases
+    // phases (说明)
     PHASE_NORMAL                = 1,
     PHASE_SLOWED                = 2,
     PHASE_SLOWED_MORE           = 3,
@@ -103,16 +108,18 @@ static const uint32 auiGlobSummonSpells[MAX_VISCIDUS_GLOBS] = { 25865, 25866, 25
 
 static const Position resetPoint = { -7992.0f, 1041.0f, -23.84f, 0.0 };
 
+// ViscidusActions 战斗行为动作枚举
 enum ViscidusActions
 {
     VISCIDUS_TOXIN,
     VISCIDUS_POISON_SHOCK,
     VISCIDUS_POISON_BOLT_VOLLEY,
-    VISCIDUS_ACTION_MAX,
+    VISCIDUS_ACTION_MAX,                                    // 战斗行为动作
     VISCIDUS_EXPLODE,
     VISCIDUS_REJOIN,
 };
 
+// boss_viscidusAI 首领战斗 AI
 struct boss_viscidusAI : public CombatAI
 {
     boss_viscidusAI(Creature* creature) : CombatAI(creature, VISCIDUS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -137,7 +144,7 @@ struct boss_viscidusAI : public CombatAI
     GuidList m_lGlobesGuidList;
     uint8 m_aliveGlobs;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         m_phase    = PHASE_NORMAL;
@@ -156,7 +163,7 @@ struct boss_viscidusAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_VISCIDUS_WEAKNESS, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         if (m_instance)
             m_instance->SetData(TYPE_VISCIDUS, FAIL);
@@ -173,7 +180,7 @@ struct boss_viscidusAI : public CombatAI
             m_instance->SetData(TYPE_VISCIDUS, DONE);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         if (summoned->GetEntry() == NPC_GLOB_OF_VISCIDUS)
         {
@@ -181,7 +188,7 @@ struct boss_viscidusAI : public CombatAI
             float x, y, z;
             m_creature->GetRespawnCoord(x, y, z);
             summoned->GetMotionMaster()->MovePoint(1, x, y, z);
-            // Check if Glob already counted/added to list to prevent dual count due to hook being sometimes called twice
+            // Check if Glob already counted/added to list to prevent dual count due to hook being sometimes called twice (说明)
             if (std::find(std::begin(m_lGlobesGuidList), std::end(m_lGlobesGuidList), summoned->GetObjectGuid()) == std::end(m_lGlobesGuidList))
             {
                 ++m_aliveGlobs;
@@ -196,7 +203,7 @@ struct boss_viscidusAI : public CombatAI
         {
             m_lGlobesGuidList.remove(summoned->GetObjectGuid());
             --m_aliveGlobs;
-            // Start rejoin phase for Viscidus if all Globs are dead/have reached center but check that phase is not already started due to some hooks being called twice
+            // Start rejoin phase for Viscidus if all Globs are dead/have reached center but check that phase is not already started due to some hooks being called twice (说明)
             if (m_lGlobesGuidList.empty() && m_phase != PHASE_REJOIN)
                 SetPhase(PHASE_REJOIN);
         }
@@ -211,14 +218,14 @@ struct boss_viscidusAI : public CombatAI
         summoned->CastSpell(m_creature, SPELL_REJOIN_VISCIDUS, TRIGGERED_OLD_TRIGGERED);
         summoned->ForcedDespawn(1000);
 
-        // Start rejoin phase for Viscidus if all Globs are dead/have reached center but check that phase is not already started due to some hooks being called twice
+        // Start rejoin phase for Viscidus if all Globs are dead/have reached center but check that phase is not already started due to some hooks being called twice (说明)
         if (m_lGlobesGuidList.empty() && m_phase != PHASE_REJOIN)
             SetPhase(PHASE_REJOIN);
     }
 
     void SetPhase(uint8 phase)
     {
-        // Clean-up any potential phase aura before setting new phase
+        // Clean-up any potential phase aura before setting new phase (说明)
         m_creature->RemoveAurasDueToSpell(SPELL_VISCIDUS_SLOWED);
         m_creature->RemoveAurasDueToSpell(SPELL_VISCIDUS_SLOWED_MORE);
         m_creature->RemoveAurasDueToSpell(SPELL_VISCIDUS_FREEZE);
@@ -245,7 +252,7 @@ struct boss_viscidusAI : public CombatAI
             }
             case PHASE_FROZEN:
             {
-                // Reset hit count for frozen phase and shattering
+                // Reset hit count for frozen phase and shattering (说明)
                 m_hitCount = 0;
                 DoScriptText(EMOTE_FROZEN, m_creature);
                 DoCastSpellIfCan(m_creature, SPELL_VISCIDUS_FREEZE, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
@@ -254,10 +261,10 @@ struct boss_viscidusAI : public CombatAI
             case PHASE_EXPLODED:
             {
                 m_creature->RemoveAurasDueToSpell(SPELL_VISCIDUS_FREEZE);
-                // In case there is less than 10% HP left, Viscidus triggers suicide
+                // In case there is less than 10% HP left, Viscidus triggers suicide (说明)
                 if (m_creature->GetHealthPercent() <= 10.0f)
                     DoCastSpellIfCan(m_creature, SPELL_VISCIDUS_SUICIDE_TRIGGER, CAST_TRIGGERED);
-                // Else, he explodes in small globs that must be destroyed
+                // Else, he explodes in small globs that must be destroyed (说明)
                 else if (DoCastSpellIfCan(m_creature, SPELL_VISCIDUS_EXPLODE, CAST_TRIGGERED|CAST_INTERRUPT_PREVIOUS) == CAST_OK)
                     ResetTimer(VISCIDUS_EXPLODE, 2 * IN_MILLISECONDS);
                 break;
@@ -278,7 +285,7 @@ struct boss_viscidusAI : public CombatAI
                 DoCastSpellIfCan(m_creature, SPELL_VISCIDUS_SUICIDE_TRIGGER, CAST_TRIGGERED);
                 break;
             }
-            // Unexpected phase requested : return before setting
+            // Unexpected phase requested : return before setting (说明)
             default:
                 return;
         }
@@ -331,7 +338,7 @@ struct boss_viscidusAI : public CombatAI
             if (m_phase == PHASE_EXPLODED)
                 return;
 
-            // reset phase if not already exploded
+            // reset phase if not already exploded (重置)
             m_phase = PHASE_NORMAL;
             m_hitCount = 0;
         }
@@ -344,7 +351,7 @@ struct boss_viscidusAI : public CombatAI
             IncreaseHitCount();
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -374,18 +381,18 @@ struct boss_viscidusAI : public CombatAI
 
     void HandleExplode()
     {
-        // At this point, Viscidus should play an emote like dying or exploding but this does not appear clearly in sniff (maybe a spell visual or stand state change?)
+        // At this point, Viscidus should play an emote like dying or exploding but this does not appear clearly in sniff (maybe a spell visual or stand state change?) (说明)
 
-        // Summon globs
+        // Summon globs (召唤)
         DoCastSpellIfCan(m_creature, SPELL_SUMMON_GLOBS, CAST_TRIGGERED);
         m_aliveGlobs = 0;
 
-        // Make invisible and stun self
+        // Make invisible and stun self (说明)
         DoCastSpellIfCan(nullptr, SPELL_INVIS_SELF, CAST_TRIGGERED);
         DoCastSpellIfCan(nullptr, SPELL_INVIS_STALKER, CAST_TRIGGERED);
         DoCastSpellIfCan(nullptr, SPELL_STUN_SELF, CAST_TRIGGERED);
 
-        // Reset hit count for normal and freezing phase
+        // Reset hit count for normal and freezing phase (说明)
         m_hitCount = 0;
         m_creature->RemoveAurasDueToSpell(SPELL_MEMBRANE_VISCIDUS);
         m_creature->RemoveAurasDueToSpell(SPELL_VISCIDUS_WEAKNESS);
@@ -558,7 +565,7 @@ struct ViscidusFrostWeakness : public AuraScript
     }
 };
 
-void AddSC_boss_viscidus()
+void AddSC_boss_viscidus() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_viscidus";

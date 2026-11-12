@@ -21,6 +21,13 @@ SDComment: TODO: Make Alar Root and Hover during P1 platforms and dynamically en
 SDCategory: Tempest Keep, The Eye
 EndScriptData */
 
+// 奥（风暴要塞一号首领，灰烬之灵）
+/* 遭遇战概述：
+ * 奥是凯尔萨斯珍爱的火凤凰神鸟：
+ * 阶段一：在四个高台平台间盘旋飞翔，施放飞羽打击、火焰冲击并在平台边缘召唤火羽微粒；
+ * 阶段二：飞回场地中央浴火重生，施放流星打击并在火堆中不断召唤小凤凰。
+ */
+
 /* Pre-nerf Changes
 Movement: Has been changed to have a random chance to either DoFlameQuills() or to move to a random platform. There is even a small chance he will stay at the same platform for 30 seconds.
 Embers: Do not do % hp damage to Al'ar when killed.
@@ -34,6 +41,7 @@ Patches
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // spells
@@ -100,6 +108,7 @@ static const Position aCenterLocation[] =
     {329.9976f, -0.2719078f, 42.42101f, 0.0}
 };
 
+// AlarActions 相关枚举
 enum AlarActions
 {
     ALAR_PHASE_2,
@@ -115,6 +124,7 @@ enum AlarActions
     ALAR_DIVE_BOMB_TIMER,
 };
 
+// boss_alarAI 逻辑实现
 struct boss_alarAI : public CombatAI
 {
     boss_alarAI(Creature* creature) : CombatAI(creature, ALAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -145,6 +155,7 @@ struct boss_alarAI : public CombatAI
 
     bool m_firstPlatform;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -182,6 +193,7 @@ struct boss_alarAI : public CombatAI
         SetReactState(REACT_AGGRESSIVE);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (m_instance)
@@ -195,12 +207,14 @@ struct boss_alarAI : public CombatAI
         m_creature->GetMotionMaster()->MovePoint(POINT_ID_PLATFORM, aPlatformLocation[m_uiCurrentPlatformId].x, aPlatformLocation[m_uiCurrentPlatformId].y, aPlatformLocation[m_uiCurrentPlatformId].z);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_ALAR, FAIL);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -215,6 +229,7 @@ struct boss_alarAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_FLAME_PATCH)
@@ -440,6 +455,7 @@ struct boss_alarAI : public CombatAI
         ++m_diveBombState;
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
     {
         if (spellInfo->Id == SPELL_DIVE_BOMB_VISUAL)
@@ -457,6 +473,7 @@ struct boss_alarAI : public CombatAI
         ResetCombatAction(ALAR_CHARGE, urand(25000, 30000));
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -540,8 +557,10 @@ struct boss_alarAI : public CombatAI
     }
 };
 
+// AlarEmberBlast 法术脚本
 struct AlarEmberBlast : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (!spell->GetUnitTarget())
@@ -551,8 +570,10 @@ struct AlarEmberBlast : public SpellScript
     }
 };
 
+// DiveBomb 法术脚本
 struct DiveBomb : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (!spell->GetUnitTarget())
@@ -579,6 +600,7 @@ struct DiveBomb : public SpellScript
     }
 };
 
+// 注册 boss_alar 脚本
 void AddSC_boss_alar()
 {
     Script* pNewScript = new Script;

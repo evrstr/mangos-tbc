@@ -19,11 +19,13 @@
 #include "NullCreatureAI.h"
 #include "Entities/Creature.h"
 
+// 构造空 AI 并禁止该生物进入战斗状态
 NullCreatureAI::NullCreatureAI(Creature* creature) : CreatureAI(creature)
 {
     m_creature->SetCanEnterCombat(false);
 }
 
+// 虚析构函数
 NullCreatureAI::~NullCreatureAI()
 {
 }

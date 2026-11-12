@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Guards
 SD%Complete: 100
-SDComment: CombatAI should be organized better for future.
+SDComment: CombatAI should be organized better for future. (世界各大主城与阵营卫兵 AI 脚本)
 SDCategory: Guards
 EndScriptData */
 
@@ -48,6 +48,7 @@ EndContentData */
 #include "AI/ScriptDevAI/base/guard_ai.h"
 #include "GameEvents/GameEventMgr.h"
 
+// 万圣节演习灭火助手卫兵 AI (guard_hallows_end_helperAI)：处理万圣节期间城镇训练火堆的巡视与熄灭
 struct guard_hallows_end_helperAI : public guardAI
 {
     guard_hallows_end_helperAI(Creature* creature) : guardAI(creature)
@@ -182,6 +183,7 @@ struct guard_hallows_end_helperAI : public guardAI
     }
 };
 
+// 万圣节卫兵对话菜单：处于活动期间根据城镇显示对应的求助或说明文本
 bool GossipHello_guard_hallows_end_helper(Player* player, Creature* creature)
 {
     GameEventCreatureData const* eventData = sGameEventMgr.GetCreatureUpdateDataForActiveEvent(creature->GetDbGuid());
@@ -222,6 +224,7 @@ bool GossipHello_guard_hallows_end_helper(Player* player, Creature* creature)
  * guard_shattrath_aldor
  *******************************************************/
 
+// 沙塔斯城奥尔多卫兵 AI (guard_shattrath_aldorAI)：负责奥尔多高地防卫，驱逐并放逐敌对占星者阵营玩家
 struct guard_shattrath_aldorAI : public guardAI
 {
     guard_shattrath_aldorAI(Creature* pCreature) : guardAI(pCreature) { Reset(); }
@@ -284,6 +287,7 @@ struct guard_shattrath_aldorAI : public guardAI
  * guard_shattrath_scryer
  *******************************************************/
 
+// 沙塔斯城占星者卫兵 AI (guard_shattrath_scryerAI)：负责占星者之梯防卫，驱逐并放逐敌对奥尔多阵营玩家
 struct guard_shattrath_scryerAI : public guardAI
 {
     guard_shattrath_scryerAI(Creature* pCreature) : guardAI(pCreature) { Reset(); }
@@ -498,6 +502,7 @@ struct SpawnGuard : public SpellScript
     }
 };
 
+// 注册各大主城与阵营卫兵脚本
 void AddSC_guards()
 {
     Script* pNewScript = new Script;

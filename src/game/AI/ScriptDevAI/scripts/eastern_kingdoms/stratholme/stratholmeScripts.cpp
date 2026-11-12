@@ -21,6 +21,8 @@ SDComment: Misc mobs for instance. GO-script to apply aura and start event for q
 SDCategory: Stratholme
 EndScriptData */
 
+// 斯坦索姆（Stratholme）通灵塔仆从、吞噬者与陷阱机关脚本
+
 /* ContentData
 go_service_gate
 go_gauntlet_gate
@@ -56,6 +58,7 @@ bool GOUse_go_service_gate(Player* /*pPlayer*/, GameObject* pGo)
 ## go_gauntlet_gate (this is the _first_ of the gauntlet gates, two exist)
 ######*/
 
+// 游戏对象使用交互回调：go_gauntlet_gate
 bool GOUse_go_gauntlet_gate(Player* pPlayer, GameObject* pGo)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
@@ -92,6 +95,7 @@ bool GOUse_go_gauntlet_gate(Player* pPlayer, GameObject* pGo)
 ## go_stratholme_postbox
 ######*/
 
+// 游戏对象使用交互回调：go_stratholme_postbox
 bool GOUse_go_stratholme_postbox(Player* pPlayer, GameObject* pGo)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
@@ -111,7 +115,7 @@ bool GOUse_go_stratholme_postbox(Player* pPlayer, GameObject* pGo)
     else
         pInstance->SetData(TYPE_POSTMASTER, IN_PROGRESS);
 
-    // Summon 3 postmen for each postbox
+    // Summon 3 postmen for each postbox (召唤 postmen for each postbox)
     float fX, fY, fZ;
     for (uint8 i = 0; i < 3; ++i)
     {
@@ -126,22 +130,23 @@ bool GOUse_go_stratholme_postbox(Player* pPlayer, GameObject* pGo)
 ## mob_restless_soul
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // Possibly more of these quotes around.
-    SAY_ZAPPED0     = -1329000,
-    SAY_ZAPPED1     = -1329001,
-    SAY_ZAPPED2     = -1329002,
-    SAY_ZAPPED3     = -1329003,
+    SAY_ZAPPED0     = -1329000,                             // zapped0 台词广播 ID
+    SAY_ZAPPED1     = -1329001,                             // zapped1 台词广播 ID
+    SAY_ZAPPED2     = -1329002,                             // zapped2 台词广播 ID
+    SAY_ZAPPED3     = -1329003,                             // zapped3 台词广播 ID
 
-    QUEST_RESTLESS_SOUL     = 5282,
+    QUEST_RESTLESS_SOUL     = 5282,                         // restless灵魂 任务 ID
 
-    SPELL_EGAN_BLASTER      = 17368,
-    SPELL_SOUL_FREED        = 17370,
-    SPELL_SUMMON_FREED_SOUL = 17408,
+    SPELL_EGAN_BLASTER      = 17368,                        // eganblaster 法术 ID
+    SPELL_SOUL_FREED        = 17370,                        // 灵魂freed 法术 ID
+    SPELL_SUMMON_FREED_SOUL = 17408,                        // 召唤freed灵魂 法术 ID
 
-    NPC_RESTLESS_SOUL      = 11122,
-    NPC_FREED_SOUL         = 11136,
+    NPC_RESTLESS_SOUL      = 11122,                         // restless灵魂 Entry ID
+    NPC_FREED_SOUL         = 11136,                         // freed灵魂 Entry ID
 };
 
 // TODO - likely entirely not needed workaround
@@ -149,10 +154,11 @@ struct mob_restless_soulAI : public ScriptedAI
 {
     mob_restless_soulAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    ObjectGuid m_taggerGuid;
-    uint32 m_uiDieTimer;
-    bool m_bIsTagged;
+    ObjectGuid m_taggerGuid;                                // tagger 实体 GUID
+    uint32 m_uiDieTimer;                                    // Die 技能计时器
+    bool m_bIsTagged;                                       // IsTagged 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_taggerGuid.Clear();
@@ -160,6 +166,7 @@ struct mob_restless_soulAI : public ScriptedAI
         m_bIsTagged = false;
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         if (pCaster->GetTypeId() == TYPEID_PLAYER)
@@ -172,6 +179,7 @@ struct mob_restless_soulAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bIsTagged)
@@ -201,6 +209,7 @@ struct mob_restless_soulAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：mob_restless_soul
 UnitAI* GetAI_mob_restless_soul(Creature* pCreature)
 {
     return new mob_restless_soulAI(pCreature);
@@ -210,20 +219,22 @@ UnitAI* GetAI_mob_restless_soul(Creature* pCreature)
 ## mobs_spectral_ghostly_citizen
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_INCORPOREAL_DEFENSE   = 16331,
-    SPELL_HAUNTING_PHANTOM      = 16336,
-    SPELL_SLAP                  = 6754
+    SPELL_INCORPOREAL_DEFENSE   = 16331,                    // incorporealdefense 法术 ID
+    SPELL_HAUNTING_PHANTOM      = 16336,                    // hauntingphantom 法术 ID
+    SPELL_SLAP                  = 6754                      // slap 法术 ID
 };
 
 struct mobs_spectral_ghostly_citizenAI : public ScriptedAI
 {
     mobs_spectral_ghostly_citizenAI(Creature* pCreature) : ScriptedAI(pCreature), m_uiDieTimer(2000), m_bIsTagged(false) {Reset();}
 
-    uint32 m_uiDieTimer;
-    bool m_bIsTagged;
+    uint32 m_uiDieTimer;                                    // Die 技能计时器
+    bool m_bIsTagged;                                       // IsTagged 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         DoCastSpellIfCan(nullptr, SPELL_INCORPOREAL_DEFENSE, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
@@ -248,6 +259,7 @@ struct mobs_spectral_ghostly_citizenAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bIsTagged)
@@ -266,9 +278,10 @@ struct mobs_spectral_ghostly_citizenAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 
+    // 收到玩家表情动作回调
     void ReceiveEmote(Player* pPlayer, uint32 uiEmote) override
     {
         switch (uiEmote)
@@ -295,6 +308,7 @@ struct mobs_spectral_ghostly_citizenAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：mobs_spectral_ghostly_citizen
 UnitAI* GetAI_mobs_spectral_ghostly_citizen(Creature* pCreature)
 {
     return new mobs_spectral_ghostly_citizenAI(pCreature);
@@ -304,11 +318,12 @@ UnitAI* GetAI_mobs_spectral_ghostly_citizen(Creature* pCreature)
 ## npc_aurius
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GOSSIP_TEXT_AURIUS_1  = 3755,
-    GOSSIP_TEXT_AURIUS_2  = 3756,
-    GOSSIP_TEXT_AURIUS_3  = 3757,
+    GOSSIP_TEXT_AURIUS_1  = 3755,                           // textaurius1 对话菜单选项 ID
+    GOSSIP_TEXT_AURIUS_2  = 3756,                           // textaurius2 对话菜单选项 ID
+    GOSSIP_TEXT_AURIUS_3  = 3757,                           // textaurius3 对话菜单选项 ID
 };
 
 bool QuestRewarded_npc_aurius(Player* /*pPlayer*/, Creature* pCreature, const Quest* pQuest)
@@ -327,6 +342,7 @@ bool QuestRewarded_npc_aurius(Player* /*pPlayer*/, Creature* pCreature, const Qu
     return true;
 }
 
+// NPC 对话交互入口函数：npc_aurius
 bool GossipHello_npc_aurius(Player* pPlayer, Creature* pCreature)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
@@ -351,6 +367,7 @@ bool GossipHello_npc_aurius(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
+// 注册并载入脚本模块：stratholme
 void AddSC_stratholme()
 {
     Script* pNewScript = new Script;

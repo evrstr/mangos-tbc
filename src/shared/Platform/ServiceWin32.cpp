@@ -66,19 +66,19 @@ bool WinServiceInstall()
     std::strcat(path, " -s run");
 
     SC_HANDLE service = CreateService(serviceControlManager,
-                                      serviceName,          // name of service
-                                      serviceLongName,      // service name to display
-                                      SERVICE_ALL_ACCESS,   // desired access
-                                      // service type
+                                      serviceName,          // name of service | 服务内部名称
+                                      serviceLongName,      // service name to display | 服务显示名称
+                                      SERVICE_ALL_ACCESS,   // desired access | 请求全部访问权限
+                                      // service type | 服务类型（独立进程 + 可交互服务）
                                       SERVICE_WIN32_OWN_PROCESS | SERVICE_INTERACTIVE_PROCESS,
-                                      SERVICE_AUTO_START,   // start type
-                                      SERVICE_ERROR_IGNORE, // error control type
-                                      path,                 // service's binary
-                                      nullptr,              // no load ordering group
-                                      nullptr,              // no tag identifier
-                                      nullptr,              // no dependencies
-                                      nullptr,              // LocalSystem account
-                                      nullptr);             // no password
+                                      SERVICE_AUTO_START,   // start type | 开机自启
+                                      SERVICE_ERROR_IGNORE, // error control type | 忽略启动错误
+                                      path,                 // service's binary | 服务可执行文件路径及参数
+                                      nullptr,              // no load ordering group | 无加载顺序组
+                                      nullptr,              // no tag identifier | 无标签 ID
+                                      nullptr,              // no dependencies | 无依赖服务
+                                      nullptr,              // LocalSystem account | 使用 LocalSystem 本地系统账户
+                                      nullptr);             // no password | 无密码
 
     if (!service)
     {
@@ -108,9 +108,9 @@ bool WinServiceInstall()
     SERVICE_DESCRIPTION sdBuf;
     sdBuf.lpDescription = serviceDescription;
     ChangeService_Config2(
-        service,                                // handle to service
-        SERVICE_CONFIG_DESCRIPTION,             // change: description
-        &sdBuf);                                // new data
+        service,                                // handle to service | 服务句柄
+        SERVICE_CONFIG_DESCRIPTION,             // change: description | 修改服务描述信息
+        &sdBuf);                                // new data | 新描述数据
 
     SC_ACTION _action[1];
     _action[0].Type = SC_ACTION_RESTART;
@@ -121,9 +121,9 @@ bool WinServiceInstall()
     sfa.cActions = 1;
     sfa.dwResetPeriod = INFINITE;
     ChangeService_Config2(
-        service,                                // handle to service
-        SERVICE_CONFIG_FAILURE_ACTIONS,         // information level
-        &sfa);                                  // new data
+        service,                                // handle to service | 服务句柄
+        SERVICE_CONFIG_FAILURE_ACTIONS,         // information level | 修改失败恢复策略（10 秒后自动重启）
+        &sfa);                                  // new data | 恢复策略配置
 
     CloseServiceHandle(service);
     CloseServiceHandle(serviceControlManager);
@@ -192,9 +192,9 @@ void WINAPI ServiceControlHandler(DWORD controlCode)
         default:
         {
             if (controlCode >= 128 && controlCode <= 255)
-                // user defined control code
+                // user defined control code | 用户自定义控制码
                 break;
-                // unrecognized control code
+                // unrecognized control code | 未识别的控制码
             break;
         }
     }
@@ -204,7 +204,7 @@ void WINAPI ServiceControlHandler(DWORD controlCode)
 
 void WINAPI ServiceMain(DWORD argc, char* argv[])
 {
-    // initialise service status
+    // initialise service status | 初始化服务运行状态结构体
     serviceStatus.dwServiceType = SERVICE_WIN32;
     serviceStatus.dwCurrentState = SERVICE_START_PENDING;
     serviceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_PAUSE_CONTINUE;
@@ -229,33 +229,33 @@ void WINAPI ServiceMain(DWORD argc, char* argv[])
 
         path[last_slash] = 0;
 
-        // service is starting
+        // service is starting | 通知 SCM 服务正在启动
         serviceStatus.dwCurrentState = SERVICE_START_PENDING;
         SetServiceStatus(serviceStatusHandle, &serviceStatus);
 
-        // do initialisation here
+        // do initialisation here | 将当前工作目录切换到服务可执行文件所在目录
         SetCurrentDirectory(path);
 
-        // running
+        // running | 上报服务已进入运行状态
         serviceStatus.dwControlsAccepted |= (SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
         serviceStatus.dwCurrentState = SERVICE_RUNNING;
         SetServiceStatus(serviceStatusHandle, &serviceStatus);
 
         ////////////////////////
-        // service main cycle //
+        // service main cycle // | 服务主循环入口
         ////////////////////////
 
         m_ServiceStatus = 1;
         argc = 1;
         main(argc, argv);
 
-        // service was stopped
+        // service was stopped | 通知 SCM 服务正在停止
         serviceStatus.dwCurrentState = SERVICE_STOP_PENDING;
         SetServiceStatus(serviceStatusHandle, &serviceStatus);
 
-        // do cleanup here
+        // do cleanup here | 清理阶段
 
-        // service is now stopped
+        // service is now stopped | 上报服务已完全停止
         serviceStatus.dwControlsAccepted &= ~(SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
         serviceStatus.dwCurrentState = SERVICE_STOPPED;
         SetServiceStatus(serviceStatusHandle, &serviceStatus);

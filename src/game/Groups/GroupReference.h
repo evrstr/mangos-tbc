@@ -24,10 +24,11 @@
 class Group;
 class Player;
 
+/// 队伍与成员玩家之间的双向引用句柄，记录成员所属团队子小队编号（0-7）
 class GroupReference : public Reference<Group, Player>
 {
     protected:
-        uint8 iSubGroup;
+        uint8 iSubGroup;                                    // 所属子小队编号（普通小队为 0，团队为 0..7）
         void targetObjectBuildLink() override;
         void targetObjectDestroyLink() override;
         void sourceObjectDestroyLink() override;

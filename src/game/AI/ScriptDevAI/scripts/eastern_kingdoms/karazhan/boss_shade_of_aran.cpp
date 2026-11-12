@@ -21,6 +21,8 @@ SDComment: When drinking mana, it should remove all negative damage auras and sh
 SDCategory: Karazhan
 EndScriptData */
 
+// 埃兰之影（Shade of Aran）首领战 AI（烈焰花环、暴风雪、群体魔爆术与水元素）
+
 /* Pre-nerf Changes
 Add Dragon's Breath ability - used shortly after Flame Wreath dissipates (random target in melee range).
 Patch_2.1.0 - Shade of Aran will no longer cast Dragon's Breath.
@@ -32,83 +34,85 @@ Patch_2.1.0 - Shade of Aran will no longer cast Dragon's Breath.
 #include "Spells/Scripts/SpellScript.h"
 #include "Globals/ObjectMgr.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO1                  = -1532073,
-    SAY_AGGRO2                  = -1532074,
-    SAY_AGGRO3                  = -1532075,
-    SAY_FLAMEWREATH1            = -1532076,
-    SAY_FLAMEWREATH2            = -1532077,
-    SAY_BLIZZARD1               = -1532078,
-    SAY_BLIZZARD2               = -1532079,
-    SAY_EXPLOSION1              = -1532080,
-    SAY_EXPLOSION2              = -1532081,
+    SAY_AGGRO1                  = -1532073,                 // aggro1 台词广播 ID
+    SAY_AGGRO2                  = -1532074,                 // aggro2 台词广播 ID
+    SAY_AGGRO3                  = -1532075,                 // aggro3 台词广播 ID
+    SAY_FLAMEWREATH1            = -1532076,                 // flamewreath1 台词广播 ID
+    SAY_FLAMEWREATH2            = -1532077,                 // flamewreath2 台词广播 ID
+    SAY_BLIZZARD1               = -1532078,                 // blizzard1 台词广播 ID
+    SAY_BLIZZARD2               = -1532079,                 // blizzard2 台词广播 ID
+    SAY_EXPLOSION1              = -1532080,                 // explosion1 台词广播 ID
+    SAY_EXPLOSION2              = -1532081,                 // explosion2 台词广播 ID
     SAY_DRINK                   = -1532082,                 // Low Mana / AoE Pyroblast
-    SAY_ELEMENTALS              = -1532083,
-    SAY_KILL1                   = -1532084,
-    SAY_KILL2                   = -1532085,
-    SAY_TIMEOVER                = -1532086,
-    SAY_DEATH                   = -1532087,
+    SAY_ELEMENTALS              = -1532083,                 // elementals 台词广播 ID
+    SAY_KILL1                   = -1532084,                 // kill1 台词广播 ID
+    SAY_KILL2                   = -1532085,                 // kill2 台词广播 ID
+    SAY_TIMEOVER                = -1532086,                 // timeover 台词广播 ID
+    SAY_DEATH                   = -1532087,                 // 死亡 台词广播 ID
     SAY_ATIESH                  = -1532088,                 // Atiesh is equipped by a raid member
-    SAY_EXPLOSION_EMOTE         = -1532139,
+    SAY_EXPLOSION_EMOTE         = -1532139,                 // 爆炸表情 台词广播 ID
 
     // basic spells
-    SPELL_FROSTBOLT             = 29954,
-    SPELL_FIREBALL              = 29953,
-    SPELL_ARCANE_MISSILES       = 29955,
+    SPELL_FROSTBOLT             = 29954,                    // frostbolt 法术 ID
+    SPELL_FIREBALL              = 29953,                    // fireball 法术 ID
+    SPELL_ARCANE_MISSILES       = 29955,                    // 奥术missiles 法术 ID
     SPELL_DRAGONS_BREATH        = 29964,                   // not used since 2.1.0
-    SPELL_CHAINS_OF_ICE         = 29991,
-    SPELL_COUNTERSPELL          = 29961,
+    SPELL_CHAINS_OF_ICE         = 29991,                    // 锁链ofice 法术 ID
+    SPELL_COUNTERSPELL          = 29961,                    // counterspell 法术 ID
     // SPELL_COMBUSTION          = 29977,                   // spell not confirmed
     // SPELL_PRESENCE_OF_MIND    = 29976,                   // spell not confirmed
     // SPELL_WATER_BREAK         = 39177,                   // purpose unk
 
     // low mana spells
-    SPELL_MASS_POLYMORPH        = 29963,
-    SPELL_CONJURE_WATER         = 29975,
-    SD_SPELL_DRINK              = 30024,
-    SPELL_MANA_POTION           = 32453,
-    SPELL_PYROBLAST             = 29978,
-    SPELL_DISPEL_BLIZZARD       = 29970,
+    SPELL_MASS_POLYMORPH        = 29963,                    // masspolymorph 法术 ID
+    SPELL_CONJURE_WATER         = 29975,                    // conjurewater 法术 ID
+    SD_SPELL_DRINK              = 30024,                    // 法术drink 标识 ID
+    SPELL_MANA_POTION           = 32453,                    // 法力potion 法术 ID
+    SPELL_PYROBLAST             = 29978,                    // 炎爆术 法术 ID
+    SPELL_DISPEL_BLIZZARD       = 29970,                    // dispel暴风雪 法术 ID
 
     // super spells
     SPELL_FLAME_WREATH          = 30004,                // triggers 29946 on targets
     SPELL_SUMMON_BLIZZARD       = 29969,                // script target on npc 17161 - triggers spell 29952 on target
-    SPELL_BLINK_CENTER          = 29967,
+    SPELL_BLINK_CENTER          = 29967,                    // blinkcenter 法术 ID
     SPELL_MASSIVE_MAGNETIC_PULL = 29979,                // triggers 30010 on target
-    SPELL_MASS_SLOW             = 30035,
-    SPELL_ARCANE_EXPLOSION      = 29973,
+    SPELL_MASS_SLOW             = 30035,                    // massslow 法术 ID
+    SPELL_ARCANE_EXPLOSION      = 29973,                    // 奥术爆炸 法术 ID
 
-    // summon elemental spells
-    SPELL_SUMMON_WATER_ELEM_1   = 29962,
-    SPELL_SUMMON_WATER_ELEM_2   = 37051,
-    SPELL_SUMMON_WATER_ELEM_3   = 37052,
-    SPELL_SUMMON_WATER_ELEM_4   = 37053,
+    // summon elemental spells (召唤 elemental spells)
+    SPELL_SUMMON_WATER_ELEM_1   = 29962,                    // 召唤waterelem1 法术 ID
+    SPELL_SUMMON_WATER_ELEM_2   = 37051,                    // 召唤waterelem2 法术 ID
+    SPELL_SUMMON_WATER_ELEM_3   = 37052,                    // 召唤waterelem3 法术 ID
+    SPELL_SUMMON_WATER_ELEM_4   = 37053,                    // 召唤waterelem4 法术 ID
 
-    // Creatures
-    NPC_WATER_ELEMENTAL         = 17167,
-    NPC_SHADOW_OF_ARAN          = 18254,
+    // Creatures (生物定义)
+    NPC_WATER_ELEMENTAL         = 17167,                    // water元素 Entry ID
+    NPC_SHADOW_OF_ARAN          = 18254,                    // 暗影of埃兰 Entry ID
 
     MAX_SHADOWS_OF_ARAN         = 5,                    // this is not confirmed
 
-    NORMAL_SPELL_COUNT          = 3,
+    NORMAL_SPELL_COUNT          = 3,                        // 法术count 标识 ID
 
-    ITEM_ATIESH_1               = 22589,
-    ITEM_ATIESH_2               = 22632,
-    ITEM_ATIESH_3               = 22631,
-    ITEM_ATIESH_4               = 22630,
+    ITEM_ATIESH_1               = 22589,                    // atiesh1 物品 Entry ID
+    ITEM_ATIESH_2               = 22632,                    // atiesh2 物品 Entry ID
+    ITEM_ATIESH_3               = 22631,                    // atiesh3 物品 Entry ID
+    ITEM_ATIESH_4               = 22630,                    // atiesh4 物品 Entry ID
 };
 
 static std::set<uint32> atieshStaves = { ITEM_ATIESH_1, ITEM_ATIESH_2, ITEM_ATIESH_3, ITEM_ATIESH_4 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SuperSpells
 {
-    SUPER_FLAME_WREATH  = 0,
-    SUPER_BLIZZARD      = 1,
-    SUPER_ARCANE_EXPL   = 2,
+    SUPER_FLAME_WREATH  = 0,                                // 烈焰wreath 标识 ID
+    SUPER_BLIZZARD      = 1,                                // 暴风雪 标识 ID
+    SUPER_ARCANE_EXPL   = 2,                                // 奥术expl 标识 ID
 };
 
-enum AranActions // order based on priority
+enum AranActions // order based on priority (按优先级顺序排序)
 {
     ARAN_ACTION_DRINK,
     ARAN_ACTION_POTION,
@@ -122,6 +126,7 @@ enum AranActions // order based on priority
     ARAN_DRINKING_STAGES,
 };
 
+// 首领战 AI：标识 ID（aran）
 struct boss_aranAI : public CombatAI
 {
     boss_aranAI(Creature* creature) : CombatAI(creature, ARAN_ACTION_MAX), m_instance(dynamic_cast<instance_karazhan*>(creature->GetInstanceData())), m_atiesh(false)
@@ -147,11 +152,12 @@ struct boss_aranAI : public CombatAI
 
     uint8 m_uiManaRecoveryStage;
 
-    bool m_bDrinkInterrupted;
+    bool m_bDrinkInterrupted;                               // DrinkInterrupted 状态标记
     bool m_atiesh;
 
     std::vector<uint32> m_choiceVector;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -226,7 +232,7 @@ struct boss_aranAI : public CombatAI
     {
         DoScriptText(SAY_DEATH, m_creature);
 
-        // Remove the summoned elementals - which are considered guardians
+        // Remove the summoned elementals - which are considered guardians (移除召唤出的守卫元素)
         m_creature->RemoveGuardians();
 
         if (m_instance)
@@ -246,9 +252,10 @@ struct boss_aranAI : public CombatAI
             m_instance->SetData(TYPE_ARAN, IN_PROGRESS);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
-        // Remove the summoned elementals - which are considered guardians
+        // Remove the summoned elementals - which are considered guardians (移除召唤出的守卫元素)
         m_creature->RemoveGuardians();
 
         if (m_instance)
@@ -270,6 +277,7 @@ struct boss_aranAI : public CombatAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -413,7 +421,7 @@ struct boss_aranAI : public CombatAI
                             DoScriptText(urand(0, 1) ? SAY_FLAMEWREATH1 : SAY_FLAMEWREATH2, m_creature);
 #ifdef PRENERF_2_0_3
                             ResetCombatAction(ARAN_ACTION_DRAGONS_BREATH, 27000);
-#endif
+#endif                                                      // 结束头文件防重复包含宏
                         }
                         break;
                     case SUPER_BLIZZARD:
@@ -469,7 +477,7 @@ struct boss_aranAI : public CombatAI
     }
 };
 
-// 29969 - Summon Blizzard
+// 29969 - Summon Blizzard (29969 - 召唤 暴风雪)
 struct SummonBlizzard : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -479,7 +487,7 @@ struct SummonBlizzard : public SpellScript
     }
 };
 
-// 29970 - Dispel Blizzard
+// 29970 - Dispel Blizzard (29970 - Dispel 暴风雪)
 struct DispelBlizzard : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -499,7 +507,7 @@ struct MassiveMagneticPull : public SpellScript
     }
 };
 
-// 30004 - Flame Wreath
+// 30004 - Flame Wreath (30004 - 烈焰 Wreath)
 struct FlameWreath : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -510,7 +518,7 @@ struct FlameWreath : public SpellScript
     }
 };
 
-// 29949 - Explosion
+// 29949 - Explosion (29949 - 爆炸)
 struct FlameWreathExplosion : public SpellScript
 {
     void OnSuccessfulFinish(Spell* spell) const override
@@ -519,6 +527,7 @@ struct FlameWreathExplosion : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_shade_of_aran
 void AddSC_boss_shade_of_aran()
 {
     Script* pNewScript = new Script;

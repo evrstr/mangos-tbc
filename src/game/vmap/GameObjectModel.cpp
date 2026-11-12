@@ -27,6 +27,7 @@
 #include "Server/DBCStores.h"
 #include "ModelInstance.h"
 
+// GameObject 模型元数据条目（模型名与局部包围盒）
 struct GameobjectModelData
 {
     GameobjectModelData(const std::string& name_, const G3D::AABox& box) :
@@ -37,8 +38,9 @@ struct GameobjectModelData
 };
 
 typedef std::unordered_map<uint32, GameobjectModelData> ModelList;
-ModelList model_list;
+ModelList model_list;                                           // 按 DisplayId 索引的 GO 碰撞模型字典
 
+// 启动时加载 vmaps/temp_gameobject_models 文件，建立 DisplayId 到碰撞模型包围盒的映射
 void LoadGameObjectModelList()
 {
     FILE* model_list_file = fopen((sWorld.GetDataPath() + "vmaps/" + VMAP::GAMEOBJECT_MODELS).c_str(), "rb");
@@ -68,12 +70,14 @@ void LoadGameObjectModelList()
     fclose(model_list_file);
 }
 
+// 析构时释放共享的 WorldModel 实例引用
 GameObjectModel::~GameObjectModel()
 {
     if (iModel)
         ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->releaseModelInstance(name);
 }
 
+// 根据 GameObject 位置、朝向与缩放加载共享几何体并计算世界空间包围盒
 bool GameObjectModel::initialize(const GameObject* const pGo, const GameObjectDisplayInfoEntry* const pDisplayInfo)
 {
     ModelList::const_iterator it = model_list.find(pDisplayInfo->Displayid);
@@ -81,7 +85,7 @@ bool GameObjectModel::initialize(const GameObject* const pGo, const GameObjectDi
         return false;
 
     G3D::AABox mdl_box(it->second.bound);
-    // ignore models with no bounds
+    // ignore models with no bounds (跳过包围盒为空的模型)
     if (mdl_box == G3D::AABox::zero())
     {
         sLog.outDebug("Model %s has zero bounds, loading skipped", it->second.name.c_str());
@@ -101,7 +105,7 @@ bool GameObjectModel::initialize(const GameObject* const pGo, const GameObjectDi
 
     G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(pGo->GetOrientation(), 0, 0);
     iInvRot = iRotation.inverse();
-    // transform bounding box:
+    // transform bounding box: (将局部包围盒 8 个角点旋转缩放并平移至世界空间包围盒)
     mdl_box = AABox(mdl_box.low() * iScale, mdl_box.high() * iScale);
     AABox rotated_bounds;
     for (int i = 0; i < 8; ++i)
@@ -125,6 +129,7 @@ bool GameObjectModel::initialize(const GameObject* const pGo, const GameObjectDi
     return true;
 }
 
+// 工厂方法：查找 DisplayId 并构造对应的 GameObjectModel 实例
 GameObjectModel* GameObjectModel::construct(const GameObject* const pGo)
 {
     const GameObjectDisplayInfoEntry* info = sGameObjectDisplayInfoStore.LookupEntry(pGo->GetDisplayId());
@@ -141,6 +146,7 @@ GameObjectModel* GameObjectModel::construct(const GameObject* const pGo)
     return mdl;
 }
 
+// 射线与动态游戏对象模型求交：先校验碰撞开关与 AABB，再将射线变换至局部坐标系求交
 bool GameObjectModel::intersectRay(const G3D::Ray& ray, float& MaxDist, bool StopAtFirstHit, bool ignoreM2Model) const
 {
     if (!collision_enabled)
@@ -150,7 +156,7 @@ bool GameObjectModel::intersectRay(const G3D::Ray& ray, float& MaxDist, bool Sto
     if (time == G3D::inf())
         return false;
 
-    // child bounds are defined in object space:
+    // child bounds are defined in object space: (将世界射线转换至模型局部坐标系)
     Vector3 p = iInvRot * (ray.origin() - iPos) * iInvScale;
     Ray modRay(p, iInvRot * ray.direction());
     float distance = MaxDist * iInvScale;
@@ -163,6 +169,7 @@ bool GameObjectModel::intersectRay(const G3D::Ray& ray, float& MaxDist, bool Sto
     return hit;
 }
 
+// 当游戏对象移动/旋转（如传送船、电梯或旋转门）时重新计算世界包围盒与逆变换矩阵
 bool GameObjectModel::Relocate(GameObject const& go)
 {
     if (!iModel)

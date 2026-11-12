@@ -21,28 +21,33 @@ SDComment:
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 疯狂之缘四首领（Edge of Madness）AI（雷纳塔基、格里雷克、乌苏雷、哈扎拉尔轮替召唤）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_THOUSAND_BLADES   = 24649,
-    SPELL_VANISH            = 24699,
-    SPELL_GOUGE             = 24698,
-    SPELL_TRASH             = 3391,
+    SPELL_THOUSAND_BLADES   = 24649,                        // 千刃 法术 ID
+    SPELL_VANISH            = 24699,                        // vanish 法术 ID
+    SPELL_GOUGE             = 24698,                        // gouge 法术 ID
+    SPELL_TRASH             = 3391,                         // trash 法术 ID
 
-    SPELL_VANISH_TELEPORT   = 24700,
+    SPELL_VANISH_TELEPORT   = 24700,                        // vanish传送 法术 ID
 
-    SPELL_SPIRIT_PARTICLES      = 18951,
-    SPELL_SPAWN_RED_LIGHTNING   = 24240,
+    SPELL_SPIRIT_PARTICLES      = 18951,                    // 之魂particles 法术 ID
+    SPELL_SPAWN_RED_LIGHTNING   = 24240,                    // 生成red闪电 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum RenatakiActions
 {
     RENATAKI_ACTION_MAX,
     RENATAKI_VANISH_DELAY,
 };
 
+// 首领战 AI：标识 ID（renataki）
 struct boss_renatakiAI : public CombatAI
 {
     boss_renatakiAI(Creature* creature) : CombatAI(creature, RENATAKI_ACTION_MAX)
@@ -59,6 +64,7 @@ struct boss_renatakiAI : public CombatAI
 
     ObjectGuid m_vanishTarget;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -88,7 +94,7 @@ struct boss_renatakiAI : public CombatAI
     }
 };
 
-// 24649 - Thousand Blades
+// 24649 - Thousand Blades (24649 - 千 刃)
 struct ThousandBladesRenataki : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -111,6 +117,7 @@ struct ThousandBladesRenataki : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（RenatakiVanish）
 struct RenatakiVanish : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -135,6 +142,7 @@ struct RenatakiVanishTeleport : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_renataki
 void AddSC_boss_renataki()
 {
     Script* pNewScript = new Script;

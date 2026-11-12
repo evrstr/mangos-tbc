@@ -38,12 +38,12 @@
 
 INSTANTIATE_SINGLETON_1(MapPersistentStateManager);
 
-static uint32 resetEventTypeDelay[MAX_RESET_EVENT_TYPE] = { 0,                      // not used
-                                                            3600, 900, 300, 60,     // (seconds) normal and official timer delay to inform player about instance reset
-                                                            60, 30, 10, 5           // (seconds) fast reset by gm command inform timer
+static uint32 resetEventTypeDelay[MAX_RESET_EVENT_TYPE] = { 0,                      // not used (未使用)
+                                                            3600, 900, 300, 60,     // (seconds) normal and official timer delay to inform player about instance reset (常规副本重置前倒计时通知间隔：60分/15分/5分/1分)
+                                                            60, 30, 10, 5           // (seconds) fast reset by gm command inform timer (GM 命令强制重置时的快速倒计时通知间隔：60秒/30秒/10秒/5秒)
                                                           };
 
-//== MapPersistentState functions ==========================
+//== MapPersistentState functions ========================== (地图持久化状态基类实现)
 MapPersistentState::MapPersistentState(uint16 MapId, uint32 InstanceId, Difficulty difficulty)
     : m_instanceid(InstanceId), m_mapid(MapId),
       m_difficulty(difficulty), m_usedByMap(nullptr)
@@ -59,7 +59,7 @@ MapEntry const* MapPersistentState::GetMapEntry() const
     return sMapStore.LookupEntry(m_mapid);
 }
 
-/* true if the instance state is still valid */
+/* true if the instance state is still valid (若状态仍在使用中返回 true；若可卸载则从管理器移除并返回 false) */
 bool MapPersistentState::UnloadIfEmpty()
 {
     if (CanBeUnload())
@@ -70,11 +70,12 @@ bool MapPersistentState::UnloadIfEmpty()
     return true;
 }
 
+// 更新内存与数据库中的生物重生时间戳（战场/竞技场不入库）
 void MapPersistentState::SaveCreatureRespawnTime(uint32 loguid, time_t t)
 {
     SetCreatureRespawnTime(loguid, t);
 
-    // BGs/Arenas always reset at server restart/unload, so no reason store in DB
+    // BGs/Arenas always reset at server restart/unload, so no reason store in DB (战场与竞技场重启/卸载即重置，无需写入数据库)
     if (GetMapEntry()->IsBattleGroundOrArena())
         return;
 
@@ -95,11 +96,12 @@ void MapPersistentState::SaveCreatureRespawnTime(uint32 loguid, time_t t)
     CharacterDatabase.CommitTransaction();
 }
 
+// 更新内存与数据库中的游戏对象重生时间戳（战场/竞技场不入库）
 void MapPersistentState::SaveGORespawnTime(uint32 loguid, time_t t)
 {
     SetGORespawnTime(loguid, t);
 
-    // BGs/Arenas always reset at server restart/unload, so no reason store in DB
+    // BGs/Arenas always reset at server restart/unload, so no reason store in DB (战场与竞技场无需写入数据库)
     if (GetMapEntry()->IsBattleGroundOrArena())
         return;
 
@@ -195,14 +197,15 @@ void MapPersistentState::RemoveGameobjectFromGrid(uint32 guid, GameObjectData co
     m_gridObjectGuids[cell_id].gameobjects.erase(guid);
 }
 
+// 初始化当前地图状态对应的对象池与游戏事件池数据（每个持久化状态仅初始化一次）
 void MapPersistentState::InitPools()
 {
     // pool system initialized already for persistent state (can be shared by map states)
     if (!GetSpawnedPoolData().IsInitialized())
     {
         GetSpawnedPoolData().SetInitialized();
-        sPoolMgr.Initialize(this);                          // init pool system data for map persistent state
-        sGameEventMgr.Initialize(this);                     // init pool system data for map persistent state
+        sPoolMgr.Initialize(this);                          // init pool system data for map persistent state (初始化对象池系统状态)
+        sGameEventMgr.Initialize(this);                     // init pool system data for map persistent state (初始化游戏事件系统状态)
     }
 }
 
@@ -213,10 +216,11 @@ bool WorldPersistentState::CanBeUnload() const
     // Note: non instanceable Map never unload until server shutdown and in result for loaded non-instanceable maps map persistent states also not unloaded
     //       but for proper work pool systems with shared pools state for non-instanceable maps need
     //       load persistent map states for any non-instanceable maps before Map loading and make sure that it never unloaded
+    // 非副本地图在关服前不会卸载，其持久化状态也需常驻内存以保障跨加载期的对象池状态共享，因此始终返回 false
     return /*MapPersistentState::CanBeUnload() && !HasRespawnTimes()*/ false;
 }
 
-//== DungeonPersistentState functions =====================
+//== DungeonPersistentState functions ===================== (副本持久化状态实现)
 
 DungeonPersistentState::DungeonPersistentState(uint16 MapId, uint32 InstanceId, Difficulty difficulty, time_t resetTime, bool canReset, uint32 completedEncountersMask)
     : MapPersistentState(MapId, InstanceId, difficulty), m_resetTime(resetTime), m_canReset(canReset), m_completedEncountersMask(completedEncountersMask)
@@ -229,6 +233,7 @@ DungeonPersistentState::~DungeonPersistentState()
     UnbindThisState();
 }
 
+// 解除所有玩家及队伍与该副本存档状态的绑定
 void DungeonPersistentState::UnbindThisState()
 {
     while (!m_playerList.empty())
@@ -300,6 +305,7 @@ time_t DungeonPersistentState::GetResetTimeForDB() const
     return GetResetTime();
 }
 
+// 更新 DBC 首领遭遇战完成掩码及关联的世界状态变量，并持久化到 instance 表
 void DungeonPersistentState::UpdateEncounterState(EncounterCreditType type, uint32 creditEntry)
 {
     DungeonEncounterMapBounds bounds = sObjectMgr.GetDungeonEncounterBounds(creditEntry);
@@ -359,6 +365,7 @@ time_t DungeonResetScheduler::CalculateNextResetTime(InstanceTemplate const* tem
     return ((prevResetTime + MINUTE) / DAY * DAY) + period + diff;
 }
 
+// 启动时加载所有普通副本与团本/英雄本的重置时间，清理过期存档并建立定时事件队列
 void DungeonResetScheduler::LoadResetTimes()
 {
     time_t now = time(nullptr);
@@ -397,6 +404,7 @@ void DungeonResetScheduler::LoadResetTimes()
         while (queryResult->NextRow());
 
         // update reset time for normal instances with the max creature respawn time + X hours
+        // 普通副本的重置时间按其内部最长生物重生时间加 2 小时更新
         queryResult = CharacterDatabase.Query("SELECT MAX(respawntime), instance FROM creature_respawn WHERE instance > 0 GROUP BY instance");
         if (queryResult)
         {
@@ -423,7 +431,7 @@ void DungeonResetScheduler::LoadResetTimes()
                 ScheduleReset(true, itr->second.second, DungeonResetEvent(RESET_EVENT_NORMAL_DUNGEON, itr->second.first, itr->first));
     }
 
-    // load the global respawn times for raid/heroic instances
+    // load the global respawn times for raid/heroic instances (加载团本与英雄地下城的全局重置时间)
     uint32 diff = sWorld.getConfig(CONFIG_UINT32_INSTANCE_RESET_TIME_HOUR) * HOUR;
     m_resetTimeByMapId.resize(sMapStore.GetNumRows() + 1);
     queryResult = CharacterDatabase.Query("SELECT mapid, resettime FROM instance_reset");
@@ -457,6 +465,7 @@ void DungeonResetScheduler::LoadResetTimes()
 
     // clean expired instances, references to them will be deleted in CleanupInstances
     // must be done before calculating new reset times
+    // 先清理已过期的副本记录，再计算下一周期的全局重置时间
     m_InstanceSaves._CleanupExpiredInstancesAtTime(now);
 
     // calculate new global reset times for expired instances and those that have never been reset yet
@@ -512,6 +521,7 @@ void DungeonResetScheduler::LoadResetTimes()
     }
 }
 
+// 向重置时间队列添加或取消一个重置/预警事件
 void DungeonResetScheduler::ScheduleReset(bool add, time_t time, DungeonResetEvent event)
 {
     if (add)
@@ -547,6 +557,7 @@ void DungeonResetScheduler::ScheduleReset(bool add, time_t time, DungeonResetEve
     }
 }
 
+// 轮询触发所有到期的副本重置预警与正式重置事件，并自动调度下一次预警或下一周期重置
 void DungeonResetScheduler::Update()
 {
     time_t now = time(nullptr);
@@ -555,25 +566,25 @@ void DungeonResetScheduler::Update()
         DungeonResetEvent& event = m_resetTimeQueue.begin()->second;
         if (event.type == RESET_EVENT_NORMAL_DUNGEON)
         {
-            // for individual normal instances, max creature respawn + X hours
+            // for individual normal instances, max creature respawn + X hours (普通地下城单个实例到期重置)
             m_InstanceSaves._ResetInstance(event.mapid, event.instanceId);
         }
         else
         {
-            // global reset/warning for a certain map
+            // global reset/warning for a certain map (团本/英雄本的全局重置预警或执行)
             time_t resetTime = GetResetTimeFor(event.mapid);
             uint32 timeLeft = uint32(std::max(int32(resetTime - now), 0));
             bool warn = event.type != RESET_EVENT_INFORM_LAST && event.type != RESET_EVENT_FORCED_INFORM_LAST;
             m_InstanceSaves._ResetOrWarnAll(event.mapid, warn, timeLeft);
             if (event.type != RESET_EVENT_INFORM_LAST && event.type != RESET_EVENT_FORCED_INFORM_LAST)
             {
-                // schedule the next warning/reset
+                // schedule the next warning/reset (推进到下一阶段预警或最终重置阶段)
                 event.type = ResetEventType(event.type + 1);
                 ScheduleReset(true, resetTime - resetEventTypeDelay[event.type], event);
             }
             else
             {
-                // re-schedule the next/new global reset/warning
+                // re-schedule the next/new global reset/warning (重置完成后计算并调度下一周期的重置时间)
                 // calculate the next reset time
                 InstanceTemplate const* instanceTemplate = ObjectMgr::GetInstanceTemplate(event.mapid);
                 MANGOS_ASSERT(instanceTemplate);
@@ -598,6 +609,7 @@ void DungeonResetScheduler::Update()
     }
 }
 
+// 将所有团本/英雄本的全局重置事件提前至 60 秒后强制触发（供 GM 命令使用）
 void DungeonResetScheduler::ResetAllRaid()
 {
     time_t now = time(nullptr);
@@ -644,6 +656,7 @@ MapPersistentStateManager::~MapPersistentStateManager()
 /*
 - adding instance into manager
 - called from DungeonMap::Add, _LoadBoundInstances, LoadGroups
+向管理器添加或获取地图持久化状态（由 DungeonMap::Add、玩家绑定加载或队伍绑定加载调用）
 */
 MapPersistentState* MapPersistentStateManager::AddPersistentState(MapEntry const* mapEntry, uint32 instanceId, Difficulty difficulty, time_t resetTime, bool canReset, bool load /*=false*/, uint32 completedEncountersMask /*= 0*/)
 {
@@ -772,6 +785,7 @@ void MapPersistentStateManager::_DelHelper(DatabaseType& db, const char* fields,
     }
 }
 
+// 清理数据库中孤立、失效或已过期的副本绑定及生物/游戏对象重生记录
 void MapPersistentStateManager::CleanupInstances()
 {
     BarGoLink bar(2);
@@ -804,6 +818,7 @@ void MapPersistentStateManager::CleanupInstances()
     sLog.outString();
 }
 
+// 对数据库中的副本实例 ID 重新紧凑编号（保留 1 号，从 2 开始连续重映射）
 void MapPersistentStateManager::PackInstances() const
 {
     // this routine renumbers player instance associations in such a way so they start from 1 and go up
@@ -865,6 +880,7 @@ void MapPersistentStateManager::_ResetSave(PersistentStateMap& holder, Persisten
     lock_instLists = false;
 }
 
+// 重置单个普通地下城实例；若地图仍在内存中则委托 DungeonMap::Reset 处理，否则直接清理存档与数据库
 void MapPersistentStateManager::_ResetInstance(uint32 mapid, uint32 instanceId)
 {
     DEBUG_LOG("MapPersistentStateManager::_ResetInstance %u, %u", mapid, instanceId);
@@ -911,6 +927,7 @@ struct MapPersistantStateWarnWorker
     time_t timeLeft;
 };
 
+// 对指定团本/英雄本地图的所有实例执行重置预警或正式全局重置（传送玩家、重置实例、清理数据库并更新下次重置时间）
 void MapPersistentStateManager::_ResetOrWarnAll(uint32 mapid, bool warn, uint32 timeLeft)
 {
     // global reset for all instances of the given map
@@ -989,6 +1006,7 @@ void MapPersistentStateManager::_CleanupExpiredInstancesAtTime(time_t t)
 }
 
 
+// 为所有非副本地图预创建持久化状态（供共享对象池系统使用）
 void MapPersistentStateManager::InitWorldMaps()
 {
     MapPersistentState* state = nullptr;                       // need any from created for shared pool state
@@ -998,6 +1016,7 @@ void MapPersistentStateManager::InitWorldMaps()
                 state = AddPersistentState(entry, 0, REGULAR_DIFFICULTY, 0, false, false);
 }
 
+// 启动时从数据库加载未过期的生物重生时间并关联到对应地图持久化状态
 void MapPersistentStateManager::LoadCreatureRespawnTimes()
 {
     // remove outdated data
@@ -1067,6 +1086,7 @@ void MapPersistentStateManager::LoadCreatureRespawnTimes()
     sLog.outString();
 }
 
+// 启动时从数据库加载未过期的游戏对象重生时间并关联到对应地图持久化状态
 void MapPersistentStateManager::LoadGameobjectRespawnTimes()
 {
     // remove outdated data

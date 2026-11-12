@@ -16,6 +16,7 @@
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 春节烟花发射器触发脚本
 struct LunarFestivalFirework : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -28,6 +29,7 @@ struct LunarFestivalFirework : public SpellScript
     }
 };
 
+// 春节单发烟花目标高度调整脚本 (+3.0f)
 struct LunarFestivalFireworkSingle : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -36,6 +38,7 @@ struct LunarFestivalFireworkSingle : public SpellScript
     }
 };
 
+// 春节小型烟花束 (下方) 坐标偏移脚本
 struct LunarFestivalClusterSmallD : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -44,6 +47,7 @@ struct LunarFestivalClusterSmallD : public SpellScript
     }
 };
 
+// 春节小型烟花束 (北方) 坐标偏移脚本
 struct LunarFestivalClusterSmallN : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -53,6 +57,7 @@ struct LunarFestivalClusterSmallN : public SpellScript
     }
 };
 
+// 春节小型烟花束 (东南) 坐标偏移脚本
 struct LunarFestivalClusterSmallSE : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -63,6 +68,7 @@ struct LunarFestivalClusterSmallSE : public SpellScript
     }
 };
 
+// 春节小型烟花束 (西南) 坐标偏移脚本
 struct LunarFestivalClusterSmallSW : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -73,6 +79,7 @@ struct LunarFestivalClusterSmallSW : public SpellScript
     }
 };
 
+// 春节小型烟花束 (上方) 坐标偏移脚本
 struct LunarFestivalClusterSmallU : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -81,6 +88,7 @@ struct LunarFestivalClusterSmallU : public SpellScript
     }
 };
 
+// 春节大型烟花束 (下方) 坐标偏移脚本
 struct LunarFestivalClusterBigD : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -89,6 +97,7 @@ struct LunarFestivalClusterBigD : public SpellScript
     }
 };
 
+// 春节大型烟花束 (北方) 坐标偏移脚本
 struct LunarFestivalClusterBigN : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -98,6 +107,7 @@ struct LunarFestivalClusterBigN : public SpellScript
     }
 };
 
+// 春节大型烟花束 (东南) 坐标偏移脚本
 struct LunarFestivalClusterBigSE : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -108,6 +118,7 @@ struct LunarFestivalClusterBigSE : public SpellScript
     }
 };
 
+// 春节大型烟花束 (西南) 坐标偏移脚本
 struct LunarFestivalClusterBigSW : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -118,6 +129,7 @@ struct LunarFestivalClusterBigSW : public SpellScript
     }
 };
 
+// 春节大型烟花束 (上方) 坐标偏移脚本
 struct LunarFestivalClusterBigU : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -126,6 +138,7 @@ struct LunarFestivalClusterBigU : public SpellScript
     }
 };
 
+// 注册春节烟花法术脚本
 void AddSC_lunar_festival()
 {
     RegisterSpellScript<LunarFestivalFirework>("spell_lunar_festival_firework");

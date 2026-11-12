@@ -21,6 +21,7 @@
 
 namespace AIRegistry
 {
+    // 初始化并注册所有内置生物 AI 与移动生成器工厂
     void Initialize(void);
 }
 

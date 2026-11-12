@@ -29,6 +29,7 @@
 #include "Entities/Pet.h"
 #include "MotionGenerators/PathFinder.h"
 
+// 检查宠物到目标近战攻击点之间是否存在可行走路径且沿途无视线遮挡
 bool CheckPathToTarget(Unit* pet, Unit* target)
 {
     float angle = target->GetAngle(pet);
@@ -39,7 +40,7 @@ bool CheckPathToTarget(Unit* pet, Unit* target)
     bool result = pathFinder.calculate(x, y, z);
 
     if (pathFinder.getPathType() & PATHFIND_NOPATH)
-        return false; // TODO send nopath
+        return false; // TODO send nopath (无法寻路)
 
     float collisionHeight = pet->GetCollisionHeight();
     auto& path = pathFinder.getPath();
@@ -54,11 +55,13 @@ bool CheckPathToTarget(Unit* pet, Unit* target)
     return true;
 }
 
+// 向宠物主人发送无可行路径反馈提示
 void SendNoPathToOwner(Unit* pet)
 {
     pet->SendPetActionFeedback(FEEDBACK_NO_PATH);
 }
 
+// 判断法术隐式目标是否直接指向敌对单位
 static bool IsSpellAimedAtEnemy(SpellEntry const* spellInfo)
 {
     for (uint32 target : spellInfo->EffectImplicitTargetA)
@@ -67,6 +70,7 @@ static bool IsSpellAimedAtEnemy(SpellEntry const* spellInfo)
     return false;
 }
 
+// 处理客户端宠物动作栏指令（移动/攻击/解散/反应姿态/施放宠物技能）
 void WorldSession::HandlePetAction(WorldPacket& recv_data)
 {
     ObjectGuid petGuid;
@@ -77,11 +81,11 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
     recv_data >> targetGuid;
 
     uint32 spellid = UNIT_ACTION_BUTTON_ACTION(data);
-    uint8 flag = UNIT_ACTION_BUTTON_TYPE(data);             // delete = 0x07 CastSpell = C1
+    uint8 flag = UNIT_ACTION_BUTTON_TYPE(data);             // delete = 0x07 CastSpell = C1 (动作按钮类型标志)
 
     DETAIL_LOG("HandlePetAction: %s flag is %u, spellid is %u, target %s.", petGuid.GetString().c_str(), uint32(flag), spellid, targetGuid.GetString().c_str());
 
-    // used also for charmed creature/player
+    // used also for charmed creature/player (同时适用于普通宠物、被魅惑生物或被控制玩家)
     Unit* petUnit = _player->GetMap()->GetUnit(petGuid);
     if (!petUnit)
     {
@@ -128,7 +132,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
     {
         if (petUnit->hasUnitState(UNIT_STAT_POSSESSED))
         {
-            // possess case
+            // possess case (附身控制场景，例如野兽之眼，仅允许基础指令)
             if (flag != uint8(ACT_COMMAND))
             {
                 sLog.outError("PetHAndler: unknown PET flag Action %i and spellid %i. For possessed %s", uint32(flag), spellid, petUnit->GetGuidStr().c_str());
@@ -158,7 +162,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                         petUnit->SendPetActionFeedback(FEEDBACK_CANT_ATT_TARGET);
                         break;
                     }
-                    // This is true if pet has no target or has target but targets differs.
+                    // This is true if pet has no target or has target but targets differs. (仅在目标变更时重新发起攻击)
                     if (petUnit->GetVictim() != targetUnit)
                         petUnit->Attack(targetUnit, true);
                     break;
@@ -178,10 +182,10 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
 
     switch (flag)
     {
-        case ACT_COMMAND:                                   // 0x07
+        case ACT_COMMAND:                                   // 0x07 (宠物控制命令)
             switch (spellid)
             {
-                case COMMAND_STAY:                          // flat=1792  // STAY
+                case COMMAND_STAY:                          // flat=1792  // STAY (原地停留)
                 {
                     if (!petUnit->AI()->GetCombatScriptStatus())
                         petUnit->AttackStop(true, true);
@@ -189,7 +193,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                     charmInfo->SetCommandState(COMMAND_STAY);
                     break;
                 }
-                case COMMAND_FOLLOW:                        // spellid=1792  // FOLLOW
+                case COMMAND_FOLLOW:                        // spellid=1792  // FOLLOW (跟随主人)
                 {
                     if (!petUnit->hasUnitState(UNIT_STAT_POSSESSED))
                         charmInfo->SetIsRetreating(true);
@@ -200,7 +204,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                     charmInfo->SetCommandState(COMMAND_FOLLOW);
                     break;
                 }
-                case COMMAND_ATTACK:                        // spellid=1792  // ATTACK
+                case COMMAND_ATTACK:                        // spellid=1792  // ATTACK (攻击目标)
                 {
                     if (petUnit->AI()->GetCombatScriptStatus())
                         break;
@@ -221,7 +225,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                         break;
                     }
 
-                    // This is true if pet has no target or has target but targets differs.
+                    // This is true if pet has no target or has target but targets differs. (仅当无目标或切换新目标时重新执行攻击引导)
                     if (petUnit->GetVictim() != targetUnit)
                     {
                         if (petUnit->hasUnitState(UNIT_STAT_POSSESSED))
@@ -233,21 +237,21 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                         {
                             charmInfo->SetPetLastAttackCommandTime(petUnit->GetMap()->GetCurrentMSTime());
 
-                            // Send pet response regardless of command result as acknowledgement of command being processed
+                            // Send pet response regardless of command result as acknowledgement of command being processed (无论指令最终是否寻路成功，先回复宠物动作应答音效与 AI 反应)
                             if (pet)
                             {
-                                // 10% chance to play special warlock pet attack talk, else growl
+                                // 10% chance to play special warlock pet attack talk, else growl (术士召唤恶魔有 10% 概率播放攻击语音)
                                 if (pet->getPetType() == SUMMON_PET && roll_chance_i(10))
                                     pet->SendPetTalk(uint32(PET_TALK_ATTACK));
 
                                 pet->SendPetAIReaction();
                             }
 
-                            // Ignore command if target habitat is incompatible with pet
+                            // Ignore command if target habitat is incompatible with pet (目标所处环境宠物不可进入时忽略)
                             if (!targetUnit->isInAccessablePlaceFor(petUnit))
                                 break;
 
-                            // Ignore command if target is moving home
+                            // Ignore command if target is moving home (目标正在脱战返回原点时忽略)
                             if (targetUnit->GetCombatManager().IsEvadingHome())
                                 break;
 
@@ -264,18 +268,18 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                     }
                     break;
                 }
-                case COMMAND_DISMISS:                       // dismiss permanent pet, remove temporary pet, uncharm unit
+                case COMMAND_DISMISS:                       // dismiss permanent pet, remove temporary pet, uncharm unit (解散宠物或解除魅惑)
                 {
                     if (pet)
                     {
                         pet->PlayDismissSound();
-                        // No action for Hunter pets, Hunters must use their Dismiss Pet spell
+                        // No action for Hunter pets, Hunters must use their Dismiss Pet spell (猎人宠物必须使用解散宠物法术，命令按钮不直接解散)
                         if (pet->getPetType() != HUNTER_PET)
                             pet->ForcedDespawn();
                     }
                     else
                     {
-                        // dismissing a summoned pet is like killing them (this prevents returning a soulshard...)
+                        // dismissing a summoned pet is like killing them (this prevents returning a soulshard...) (临时召唤物直接强制消失，不返还灵魂碎片)
                         if (creature && creature->IsTemporarySummon())
                             creature->ForcedDespawn();
                         else
@@ -289,10 +293,10 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                     sLog.outError("WORLD: unknown PET flag Action %i and spellid %i.", uint32(flag), spellid);
             }
             break;
-        case ACT_REACTION:                                  // 0x6
+        case ACT_REACTION:                                  // 0x6 (切换宠物反应模式：被动/防御/主动)
             switch (spellid)
             {
-                case REACT_PASSIVE:                         // passive
+                case REACT_PASSIVE:                         // passive (被动模式：停止攻击)
                 {
                     if (!petUnit->AI()->GetCombatScriptStatus())
                     {
@@ -300,17 +304,17 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                         charmInfo->SetSpellOpener();
                     }
                 }
-                case REACT_DEFENSIVE:                       // recovery
-                case REACT_AGGRESSIVE:                      // activete
+                case REACT_DEFENSIVE:                       // recovery (防御模式)
+                case REACT_AGGRESSIVE:                      // activete (主动攻击模式)
                 {
                     petUnit->AI()->SetReactState(ReactStates(spellid));
                     break;
                 }
             }
             break;
-        case ACT_DISABLED:                                  // 0x81    spell (disabled), ignore
-        case ACT_PASSIVE:                                   // 0x01
-        case ACT_ENABLED:                                   // 0xC1    spell
+        case ACT_DISABLED:                                  // 0x81    spell (disabled), ignore (自动施法关闭状态但玩家手动点击施放)
+        case ACT_PASSIVE:                                   // 0x01 (被动栏位触发)
+        case ACT_ENABLED:                                   // 0xC1    spell (自动施法开启状态的技能手动施放)
         {
             if (petUnit->AI()->GetCombatScriptStatus())
                 break;
@@ -320,7 +324,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
 
             Unit* unit_target = targetGuid ? _player->GetMap()->GetUnit(targetGuid) : nullptr;
 
-            // do not cast unknown spells
+            // do not cast unknown spells (校验法术存在、已学习且未处于冷却)
             SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellid);
             if (!spellInfo)
             {
@@ -328,7 +332,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                 return;
             }
 
-            // do not cast not learned spells
+            // do not cast not learned spells (禁止施放被动或未学法术)
             if (IsPassiveSpell(spellInfo) || !petUnit->HasSpell(spellid))
                 return;
 
@@ -359,6 +363,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                 return;
             }
 
+            // 若目标超出射程或不在视线内，先设置法术起手并跑向目标
             if (unit_target && !(petUnit->IsWithinDistInMap(unit_target, sRange->maxRange) && petUnit->IsWithinLOSInMap(unit_target, true))
                     && petUnit->CanAttackNow(unit_target))
             {
@@ -375,7 +380,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
                     }
 
                     petUnit->AI()->AttackStart(unit_target);
-                    // 10% chance to play special warlock pet attack talk, else growl
+                    // 10% chance to play special warlock pet attack talk, else growl (术士召唤恶魔 10% 概率播放语音)
                     if (pet && pet->getPetType() == SUMMON_PET && pet != unit_target && roll_chance_i(10))
                         petUnit->SendPetTalk((uint32)PET_TALK_ATTACK);
 
@@ -396,6 +401,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
             {
                 //10% chance to play special pet attack talk, else growl
                 //actually this only seems to happen on special spells, fire shield for imp, torment for voidwalker, but it's stupid to check every spell
+                // 施放特定法术成功时 10% 概率播放术士恶魔特殊语音
                 if (petUnit->GetTypeId() == TYPEID_UNIT)
                     if (static_cast<Creature*>(petUnit)->IsPet() && (static_cast<Pet*>(petUnit)->getPetType() == SUMMON_PET) && (petUnit != unit_target) && (urand(0, 100) < 10))
                         petUnit->SendPetTalk((uint32)PET_TALK_SPECIAL_SPELL);
@@ -407,6 +413,7 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
     }
 }
 
+// 处理停止宠物攻击指令（CMSG_PET_STOP_ATTACK）
 void WorldSession::HandlePetStopAttack(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_PET_STOP_ATTACK");
@@ -414,7 +421,7 @@ void WorldSession::HandlePetStopAttack(WorldPacket& recv_data)
     ObjectGuid petGuid;
     recv_data >> petGuid;
 
-    Unit* pet = _player->GetMap()->GetUnit(petGuid);    // pet or controlled creature/player
+    Unit* pet = _player->GetMap()->GetUnit(petGuid);    // pet or controlled creature/player (宠物或受控单位)
     if (!pet)
     {
         sLog.outError("%s doesn't exist.", petGuid.GetString().c_str());
@@ -433,6 +440,7 @@ void WorldSession::HandlePetStopAttack(WorldPacket& recv_data)
     pet->AttackStop();
 }
 
+// 处理宠物名称查询请求（CMSG_PET_NAME_QUERY）
 void WorldSession::HandlePetNameQueryOpcode(WorldPacket& recv_data)
 {
     DETAIL_LOG("HandlePetNameQuery. CMSG_PET_NAME_QUERY");
@@ -446,11 +454,12 @@ void WorldSession::HandlePetNameQueryOpcode(WorldPacket& recv_data)
     SendPetNameQuery(petguid, petnumber);
 }
 
+// 发送宠物名称查询响应（SMSG_PET_NAME_QUERY_RESPONSE），支持模板本地化与变格名称
 void WorldSession::SendPetNameQuery(ObjectGuid petguid, uint32 petnumber) const
 {
     Creature* pet = _player->GetMap()->GetAnyTypeCreature(petguid);
 
-    // When replying to a query, verify input against public field info only (where it comes from)
+    // When replying to a query, verify input against public field info only (where it comes from) (校验宠物编号与公开字段匹配)
     if (!pet || !pet->GetCharmInfo() || (pet->GetUInt32Value(UNIT_FIELD_PETNUMBER) && pet->GetUInt32Value(UNIT_FIELD_PETNUMBER) != petnumber))
     {
         WorldPacket data(SMSG_PET_NAME_QUERY_RESPONSE, (4 + 1 + 4 + 1));
@@ -466,6 +475,7 @@ void WorldSession::SendPetNameQuery(ObjectGuid petguid, uint32 petnumber) const
 
     // creature pets have localization like other creatures, unless the pet has
     // a custom name (renamed hunter pets, generated names for warlock demons)
+    // 若宠物未自定义重命名，则按当前客户端区域语言查找生物本地化名称
     if (CreatureInfo const* cInfo = pet->GetCreatureInfo())
     {
         if (strcmp(name, cInfo->Name) == 0)
@@ -492,6 +502,7 @@ void WorldSession::SendPetNameQuery(ObjectGuid petguid, uint32 petnumber) const
     _player->GetSession()->SendPacket(data);
 }
 
+// 处理修改或交换宠物动作栏按钮请求（CMSG_PET_SET_ACTION）
 void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
 {
     DETAIL_LOG("HandlePetSetAction. CMSG_PET_SET_ACTION");
@@ -511,7 +522,7 @@ void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
     Creature* petCreature = petUnit->GetTypeId() == TYPEID_UNIT ? static_cast<Creature*>(petUnit) : nullptr;
     Pet* pet = (petCreature && petCreature->IsPet()) ? static_cast<Pet*>(petUnit) : nullptr;
 
-    // pet can have action bar disabled
+    // pet can have action bar disabled (宠物动作栏被禁用时忽略修改)
     if (pet && pet->HasActionsDisabled())
         return;
 
@@ -535,13 +546,14 @@ void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
 
         uint8 act_state = UNIT_ACTION_BUTTON_TYPE(data[i]);
 
-        // ignore invalid position
+        // ignore invalid position (校验动作栏索引合法)
         if (position[i] >= MAX_UNIT_ACTION_BAR_INDEX)
             return;
 
         // in the normal case, command and reaction buttons can only be moved, not removed
         // at moving count ==2, at removing count == 1
         // ignore attempt to remove command|reaction buttons (not possible at normal case)
+        // 命令与反应按钮只允许交换移动（count==2），不允许单独移除（count==1）
         if (act_state == ACT_COMMAND || act_state == ACT_REACTION)
         {
             if (count == 1)
@@ -552,6 +564,7 @@ void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
     }
 
     // check swap (at command->spell swap client remove spell first in another packet, so check only command move correctness)
+    // 校验命令/反应按钮交换的合法性
     if (move_command)
     {
         uint8 act_state_0 = UNIT_ACTION_BUTTON_TYPE(data[0]);
@@ -583,9 +596,10 @@ void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
         DETAIL_LOG("Player %s has changed pet spell action. Position: %u, Spell: %u, State: 0x%X", _player->GetName(), position[i], spell_id, uint32(act_state));
 
         // if it's act for spell (en/disable/cast) and there is a spell given (0 = remove spell) which pet doesn't know, don't add
+        // 不允许将宠物未学会的法术拖入动作栏；同时同步更新法术自动施放状态
         if (!((act_state == ACT_ENABLED || act_state == ACT_DISABLED || act_state == ACT_PASSIVE) && spell_id && !petUnit->HasSpell(spell_id)))
         {
-            // sign for autocast
+            // sign for autocast (开启自动施放)
             if (act_state == ACT_ENABLED && spell_id)
             {
                 if (petUnit->HasCharmer())
@@ -593,7 +607,7 @@ void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
                 else if (pet)
                     pet->ToggleAutocast(spell_id, true);
             }
-            // sign for no/turn off autocast
+            // sign for no/turn off autocast (关闭自动施放)
             else if (act_state == ACT_DISABLED && spell_id)
             {
                 if (petUnit->HasCharmer())
@@ -607,6 +621,7 @@ void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
     }
 }
 
+// 处理猎人宠物重命名请求（CMSG_PET_RENAME），校验合法性并持久化到数据库
 void WorldSession::HandlePetRename(WorldPacket& recv_data)
 {
     DETAIL_LOG("HandlePetRename. CMSG_PET_RENAME");
@@ -622,7 +637,7 @@ void WorldSession::HandlePetRename(WorldPacket& recv_data)
     recv_data >> isdeclined;
 
     Pet* pet = _player->GetMap()->GetPet(petGuid);
-    // check it!
+    // check it! (校验为当前玩家拥有且带有可重命名标记的猎人宠物)
     if (!pet || pet->getPetType() != HUNTER_PET ||
             !pet->HasByteFlag(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_PET_FLAGS, UNIT_CAN_BE_RENAMED) ||
             pet->GetOwnerGuid() != _player->GetObjectGuid() || !pet->GetCharmInfo())
@@ -664,6 +679,7 @@ void WorldSession::HandlePetRename(WorldPacket& recv_data)
 
     pet->RemoveByteFlag(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_PET_FLAGS, UNIT_CAN_BE_RENAMED);
 
+    // 事务更新宠物名称及变格名称表，并刷新客户端名称时间戳
     CharacterDatabase.BeginTransaction();
     if (isdeclined)
     {
@@ -681,17 +697,18 @@ void WorldSession::HandlePetRename(WorldPacket& recv_data)
     pet->SetUInt32Value(UNIT_FIELD_PET_NAME_TIMESTAMP, uint32(time(nullptr)));
 }
 
+// 处理玩家抛弃宠物或解除魅惑请求（CMSG_PET_ABANDON）
 void WorldSession::HandlePetAbandon(WorldPacket& recv_data)
 {
     ObjectGuid guid;
-    recv_data >> guid;                                      // pet guid
+    recv_data >> guid;                                      // pet guid (宠物 GUID)
 
     DETAIL_LOG("HandlePetAbandon. CMSG_PET_ABANDON pet guid is %s", guid.GetString().c_str());
 
     if (!_player->IsInWorld())
         return;
 
-    // pet/charmed
+    // pet/charmed (区分猎人永久宠物、其他召唤宠物与魅惑控制单位)
     if (Unit* petUnit = _player->GetMap()->GetUnit(guid))
     {
         if (petUnit->GetOwnerGuid() != _player->GetObjectGuid() || !petUnit->GetCharmInfo())
@@ -702,10 +719,10 @@ void WorldSession::HandlePetAbandon(WorldPacket& recv_data)
 
         if (pet)
         {
-            // Permanently abandon pet
+            // Permanently abandon pet (猎人宠物永久放生并从数据库删除)
             if (pet->getPetType() == HUNTER_PET)
                 pet->Unsummon(PET_SAVE_AS_DELETED, _player);
-            // Simply dismiss
+            // Simply dismiss (其他宠物仅设为死亡/解散状态)
             else
                 petUnit->SetDeathState(CORPSE);
         }
@@ -714,12 +731,13 @@ void WorldSession::HandlePetAbandon(WorldPacket& recv_data)
     }
 }
 
+// 处理遗忘宠物已学训练技能并返还训练点数请求（CMSG_PET_UNLEARN）
 void WorldSession::HandlePetUnlearnOpcode(WorldPacket& recvPacket)
 {
     DETAIL_LOG("CMSG_PET_UNLEARN");
 
     ObjectGuid guid;
-    recvPacket >> guid;                 // Pet guid
+    recvPacket >> guid;                 // Pet guid (宠物 GUID)
 
     Pet* pet = _player->GetPet();
 
@@ -749,7 +767,7 @@ void WorldSession::HandlePetUnlearnOpcode(WorldPacket& recvPacket)
 
     for (PetSpellMap::iterator itr = pet->m_spells.begin(); itr != pet->m_spells.end();)
     {
-        uint32 spell_id = itr->first;                       // Pet::removeSpell can invalidate iterator at erase NEW spell
+        uint32 spell_id = itr->first;                       // Pet::removeSpell can invalidate iterator at erase NEW spell (先推进迭代器防止删除元素失效)
         ++itr;
         pet->unlearnSpell(spell_id, false);
     }
@@ -761,7 +779,7 @@ void WorldSession::HandlePetUnlearnOpcode(WorldPacket& recvPacket)
             if (ab->GetAction() && ab->IsActionBarForSpell())
                 charmInfo->SetActionBar(i, 0, ACT_DISABLED);
 
-    // relearn pet passives
+    // relearn pet passives (重新学习宠物固有被动技能)
     pet->LearnPetPassives();
 
     pet->m_resetTalentsTime = time(nullptr);
@@ -771,13 +789,14 @@ void WorldSession::HandlePetUnlearnOpcode(WorldPacket& recvPacket)
     _player->PetSpellInitialize();
 }
 
+// 处理开关宠物法术自动施放请求（CMSG_PET_SPELL_AUTOCAST）
 void WorldSession::HandlePetSpellAutocastOpcode(WorldPacket& recvPacket)
 {
     DETAIL_LOG("CMSG_PET_SPELL_AUTOCAST");
 
     ObjectGuid guid;
     uint32 spellid;
-    uint8  state;                                           // 1 for on, 0 for off
+    uint8  state;                                           // 1 for on, 0 for off (1 开启，0 关闭)
     recvPacket >> guid >> spellid >> state;
 
     Unit* petUnit = _player->GetMap()->GetUnit(guid);
@@ -790,7 +809,7 @@ void WorldSession::HandlePetSpellAutocastOpcode(WorldPacket& recvPacket)
     Creature* petCreature = petUnit->GetTypeId() == TYPEID_UNIT ? static_cast<Creature*>(petUnit) : nullptr;
     Pet* pet = (petCreature && petCreature->IsPet()) ? static_cast<Pet*>(petUnit) : nullptr;
 
-    // do not add not learned spells/ passive spells
+    // do not add not learned spells/ passive spells (忽略未学习或不可自动施放的法术)
     if (!petUnit->HasSpell(spellid) || !IsAutocastable(spellid))
         return;
 
@@ -810,6 +829,7 @@ void WorldSession::HandlePetSpellAutocastOpcode(WorldPacket& recvPacket)
     charmInfo->SetSpellAutocast(spellid, state != 0);
 }
 
+// 处理客户端发起宠物直接施法请求（CMSG_PET_CAST_SPELL）
 void WorldSession::HandlePetCastSpellOpcode(WorldPacket& recvPacket)
 {
     DETAIL_LOG("WORLD: CMSG_PET_CAST_SPELL");
@@ -842,7 +862,7 @@ void WorldSession::HandlePetCastSpellOpcode(WorldPacket& recvPacket)
     if (!petUnit->IsSpellReady(*spellInfo))
         return;
 
-    // do not cast not learned spells
+    // do not cast not learned spells (禁止施放未学或被动法术)
     if (!petUnit->HasSpell(spellid) || IsPassiveSpell(spellInfo))
         return;
 
@@ -864,6 +884,7 @@ void WorldSession::HandlePetCastSpellOpcode(WorldPacket& recvPacket)
     }
 }
 
+// 向客户端发送宠物名称无效提示数据包（SMSG_PET_NAME_INVALID）
 void WorldSession::SendPetNameInvalid(uint32 error, const std::string& name, DeclinedName* declinedName) const
 {
     WorldPacket data(SMSG_PET_NAME_INVALID, 4 + name.size() + 1 + 1);

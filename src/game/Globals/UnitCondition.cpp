@@ -26,6 +26,7 @@
 #include "Util/ProgressBar.h"
 #include "Log/Log.h"
 
+/// 从世界数据库加载 unit_condition 表并校验变量类型与比较运算符范围
 std::shared_ptr<std::map<int32, UnitConditionEntry>> UnitConditionMgr::Load()
 {
     auto unitConditions = std::make_shared<std::map<int32, UnitConditionEntry>>();
@@ -78,6 +79,7 @@ std::shared_ptr<std::map<int32, UnitConditionEntry>> UnitConditionMgr::Load()
     return unitConditions;
 }
 
+/// 按 OR 或 AND 标志依次评估 UnitConditionEntry 中的 8 个子条件
 bool UnitConditionMgr::Meets(Unit const* source, Unit const* target, int32 Id)
 {
     auto unitConditions = source->GetMap()->GetMapDataContainer().GetUnitConditions();
@@ -89,29 +91,32 @@ bool UnitConditionMgr::Meets(Unit const* source, Unit const* target, int32 Id)
     for (uint32 i = 0; i < 8; i++)
     {
         bool result = meets(source, target, UnitCondition(entry.Variable[i]), entry.Operation[i], entry.Value[i]);
-        if (result && (entry.Flags & UNIT_CONDITION_FLAG_OR)) // return on first true or
+        if (result && (entry.Flags & UNIT_CONDITION_FLAG_OR)) // return on first true or | OR 模式下任一条件成立即返回 true
             return true;
-        else if (!result && (entry.Flags & UNIT_CONDITION_FLAG_OR) == 0) // return on first false and
+        else if (!result && (entry.Flags & UNIT_CONDITION_FLAG_OR) == 0) // return on first false and | AND 模式下任一条件不成立即返回 false
             return false;
     }
 
-    if ((entry.Flags & UNIT_CONDITION_FLAG_OR)) // no true reached - fail
+    if ((entry.Flags & UNIT_CONDITION_FLAG_OR)) // no true reached - fail | OR 模式下全部失败则返回 false
         return false;
-    else // and - success
+    else // and - success | AND 模式下全部通过则返回 true
         return true;
 }
 
+/// 查询指定 ID 的单位条件是否存在
 bool UnitConditionMgr::Exists(int32 Id)
 {
     return m_unitConditions->find(Id) != m_unitConditions->end();
 }
 
+/// 评估单个子条件：先采样条件变量当前值再调用 CheckOp 比较
 bool UnitConditionMgr::meets(Unit const* source, Unit const* target, UnitCondition conditionType, uint32 operation, int32 value)
 {
     int32 condValue = getConditionValue(source, target, conditionType, value);
     return ConditionEntry::CheckOp(ConditionOperation(operation), condValue, value);
 }
 
+/// 根据 UnitCondition 枚举读取源单位/目标单位对应的运行时数值
 int32 UnitConditionMgr::getConditionValue(Unit const* source, Unit const* target, UnitCondition conditionType, int32 value)
 {
     switch (conditionType)

@@ -21,11 +21,17 @@ SDComment: Spell Felfire Line Up and Wrath-Scryer's Felfire npc are summoning ar
 SDCategory: Tempest Keep, The Arcatraz
 EndScriptData */
 
+// 天怒预言者索克斯拉提斯（禁魔监狱三号首领）
+/* 遭遇战概述：
+ * 索克斯拉提斯是燃烧军团邪能守卫，施放邪能地狱火冲锋与击退。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "arcatraz.h"
 #include "Spells/Scripts/SpellScript.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // Intro yells
@@ -68,12 +74,14 @@ static const DialogueEntry aIntroDialogue[] =
     {0, 0, 0},
 };
 
+// SoccothratesActions 相关枚举
 enum SoccothratesActions
 {
     SOCCOTHRATES_ACTION_MAX,
     SOCCOTHRATES_FELFIRE_LINEUP,
 };
 
+// boss_soccothratesAI 逻辑实现
 struct boss_soccothratesAI : public CombatAI, private DialogueHelper
 {
     boss_soccothratesAI(Creature* creature) : CombatAI(creature, SOCCOTHRATES_ACTION_MAX),
@@ -94,6 +102,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
 
     bool m_hasYelledIntro;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -101,6 +110,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
         DoCastSpellIfCan(nullptr, m_isRegularMode ? SPELL_IMMOLATION : SPELL_IMMOLATION_H);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
@@ -123,6 +133,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
         m_creature->SetCombatStartPosition(Position(aSoccotharesStartPos[0], aSoccotharesStartPos[1], aSoccotharesStartPos[2]));
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (!m_hasYelledIntro && who->IsPlayer() && !static_cast<Player*>(who)->IsGameMaster() && m_creature->IsWithinDistInMap(who, 75.0f) && m_creature->IsWithinLOSInMap(who))
@@ -160,6 +171,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
             m_creature->SetFacingTo(aSoccotharesStartPos[3]);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_WRATH_SCRYER_CHARGE_TARGET)
@@ -169,6 +181,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 法术命中目标回调
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
         if (spellInfo->Id == SPELL_FELFIRE_LINE_UP)
@@ -212,6 +225,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         if (spellInfo->Id == SPELL_KNOCK_AWAY)
@@ -226,6 +240,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
 };
 
 // 35754 - Charge
+// SoccothratesCharge 法术脚本
 struct SoccothratesCharge : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const
@@ -239,8 +254,10 @@ struct SoccothratesCharge : public SpellScript
 };
 
 // 36512 - Knock Away
+// KnockAwaySoccothrates 光环脚本
 struct KnockAwaySoccothrates : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -256,6 +273,7 @@ struct KnockAwaySoccothrates : public AuraScript
     }
 };
 
+// 注册 boss_soccothrates 脚本
 void AddSC_boss_soccothrates()
 {
     Script* pNewScript = new Script;

@@ -23,6 +23,7 @@
 #include "Util/ByteConverter.h"
 #include <utf8.h>
 
+/// ByteBuffer 读写越界或无效 UTF-8 异常类
 class ByteBufferException
 {
     public:
@@ -32,6 +33,7 @@ class ByteBufferException
             PrintPosError();
         }
 
+        /// 打印缓冲区读写越界位置与长度错误信息
         void PrintPosError() const;
     private:
         bool add;
@@ -40,12 +42,14 @@ class ByteBufferException
         size_t size;
 };
 
+/// 占位跳过类型：配合 `>>` 运算符跳过指定类型大小的字节而不保存值
 template<class T>
 struct Unused
 {
     Unused() {}
 };
 
+/// 二进制字节缓冲区类：支持大小端自动转换、流式序列化/反序列化、压缩 GUID 与打包坐标读写
 class ByteBuffer
 {
     public:
@@ -62,11 +66,11 @@ class ByteBuffer
         ByteBuffer(ByteBuffer&& byteBuffer) noexcept
         : _rpos(byteBuffer._rpos), _wpos(byteBuffer._wpos), _storage(std::move(byteBuffer._storage))
         {
-            // Make sure the moved-from byteBuffer is in a valid state!
+            // Make sure the moved-from byteBuffer is in a valid state! | 确保被移动的源 ByteBuffer 重置为有效的空状态
             byteBuffer.clear();
         }
 
-        // reserve/resize tag
+        // reserve/resize tag | 区分预留容量（Reserve）与调整实际大小（Resize）的重载标签类型
         struct Reserve { };
         struct Resize { };
 
@@ -90,18 +94,20 @@ class ByteBuffer
                 _wpos = byteBuffer._wpos;
                 _storage = std::move(byteBuffer._storage);
 
-                // Make sure the moved-from byteBuffer is in a valid state!
+                // Make sure the moved-from byteBuffer is in a valid state! | 确保被移动的源 ByteBuffer 重置为有效的空状态
                 byteBuffer.clear();
             }
             return *this;
         }
 
+        /// 清空缓冲区并重置读写游标
         void clear()
         {
             _storage.clear();
             _rpos = _wpos = 0;
         }
 
+        /// 在指定偏移位置覆写指定类型的值（自动处理字节序）
         template <typename T> void put(size_t pos, T value)
         {
             EndianConvert(value);
@@ -132,7 +138,7 @@ class ByteBuffer
             return *this;
         }
 
-        // signed as in 2e complement
+        // signed as in 2e complement | 有符号整型写入（二进制补码）
         ByteBuffer& operator<<(int8 value)
         {
             append<int8>(value);
@@ -157,7 +163,7 @@ class ByteBuffer
             return *this;
         }
 
-        // floating points
+        // floating points | 浮点数写入
         ByteBuffer& operator<<(float value)
         {
             append<float>(value);
@@ -214,7 +220,7 @@ class ByteBuffer
             return *this;
         }
 
-        // signed as in 2e complement
+        // signed as in 2e complement | 有符号整型读取（二进制补码）
         ByteBuffer& operator>>(int8& value)
         {
             value = read<int8>();
@@ -307,7 +313,7 @@ class ByteBuffer
             if (pos + sizeof(T) > size())
                 throw ByteBufferException(false, pos, sizeof(T), size());
 #if defined(__arm__)
-            // ARM has alignment issues, we need to use memcpy to avoid them
+            // ARM has alignment issues, we need to use memcpy to avoid them | ARM 平台存在内存对齐限制，需通过 memcpy 避免非对齐访问异常
             T val;
             memcpy((void*)&val, (void*)&_storage[pos], sizeof(T));
 #else
@@ -317,6 +323,7 @@ class ByteBuffer
             return val;
         }
 
+        /// 从当前读游标拷贝 len 字节到目标缓冲区
         void read(uint8* dest, size_t len)
         {
             if (_rpos  + len > size())
@@ -325,6 +332,7 @@ class ByteBuffer
             _rpos += len;
         }
 
+        /// 读取以 '\0' 结尾的字符串，若 utf8 为 true 则校验 UTF-8 合法性
         void read(std::string& value, bool utf8)
         {
             value.clear();
@@ -336,11 +344,12 @@ class ByteBuffer
                 value += c;
             }
 
-            // Detect invalid unicode sequence in string and raise appropriate exception
+            // Detect invalid unicode sequence in string and raise appropriate exception | 检测非法 UTF-8 字节序列并抛出 ByteBufferException
             if (utf8 && !utf8::is_valid(value.begin(), value.end()))
                 throw ByteBufferException(false, _rpos, value.length(), size());
         }
 
+        /// 读取 WoW 变长压缩 64 位 GUID（首字节掩码指示后续非零字节位置）
         uint64 readPackGUID()
         {
             uint64 guid = 0;
@@ -417,7 +426,7 @@ class ByteBuffer
                 append(buffer.contents(), buffer.wpos());
         }
 
-        // can be used in SMSG_MONSTER_MOVE opcode
+        // can be used in SMSG_MONSTER_MOVE opcode | 将三维坐标压缩打包为 32 位定点数（用于 SMSG_MONSTER_MOVE 等移动包）
         void appendPackXYZ(float x, float y, float z)
         {
             uint32 packed = 0;
@@ -427,6 +436,7 @@ class ByteBuffer
             *this << packed;
         }
 
+        /// 将 64 位 GUID 压缩为掩码 + 非零字节流后追加写入
         void appendPackGUID(uint64 guid)
         {
             uint8 packGUID[8 + 1];
@@ -460,6 +470,7 @@ class ByteBuffer
 
     private:
         // limited for internal use because can "append" any unexpected type (like pointer and etc) with hard detection problem
+        // | 仅限内部使用：避免外部意外传入指针等非预期类型导致难以察觉的序列化错误
         template <typename T> void append(T value)
         {
             EndianConvert(value);

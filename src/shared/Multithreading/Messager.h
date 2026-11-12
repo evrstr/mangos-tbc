@@ -23,15 +23,18 @@
 #include <mutex>
 #include <functional>
 
+/// 线程安全的消息投递器模板类：用于跨线程向目标对象（如 World、Map、WorldSession）异步派发回调任务
 template <class T>
 class Messager
 {
     public:
+        /// 投递一条作用于目标对象指针的回调消息（线程安全）
         void AddMessage(const std::function<void(T*)>& message)
         {
             std::lock_guard<std::mutex> guard(m_messageMutex);
             m_messageVector.push_back(message);
         }
+        /// 交换出当前队列中的所有消息并在目标线程上下文中依次执行（避免持锁回调导致死锁）
         void Execute(T* object)
         {
             std::vector<std::function<void(T*)>> messageVectorCopy;
@@ -45,8 +48,8 @@ class Messager
             messageVectorCopy.clear();
         }
     private:
-        std::vector<std::function<void(T*)>> m_messageVector;
-        std::mutex m_messageMutex;  
+        std::vector<std::function<void(T*)>> m_messageVector;   ///< 待执行的消息回调队列
+        std::mutex m_messageMutex;                              ///< 保护消息队列的互斥锁
 };
 
 #endif

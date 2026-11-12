@@ -21,6 +21,11 @@ SDComment: Mainly Harbringer Skyriss event
 SDCategory: Tempest Keep, The Arcatraz
 EndScriptData */
 
+// 禁魔监狱副本数据脚本实现
+/* 遭遇战概述：
+ * 维护禁魔监狱各区域牢房大门与典狱官米尔菲斯事件。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "arcatraz.h"
 
@@ -31,6 +36,7 @@ EndScriptData */
 4 - Harbinger Skyriss event, 5 sub-events
 */
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_SOCCOTHRATES_AGGRO          = 19968,
@@ -475,6 +481,7 @@ void instance_arcatraz::Update(uint32 diff)
     }
 }
 
+// 注册 instance_arcatraz 脚本
 void AddSC_instance_arcatraz()
 {
     Script* pNewScript = new Script;

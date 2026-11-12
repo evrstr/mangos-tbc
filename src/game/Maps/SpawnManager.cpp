@@ -22,11 +22,13 @@
 #include "Maps/SpawnGroupDefines.h"
 #include "Maps/MapPersistentStateMgr.h"
 
+// 按复活时间比较 SpawnInfo 先后顺序
 bool operator<(SpawnInfo const& lhs, SpawnInfo const& rhs)
 {
     return lhs.GetRespawnTime() < rhs.GetRespawnTime();
 }
 
+// 在目标地图上实际构造并刷出该生物或游戏对象
 bool SpawnInfo::ConstructForMap(Map& map)
 {
     m_inUse = true;
@@ -47,6 +49,7 @@ SpawnManager::~SpawnManager()
         delete groupData.second;
 }
 
+// 初始化地图刷新管理器：加载动态 GUID 生物/游戏对象的初始网格分布与重生调度，并构建本图所有刷怪组
 void SpawnManager::Initialize()
 {
     time_t now = time(nullptr);
@@ -109,6 +112,7 @@ void SpawnManager::Initialize()
     }
 }
 
+// 向刷新管理器登记一个待重生的生物（若正在 Update 遍历中则暂存到 m_deferredSpawns）
 void SpawnManager::AddCreature(uint32 dbguid)
 {
     time_t respawnTime = m_map.GetPersistentState()->GetCreatureRespawnTime(dbguid);
@@ -118,6 +122,7 @@ void SpawnManager::AddCreature(uint32 dbguid)
         m_spawns.emplace_back(TimePoint(std::chrono::seconds(respawnTime)), dbguid, HIGHGUID_UNIT);
 }
 
+// 向刷新管理器登记一个待重生的游戏对象
 void SpawnManager::AddGameObject(uint32 dbguid)
 {
     time_t respawnTime = m_map.GetPersistentState()->GetGORespawnTime(dbguid);
@@ -127,6 +132,7 @@ void SpawnManager::AddGameObject(uint32 dbguid)
         m_spawns.emplace_back(TimePoint(std::chrono::seconds(respawnTime)), dbguid, HIGHGUID_GAMEOBJECT);
 }
 
+// 安排或立即触发指定生物的重生（respawnDelay 为 0 时立刻构造）
 void SpawnManager::RespawnCreature(uint32 dbguid, uint32 respawnDelay)
 {
     bool found = false;
@@ -153,6 +159,7 @@ void SpawnManager::RespawnCreature(uint32 dbguid, uint32 respawnDelay)
         (*itr).ConstructForMap(m_map);
 }
 
+// 安排或立即触发指定游戏对象的重生
 void SpawnManager::RespawnGameObject(uint32 dbguid, uint32 respawnDelay)
 {
     bool found = false;
@@ -179,6 +186,7 @@ void SpawnManager::RespawnGameObject(uint32 dbguid, uint32 respawnDelay)
         (*itr).ConstructForMap(m_map);
 }
 
+// 批量标记需要取消的待刷新条目（将在下一次 Update 中安全移除）
 void SpawnManager::RemoveSpawns(std::vector<uint32> const& creatureDbGuids, std::vector<uint32> const& goDbGuids)
 {
     for (auto& spawnInfo : m_spawns)
@@ -187,24 +195,25 @@ void SpawnManager::RemoveSpawns(std::vector<uint32> const& creatureDbGuids, std:
         {
             case HIGHGUID_GAMEOBJECT:
                 if (std::find(goDbGuids.begin(), goDbGuids.end(), spawnInfo.GetDbGuid()) != goDbGuids.end())
-                    spawnInfo.SetUsed(); // will be erased on next manager update
+                    spawnInfo.SetUsed(); // will be erased on next manager update (标记为已使用，下次 Update 时清理)
                 break;
             case HIGHGUID_UNIT:
                 if (std::find(creatureDbGuids.begin(), creatureDbGuids.end(), spawnInfo.GetDbGuid()) != creatureDbGuids.end())
-                    spawnInfo.SetUsed(); // will be erased on next manager update
+                    spawnInfo.SetUsed(); // will be erased on next manager update (标记为已使用，下次 Update 时清理)
                 break;
             default: break;
         }
     }
 }
 
+// 标记单个待刷新条目移除
 void SpawnManager::RemoveSpawn(uint32 dbguid, HighGuid high)
 {
     for (auto& spawnInfo : m_spawns)
     {
         if (spawnInfo.GetHighGuid() == high && spawnInfo.GetDbGuid() == dbguid)
         {
-            spawnInfo.SetUsed(); // will be erased on next manager update
+            spawnInfo.SetUsed(); // will be erased on next manager update (标记为已使用，下次 Update 时清理)
             break;
         }
     }
@@ -241,6 +250,7 @@ bool SpawnManager::IsEventGuid(uint32 dbguid, HighGuid high) const
     return false;
 }
 
+// 立即清除所有等待计时并重生全部待刷新对象
 void SpawnManager::RespawnAll()
 {
     for (auto itr = m_spawns.begin(); itr != m_spawns.end(); )
@@ -257,10 +267,11 @@ void SpawnManager::RespawnAll()
     }
 }
 
+// 更新刷新队列：先合并延迟加入的条目，再刷出到期对象并推进所有刷怪组
 void SpawnManager::Update()
 {
     m_updated = true;
-    if (!m_deferredSpawns.empty()) // cannot insert during update
+    if (!m_deferredSpawns.empty()) // cannot insert during update (避免在遍历 m_spawns 期间插入导致迭代器失效)
     {
         m_spawns.reserve(m_spawns.size() + m_deferredSpawns.size());
         std::move(std::begin(m_deferredSpawns), std::end(m_deferredSpawns), std::back_inserter(m_spawns));
@@ -278,7 +289,7 @@ void SpawnManager::Update()
     }
     m_updated = false;
 
-    // spawn groups are safe from this
+    // spawn groups are safe from this (刷怪组内部自行维护更新安全性)
     for (auto& group : m_spawnGroups)
         group.second->Update();
 }

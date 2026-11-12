@@ -19,6 +19,7 @@
 #include "Chat/Chat.h"
 #include "Entities/Pet.h"
 
+/// 处理 GM 命令：提升当前选中猎人宠物的忠诚度等级
 bool ChatHandler::HandlePetLevelLoyaltyCommand(char* args)
 {
     if (!*args)

@@ -41,6 +41,7 @@
     -FIX sending PartyMemberStats
 */
 
+/// 向客户端发送组队命令操作结果通知（邀请/离队/踢人等）
 void WorldSession::SendPartyResult(PartyOperation operation, const std::string& member, PartyResult res) const
 {
     WorldPacket data(SMSG_PARTY_COMMAND_RESULT, (4 + member.size() + 1 + 4));
@@ -51,6 +52,7 @@ void WorldSession::SendPartyResult(PartyOperation operation, const std::string& 
     SendPacket(data);
 }
 
+/// 处理玩家发起组队邀请请求（校验目标合法性、阵营、屏蔽列表及队伍人数上限）
 void WorldSession::HandleGroupInviteOpcode(WorldPacket& recv_data)
 {
     std::string membername;
@@ -181,6 +183,7 @@ void WorldSession::HandleGroupInviteOpcode(WorldPacket& recv_data)
     SendPartyResult(PARTY_OP_INVITE, membername, ERR_PARTY_RESULT_OK);
 }
 
+/// 处理玩家接受组队邀请请求
 void WorldSession::HandleGroupAcceptOpcode(WorldPacket& /*recv_data*/)
 {
     Group* group = GetPlayer()->GetGroupInvite();
@@ -225,6 +228,7 @@ void WorldSession::HandleGroupAcceptOpcode(WorldPacket& /*recv_data*/)
         return;
 }
 
+/// 处理玩家拒绝组队邀请请求
 void WorldSession::HandleGroupDeclineOpcode(WorldPacket& /*recv_data*/)
 {
     Group*  group  = GetPlayer()->GetGroupInvite();
@@ -246,6 +250,7 @@ void WorldSession::HandleGroupDeclineOpcode(WorldPacket& /*recv_data*/)
     leader->GetSession()->SendPacket(data);
 }
 
+/// 处理按 GUID 踢出队员请求
 void WorldSession::HandleGroupUninviteGuidOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -291,6 +296,7 @@ void WorldSession::HandleGroupUninviteGuidOpcode(WorldPacket& recv_data)
     SendPartyResult(PARTY_OP_LEAVE, "", ERR_TARGET_NOT_IN_GROUP_S);
 }
 
+/// 处理按角色名踢出队员请求
 void WorldSession::HandleGroupUninviteOpcode(WorldPacket& recv_data)
 {
     std::string membername;
@@ -340,6 +346,7 @@ void WorldSession::HandleGroupUninviteOpcode(WorldPacket& recv_data)
     SendPartyResult(PARTY_OP_LEAVE, membername, ERR_TARGET_NOT_IN_GROUP_S);
 }
 
+/// 处理队长移交请求
 void WorldSession::HandleGroupSetLeaderOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -360,6 +367,7 @@ void WorldSession::HandleGroupSetLeaderOpcode(WorldPacket& recv_data)
     group->ChangeLeader(guid);
 }
 
+/// 处理主动离开队伍或取消待建立队伍请求
 void WorldSession::HandleGroupDisbandOpcode(WorldPacket& /*recv_data*/)
 {
     Player* player = GetPlayer();
@@ -391,6 +399,7 @@ void WorldSession::HandleGroupDisbandOpcode(WorldPacket& /*recv_data*/)
     }
 }
 
+/// 处理小地图点击信号广播请求
 void WorldSession::HandleMinimapPingOpcode(WorldPacket& recv_data)
 {
     float x, y;
@@ -413,6 +422,7 @@ void WorldSession::HandleMinimapPingOpcode(WorldPacket& recv_data)
     GetPlayer()->GetGroup()->BroadcastPacket(data, true, -1, GetPlayer()->GetObjectGuid());
 }
 
+/// 处理 /roll 随机点数掷骰请求并广播结果
 void WorldSession::HandleRandomRollOpcode(WorldPacket& recv_data)
 {
     uint32 minimum, maximum;
@@ -440,6 +450,7 @@ void WorldSession::HandleRandomRollOpcode(WorldPacket& recv_data)
         SendPacket(data);
 }
 
+/// 处理团队目标标记更新或请求同步标记列表
 void WorldSession::HandleRaidTargetUpdateOpcode(WorldPacket& recv_data)
 {
     uint8  x;
@@ -469,6 +480,7 @@ void WorldSession::HandleRaidTargetUpdateOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理队长将小队转换为团队请求
 void WorldSession::HandleGroupRaidConvertOpcode(WorldPacket& /*recv_data*/)
 {
     Group* group = GetPlayer()->GetGroup();
@@ -488,6 +500,7 @@ void WorldSession::HandleGroupRaidConvertOpcode(WorldPacket& /*recv_data*/)
     group->ConvertToRaid();
 }
 
+/// 处理调整团队成员所在子小队请求
 void WorldSession::HandleGroupChangeSubGroupOpcode(WorldPacket& recv_data)
 {
     std::string name;
@@ -523,6 +536,7 @@ void WorldSession::HandleGroupChangeSubGroupOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理设置或取消团队助理权限请求
 void WorldSession::HandleGroupAssistantLeaderOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -543,6 +557,7 @@ void WorldSession::HandleGroupAssistantLeaderOpcode(WorldPacket& recv_data)
     group->SetAssistant(guid, (flag != 0));
 }
 
+/// 处理指定主坦克或主助理角色分配请求
 void WorldSession::HandlePartyAssignmentOpcode(WorldPacket& recv_data)
 {
     uint8 role;
@@ -581,6 +596,7 @@ void WorldSession::HandlePartyAssignmentOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理团队就位确认（发起请求或回复确认状态）
 void WorldSession::HandleRaidReadyCheckOpcode(WorldPacket& recv_data)
 {
     if (recv_data.empty())                                  // request
@@ -619,6 +635,7 @@ void WorldSession::HandleRaidReadyCheckOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理就位确认结束通知
 void WorldSession::HandleRaidReadyCheckFinishedOpcode(WorldPacket& /*recv_data*/)
 {
     Group* group = GetPlayer()->GetGroup();
@@ -633,6 +650,7 @@ void WorldSession::HandleRaidReadyCheckFinishedOpcode(WorldPacket& /*recv_data*/
     group->BroadcastPacket(data, true, -1);
 }
 
+/// 根据玩家变化掩码构造 SMSG_PARTY_MEMBER_STATS 队员属性增量同步包
 void WorldSession::BuildPartyMemberStatsChangedPacket(Player* player, WorldPacket& data)
 {
     uint32 mask = player->GetGroupUpdateFlag();
@@ -775,6 +793,7 @@ void WorldSession::BuildPartyMemberStatsChangedPacket(Player* player, WorldPacke
 }
 
 /*this procedure handles clients CMSG_REQUEST_PARTY_MEMBER_STATS request*/
+/// 响应客户端主动查询指定队友或宠物的完整属性状态包
 void WorldSession::HandleRequestPartyMemberStatsOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_REQUEST_PARTY_MEMBER_STATS");
@@ -887,12 +906,14 @@ void WorldSession::HandleRequestPartyMemberStatsOpcode(WorldPacket& recv_data)
     SendPacket(data);
 }
 
+/// 响应客户端请求当前已绑定的副本/团队进度信息
 void WorldSession::HandleRequestRaidInfoOpcode(WorldPacket& /*recv_data*/)
 {
-    // every time the player checks the character screen
+    // every time the player checks the character screen (每次玩家打开团队信息面板时下发已绑定副本列表)
     _player->SendRaidInfo();
 }
 
+/// 处理玩家切换“放弃拾取（Pass on Loot）”选项
 void WorldSession::HandleOptOutOfLootOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_OPT_OUT_OF_LOOT");
@@ -912,6 +933,7 @@ void WorldSession::HandleOptOutOfLootOpcode(WorldPacket& recv_data)
         sLog.outError("CMSG_GROUP_PASS_ON_LOOT: activation not implemented!");
 }
 
+/// 处理交换两名团队成员所在子小队请求
 void WorldSession::HandleGroupSwapSubGroupOpcode(WorldPacket& recv_data)
 {
     std::string playerName1, playerName2;

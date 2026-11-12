@@ -37,12 +37,14 @@ template<> struct BoundsTrait<VMAP::ModelSpawn*>
 
 namespace VMAP
 {
+    // 从文件读取指定长度块头并与预期标识字符串比对
     bool readChunk(FILE* rf, char* dest, const char* compare, uint32 len)
     {
         if (fread(dest, sizeof(char), len, rf) != len) return false;
         return memcmp(dest, compare, len) == 0;
     }
 
+    // 将局部顶点坐标按模型缩放与旋转矩阵变换到世界相对空间
     Vector3 ModelPosition::transform(const Vector3& pIn) const
     {
         Vector3 out = pIn * iScale;
@@ -65,6 +67,7 @@ namespace VMAP
         // delete iCoordModelMapping;
     }
 
+    // 离线汇编主入口：读取 dir_bin 地图摆放、计算世界包围盒、构建并写出 .vmtree/.vmtile、导出 GO 模型及 .vmo 资产
     bool TileAssembler::convertWorld2()
     {
         bool success = readMapSpawns();
@@ -204,6 +207,7 @@ namespace VMAP
         return success;
     }
 
+    // 从原始 dir_bin 清单读取各地图各图块的模型放置记录
     bool TileAssembler::readMapSpawns()
     {
         std::string fname = iSrcDir + "/dir_bin";
@@ -243,6 +247,7 @@ namespace VMAP
         return success;
     }
 
+    // 加载原始 M2 模型顶点，按放置旋转/缩放/平移计算世界空间 AABB 包围盒
     bool TileAssembler::calculateTransformedBound(ModelSpawn& spawn)
     {
         std::string modelFilename = iSrcDir + "/" + spawn.name;
@@ -295,6 +300,7 @@ namespace VMAP
         short type;
     };
     //=================================================================
+    // 将单个原始提取模型文件转换为带 BIH 加速树的成品 .vmo 文件
     bool TileAssembler::convertRawFile(const std::string& pModelFilename)
     {
         std::string filename = iSrcDir;
@@ -329,6 +335,7 @@ namespace VMAP
         return model.writeFile(iDestDir + "/" + pModelFilename + ".vmo");
     }
 
+    // 读取原始 temp_gameobject_models 清单，计算各模型局部包围盒并写出成品文件
     void TileAssembler::exportGameobjectModels()
     {
         FILE* model_list = fopen((iSrcDir + "/" + GAMEOBJECT_MODELS).c_str(), "rb");
@@ -391,12 +398,13 @@ namespace VMAP
         fclose(model_list_copy);
     }
 
-    // temporary use defines to simplify read/check code (close file and return at fail)
+    // temporary use defines to simplify read/check code (close file and return at fail) (读取/校验辅助宏，失败时关闭文件并返回 false)
 #define READ_OR_RETURN(V,S) if(fread((V), (S), 1, rf) != 1) { \
                                     fclose(rf); printf("readfail, op = %i\n", readOperation); return(false); }
 #define CMP_OR_RETURN(V,S)  if(strcmp((V),(S)) != 0)        { \
                                     fclose(rf); printf("cmpfail, %s!=%s\n", V, S);return(false); }
 
+    // 读取单个原始 GroupModel 数据（标志、包围盒、三角索引、顶点与液体）
     bool GroupModel_Raw::Read(FILE* rf)
     {
         char blockId[5];
@@ -499,6 +507,7 @@ namespace VMAP
         delete liquid;
     }
 
+    // 从磁盘读取完整原始 WorldModel（包含所有 GroupModel_Raw）
     bool WorldModel_Raw::Read(const char* path)
     {
         FILE* rf = fopen(path, "rb");

@@ -54,6 +54,7 @@ struct UnitConditionEntry;
 struct CombatConditionEntry;
 struct WorldStateExpressionEntry;
 
+/// GM 传送点数据条目（game_tele 表）
 struct GameTele
 {
     float  position_x;
@@ -67,6 +68,7 @@ struct GameTele
 
 typedef std::unordered_map<uint32, GameTele > GameTeleMap;
 
+/// 区域传送触发器配置（areatrigger_teleport 表）
 struct AreaTrigger
 {
     uint32 entry;
@@ -85,14 +87,14 @@ struct AreaTrigger
     uint32 conditionId;
     std::string status_failed_text;
 
-    // Operators
+    // Operators | 判定与比较辅助方法
     bool IsMinimal() const
     {
         return requiredLevel == 0 && requiredItem == 0 && requiredItem2 == 0 && heroicKey == 0 &&
                heroicKey2 == 0 && requiredQuest == 0 && requiredQuestHeroic == 0;
     }
 
-    bool IsLessOrEqualThan(AreaTrigger const* l) const      // Expected to have same map
+    bool IsLessOrEqualThan(AreaTrigger const* l) const      // Expected to have same map | 比较传送门槛要求，要求目标地图一致
     {
         MANGOS_ASSERT(target_mapId == l->target_mapId);
         return requiredLevel <= l->requiredLevel && requiredItem <= l->requiredItem && requiredItem2 <= l->requiredItem2
@@ -100,12 +102,13 @@ struct AreaTrigger
     }
 };
 
+/// 广播文本条目（broadcast_text 表，区分男女台词及本地化文本、表情和音效）
 struct BroadcastText
 {
     uint32 Id;
     std::vector<std::string> maleText;
     std::vector<std::string> femaleText;
-    ChatType chatTypeId; // not contained in SMSG_DB_REPLY, but added here for ease of use
+    ChatType chatTypeId; // not contained in SMSG_DB_REPLY, but added here for ease of use | 聊天发送类型（如说话/喊话/表情）
     Language languageId;
     // uint32 conditionId;
     // uint32 emotesId;
@@ -116,9 +119,10 @@ struct BroadcastText
     uint32 emoteDelays[3];
     // uint32 verifiedBuild;
 
+    /// 根据本地化索引与性别获取对应广播台词文本
     std::string const& GetText(int32 locIdx, uint8 gender = GENDER_MALE, bool forceGender = false) const
     {
-        ++locIdx; // broadcast text has default at position 0
+        ++locIdx; // broadcast text has default at position 0 | 广播文本下标 0 为默认语言
         if ((gender == GENDER_FEMALE || gender == GENDER_NONE) && (forceGender || !femaleText[DEFAULT_LOCALE].empty()))
         {
             if (locIdx >= 0 && femaleText.size() > size_t(locIdx) && !femaleText[locIdx].empty())
@@ -139,6 +143,7 @@ struct BroadcastText
 typedef std::map<uint32, BroadcastText> BroadcastTextMap;
 
 typedef std::map < uint32/*player guid*/, uint32/*instance*/ > CellCorpseSet;
+/// 单个地图网格 (Cell) 内静态刷出的生物、游戏对象及玩家尸体 GUID 索引集合
 struct CellObjectGuids
 {
     CellGuidSet creatures;
@@ -148,15 +153,16 @@ struct CellObjectGuids
 typedef std::unordered_map<uint32/*cell_id*/, CellObjectGuids> CellObjectGuidsMap;
 typedef std::unordered_map<uint32/*(mapid,spawnMode) pair*/, CellObjectGuidsMap> MapObjectGuids;
 
-// mangos string ranges
+// mangos string ranges | 系统本地化文本 ID 范围
 #define MIN_MANGOS_STRING_ID           1                    // 'mangos_string'
 #define MAX_MANGOS_STRING_ID           2000000000
 
+/// mangos_string 多语言文本及关联音效/表情/广播文本条目
 struct MangosStringLocale
 {
     MangosStringLocale() : SoundId(0), Type(0), LanguageId(LANG_UNIVERSAL), Emote(0), broadcastText(nullptr) { }
 
-    std::vector<std::string> Content;                       // 0 -> default, i -> i-1 locale index
+    std::vector<std::string> Content;                       // 0 -> default, i -> i-1 locale index | 下标 0 为默认文本，其余为各语言译文
     uint32 SoundId;
     uint8  Type;
     Language LanguageId;
@@ -168,6 +174,7 @@ typedef std::unordered_map<uint32, CreatureSpawnTemplate> CreatureSpawnTemplateM
 typedef std::unordered_map<uint32 /*guid*/, CreatureData> CreatureDataMap;
 typedef CreatureDataMap::value_type CreatureDataPair;
 
+/// 生物静态刷新点检索辅助仿函数（优先同地图已刷出且距离玩家最近的记录）
 class FindCreatureData
 {
     public:
@@ -191,6 +198,7 @@ class FindCreatureData
 typedef std::unordered_map<uint32, GameObjectData> GameObjectDataMap;
 typedef GameObjectDataMap::value_type GameObjectDataPair;
 
+/// 游戏对象静态刷新点检索辅助仿函数
 class FindGOData
 {
     public:
@@ -229,6 +237,7 @@ typedef std::pair<ExclusiveQuestGroupsMap::const_iterator, ExclusiveQuestGroupsM
 typedef std::pair<ItemRequiredTargetMap::const_iterator, ItemRequiredTargetMap::const_iterator> ItemRequiredTargetMapBounds;
 typedef std::pair<QuestRelationsMap::const_iterator, QuestRelationsMap::const_iterator> QuestRelationsMapBounds;
 
+/// 宠物等级基础属性条目
 struct PetLevelInfo
 {
     PetLevelInfo() : health(0), mana(0), armor(0) { for (unsigned short& stat : stats) stat = 0; }
@@ -239,6 +248,7 @@ struct PetLevelInfo
     uint16 armor;
 };
 
+/// 玩家升级自动触发的邮件奖励配置（mail_level_reward）
 struct MailLevelReward
 {
     MailLevelReward() : raceMask(0), mailTemplateId(0), senderEntry(0) {}
@@ -253,6 +263,7 @@ typedef std::list<MailLevelReward> MailLevelRewardList;
 typedef std::unordered_map<uint8, MailLevelRewardList> MailLevelRewardMap;
 
 // We assume the rate is in general the same for all three types below, but chose to keep three for scalability and customization
+/// 按阵营细分的声望获取倍率（任务/击杀/法术）
 struct RepRewardRate
 {
     float quest_rate;                                       // We allow rate = 0.0 in database. For this case,
@@ -430,6 +441,7 @@ LanguageDesc const* GetLanguageDescByID(uint32 lang);
 
 class PlayerDumpReader;
 
+/// 单调递增整数 ID 生成器（用于拍卖/公会/邮件/队伍等运行期 ID 分配）
 template<typename T>
 class IdGenerator
 {
@@ -467,6 +479,7 @@ struct WorldStateName
     std::string Name;
 };
 
+/// 全局游戏对象与世界数据库元数据管理器单例：负责启动阶段加载并索引全部模板、刷新点、任务、对话、声望、本地化、条件表达式及运行期 GUID/Group/ArenaTeam 管理
 class ObjectMgr
 {
         friend class PlayerDumpReader;
@@ -662,7 +675,7 @@ class ObjectMgr
             return nullptr;
         }
 
-        // Static wrappers for various accessors
+        // Static wrappers for various accessors | 各类底层 SQLStorage/ObjectAccessor 静态便捷封装
         static GameObjectInfo const* GetGameObjectInfo(uint32 id);                  ///< Wrapper for sGOStorage.LookupEntry
         static Player* GetPlayer(const char* name);         ///< Wrapper for ObjectAccessor::FindPlayerByName
         static Player* GetPlayer(ObjectGuid guid, bool inWorld = true);             ///< Wrapper for ObjectAccessor::FindPlayer
@@ -677,6 +690,7 @@ class ObjectMgr
         static WorldTemplate const* GetWorldTemplate(uint32 map);                   ///< Wrapper for sWorldTemplate.LookupEntry
         static CreatureConditionalSpawn const* GetCreatureConditionalSpawn(uint32 lowguid); ///< Wrapper for sCreatureConditionalSpawnStore.LookupEntry
 
+        /// 启动及热重载数据加载接口族
         void LoadArenaTeams();
         void LoadGroups();
         void LoadQuests();
@@ -1318,7 +1332,7 @@ class ObjectMgr
         std::unordered_map<uint32, std::pair<bool, std::vector<uint32>>> m_creatureSpawnEntryMap;
         std::unordered_map<uint32, std::pair<bool, std::vector<uint32>>> m_gameobjectSpawnEntryMap;
         std::unordered_map<uint32, GameObjectTemplateAddon> m_gameobjectAddonTemplates;
-		
+
         PointOfInterestMap  mPointsOfInterest;
 
         PetCreateSpellMap   mPetCreateSpell;
@@ -1443,10 +1457,10 @@ class ObjectMgr
 
 #define sObjectMgr MaNGOS::Singleton<ObjectMgr>::Instance()
 
-/// generic text function
+/// generic text function | 通用 NPC/世界对象喊话与广播文本展示函数
 bool DoDisplayText(WorldObject* source, int32 entry, Unit const* target = nullptr, uint32 chatTypeOverride = 0);
 
-// scripting access functions
+// scripting access functions | 供外部脚本模块调用的只读模板访问函数
 bool LoadMangosStrings(DatabaseType& db, char const* table, int32 start_value = -1000000, int32 end_value = std::numeric_limits<int32>::min(), bool extra_content = false);
 CreatureInfo const* GetCreatureTemplateStore(uint32 entry);
 Quest const* GetQuestTemplateStore(uint32 entry);

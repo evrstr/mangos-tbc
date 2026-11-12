@@ -26,10 +26,11 @@
 #include <list>
 #include <vector>
 
+// 随机附魔候选条目（附魔 ID 与出现概率）
 struct EnchStoreItem
 {
-    uint32  ench;
-    float   chance;
+    uint32  ench;                                           // 随机附魔属性/后缀 ID
+    float   chance;                                         // 抽取权重百分比
 
     EnchStoreItem()
         : ench(0), chance(0) {}
@@ -41,11 +42,13 @@ struct EnchStoreItem
 typedef std::vector<EnchStoreItem> EnchStoreList;
 typedef std::unordered_map<uint32, EnchStoreList> EnchantmentStore;
 
+// 全局随机附魔模板表缓存（按模板组 entry 索引）
 static EnchantmentStore RandomItemEnch;
 
+// 从世界数据库加载 item_enchantment_template 表
 void LoadRandomEnchantmentsTable()
 {
-    RandomItemEnch.clear();                                 // for reload case
+    RandomItemEnch.clear();                                 // for reload case (重载前先清空缓存)
 
     uint32 count = 0;
     auto queryResult = WorldDatabase.Query("SELECT entry, ench, chance FROM item_enchantment_template");
@@ -78,6 +81,7 @@ void LoadRandomEnchantmentsTable()
     sLog.outString();
 }
 
+// 按概率从指定随机附魔组中抽取一条附魔 ID
 uint32 GetItemEnchantMod(uint32 entry)
 {
     if (!entry) return 0;
@@ -102,6 +106,7 @@ uint32 GetItemEnchantMod(uint32 entry)
     }
 
     // we could get here only if sum of all enchantment chances is lower than 100%
+    // 若各条目概率总和不足 100%，按实际总和重新归一随机一次
     dRoll = (irand(0, (int)floor(fCount * 100) + 1)) / 100;
     fCount = 0;
 
@@ -115,6 +120,7 @@ uint32 GetItemEnchantMod(uint32 entry)
     return 0;
 }
 
+// 根据物品等级、穿戴槽位与品质从 RandomPropertiesPoints DBC 查询后缀系数
 uint32 GenerateEnchSuffixFactor(uint32 item_id)
 {
     ItemPrototype const* itemProto = ObjectMgr::GetItemPrototype(item_id);
@@ -131,7 +137,7 @@ uint32 GenerateEnchSuffixFactor(uint32 item_id)
     uint32 suffixFactor;
     switch (itemProto->InventoryType)
     {
-        // Items of that type don`t have points
+        // Items of that type don`t have points (非装备、背包、战袍、弹药等类型无属性点系数)
         case INVTYPE_NON_EQUIP:
         case INVTYPE_BAG:
         case INVTYPE_TABARD:
@@ -139,7 +145,7 @@ uint32 GenerateEnchSuffixFactor(uint32 item_id)
         case INVTYPE_QUIVER:
         case INVTYPE_RELIC:
             return 0;
-        // Select point coefficient
+        // Select point coefficient (按装备部位选取 0~4 号点位系数)
         case INVTYPE_HEAD:
         case INVTYPE_BODY:
         case INVTYPE_CHEST:
@@ -176,7 +182,7 @@ uint32 GenerateEnchSuffixFactor(uint32 item_id)
         default:
             return 0;
     }
-    // Select rare/epic modifier
+    // Select rare/epic modifier (按优秀/精良/史诗品质返回对应点数值)
     switch (itemProto->Quality)
     {
         case ITEM_QUALITY_UNCOMMON:
@@ -187,7 +193,7 @@ uint32 GenerateEnchSuffixFactor(uint32 item_id)
             return randomProperty->EpicPropertiesPoints[suffixFactor];
         case ITEM_QUALITY_LEGENDARY:
         case ITEM_QUALITY_ARTIFACT:
-            return 0;                                       // not have random properties
+            return 0;                                       // not have random properties (传说与神器不具有随机属性)
         default:
             break;
     }

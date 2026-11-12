@@ -53,6 +53,7 @@
 #else
 #pragma pack(push,1)
 #endif
+/// 服务端下行数据包包头结构（2 字节大端长度 + 2 字节小端操作码）
 struct ServerPktHeader
 {
     uint16 size;
@@ -131,10 +132,11 @@ void WorldSocket::SendPacket(const WorldPacket& pct)
     if (sPacketLog->CanLogPacket() && IsLoggingPackets())
         sPacketLog->LogPacket(pct, SERVER_TO_CLIENT, GetRemoteIpAddress(), GetRemotePort());
 
-    // Dump outgoing packet.
+    // Dump outgoing packet. | 转储即将发送的数据包内容（若日志级别开启）
     sLog.outWorldPacketDump(GetRemoteEndpoint().c_str(), pct.GetOpcode(), pct.GetOpcodeName(), pct, false);
 
     // encrypt thread unsafe due to being executed from map contexts frequently - TODO: move to post service context in future
+    // 加密游标非线程安全且常从地图线程并发调用，需加锁保护（待后续迁移至网络服务线程）
     std::lock_guard<std::mutex> guard(m_worldSocketMutex);
 
     ServerPktHeader header;
@@ -155,10 +157,10 @@ void WorldSocket::SendPacket(const WorldPacket& pct)
 
     if (pct.size() > 0)
     {
-        // allocate array for full message
+        // allocate array for full message | 分配完整数据包缓冲（包头 + 负载）并异步发送
         std::shared_ptr<std::vector<char>> fullMessage = std::make_shared<std::vector<char>>(header.headerSize() + pct.size());
-        std::memcpy(fullMessage->data(), header.data(), header.headerSize()); // copy header
-        std::memcpy((fullMessage->data() + header.headerSize()), reinterpret_cast<const char*>(pct.contents()), pct.size()); // copy packet
+        std::memcpy(fullMessage->data(), header.data(), header.headerSize()); // copy header | 拷贝包头
+        std::memcpy((fullMessage->data() + header.headerSize()), reinterpret_cast<const char*>(pct.contents()), pct.size()); // copy packet | 拷贝负载
         auto self(shared_from_this());
         Write(fullMessage->data(), fullMessage->size(), [self, fullMessage](const boost::system::error_code& /*error*/, std::size_t /*written*/) {});
     }
@@ -178,7 +180,7 @@ bool WorldSocket::OnOpen()
         GetAsioSocket().set_option(boost::asio::ip::tcp::no_delay(true), ec);
     }
 
-    // Send startup packet.
+    // Send startup packet. | 连接建立后立即发送认证挑战种子包 SMSG_AUTH_CHALLENGE
     WorldPacket packet(SMSG_AUTH_CHALLENGE, 4);
     packet << m_seed;
 
@@ -200,7 +202,7 @@ bool WorldSocket::ProcessIncomingData()
             return;
         }
 
-        // thread safe due to always being called from service context
+        // thread safe due to always being called from service context | 在网络 IO 服务线程串行读取，解密操作线程安全
         self->m_crypt.DecryptRecv((uint8*)header.get(), sizeof(ClientPktHeader));
 
         EndianConvertReverse(header->size);
@@ -242,12 +244,12 @@ bool WorldSocket::ProcessIncomingData()
             if (WorldSocket::m_packetCooldowns[opcode])
             {
                 auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(Clock::now());
-                if (now < self->m_lastPacket[opcode]) // packet on cooldown
+                if (now < self->m_lastPacket[opcode]) // packet on cooldown | 操作码处于冷却期，直接丢弃并继续读包
                 {
                     self->ProcessIncomingData();
                     return;
                 }
-                else // start cooldown and allow execution
+                else // start cooldown and allow execution | 记录冷却结束时间并放行处理
                     self->m_lastPacket[opcode] = now + std::chrono::milliseconds(WorldSocket::m_packetCooldowns[opcode]);
             }
 
@@ -337,7 +339,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     std::string account, os;
     BigNumber v, s, K;
 
-    // Read the content of the packet
+    // Read the content of the packet | 读取客户端认证会话包负载
     recvPacket >> ClientBuild;
     recvPacket >> unk2;
     recvPacket >> account;
@@ -349,7 +351,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
               account.c_str(),
               clientSeed);
 
-    // Check the version of client trying to connect
+    // Check the version of client trying to connect | 校验客户端版本号是否受支持
     if (!IsAcceptableClientBuild(ClientBuild))
     {
         WorldPacket packet(SMSG_AUTH_RESPONSE, 1);
@@ -361,10 +363,10 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
         return false;
     }
 
-    // Get the account information from the realmd database
-    std::string safe_account = account; // Duplicate, else will screw the SHA hash verification below
+    // Get the account information from the realmd database | 从登录库查询账号安全信息与 SRP6 会话密钥
+    std::string safe_account = account; // Duplicate, else will screw the SHA hash verification below | 复制后再转义，避免破坏后续 SHA1 校验使用的原始账号名
     LoginDatabase.escape_string(safe_account);
-    // No SQL injection, username escaped.
+    // No SQL injection, username escaped. | 用户名已转义，防止 SQL 注入
 
     auto queryResult =
         LoginDatabase.PQuery("SELECT "
@@ -443,6 +445,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     // sessionkey must be a full 40 byte (80 hex char) SRP6 session key; anything else
     // (in particular an empty string, which SetHexStr turns into 0) must not be accepted
     // as it would let the session proof be computed without knowing the real key.
+    // sessionkey 必须是完整的 40 字节（80 位十六进制字符）SRP6 会话密钥；拒绝空串或截断值以防止绕过认证校验
     std::string sessionKeyStr = fields[2].GetString();
     if (sessionKeyStr.size() != 80)
     {
@@ -463,16 +466,16 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     os = fields[10].GetString();
 
     uint32 accountFlags = fields[11].GetUInt32();
-	std::string platform = fields[12].GetString();
+    std::string platform = fields[12].GetString();
 
-    // Re-check account ban (same check as in realmd)
+    // Re-check account ban (same check as in realmd) | 二次校验账号封禁与 IP 封禁状态
     auto banresult =
         LoginDatabase.PQuery("SELECT 1 FROM account_banned WHERE account_id = %u AND active = 1 AND (expires_at > " _UNIXTIME_ " OR expires_at = banned_at)"
                              "UNION "
                              "SELECT 1 FROM ip_banned WHERE (expires_at = banned_at OR expires_at > " _UNIXTIME_ ") AND ip = '%s'",
                              id, GetRemoteAddress().c_str());
 
-    if (banresult) // if account banned
+    if (banresult) // if account banned | 若账号或 IP 已被封禁
     {
         WorldPacket packet(SMSG_AUTH_RESPONSE, 1);
         packet << uint8(AUTH_BANNED);
@@ -482,7 +485,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
         return false;
     }
 
-    // Check locked state for server
+    // Check locked state for server | 检查服务器允许登录的最低安全等级限制
     AccountTypes allowedAccountType = sWorld.GetPlayerSecurityLimit();
 
     if (allowedAccountType > SEC_PLAYER && AccountTypes(security) < allowedAccountType)
@@ -496,7 +499,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
         return false;
     }
 
-    // Check that Key and account name are the same on client and server
+    // Check that Key and account name are the same on client and server | 计算 SHA1 摘要验证客户端会话密钥 K 与挑战种子一致性
     Sha1Hash sha;
 
     uint32 t = 0;
@@ -505,7 +508,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     sha.UpdateData((uint8*) & t, 4);
     sha.UpdateData((uint8*) & clientSeed, 4);
     sha.UpdateData((uint8*) & m_seed, 4);
-    sha.UpdateData(K.AsByteArray(40));                  // the client hashes the 40 bytes of K
+    sha.UpdateData(K.AsByteArray(40));                  // the client hashes the 40 bytes of K | 客户端对 40 字节 K 计算哈希
     sha.Finalize();
 
     if (memcmp(sha.GetDigest(), digest, 20))
@@ -563,11 +566,11 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     {
         DEBUG_LOG("WorldSocket::HandleAuthSession reconnecting for account '%s' from %s", account.c_str(), address.c_str());
 
-        // defer operation to session thread context to avoid any race conditions
+        // defer operation to session thread context to avoid any race conditions | 投递至会话所在线程上下文处理重连，避免竞态条件
         auto self = shared_from_this();
         m_session->GetMessager().AddMessage([self, ClientBuild, clientOS, clientPlatform, account, address = address, K, id, recvPacket = recvPacket](WorldSession* session)
         {
-            // Session exist so player is reconnecting
+            // Session exist so player is reconnecting | 会话已存在说明玩家正在重连，尝试接管新 Socket
             // check if we can request a new socket
             if (!session->RequestNewSocket(self.get()))
                 return;
@@ -579,7 +582,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
 
             std::unique_ptr<SessionAnticheatInterface> anticheat = sAnticheatLib->NewSession(session, K);
 
-            // when false, the client sent invalid addon data.  kick!
+            // when false, the client sent invalid addon data.  kick! | 若返回 false 说明插件校验数据非法，踢出玩家
             WorldPacket addonPacket; // yes its copypasted atm cos of reconnect
             if (!anticheat->ReadAddonInfo(const_cast<WorldPacket*>(&recvPacket), addonPacket))
             {
@@ -614,7 +617,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
             }
         }
 
-        // new session
+        // new session | 创建全新的 WorldSession 会话并加入世界管理器
         if (!(m_session = new WorldSession(id, this, AccountTypes(security), expansion, mutetime, locale, account, accountFlags, otherRaf, isRecruiter)))
             return false;
 
@@ -625,7 +628,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
         m_session->SetPlatform(clientPlatform);
         m_session->InitializeAnticheat(K);
 
-        // when false, the client sent invalid addon data.  kick!
+        // when false, the client sent invalid addon data.  kick! | 校验客户端插件信息，失败则踢出
         WorldPacket addonPacket;
         if (!m_session->GetAnticheat()->ReadAddonInfo(&recvPacket, addonPacket))
         {
@@ -647,12 +650,12 @@ bool WorldSocket::HandlePing(WorldPacket& recvPacket)
     uint32 ping;
     uint32 latency;
 
-    // Get the ping packet content
+    // Get the ping packet content | 读取客户端 Ping 序号与延迟统计值
     recvPacket >> ping;
     recvPacket >> latency;
 
     if (m_lastPingTime == std::chrono::system_clock::time_point::min())
-        m_lastPingTime = std::chrono::system_clock::now();              // for 1st ping
+        m_lastPingTime = std::chrono::system_clock::now();              // for 1st ping | 首次收到 Ping，记录基准时间
     else
     {
         auto now = std::chrono::system_clock::now();

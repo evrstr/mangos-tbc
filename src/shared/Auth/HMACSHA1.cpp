@@ -27,6 +27,9 @@ HMACSHA1::HMACSHA1(uint32 len, uint8 const* seed)
     // bytes from m_key. A longer key (len > SEED_KEY_SIZE) is therefore not copied past it: the MAC is keyed from the
     // caller's own buffer, which is already len bytes long. Do not call Initialize() again on an object constructed
     // with len > SEED_KEY_SIZE.
+    // | m_key 仅保存 SEED_KEY_SIZE（16）字节，供后续 Initialize() 重新置入密钥使用。
+    // | 超过 16 字节的部分不会拷贝进 m_key，首次初始化直接读取调用方提供的完整 seed 缓冲区；
+    // | 因此对于 len > SEED_KEY_SIZE 的实例，不可再调用 Initialize()。
     memcpy(m_key, seed, std::min<uint32>(len, SEED_KEY_SIZE));
     m_mac = EVP_MAC_fetch(nullptr, "HMAC", nullptr);
     m_ctx = EVP_MAC_CTX_new(m_mac);
@@ -38,7 +41,7 @@ HMACSHA1::HMACSHA1(uint32 len, uint8 const* seed)
     EVP_MAC_init(m_ctx, seed, len, params);
 }
 
-HMACSHA1::HMACSHA1(uint32 len, uint8 const* seed, bool) // to get over the default constructor
+HMACSHA1::HMACSHA1(uint32 len, uint8 const* seed, bool) // to get over the default constructor | 额外 bool 参数用于区分默认种子构造重载
 {
     m_mac = EVP_MAC_fetch(nullptr, "HMAC", nullptr);
     m_ctx = EVP_MAC_CTX_new(m_mac);

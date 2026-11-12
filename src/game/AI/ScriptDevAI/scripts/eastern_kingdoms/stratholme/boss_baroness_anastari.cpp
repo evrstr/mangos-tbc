@@ -21,20 +21,24 @@ SDComment:
 SDCategory: Stratholme
 EndScriptData */
 
+// 安娜丝塔丽男爵夫人（Baroness Anastari）首领战 AI（附身心控玩家、女妖哀嚎与女妖诅咒）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "Spells/Scripts/SpellScript.h"
 #include "Spells/SpellAuras.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_BANSHEE_WAIL      = 16565,
-    SPELL_BANSHEE_CURSE     = 16867,
-    SPELL_SILENCE           = 18327,
-    SPELL_POSSESS           = 17244,
-    SPELL_POSSESSED         = 17246,
+    SPELL_BANSHEE_WAIL      = 16565,                        // 女妖wail 法术 ID
+    SPELL_BANSHEE_CURSE     = 16867,                        // 女妖诅咒 法术 ID
+    SPELL_SILENCE           = 18327,                        // 沉默 法术 ID
+    SPELL_POSSESS           = 17244,                        // possess 法术 ID
+    SPELL_POSSESSED         = 17246,                        // possessed 法术 ID
     SPELL_POSSESS_INV       = 17250,        // baroness becomes invisible while possessing a target
 };
 
+// 首领战 AI：安娜丝塔丽（baroness_anastari）
 struct boss_baroness_anastariAI : public ScriptedAI
 {
     boss_baroness_anastariAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -53,14 +57,15 @@ struct boss_baroness_anastariAI : public ScriptedAI
         Reset();
     }
 
-    uint32 m_uiBansheeWailTimer;
-    uint32 m_uiBansheeCurseTimer;
-    uint32 m_uiSilenceTimer;
-    uint32 m_uiPossessTimer;
-    uint32 m_uiPossessEndTimer;
+    uint32 m_uiBansheeWailTimer;                            // BansheeWail 技能计时器
+    uint32 m_uiBansheeCurseTimer;                           // BansheeCurse 技能计时器
+    uint32 m_uiSilenceTimer;                                // Silence 技能计时器
+    uint32 m_uiPossessTimer;                                // Possess 技能计时器
+    uint32 m_uiPossessEndTimer;                             // PossessEnd 技能计时器
 
     ObjectGuid m_possessedPlayer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiBansheeWailTimer    = 0;
@@ -70,6 +75,7 @@ struct boss_baroness_anastariAI : public ScriptedAI
         m_uiPossessEndTimer     = 0;
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         // If it's invisible don't evade
@@ -79,6 +85,7 @@ struct boss_baroness_anastariAI : public ScriptedAI
         ScriptedAI::EnterEvadeMode();
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiPossessEndTimer)
@@ -142,7 +149,7 @@ struct boss_baroness_anastariAI : public ScriptedAI
         else
             m_uiBansheeCurseTimer -= uiDiff;
 
-        // Silence
+        // Silence (沉默)
         if (m_uiSilenceTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
@@ -170,7 +177,7 @@ struct boss_baroness_anastariAI : public ScriptedAI
         else
             m_uiPossessTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
@@ -203,6 +210,7 @@ struct AnastariPossess : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_baroness_anastari
 void AddSC_boss_baroness_anastari()
 {
     Script* pNewScript = new Script;

@@ -29,7 +29,7 @@
 #include "Util/Util.h"
 #include "Util/ProgressBar.h"
 
-/// Create the Weather object
+/// Create the Weather object (创建区域天气对象并初始化变更计时器)
 Weather::Weather(uint32 zone, WeatherZoneChances const* weatherChances) :
     m_zone(zone),
     m_type(WEATHER_TYPE_FINE),
@@ -41,19 +41,19 @@ Weather::Weather(uint32 zone, WeatherZoneChances const* weatherChances) :
     DETAIL_FILTER_LOG(LOG_FILTER_WEATHER, "WORLD: Starting weather system for zone %u (change every %u minutes).", m_zone, (m_timer.GetInterval() / (MINUTE * IN_MILLISECONDS)));
 }
 
-/// Launch a weather update
+/// Launch a weather update (推进天气计时器并在到期时尝试更新天气)
 bool Weather::Update(uint32 diff, Map const* _map)
 {
     m_timer.Update(diff);
 
-    ///- If the timer has passed, ReGenerate the weather
+    ///- If the timer has passed, ReGenerate the weather (若计时器到期，重新生成天气)
     if (m_timer.Passed())
     {
         m_timer.Reset();
-        // update only if Regenerate has changed the weather
+        // update only if Regenerate has changed the weather (仅当重新生成改变了天气时才广播更新)
         if (ReGenerate())
         {
-            ///- Weather will be removed if not updated (no players in zone anymore)
+            ///- Weather will be removed if not updated (no players in zone anymore) (若区域内已无玩家，发送失败后移除该天气实例)
             if (!SendWeatherForPlayersInZone(_map))
                 return false;
         }
@@ -61,13 +61,13 @@ bool Weather::Update(uint32 diff, Map const* _map)
     return true;
 }
 
-/// Calculate the new weather, returns true if and only if the weather changed
+/// Calculate the new weather, returns true if and only if the weather changed (计算新天气，仅在天气类型或强度变化时返回 true)
 bool Weather::ReGenerate()
 {
     if (m_isPermanentWeather)
         return false;
 
-    // remember old values
+    // remember old values (记录旧的天气类型与强度用于对比)
     WeatherType old_type = m_type;
     float old_grade = m_grade;
 
@@ -75,21 +75,21 @@ bool Weather::ReGenerate()
     {
         m_type = WEATHER_TYPE_FINE;
         m_grade = 0.0f;
-        // No chanced calculation for this zone
+        // No chanced calculation for this zone (该区域未配置天气概率，默认设为晴朗)
         return old_type != m_type || old_grade != m_grade;
     }
 
-    /// Weather statistics:
-    ///- 30% - no change
-    ///- 30% - weather gets better (if not fine) or change weather type
-    ///- 30% - weather worsens (if not fine)
-    ///- 10% - radical change (if not fine)
+    /// Weather statistics: (天气变化概率分布：)
+    ///- 30% - no change (30% - 保持不变)
+    ///- 30% - weather gets better (if not fine) or change weather type (30% - 转好或切换天气类型)
+    ///- 30% - weather worsens (if not fine) (30% - 恶化，若当前非晴天)
+    ///- 10% - radical change (if not fine) (10% - 剧变，若当前非晴天)
     uint32 u = urand(0, 99);
 
     if (u < 30)
         return false;
 
-    // 78 days between January 1st and March 20nd; 365/4=91 days by season
+    // 78 days between January 1st and March 20nd; 365/4=91 days by season (1月1日至3月20日约78天；每季约91天，据此换算当前游戏时间所属季节)
     // season source http://aa.usno.navy.mil/data/docs/EarthSeasons.html
     time_t gtime = sWorld.GetGameTime();
     struct tm* ltime = localtime(&gtime);
@@ -99,19 +99,19 @@ bool Weather::ReGenerate()
 
     DEBUG_FILTER_LOG(LOG_FILTER_WEATHER, "Generating a change in %s weather for zone %u.", seasonName[season], m_zone);
 
-    if ((u < 60) && (m_grade < 0.33333334f))                // Get fair
+    if ((u < 60) && (m_grade < 0.33333334f))                // Get fair (强度足够低时直接转晴)
     {
         m_type = WEATHER_TYPE_FINE;
         m_grade = 0.0f;
     }
 
-    if ((u < 60) && (m_type != WEATHER_TYPE_FINE))          // Get better
+    if ((u < 60) && (m_type != WEATHER_TYPE_FINE))          // Get better (天气转好，降低强度)
     {
         m_grade -= 0.33333334f;
         return true;
     }
 
-    if ((u < 90) && (m_type != WEATHER_TYPE_FINE))          // Get worse
+    if ((u < 90) && (m_type != WEATHER_TYPE_FINE))          // Get worse (天气恶化，提高强度)
     {
         m_grade += 0.33333334f;
         return true;
@@ -119,19 +119,19 @@ bool Weather::ReGenerate()
 
     if (m_type != WEATHER_TYPE_FINE)
     {
-        /// Radical change:
-        ///- if light -> heavy
-        ///- if medium -> change weather type
-        ///- if heavy -> 50% light, 50% change weather type
+        /// Radical change: (剧烈变化规则：)
+        ///- if light -> heavy (轻度 -> 重度)
+        ///- if medium -> change weather type (中度 -> 切换天气类型)
+        ///- if heavy -> 50% light, 50% change weather type (重度 -> 50% 转为轻度，50% 切换天气类型)
 
         if (m_grade < 0.33333334f)
         {
-            m_grade = 0.9999f;                              // go nuts
+            m_grade = 0.9999f;                              // go nuts (直接升至最大强度)
             return true;
         }
         if (m_grade > 0.6666667f)
         {
-            // Severe change, but how severe?
+            // Severe change, but how severe? (大幅转变：50% 概率降为轻度天气)
             uint32 rnd = urand(0, 99);
             if (rnd < 50)
             {
@@ -139,11 +139,11 @@ bool Weather::ReGenerate()
                 return true;
             }
         }
-        m_type = WEATHER_TYPE_FINE;                     // clear up
+        m_type = WEATHER_TYPE_FINE;                     // clear up (先清零为晴天，随后按季节概率重新抽取)
         m_grade = 0;
     }
 
-    // At this point, only weather that isn't doing anything remains but that have weather data
+    // At this point, only weather that isn't doing anything remains but that have weather data (此时仅剩配置了概率表的晴天状态，按季节概率抽取新天气)
     uint32 chance1 =          m_weatherChances->data[season].rainChance;
     uint32 chance2 = chance1 + m_weatherChances->data[season].snowChance;
     uint32 chance3 = chance2 + m_weatherChances->data[season].stormChance;
@@ -158,11 +158,11 @@ bool Weather::ReGenerate()
     else
         m_type = WEATHER_TYPE_FINE;
 
-    /// New weather statistics (if not fine):
-    ///- 85% light
-    ///- 7% medium
-    ///- 7% heavy
-    /// If fine 100% sun (no fog)
+    /// New weather statistics (if not fine): (新天气初始强度分布：)
+    ///- 85% light (85% 轻度)
+    ///- 7% medium (7% 中度)
+    ///- 7% heavy (7% 重度)
+    /// If fine 100% sun (no fog) (若为晴天则强度为 0)
 
     if (m_type == WEATHER_TYPE_FINE)
     {
@@ -174,7 +174,7 @@ bool Weather::ReGenerate()
     }
     else
     {
-        // Severe change, but how severe?
+        // Severe change, but how severe? (剧烈天气生成：随机分配为中度或重度)
         rnd = urand(0, 99);
         if (rnd < 50)
             m_grade = rand_norm_f() * 0.3333f + 0.3334f;
@@ -184,10 +184,11 @@ bool Weather::ReGenerate()
 
     NormalizeGrade();
 
-    // return true only in case weather changes
+    // return true only in case weather changes (仅当天气类型或强度发生变化时返回 true)
     return m_type != old_type || m_grade != old_grade;
 }
 
+// 向指定玩家发送当前区域天气数据包
 void Weather::SendWeatherUpdateToPlayer(Player* player)
 {
     NormalizeGrade();
@@ -195,12 +196,12 @@ void Weather::SendWeatherUpdateToPlayer(Player* player)
     WorldPacket data(SMSG_WEATHER, 4 + 4 + 1);
     data << uint32(GetWeatherState());
     data << float(m_grade);
-    data << uint8(0);       // 1 = instant change, 0 = smooth change
+    data << uint8(0);       // 1 = instant change, 0 = smooth change (1 = 瞬时切换，0 = 平滑过渡)
 
     player->GetSession()->SendPacket(data);
 }
 
-// Send the new weather to all players in the zone
+// Send the new weather to all players in the zone (向区域内的所有玩家广播新天气)
 bool Weather::SendWeatherForPlayersInZone(Map const* _map)
 {
     NormalizeGrade();
@@ -210,18 +211,18 @@ bool Weather::SendWeatherForPlayersInZone(Map const* _map)
     WorldPacket data(SMSG_WEATHER, 4 + 4 + 1);
     data << uint32(state);
     data << float(m_grade);
-    data << uint8(0);       // 1 = instant change, 0 = smooth change
+    data << uint8(0);       // 1 = instant change, 0 = smooth change (1 = 瞬时切换，0 = 平滑过渡)
 
-    ///- Send the weather packet to all players in this zone
+    ///- Send the weather packet to all players in this zone (向区域内所有玩家发送天气数据包)
     if (!_map->SendToPlayersInZone(data, m_zone))
         return false;
 
-    ///- Log the event
+    ///- Log the event (记录天气变更日志)
     LogWeatherState(state);
     return true;
 }
 
-// Set the weather
+// Set the weather (手动设置天气类型、强度与永久标志并立即广播)
 void Weather::SetWeather(WeatherType type, float grade, Map const* _map, bool isPermanent)
 {
     m_isPermanentWeather = isPermanent;
@@ -234,7 +235,7 @@ void Weather::SetWeather(WeatherType type, float grade, Map const* _map, bool is
     SendWeatherForPlayersInZone(_map);
 }
 
-// Get the sound number associated with the current weather
+// Get the sound number associated with the current weather (根据天气类型与强度映射为客户端 WeatherState 枚举)
 WeatherState Weather::GetWeatherState() const
 {
     if (m_grade < 0.27f)
@@ -276,6 +277,7 @@ WeatherState Weather::GetWeatherState() const
     }
 }
 
+// 归一化天气强度至 [0.0001, 0.9999]
 void Weather::NormalizeGrade()
 {
     if (m_grade >= 1)
@@ -284,7 +286,7 @@ void Weather::NormalizeGrade()
         m_grade = 0.0001f;
 }
 
-// Helper to log recent state
+// Helper to log recent state (记录当前天气状态日志)
 void Weather::LogWeatherState(WeatherState state) const
 {
     char const* wthstr;
@@ -333,7 +335,7 @@ void Weather::LogWeatherState(WeatherState state) const
 }
 
 // ---------------------------------------------------------
-//                  Weather System
+//                  Weather System (地图天气系统)
 // ---------------------------------------------------------
 
 WeatherSystem::WeatherSystem(Map const* _map) : m_map(_map)
@@ -341,34 +343,34 @@ WeatherSystem::WeatherSystem(Map const* _map) : m_map(_map)
 
 WeatherSystem::~WeatherSystem()
 {
-    ///- Empty the WeatherMap
+    ///- Empty the WeatherMap (释放地图内所有区域天气实例)
     for (WeatherMap::const_iterator itr = m_weathers.begin(); itr != m_weathers.end(); ++itr)
         delete itr->second;
 
     m_weathers.clear();
 }
 
-/// Find or Create a Weather object by the given zoneid
+/// Find or Create a Weather object by the given zoneid (按区域 ID 查找或新建天气对象)
 Weather* WeatherSystem::FindOrCreateWeather(uint32 zoneId)
 {
     WeatherMap::const_iterator itr = m_weathers.find(zoneId);
-    // Return if found
+    // Return if found (已存在则直接返回)
     if (itr != m_weathers.end())
         return itr->second;
-    // Create
+    // Create (不存在则创建并注册到映射表)
     Weather* w = new Weather(zoneId, sWeatherMgr.GetWeatherChances(zoneId));
     m_weathers[zoneId] = w;
     return w;
 }
 
-/// Update Weathers for the different zones
+/// Update Weathers for the different zones (推进地图内所有区域的天气更新)
 void WeatherSystem::UpdateWeathers(uint32 diff)
 {
-    ///- Send an update signal to Weather objects
+    ///- Send an update signal to Weather objects (向各个区域天气对象发送时间步进信号)
     for (WeatherMap::iterator itr = m_weathers.begin(); itr != m_weathers.end();)
     {
-        ///- and remove Weather objects for zones with no player
-        // As interval > WorldTick
+        ///- and remove Weather objects for zones with no player (若区域内已无玩家，移除对应天气对象)
+        // As interval > WorldTick (因天气更新间隔远大于世界 Tick，可安全清理空区域)
         if (!itr->second->Update(diff, m_map))
         {
             delete itr->second;
@@ -379,7 +381,7 @@ void WeatherSystem::UpdateWeathers(uint32 diff)
     }
 }
 
-/// Load Weather chanced from table game_weather
+/// Load Weather chanced from table game_weather (从数据库 game_weather 表加载各区域四季天气概率)
 void WeatherMgr::LoadWeatherZoneChances()
 {
     uint32 count = 0;

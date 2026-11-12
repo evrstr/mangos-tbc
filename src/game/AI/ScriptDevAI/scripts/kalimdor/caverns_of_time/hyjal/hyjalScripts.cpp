@@ -21,6 +21,10 @@ SDComment:
 SDCategory: Caverns of Time, Mount Hyjal
 EndScriptData */
 
+/**
+ * 海加尔峰战役：吉安娜、萨尔、泰兰德等首领交互及任务脚本
+ */
+
 /* ContentData
 npc_jaina_proudmoore
 npc_thrall
@@ -32,15 +36,17 @@ EndContentData */
 #include "hyjalAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// JainaActions 战斗行为动作枚举
 enum JainaActions
 {
     JAINA_20 = HYJAL_AI_ACTION_MAX,
     JAINA_BLIZZARD,
     JAINA_PYROBLAST,
     JAINA_SUMMON_ELEMENTALS,
-    JAINA_ACTION_MAX,
+    JAINA_ACTION_MAX,                                       // 战斗行为动作
 };
 
+// npc_jaina_proudmooreAI NPC 脚本 AI
 struct npc_jaina_proudmooreAI : public hyjalAI
 {
     npc_jaina_proudmooreAI(Creature* creature) : hyjalAI(creature, JAINA_ACTION_MAX)
@@ -51,7 +57,7 @@ struct npc_jaina_proudmooreAI : public hyjalAI
         AddCombatAction(JAINA_SUMMON_ELEMENTALS, 15000, 45000);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -110,11 +116,11 @@ bool GossipSelect_npc_jaina_proudmoore(Player* player, Creature* creature, uint3
                     }
                     break;
                 case 102:
-                    if (instance->GetData(TYPE_AZGALOR) != DONE) // Jaina has the same gossip menu when spawned in orc base, but nothing should happen when selecting her gossip menu options
+                    if (instance->GetData(TYPE_AZGALOR) != DONE) // Jaina has the same gossip menu when spawned in orc base, but nothing should happen when selecting her gossip menu options (说明)
                     {
-                        creature->SetActiveObjectState(true); // Set active object to prevent issues if players go out of range after talking to her (could lead to ores not spawning)
+                        creature->SetActiveObjectState(true); // Set active object to prevent issues if players go out of range after talking to her (could lead to ores not spawning) (说明)
                         instance->StartEvent(JAINA_WIN);
-                        creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP); // ToDo: Jaina should not lose gossip flag, but also should not stop movement when a player opens her gossip window. Currently we have no way to achieve this.
+                        creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP); // ToDo: Jaina should not lose gossip flag, but also should not stop movement when a player opens her gossip window. Currently we have no way to achieve this. (说明)
                     }
                     player->CLOSE_GOSSIP_MENU();
                     break;
@@ -124,13 +130,15 @@ bool GossipSelect_npc_jaina_proudmoore(Player* player, Creature* creature, uint3
     return false;
 }
 
+// ThrallActions 战斗行为动作枚举
 enum ThrallActions
 {
     THRALL_FERAL_SPIRITS = HYJAL_AI_ACTION_MAX,
     THRALL_CHAIN_LIGHTNING,
-    THRALL_ACTION_MAX,
+    THRALL_ACTION_MAX,                                      // 战斗行为动作
 };
 
+// npc_thrallAI NPC 脚本 AI
 struct npc_thrallAI : public hyjalAI
 {
     npc_thrallAI(Creature* creature) : hyjalAI(creature, THRALL_ACTION_MAX)
@@ -141,7 +149,7 @@ struct npc_thrallAI : public hyjalAI
 
     GuidVector m_feralSpirits;
 
-    void JustSummoned(Creature* creature) override
+    void JustSummoned(Creature* creature) override          // 召唤仆从成功回调
     {
         if (creature->GetEntry() == NPC_FERAL_SPIRIT)
             m_feralSpirits.push_back(creature->GetObjectGuid());
@@ -162,7 +170,7 @@ struct npc_thrallAI : public hyjalAI
         return count == 0;
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -208,9 +216,9 @@ bool GossipSelect_npc_thrall(Player* player, Creature* creature, uint32 /*uiSend
                 }
                 break;
             case 102:
-                creature->SetActiveObjectState(true); // Set active object to prevent issues if players go out of range after talking to him (could lead to ores not spawning)
+                creature->SetActiveObjectState(true); // Set active object to prevent issues if players go out of range after talking to him (could lead to ores not spawning) (说明)
                 instance->StartEvent(THRALL_WIN);
-                creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP); // ToDo: Thrall should not lose gossip flag, but nothing should happen when choosing his options
+                creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP); // ToDo: Thrall should not lose gossip flag, but nothing should happen when choosing his options (说明)
                 player->CLOSE_GOSSIP_MENU();
                 break;
             }
@@ -219,11 +227,12 @@ bool GossipSelect_npc_thrall(Player* player, Creature* creature, uint32 /*uiSend
     return true;
 }
 
+// npc_building_triggerAI NPC 脚本 AI
 struct npc_building_triggerAI : public ScriptedAI
 {
     npc_building_triggerAI(Creature* creature) : ScriptedAI(creature){}
 
-    void Reset() override 
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_creature->AI()->SetReactState(REACT_PASSIVE);
         SetDeathPrevention(true);
@@ -242,7 +251,7 @@ struct npc_building_triggerAI : public ScriptedAI
                 dealer->setFaction(FACTION_SPAR);
                 m_creature->setFaction(FACTION_SPAR_BUDDY);
 
-                // only 1 attacker allowed at a time
+                // only 1 attacker allowed at a time (说明)
                 if (instance_mount_hyjal* instance = static_cast<instance_mount_hyjal*>(m_creature->GetInstanceData()))
                 {
                     for (uint32 i = 0; i < MAX_BASE; i++)
@@ -265,13 +274,15 @@ struct npc_building_triggerAI : public ScriptedAI
     }
 };
 
+// TyrandeActions 战斗行为动作枚举
 enum TyrandeActions
 {
     TYRANDE_STARFALL = HYJAL_AI_ACTION_MAX,
     TYRANDE_TRUESHOT_AURA,
-    TYRANDE_ACTION_MAX,
+    TYRANDE_ACTION_MAX,                                     // 战斗行为动作
 };
 
+// npc_tyrande_whisperwindAI NPC 脚本 AI
 struct npc_tyrande_whisperwindAI : public hyjalAI
 {
     npc_tyrande_whisperwindAI(Creature* creature) : hyjalAI(creature, TYRANDE_ACTION_MAX)
@@ -280,7 +291,7 @@ struct npc_tyrande_whisperwindAI : public hyjalAI
         AddCombatAction(TYRANDE_TRUESHOT_AURA, 4000u);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -297,7 +308,7 @@ struct npc_tyrande_whisperwindAI : public hyjalAI
     }
 };
 
-// 31617, 31624, 31625 - Raise Dead
+// 31617, 31624, 31625 - Raise Dead (说明)
 struct RaiseDeadHyjal : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool strict) const override
@@ -313,7 +324,7 @@ struct RaiseDeadHyjal : public SpellScript
     }
 };
 
-void AddSC_hyjal()
+void AddSC_hyjal() // 注册脚本到系统管理器
 {
     Script* pNewScript;
 

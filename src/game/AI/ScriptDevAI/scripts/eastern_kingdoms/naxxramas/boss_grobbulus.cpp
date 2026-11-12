@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 格罗布鲁斯（Grobbulus）构造区2号首领战 AI（变异注射排毒云与生成变异软泥怪）
+
 /*Poison Cloud 26590
 Slime Spray 28157
 Fallout slime 28218
@@ -31,21 +33,23 @@ Enrages 26527*/
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_SLIME_STREAM              = 28137,
-    SPELL_MUTATING_INJECTION        = 28169,
-    SPELL_EMBALMING_CLOUD           = 28322,
-    SPELL_MUTAGEN_EXPLOSION         = 28206,
-    SPELL_POISON_CLOUD              = 28240,
-    SPELL_SLIME_SPRAY               = 28157,
-    SPELL_SUMMON_FALLOUT_SLIME      = 28218,
-    SPELL_BERSERK                   = 26662,
+    SPELL_SLIME_STREAM              = 28137,                // 软泥怪stream 法术 ID
+    SPELL_MUTATING_INJECTION        = 28169,                // 变异注射 法术 ID
+    SPELL_EMBALMING_CLOUD           = 28322,                // embalmingcloud 法术 ID
+    SPELL_MUTAGEN_EXPLOSION         = 28206,                // mutagen爆炸 法术 ID
+    SPELL_POISON_CLOUD              = 28240,                // 毒药cloud 法术 ID
+    SPELL_SLIME_SPRAY               = 28157,                // 软泥怪spray 法术 ID
+    SPELL_SUMMON_FALLOUT_SLIME      = 28218,                // 召唤fallout软泥怪 法术 ID
+    SPELL_BERSERK                   = 26662,                // 狂暴 法术 ID
 
     SPELL_DESPAWN_SUMMONS           = 30134,            // Spell ID unsure: there are several spells doing the same thing in DBCs within Naxxramas spell IDs range
                                                         // but it is not always clear which one is for each boss so some are assigned randomly like this one
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GrobbulusActions
 {
     GROBBULUS_SLIME_STREAM,
@@ -53,6 +57,7 @@ enum GrobbulusActions
     GROBBULUS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（grobbulus）
 struct boss_grobbulusAI : public BossAI
 {
     boss_grobbulusAI(Creature* creature) : BossAI(creature, GROBBULUS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -64,6 +69,7 @@ struct boss_grobbulusAI : public BossAI
 
     ScriptedInstance* m_instance;
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         // Clean-up stage
@@ -74,7 +80,7 @@ struct boss_grobbulusAI : public BossAI
 
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
-        // Summon a Fallout Slime for every player hit by Slime Spray
+        // Summon a Fallout Slime for every player hit by Slime Spray (召唤 a Fallout Slime for every player hit by Slime Spray)
         if ((spellInfo->Id == SPELL_SLIME_SPRAY) && target->IsPlayer())
             DoCastSpellIfCan(target, SPELL_SUMMON_FALLOUT_SLIME, CAST_TRIGGERED);
     }
@@ -116,7 +122,7 @@ struct boss_grobbulusAI : public BossAI
     }
 };
 
-// 28169 - Mutating Injection
+// 28169 - Mutating Injection (28169 - 变异 注射)
 struct MutatingInjection : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -131,15 +137,15 @@ struct MutatingInjection : public AuraScript
                 // Embalming Cloud
                 target->CastSpell(target, SPELL_EMBALMING_CLOUD, TRIGGERED_OLD_TRIGGERED, nullptr, aura);
             else // Removed by dispel
-                // Mutagen Explosion
+                // Mutagen Explosion (Mutagen爆炸)
                 target->CastSpell(target, SPELL_MUTAGEN_EXPLOSION, TRIGGERED_OLD_TRIGGERED, nullptr, aura);
-            // Poison Cloud
+            // Poison Cloud (毒药Cloud)
             target->CastSpell(target, SPELL_POISON_CLOUD, TRIGGERED_OLD_TRIGGERED, nullptr, aura);
         }
     }
 };
 
-// 30134 - Despawn Boss Adds
+// 30134 - Despawn Boss Adds (30134 - 消除 Boss Adds)
 struct DespawnBossAdds : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -150,6 +156,7 @@ struct DespawnBossAdds : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_grobbulus
 void AddSC_boss_grobbulus()
 {
     Script* newScript = new Script;

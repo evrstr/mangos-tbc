@@ -21,6 +21,7 @@
 
 #include "Common.h"
 
+/// 过场镜头空间坐标（三维坐标与水平朝向角 w）
 struct CamLocation
 {
     CamLocation() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
@@ -28,16 +29,19 @@ struct CamLocation
     float x, y, z, w;
 };
 
+/// 过场飞行镜头关键帧（时间戳与世界坐标）
 struct FlyByCamera
 {
-    uint32 timeStamp;
-    CamLocation locations;
+    uint32 timeStamp;                                       // 关键帧时间戳（毫秒）
+    CamLocation locations;                                  // 对应世界空间位置与朝向
 };
 
 typedef std::vector<FlyByCamera> FlyByCameraCollection;
 
+/// 全局过场镜头路径表（键为 CinematicCamera.dbc ID）
 extern std::unordered_map<uint32, FlyByCameraCollection> sFlyByCameraStore;
 
+/// 从数据目录加载所有 M2 模型中的过场镜头路径数据
 void LoadM2Cameras(std::string const& dataPath);
 
 #endif

@@ -31,6 +31,7 @@ using G3D::Vector3;
 
 namespace VMAP
 {
+    // 静态地图射线相交回调：将 BIH 节点索引映射至 ModelInstance::intersectRay
     class MapRayCallback
     {
         public:
@@ -48,6 +49,7 @@ namespace VMAP
             bool hit;
     };
 
+    // WMO 区域信息点查询回调
     class AreaInfoCallback
     {
         public:
@@ -64,6 +66,7 @@ namespace VMAP
             AreaInfo aInfo;
     };
 
+    // 组模型及液体定位点查询回调
     class LocationInfoCallback
     {
         public:
@@ -84,7 +87,7 @@ namespace VMAP
 
 
     //=========================================================
-
+    // 构造图块文件名（注意文件名顺序为 mapID_Y_X.vmtile）
     std::string StaticMapTree::getTileFileName(uint32 mapID, uint32 tileX, uint32 tileY)
     {
         std::stringstream tilefilename;
@@ -95,6 +98,7 @@ namespace VMAP
         return tilefilename.str();
     }
 
+    // 点查询所在 WMO 的区域标志、ADT ID、Root/Group ID，并将 pos.z 修正为模型地面高度
     bool StaticMapTree::getAreaInfo(Vector3& pos, uint32& flags, int32& adtId, int32& rootId, int32& groupId) const
     {
         AreaInfoCallback intersectionCallBack(iTreeValues);
@@ -111,6 +115,7 @@ namespace VMAP
         return false;
     }
 
+    // 点查询所在静态模型实例、组模型及地面高度
     bool StaticMapTree::GetLocationInfo(const Vector3& pos, LocationInfo& info) const
     {
         LocationInfoCallback intersectionCallBack(iTreeValues, info);
@@ -118,6 +123,7 @@ namespace VMAP
         return intersectionCallBack.result;
     }
 
+    // 构造函数：规范化 vmaps 根目录路径末尾斜杠
     StaticMapTree::StaticMapTree(uint32 mapID, const std::string& basePath):
         iMapID(mapID), iIsTiled(false), iTreeValues(nullptr), iNTreeValues(0), iBasePath(basePath)
     {
@@ -128,7 +134,7 @@ namespace VMAP
     }
 
     //=========================================================
-    //! Make sure to call unloadMap() to unregister acquired model references before destroying
+    //! Make sure to call unloadMap() to unregister acquired model references before destroying (析构前务必先调用 UnloadMap 释放共享模型引用)
     StaticMapTree::~StaticMapTree()
     {
         delete[] iTreeValues;
@@ -138,6 +144,7 @@ namespace VMAP
     /**
     If intersection is found within pMaxDist, sets pMaxDist to intersection distance and returns true.
     Else, pMaxDist is not modified and returns false;
+    利用静态 BIH 树计算射线最短命中距离
     */
 
     bool StaticMapTree::getIntersectionTime(const G3D::Ray& pRay, float& pMaxDist, bool pStopAtFirstHit, bool ignoreM2Model) const
@@ -151,6 +158,7 @@ namespace VMAP
     }
     //=========================================================
 
+    // 两点间静态模型视线遮挡检测
     bool StaticMapTree::isInLineOfSight(const Vector3& pos1, const Vector3& pos2, bool ignoreM2Model) const
     {
         float maxDist = (pos2 - pos1).magnitude();
@@ -169,6 +177,7 @@ namespace VMAP
     /**
     When moving from pos1 to pos2 check if we hit an object. Return true and the position if we hit one
     Return the hit pos or the original dest pos
+    检测射线与静态模型碰撞点，并根据 pModifyDist 微调回退位置
     */
 
     bool StaticMapTree::getObjectHitPos(const Vector3& pPos1, const Vector3& pPos2, Vector3& pResultHitPos, float pModifyDist) const
@@ -212,7 +221,7 @@ namespace VMAP
     }
 
     //=========================================================
-
+    // 沿垂直方向（maxSearchDist >= 0 向下，否则向上）探测静态模型表面高度
     float StaticMapTree::getHeight(const Vector3& pPos, float maxSearchDist) const
     {
         MANGOS_ASSERT(maxSearchDist < std::numeric_limits<float>::max());
@@ -239,7 +248,7 @@ namespace VMAP
     }
 
     //=========================================================
-
+    // 校验 .vmtree 文件魔数；若地图为分块模式，进一步校验对应 .vmtile 文件是否存在且魔数正确
     bool StaticMapTree::CanLoadMap(const std::string& vmapPath, uint32 mapID, uint32 tileX, uint32 tileY)
     {
         std::string basePath = vmapPath;
@@ -276,6 +285,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 从 .vmtree 文件加载地图 BIH 树结构；若为非分块地图则直接载入全部全局模型实例
 
     bool StaticMapTree::InitMap(const std::string& fname, VMapManager2* vm)
     {
@@ -355,6 +365,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 卸载整张地图的所有已加载模型引用并清空图块与放置记录
 
     void StaticMapTree::UnloadMap(VMapManager2* vm)
     {
@@ -369,6 +380,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 加载单个 .vmtile 图块中的所有模型实例并递增对应树节点的引用计数
 
     bool StaticMapTree::LoadMapTile(uint32 tileX, uint32 tileY, VMapManager2* vm)
     {
@@ -446,6 +458,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 卸载单个图块：递减所关联模型实例的引用计数，并在归零时释放节点与共享模型
 
     void StaticMapTree::UnloadMapTile(uint32 tileX, uint32 tileY, VMapManager2* vm)
     {

@@ -23,9 +23,10 @@
 
 #include <string>
 
+/// 客户端支持的多语言区域枚举（与 DBC 本地化列索引对应）
 enum LocaleConstant : uint8
 {
-    LOCALE_enUS = 0,                                        // also enGB
+    LOCALE_enUS = 0,                                        // also enGB | 美式英语（亦包含英式英语 enGB）
     LOCALE_koKR = 1,
     LOCALE_frFR = 2,
     LOCALE_deDE = 3,
@@ -39,17 +40,19 @@ enum LocaleConstant : uint8
 #define MAX_LOCALE 9
 #define DEFAULT_LOCALE LOCALE_enUS
 
+/// 根据语言代码字符串（如 "zhCN"、"enGB"）查找对应的 LocaleConstant 枚举
 LocaleConstant GetLocaleByName(const std::string& name);
 
 extern char const* localeNames[MAX_LOCALE];
 
+/// 语言名称与 LocaleConstant 映射条目
 struct LocaleNameStr
 {
     char const* name;
     LocaleConstant locale;
 };
 
-// used for iterate all names including alternative
+// used for iterate all names including alternative | 包含别名（如 enGB）在内的完整语言代码映射表
 extern LocaleNameStr const fullLocaleNameList[];
 
 #endif

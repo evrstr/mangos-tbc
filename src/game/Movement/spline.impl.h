@@ -18,6 +18,7 @@
 
 namespace Movement
 {
+    /// 根据全局比例 t ∈ [0, 1] 计算空间位置
     template<typename length_type> void Spline<length_type>::evaluate_percent(float t, Vector3& c) const
     {
         index_type Index;
@@ -26,6 +27,7 @@ namespace Movement
         evaluate_percent(Index, u, c);
     }
 
+    /// 根据全局比例 t ∈ [0, 1] 计算切线导数
     template<typename length_type> void Spline<length_type>::evaluate_derivative(float t, Vector3& hermite) const
     {
         index_type Index;
@@ -34,9 +36,11 @@ namespace Movement
         evaluate_derivative(Index, u, hermite);
     }
 
+    /// 线性扫描累计长度表，定位给定长度所在的样条段索引
     template<typename length_type> SplineBase::index_type Spline<length_type>::computeIndexInBounds(length_type length_) const
     {
 // Temporary disabled: causes infinite loop with t = 1.f
+// 临时禁用二分查找：当 t = 1.f 时会导致死循环
         /*
             index_type hi = index_hi;
             index_type lo = index_lo;
@@ -61,6 +65,7 @@ namespace Movement
         return i;
     }
 
+    /// 将全局比例 t 换算为样条段索引 index 和段内局部比例 u
     template<typename length_type> void Spline<length_type>::computeIndex(float t, index_type& index, float& u) const
     {
         MANGOS_ASSERT(t >= 0.f && t <= 1.f);
@@ -76,6 +81,7 @@ namespace Movement
         return computeIndexInBounds(t * length());
     }
 
+    /// 累加各段几何弧长，填充 lengths 前缀和数组
     template<typename length_type> void Spline<length_type>::initLengths()
     {
         index_type i = index_lo;

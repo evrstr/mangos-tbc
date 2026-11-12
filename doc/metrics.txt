@@ -1,94 +1,97 @@
 Tutorial:
+教程：
 1. setup influxdb - start influxd, start influx and create database perfd
+   配置 influxdb —— 启动 influxd，启动 influx 并创建数据库 perfd
 2. setup grafana - add dataset - influxdb - perfd - http://localhost:8086
+   配置 grafana —— 添加数据源：influxdb - perfd - http://localhost:8086
 
 Logged Entities:
-map.update:
- - fields:
-  * count - count of updated objects
-  * duration - duration of map update
- - tags:
-  * map_id
-  * instance_id
+记录的监控实体（Logged Entities）：
+map.update: (地图更新)
+ - fields: (字段)
+  * count - count of updated objects (已更新对象的数量)
+  * duration - duration of map update (地图更新耗时)
+ - tags: (标签)
+  * map_id (地图 ID)
+  * instance_id (副本实例 ID)
 
-unit.update:
- - fields
-  * duration
- - tags
-  * entry
-  * guid
-  * unit_type
-  * map_id
-  * instance_id
+unit.update: (单位更新)
+ - fields (字段)
+  * duration (更新耗时)
+ - tags (标签)
+  * entry (生物模板 entry)
+  * guid (单位全局唯一标识符 GUID)
+  * unit_type (单位类型)
+  * map_id (地图 ID)
+  * instance_id (副本实例 ID)
 
-unit.update.ai:
- - fields
-  * duration
- - tags
-  * entry
-  * guid
-  * unit_type
-  * map_id
-  * instance_id
+unit.update.ai: (单位 AI 更新)
+ - fields (字段)
+  * duration (AI 更新耗时)
+ - tags (标签)
+  * entry (生物模板 entry)
+  * guid (单位 GUID)
+  * unit_type (单位类型)
+  * map_id (地图 ID)
+  * instance_id (副本实例 ID)
 
-unit.updatesplinemovement:
- - fields
-  * duration
- - tags
-  * entry
-  * guid
-  * unit_type
-  * map_id
-  * instance_id
+unit.updatesplinemovement: (单位样条移动更新)
+ - fields (字段)
+  * duration (样条移动更新耗时)
+ - tags (标签)
+  * entry (生物模板 entry)
+  * guid (单位 GUID)
+  * unit_type (单位类型)
+  * map_id (地图 ID)
+  * instance_id (副本实例 ID)
 
-motionmaster.updatemotion:
- - fields
-  * duration
- - tags
-  * entry
-  * guid
-  * unit_type
-  * map_id
-  * instance_id
+motionmaster.updatemotion: (运动控制器更新)
+ - fields (字段)
+  * duration (运动更新耗时)
+ - tags (标签)
+  * entry (生物模板 entry)
+  * guid (单位 GUID)
+  * unit_type (单位类型)
+  * map_id (地图 ID)
+  * instance_id (副本实例 ID)
 
-motionmaster.initialize:
- - fields
-  * duration
- - tags
-  * entry
-  * guid
-  * unit_type
-  * map_id
-  * instance_id
+motionmaster.initialize: (运动控制器初始化)
+ - fields (字段)
+  * duration (初始化耗时)
+ - tags (标签)
+  * entry (生物模板 entry)
+  * guid (单位 GUID)
+  * unit_type (单位类型)
+  * map_id (地图 ID)
+  * instance_id (副本实例 ID)
 
-pathfinder.calculate:
- - fields
-  * duration
- - tags
-  * entry
-  * guid
-  * unit_type
-  * map_id
-  * instance_id
+pathfinder.calculate: (寻路计算)
+ - fields (字段)
+  * duration (寻路计算耗时)
+ - tags (标签)
+  * entry (生物模板 entry)
+  * guid (单位 GUID)
+  * unit_type (单位类型)
+  * map_id (地图 ID)
+  * instance_id (副本实例 ID)
 
-world.update:
- - fields
-  * total
-  * presession
-  * premap
-  * map
-  * singletons
-  * cleanup
+world.update: (世界线程更新)
+ - fields (字段)
+  * total (总耗时)
+  * presession (会话处理前阶段耗时)
+  * premap (地图更新前阶段耗时)
+  * map (地图更新阶段耗时)
+  * singletons (单例模块更新耗时)
+  * cleanup (清理阶段耗时)
 
-world.metrics.packets.received:
-  - fields:
-   * count
-  - tags:
-   * opcode
+world.metrics.packets.received: (世界服接收数据包统计)
+  - fields: (字段)
+   * count (数据包数量)
+  - tags: (标签)
+   * opcode (操作码)
 
-world.metrics.packets.received:
-  - fields:
-   * online
-   * unique
-   * queued
-
+world.metrics.packets.received: (世界服在线/连接统计，注：指标名与上方一致)
+  - fields: (字段)
+   * online (当前在线人数)
+   * unique (独立账号/连接数)
+   * queued (排队人数)

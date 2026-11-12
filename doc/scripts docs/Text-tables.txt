@@ -1,89 +1,127 @@
 =========================================
 Texts Documentation
+文本数据表文档
 =========================================
 
 Scriptdev2 Revision 695 introduces a new format for using texts in EventAI and SD2 Scripts.
+ScriptDev2 修订版 695 为 EventAI 和 SD2 脚本中的文本引入了新的格式。
 This information relates to the *_texts tables located in the ScriptDev Database.
+本文档介绍 ScriptDev 数据库中各 `*_texts` 数据表的相关信息。
 
 Any script can at any time access and use text from any of the three text tables, as long as the entry does in fact exist.
+只要对应 entry 确实存在，任何脚本都可以随时访问并使用这三张文本表中的文本。
 Custom scripters are advised to store their text data in custom_texts.
+建议自定义脚本作者将自己的文本数据存放在 `custom_texts` 表中。
 
 The different tables has ranges of entries allowed for that table.
-Reserved EventAI in Mangos     entry -1       -> -999999
-script_texts:                  entry -1000000 -> -1999999
-custom_texts:                  entry -2000000 -> -2999999
-gossip_texts:                  entry -3000000 -> -3999999
+不同数据表各自规定了允许使用的 entry 编号范围：
+Reserved EventAI in Mangos     entry -1       -> -999999   (MaNGOS EventAI 保留范围)
+script_texts:                  entry -1000000 -> -1999999  (脚本正式文本表)
+custom_texts:                  entry -2000000 -> -2999999  (自定义文本表)
+gossip_texts:                  entry -3000000 -> -3999999  (对话选项文本表)
 Any entry out of range for that table will display a start-up error.
+超出对应表允许范围的 entry 将在服务端启动时报错。
 
 
 =========================================
 Basic Structure of script_texts, custom_texts and gossip_texts
+script_texts、custom_texts 与 gossip_texts 的基本表结构
 =========================================
 Below is a the list of current fields within the texts tables.
+以下为当前文本表中各字段的说明列表。
 
 Field_Name            Description
 -----------------------------------------------------------
 entry                 This value is mearly an NEGATIVE identifier of the current text number. Required for sql queries.
+                      [中文] 当前文本条目的负整数标识符，SQL 查询必填。
 content_default       This is the actual text presented in the default language (English).
+                      [中文] 默认语言（英文）下显示的实际文本内容。
 
 content_loc1          This is the actual text presented in the Localization #1 Clients (Korean)
+                      [中文] 本地化 #1 客户端（韩文）显示的文本。
 content_loc2          This is the actual text presented in the Localization #2 Clients (French)
+                      [中文] 本地化 #2 客户端（法文）显示的文本。
 content_loc3          This is the actual text presented in the Localization #3 Clients (German)
+                      [中文] 本地化 #3 客户端（德文）显示的文本。
 content_loc4          This is the actual text presented in the Localization #4 Clients (Chinese)
+                      [中文] 本地化 #4 客户端（简体中文）显示的文本。
 content_loc5          This is the actual text presented in the Localization #5 Clients (Taiwanese)
+                      [中文] 本地化 #5 客户端（繁体中文）显示的文本。
 content_loc6          This is the actual text presented in the Localization #6 Clients (Spanish)
+                      [中文] 本地化 #6 客户端（西班牙文）显示的文本。
 content_loc7          This is the actual text presented in the Localization #7 Clients (Spanish Mexico)
+                      [中文] 本地化 #7 客户端（墨西哥西班牙文）显示的文本。
 content_loc8          This is the actual text presented in the Localization #8 Clients (Russian)
+                      [中文] 本地化 #8 客户端（俄文）显示的文本。
 
 sound                 This value is the Sound ID that corresponds to the actual text used (Defined in SoundEntries.dbc).
+                      [中文] 与该文本对应的音效 ID（定义在 SoundEntries.dbc 中）。
 type                  Variables used to define type of text (Say/Yell/Textemote/Whisper).
+                      [中文] 用于定义文本类型的枚举值（说话/大喊/表情文本/密语等）。
 language              This value is the Language that the text is native in (Defined in Languages.dbc).
+                      [中文] 文本所属的原生意愿种族语言 ID（定义在 Languages.dbc 中）。
 emote                 Value from enum Emote (defined in Emotes.dbc). Only source of text will play this emote (not target, if target are defined in DoScriptText)
+                      [中文] 来自 enum Emote（定义在 Emotes.dbc）的表情动作值。仅文本发出者会播放此动作（即使 DoScriptText 指定了 target，目标也不会播放）。
 
 comment               This is a comment regarding the text entry (For ACID, accepted format is to use Creature ID of NPC using it).
+                      [中文] 该文本条目的注释（对于 ACID，约定格式为使用该文本的 NPC 生物 ID）。
 
 Note: sound, type, language and emote exist only in tables script_texts and custom_texts
+注：`sound`、`type`、`language` 和 `emote` 字段仅存在于 `script_texts` 和 `custom_texts` 表中。
 Note: Fields `content_loc1` to `content_loc8` are NULL values by default and are handled by separate localization projects.
+注：`content_loc1` 至 `content_loc8` 字段默认值为 NULL，由独立的本地化项目负责维护。
 
 
 =========================================
 Text Types (type)
+文本类型（type）
 =========================================
 Below is the list of current Text types that texts tables can handle. These were previously separate Actions in ACID.
+以下为文本表当前支持的文本类型列表。这些类型在早期的 ACID 中曾是各自独立的 Action。
 
 #    Internal Name                 Description
 -----------------------------------------------------------
 0    CHAT_TYPE_SAY                 This type sets the text to be displayed as a Say (Speech Bubble).
+                                   [中文] 以“说话”（头顶白色气泡）形式显示文本。
 1    CHAT_TYPE_YELL                This type sets the text to be displayed as a Yell (Red Speech Bubble) and usually has a matching Sound ID.
+                                   [中文] 以“大喊”（红色气泡）形式显示文本，通常带有匹配的音效 ID。
 2    CHAT_TYPE_TEXT_EMOTE          This type sets the text to be displayed as a text emote in orange in the chat log.
+                                   [中文] 在聊天框中以橙色文字表情形式显示文本。
 3    CHAT_TYPE_BOSS_EMOTE          This type sets the text to be displayed as a text emote in orange in the chat log (Used only for specific Bosses).
+                                   [中文] 在聊天框中以橙色首领表情形式显示文本（仅用于特定首领）。
 4    CHAT_TYPE_WHISPER             This type sets the text to be displayed as a whisper to the player in the chat log.
+                                   [中文] 在聊天框中以密语形式发送给玩家。
 5    CHAT_TYPE_BOSS_WHISPER        This type sets the text to be displayed as a whisper to the player in the chat log (Used only for specific Bosses).
+                                   [中文] 在聊天框中以首领密语形式发送给玩家（仅用于特定首领）。
 6    CHAT_TYPE_ZONE_YELL           Same as CHAT_TYPE_YELL but will display to all players in current zone.
+                                   [中文] 与 CHAT_TYPE_YELL 相同，但会显示给当前区域内的所有玩家。
 
 =========================================
 Language Types (language)
+语言类型（language）
 =========================================
 Below is the list of current Language types that are allowed.
+以下为允许使用的语言类型列表。
 This is the Race Language that the text is native to (So it will display properly)
+即文本对应的种族语言（以确保在游戏中正确显示/识别）。
 
 #    Internal Name                Description
 -----------------------------------------------------------
-0    UNIVERSAL                    Text in this language is understood by ALL Races.
-1    ORCISH                       Text in this language is understood ONLY by Horde Races.
-2    DARNASSIAN                   Text in this language is understood ONLY by the Night Elf Race.
-3    TAURAHE                      Text in this language is understood ONLY by the Tauren Race.
-6    DWARVISH                     Text in this language is understood ONLY by the Dwarf Race.
-7    COMMON                       Text in this language is understood ONLY by Alliance Races.
-8    DEMONIC                      Text in this language is understood ONLY by the Demon Race (Not Implemented).
-9    TITAN                        This language was used by Sargeras to speak with other Titians (Not Implemented).
-10   THALASSIAN                   Text in this language is understood ONLY by the Blood Elf Race.
-11   DRACONIC                     Text in this language is understood ONLY by the Dragon Race.
-12   KALIMAG                      Text will display as Kalimag (not readable by players, language of all elementals)
-13   GNOMISH                      Text in this language is understood ONLY by the Gnome Race.
-14   TROLL                        Text in this language is understood ONLY by the Troll Race.
-33   GUTTERSPEAK                  Text in this language is understood ONLY by the Undead Race.
-35   DRAENEI                      Text in this language is understood ONLY by the Draenai Race.
-36   ZOMBIE                       (not currently used?)
-37   GNOMISH BINARY               Binary language used by Alliance when drinking Binary Brew
-38   GOBLIN BINARY                Binary language used by Horde when drinking Binary Brew
+0    UNIVERSAL                    Text in this language is understood by ALL Races. (通用语：所有种族均可理解)
+1    ORCISH                       Text in this language is understood ONLY by Horde Races. (兽人语：仅部落种族可理解)
+2    DARNASSIAN                   Text in this language is understood ONLY by the Night Elf Race. (达纳苏斯语：仅暗夜精灵可理解)
+3    TAURAHE                      Text in this language is understood ONLY by the Tauren Race. (牛头人语：仅牛头人可理解)
+6    DWARVISH                     Text in this language is understood ONLY by the Dwarf Race. (矮人语：仅矮人可理解)
+7    COMMON                       Text in this language is understood ONLY by Alliance Races. (通用语/联盟语：仅联盟种族可理解)
+8    DEMONIC                      Text in this language is understood ONLY by the Demon Race (Not Implemented). (恶魔语：仅恶魔种族可理解，未实现)
+9    TITAN                        This language was used by Sargeras to speak with other Titians (Not Implemented). (泰坦语：萨格拉斯与其他泰坦交流所用语言，未实现)
+10   THALASSIAN                   Text in this language is understood ONLY by the Blood Elf Race. (萨拉斯语：仅血精灵可理解)
+11   DRACONIC                     Text in this language is understood ONLY by the Dragon Race. (龙语：仅龙类可理解)
+12   KALIMAG                      Text will display as Kalimag (not readable by players, language of all elementals) (卡利玛语：以卡利玛语显示，玩家不可读，元素生物通用语言)
+13   GNOMISH                      Text in this language is understood ONLY by the Gnome Race. (侏儒语：仅侏儒可理解)
+14   TROLL                        Text in this language is understood ONLY by the Troll Race. (巨魔语：仅巨魔可理解)
+33   GUTTERSPEAK                  Text in this language is understood ONLY by the Undead Race. (亡灵语：仅亡灵可理解)
+35   DRAENEI                      Text in this language is understood ONLY by the Draenai Race. (德莱尼语：仅德莱尼可理解)
+36   ZOMBIE                       (not currently used?) (僵尸语：当前未使用？)
+37   GNOMISH BINARY               Binary language used by Alliance when drinking Binary Brew (侏儒二进制语：联盟饮用二进制啤酒时使用的二进制语言)
+38   GOBLIN BINARY                Binary language used by Horde when drinking Binary Brew (地精二进制语：部落饮用二进制啤酒时使用的二进制语言)

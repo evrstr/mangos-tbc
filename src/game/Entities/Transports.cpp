@@ -33,6 +33,7 @@
 
 #include <G3D/Quat.h>
 
+// 从数据库加载所有跨地图运输载具定义并按起始地图索引注册
 void MapManager::LoadTransports()
 {
     sTransportMgr.LoadTransportTemplates();
@@ -96,9 +97,9 @@ void MapManager::LoadTransports()
     }
     while (queryResult->NextRow());
 
-    // check transport data DB integrity
+    // check transport data DB integrity (检查运输载具是否误写入了静态 gameobject 表)
     queryResult = WorldDatabase.Query("SELECT gameobject.guid,gameobject.id,transports.name FROM gameobject,transports WHERE gameobject.id = transports.entry");
-    if (queryResult)                                             // wrong data found
+    if (queryResult)                                             // wrong data found (发现错误数据则输出警告)
     {
         do
         {
@@ -116,12 +117,14 @@ void MapManager::LoadTransports()
     sLog.outString();
 }
 
+// 构造跨地图运输载具对象并设置客户端更新标志
 Transport::Transport(TransportTemplate const& transportTemplate) : GenericTransport(), m_isMoving(true), m_pendingStop(false), m_transportTemplate(transportTemplate)
 {
-    // 2.3.2 - 0x5A
+    // 2.3.2 - 0x5A (设置客户端同步所需的运输工具更新标记)
     m_updateFlag = (UPDATEFLAG_TRANSPORT | UPDATEFLAG_LOWGUID | UPDATEFLAG_HIGHGUID | UPDATEFLAG_HAS_POSITION);
 }
 
+// 根据模板在指定地图实例中创建并挂载运输载具
 void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* map)
 {
     Transport* t = new Transport(transportTemplate);
@@ -136,10 +139,10 @@ void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* m
     float z = startNode->z;
     float o = t->GetKeyFrames().begin()->InitialOrientation;
 
-    // If we someday decide to use the grid to track transports, here:
+    // If we someday decide to use the grid to track transports, here: (先绑定地图指针再创建对象)
     t->SetMap(map);
 
-    // creates the Gameobject
+    // creates the Gameobject (创建底层游戏对象实例)
     if (!t->Create(transportTemplate.entry, map->GetId(), x, y, z, o, GO_ANIMPROGRESS_DEFAULT))
     {
         delete t;
@@ -151,6 +154,7 @@ void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* m
     map->AddTransport(t);
 }
 
+// 初始化运输载具的游戏对象属性、阵营、模型与初始关键帧
 bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint32 animprogress)
 {
     Relocate(x, y, z, ang);
@@ -174,7 +178,7 @@ bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, 
 
     m_goInfo = goinfo;
 
-    // initialize waypoints
+    // initialize waypoints (初始化当前帧与下一关键帧迭代器)
     m_nextFrame = GetKeyFrames().begin();
     m_currentFrame = m_nextFrame++;
 
@@ -203,6 +207,7 @@ bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, 
     return true;
 }
 
+// 推进关键帧迭代器到下一路径点（到达末尾后回绕至起点）
 void Transport::MoveToNextWayPoint()
 {
     m_currentFrame = m_nextFrame++;
@@ -210,6 +215,7 @@ void Transport::MoveToNextWayPoint()
         m_nextFrame = GetKeyFrames().begin();
 }
 
+// 将运输载具及船上所有乘客传送至目标坐标或跨地图切换至新地图
 void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, float /*o*/)
 {
     Map* oldMap = GetMap();
@@ -223,7 +229,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
         WorldObject* obj = (*m_passengerTeleportIterator++);
 
         if (!obj->IsUnit())
-            return; // should never happen on tbc
+            return; // should never happen on tbc (TBC 中乘客应始终为单位对象)
 
         Unit* passengerUnit = static_cast<Unit*>(obj);
 
@@ -233,6 +239,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
         {
             case TYPEID_UNIT:
             {
+                // 跨地图时将非宠物 NPC 从乘客列表移除并销毁
                 if (mapChange)
                 {
                     RemovePassenger(passengerUnit);
@@ -243,6 +250,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
             }
             case TYPEID_PLAYER:
             {
+                // 玩家随运输载具一同传送（非灵魂状态的死亡玩家先复活）
                 Player* player = static_cast<Player*>(obj);
                 if (player->IsDead() && !player->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
                     player->ResurrectPlayer(1.0);
@@ -255,6 +263,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
     // we need to create and save new Map object with 'newMapid' because if not done -> lead to invalid Map object reference...
     // player far teleport would try to create same instance, but we need it NOW for transport...
     // correct me if I'm wrong O.o
+    // 若发生跨地图切换：从旧地图移除运输工具与碰撞模型，并投递消息到新地图线程完成挂载与客户端同步
     if (mapChange)
     {
         RemoveModelFromMap();
@@ -275,6 +284,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
         UpdateModelPosition();
 }
 
+// 将单位（及其召唤宠物/小宠物）添加到运输载具乘客列表，并计算局部偏移坐标
 bool GenericTransport::AddPassenger(Unit* passenger, bool adjustCoords)
 {
     if (m_passengers.find(passenger) == m_passengers.end())
@@ -304,6 +314,7 @@ bool GenericTransport::AddPassenger(Unit* passenger, bool adjustCoords)
     return true;
 }
 
+// 将单位（及其宠物）从运输载具乘客列表移除，安全处理传送迭代期间的删除
 bool GenericTransport::RemovePassenger(Unit* passenger)
 {
     bool erased = false;
@@ -342,6 +353,7 @@ bool GenericTransport::RemovePassenger(Unit* passenger)
     return true;
 }
 
+// 将乘客随行宠物绑定到运输载具并同步其位置
 bool GenericTransport::AddPetToTransport(Unit* passenger, Pet* pet)
 {
     if (AddPassenger(pet))
@@ -353,6 +365,7 @@ bool GenericTransport::AddPetToTransport(Unit* passenger, Pet* pet)
     return false;
 }
 
+// 每帧更新跨地图运输载具的航行进度、停靠状态、事件触发及插值坐标
 void Transport::Update(const uint32 /*diff*/)
 {
     uint32 const positionUpdateDelay = 50;
@@ -361,7 +374,7 @@ void Transport::Update(const uint32 /*diff*/)
         return;
 
     uint32 currentMsTime = GetMap()->GetCurrentMSTime() - m_movementStarted;
-    if (m_pathProgress >= currentMsTime) // map transition and update happened in same tick due to MT
+    if (m_pathProgress >= currentMsTime) // map transition and update happened in same tick due to MT (多线程下跨地图切换与更新发生在同一帧时跳过本次)
         return;
 
     const uint32 diff = currentMsTime - m_pathProgress;
@@ -375,14 +388,14 @@ void Transport::Update(const uint32 /*diff*/)
         if (pathProgress >= m_currentFrame->ArriveTime && pathProgress < m_currentFrame->DepartureTime)
         {
             SetMoving(false);
-            break;  // its a stop frame and we are waiting
+            break;  // its a stop frame and we are waiting (当前处于停靠帧等待发船)
         }
 
-        // not waiting anymore
+        // not waiting anymore (结束停靠等待，恢复航行)
         SetMoving(true);
 
         if (pathProgress >= m_currentFrame->DepartureTime && pathProgress < m_currentFrame->NextArriveTime)
-            break;  // found current waypoint
+            break;  // found current waypoint (已定位到当前所处航段关键帧)
 
         DoEventIfAny(*m_currentFrame->Node, true);
 
@@ -390,7 +403,7 @@ void Transport::Update(const uint32 /*diff*/)
 
         DoEventIfAny(*m_currentFrame->Node, false);
 
-        // first check help in case client-server transport coordinates de-synchronization
+        // first check help in case client-server transport coordinates de-synchronization (检测到跨图或传送帧时执行运输载具传送)
         if (m_currentFrame->Node->mapid != GetMapId() || m_currentFrame->IsTeleportFrame())
         {
             TeleportTransport(m_nextFrame->Node->mapid, m_nextFrame->Node->x, m_nextFrame->Node->y, m_nextFrame->Node->z, m_nextFrame->InitialOrientation);
@@ -403,7 +416,7 @@ void Transport::Update(const uint32 /*diff*/)
         DETAIL_FILTER_LOG(LOG_FILTER_TRANSPORT_MOVES, "%s moved to %f %f %f %d", GetName(), m_currentFrame->Node->x, m_currentFrame->Node->y, m_currentFrame->Node->z, m_currentFrame->Node->mapid);
     }
 
-    // Set position
+    // Set position (按 50ms 间隔节流刷新载具及乘客世界坐标)
     m_positionChangeTimer.Update(diff);
     if (m_positionChangeTimer.Passed())
     {
@@ -419,6 +432,7 @@ void Transport::Update(const uint32 /*diff*/)
     }
 }
 
+// 根据加减速曲线计算当前航段内的归一化位置比例 [0, 1]
 float Transport::CalculateSegmentPos(float now)
 {
     KeyFrame const& frame = *m_currentFrame;
@@ -429,7 +443,7 @@ float Transport::CalculateSegmentPos(float now)
     float segmentPos, dist;
     float accelTime = m_transportTemplate.accelTime;
     float accelDist = m_transportTemplate.accelDist;
-    // calculate from nearest stop, less confusing calculation...
+    // calculate from nearest stop, less confusing calculation... (以距离更近的停靠站为基准计算匀加/减速及匀速段位移)
     if (timeSinceStop < timeUntilStop)
     {
         if (timeSinceStop < accelTime)
@@ -450,6 +464,7 @@ float Transport::CalculateSegmentPos(float now)
     return segmentPos / frame.NextDistFromPrev;
 }
 
+// 创建升降梯/局部动画运输工具并加载动画路径数据
 bool ElevatorTransport::Create(uint32 dbGuid, uint32 guidlow, uint32 name_id, Map* map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state)
 {
     if (GenericTransport::Create(dbGuid, guidlow, name_id, map, x, y, z, ang, rotation0, rotation1, rotation2, rotation3, animprogress, go_state))
@@ -462,6 +477,7 @@ bool ElevatorTransport::Create(uint32 dbGuid, uint32 guidlow, uint32 name_id, Ma
     return false;
 }
 
+// 每帧根据动画关键帧插值计算升降梯位置并更新乘客世界坐标
 void ElevatorTransport::Update(const uint32 /*diff*/)
 {
     if (!m_animationInfo)
@@ -488,7 +504,7 @@ void ElevatorTransport::Update(const uint32 /*diff*/)
         auto data = GetLocalRotation();
         G3D::Quat rotation(data.x, data.y, data.z, data.w);
         currentPos = currentPos * rotation;
-        currentPos.y = -currentPos.y; // magical sign flip but it works - vanilla/tbc only
+        currentPos.y = -currentPos.y; // magical sign flip but it works - vanilla/tbc only (Vanilla/TBC 客户端局部坐标系 Y 轴符号翻转)
         currentPos += G3D::Vector3(m_stationaryPosition.x, m_stationaryPosition.y, m_stationaryPosition.z);
 
         GetMap()->GameObjectRelocation(this, currentPos.x, currentPos.y, currentPos.z, GetOrientation());
@@ -498,6 +514,7 @@ void ElevatorTransport::Update(const uint32 /*diff*/)
     }
 }
 
+// 更新载具本身坐标、碰撞模型位置及全部乘客的世界坐标
 void GenericTransport::UpdatePosition(float x, float y, float z, float o)
 {
     Relocate(x, y, z, o);
@@ -506,15 +523,17 @@ void GenericTransport::UpdatePosition(float x, float y, float z, float o)
     UpdatePassengerPositions(m_passengers);
 }
 
+// 遍历更新所有乘客的世界坐标
 void GenericTransport::UpdatePassengerPositions(PassengerSet& passengers)
 {
     for (const auto passenger : passengers)
         UpdatePassengerPosition(passenger);
 }
 
+// 根据乘客相对载具的局部偏移，重算并更新其在世界地图中的绝对位置
 void GenericTransport::UpdatePassengerPosition(WorldObject* passenger)
 {
-    // transport teleported but passenger not yet (can happen for players)
+    // transport teleported but passenger not yet (can happen for players) (载具已跨图而玩家尚未完成传送时跳过)
     if (passenger->IsInWorld() && passenger->GetMap() != GetMap())
         return;
 
@@ -525,6 +544,7 @@ void GenericTransport::UpdatePassengerPosition(WorldObject* passenger)
 
     // Do not use Unit::UpdatePosition here, we don't want to remove auras
     // as if regular movement occurred
+    // 此处不可调用 Unit::UpdatePosition，以免误清除需要移动时打断的光环
     float x, y, z, o;
     x = passengerUnit->GetTransOffsetX();
     y = passengerUnit->GetTransOffsetY();
@@ -549,7 +569,7 @@ void GenericTransport::UpdatePassengerPosition(WorldObject* passenger)
             break;
         }
         case TYPEID_PLAYER:
-            //relocate only passengers in world and skip any player that might be still logging in/teleporting
+            //relocate only passengers in world and skip any player that might be still logging in/teleporting (仅重定位已在世界中的玩家，跳过仍在登录/传送中的玩家)
             if (passenger->IsInWorld())
                 GetMap()->PlayerRelocation(dynamic_cast<Player*>(passenger), x, y, z, o);
             else
@@ -570,11 +590,13 @@ void GenericTransport::UpdatePassengerPosition(WorldObject* passenger)
     }
 }
 
+// 将载具上的相对朝向转换为全局世界朝向
 void GenericTransport::CalculatePassengerOrientation(float& o) const
 {
     o = MapManager::NormalizeOrientation(GetOrientation() + o);
 }
 
+// 静态工具方法：将载具局部坐标 (x, y, z, o) 旋转平移为全局世界坐标
 void GenericTransport::CalculatePassengerPosition(float& x, float& y, float& z, float* o, float transX, float transY, float transZ, float transO)
 {
     float inx = x, iny = y, inz = z;
@@ -586,6 +608,7 @@ void GenericTransport::CalculatePassengerPosition(float& x, float& y, float& z, 
     z = transZ + inz;
 }
 
+// 静态工具方法：将全局世界坐标 (x, y, z, o) 逆变换为载具局部偏移坐标
 void GenericTransport::CalculatePassengerOffset(float& x, float& y, float& z, float* o, float transX, float transY, float transZ, float transO)
 {
     if (o)
@@ -599,6 +622,7 @@ void GenericTransport::CalculatePassengerOffset(float& x, float& y, float& z, fl
     x = (inx + iny * std::tan(transO)) / (std::cos(transO) + std::sin(transO) * std::tan(transO));
 }
 
+// 向目标地图上的非本船玩家同步运输载具的创建或离开视野数据包
 void Transport::UpdateForMap(Map const* targetMap, bool newMap)
 {
     Map::PlayerList const& pl = targetMap->GetPlayers();
@@ -614,7 +638,7 @@ void Transport::UpdateForMap(Map const* targetMap, bool newMap)
             {
                 UpdateData updateData;
                 BuildCreateUpdateBlockForPlayer(updateData, player);
-                WorldPacket packet = updateData.BuildPacket(0); // always only one packet
+                WorldPacket packet = updateData.BuildPacket(0); // always only one packet (单个载具创建包始终只占一个包)
                 player->SendDirectMessage(packet);
                 player->AddAtClient(this);
             }
@@ -624,13 +648,14 @@ void Transport::UpdateForMap(Map const* targetMap, bool newMap)
     {
         UpdateData updateData;
         BuildOutOfRangeUpdateBlock(updateData);
-        WorldPacket packet = updateData.BuildPacket(0); // always only one packet
+        WorldPacket packet = updateData.BuildPacket(0); // always only one packet (单个载具超出视野包始终只占一个包)
         for (const auto& itr : pl)
             if (this != itr.getSource()->GetTransport())
                 itr.getSource()->SendDirectMessage(packet);
     }
 }
 
+// 在运输载具抵达或离开路径节点时触发关联的世界事件脚本
 void Transport::DoEventIfAny(TaxiPathNodeEntry const& node, bool departure)
 {
     if (uint32 eventid = departure ? node.departureEventID : node.arrivalEventID)
@@ -641,9 +666,10 @@ void Transport::DoEventIfAny(TaxiPathNodeEntry const& node, bool departure)
     }
 }
 
+// 析构运输载具模板并去重释放所有共享样条对象
 TransportTemplate::~TransportTemplate()
 {
-    // Collect shared pointers into a set to avoid deleting the same memory more than once
+    // Collect shared pointers into a set to avoid deleting the same memory more than once (用 set 去重收集指针，防止同一段样条被重复释放)
     std::set<TransportSpline*> splines;
     for (const auto& keyFrame : keyFrames)
         splines.insert(keyFrame.Spline);

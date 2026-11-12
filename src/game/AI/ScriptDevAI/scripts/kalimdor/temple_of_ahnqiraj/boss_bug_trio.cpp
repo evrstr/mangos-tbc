@@ -21,50 +21,57 @@ SDComment: Summon Player spell NYI (when current target is unreachable)
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：吉祥三宝/虫族三议会 (克里勋爵、亚尔基公主、维姆) 联动战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_CONSUMED          = -1531048,
+    EMOTE_CONSUMED          = -1531048,                     // 剧情台词/喊话文本 ID
 
-    SPELL_BLOODY_DEATH      = 25770,
-    SPELL_FULL_HEAL         = 17683,
+    SPELL_BLOODY_DEATH      = 25770,                        // 技能法术 ID
+    SPELL_FULL_HEAL         = 17683,                        // 技能法术 ID
 
-    // Lord Kri
-    SPELL_CLEAVE            = 40504,            // TBC uses different spell from vanilla 26350
-    SPELL_TOXIC_VOLLEY      = 25812,
-    SPELL_SUMMON_CLOUD      = 26590,            // summons 15933
-    SPELL_THRASH            = 3391,
+    // Lord Kri (说明)
+    SPELL_CLEAVE            = 40504,            // TBC uses different spell from vanilla 26350 (说明)
+    SPELL_TOXIC_VOLLEY      = 25812,                        // 技能法术 ID
+    SPELL_SUMMON_CLOUD      = 26590,            // summons 15933 (召唤)
+    SPELL_THRASH            = 3391,                         // 技能法术 ID
 
-    // Vem
-    SPELL_KNOCK_AWAY        = 18670,
-    SPELL_KNOCKDOWN         = 19128,
-    SPELL_CHARGE            = 26561,
-    SPELL_VENGEANCE         = 25790,
+    // Vem (说明)
+    SPELL_KNOCK_AWAY        = 18670,                        // 技能法术 ID
+    SPELL_KNOCKDOWN         = 19128,                        // 技能法术 ID
+    SPELL_CHARGE            = 26561,                        // 技能法术：冲锋
+    SPELL_VENGEANCE         = 25790,                        // 技能法术 ID
 
-    // Princess Yauj
-    SPELL_HEAL              = 25807,
-    SPELL_FEAR              = 26580,
-    SPELL_RAVAGE            = 3242,
-    SPELL_SUMMON_BROOD      = 25789,
-    SPELL_DISPEL            = 25808,
-    SPELL_DESPAWN_BROOD     = 25792,
+    // Princess Yauj (说明)
+    SPELL_HEAL              = 25807,                        // 技能法术 ID
+    SPELL_FEAR              = 26580,                        // 技能法术：恐惧
+    SPELL_RAVAGE            = 3242,                         // 技能法术 ID
+    SPELL_SUMMON_BROOD      = 25789,                        // 技能法术 ID
+    SPELL_DISPEL            = 25808,                        // 技能法术：驱散魔法
+    SPELL_DESPAWN_BROOD     = 25792,                        // 技能法术 ID
 
-    NPC_YAUJ_BROOD          = 15621,
-    // NPC_POISON_CLOUD        = 15933,
+    NPC_YAUJ_BROOD          = 15621,                        // NPC 条目 ID
+    // NPC_POISON_CLOUD        = 15933, (说明)
 
-    POINT_CONSUME           = 0,
+    POINT_CONSUME           = 0,                            // 路径点 ID
 };
 
 static const Position resetPoint = { -8582.0f, 2047.0f, -1.62f, 0.0 };
 
+// RoyaltyActions 战斗行为动作枚举
 enum RoyaltyActions
 {
     ROYALTY_DEVOUR_DELAY = 10,
 };
 
+// boss_silithidRoyaltyAI 首领战斗 AI
 struct boss_silithidRoyaltyAI : public CombatAI
 {
     boss_silithidRoyaltyAI(Creature* creature, uint32 actionCount) :
@@ -84,7 +91,7 @@ struct boss_silithidRoyaltyAI : public CombatAI
 
     uint32 m_deathAbility;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         SetDeathPrevention(true);
@@ -98,27 +105,27 @@ struct boss_silithidRoyaltyAI : public CombatAI
 
     void JustReachedHome() override
     {
-        // Clean-up stage
+        // Clean-up stage (说明)
         DoCastSpellIfCan(m_creature, SPELL_DESPAWN_BROOD, CAST_TRIGGERED);
 
         if (m_instance)
             m_instance->SetData(TYPE_BUG_TRIO, FAIL);
     }
 
-    // Handle damage to trigger consume when the two bosses that are killed first
+    // Handle damage to trigger consume when the two bosses that are killed first (说明)
     void JustPreventedDeath(Unit* /*attacker*/) override
     {
         if (!m_instance)
             return;
 
-        // Inform the instance script that we are ready to be consumed
-        // The instance script keeps track of how many bosses are already defeated
+        // Inform the instance script that we are ready to be consumed (说明)
+        // The instance script keeps track of how many bosses are already defeated (说明)
         m_instance->SetData(TYPE_BUG_TRIO, m_creature->GetEntry());
 
         DoDummyConsume();
     }
 
-    void JustDied(Unit* killer) override
+    void JustDied(Unit* killer) override                    // 死亡回调处理
     {
         if (killer == m_creature)
             return;
@@ -144,14 +151,14 @@ struct boss_silithidRoyaltyAI : public CombatAI
         DoCastSpellIfCan(nullptr, m_deathAbility);
     }
 
-    void MovementInform(uint32 motionType, uint32 pointId) override
+    void MovementInform(uint32 motionType, uint32 pointId) override    // 移动节点到达通知
     {
         if (motionType != POINT_MOTION_TYPE)
             return;
 
         if (pointId == POINT_CONSUME)
         {
-            m_creature->SetBaseRunSpeed(15.f/7.f); // sniffed
+            m_creature->SetBaseRunSpeed(15.f/7.f); // sniffed (说明)
             m_creature->CastSpell(nullptr, SPELL_FULL_HEAL, TRIGGERED_OLD_TRIGGERED);
             ResetTimer(ROYALTY_DEVOUR_DELAY, 2000);
         }
@@ -166,7 +173,7 @@ struct boss_silithidRoyaltyAI : public CombatAI
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* invoker, uint32 miscValue) override
     {
-        if (eventType == AI_EVENT_CUSTOM_A) // on first 2 killed
+        if (eventType == AI_EVENT_CUSTOM_A) // on first 2 killed (说明)
         {
             if (miscValue == 2)
                 SetDeathPrevention(false);
@@ -174,7 +181,7 @@ struct boss_silithidRoyaltyAI : public CombatAI
             SetMeleeEnabled(false);
             SetCombatMovement(false);
             m_creature->SetTarget(nullptr);
-            m_creature->SetBaseRunSpeed(45.f/7.f); // sniffed
+            m_creature->SetBaseRunSpeed(45.f/7.f); // sniffed (说明)
             float x, y, z;
             invoker->GetClosePoint(x, y, z, 0.f);
             m_creature->GetMotionMaster()->MovePoint(POINT_CONSUME, x, y, z);
@@ -182,14 +189,16 @@ struct boss_silithidRoyaltyAI : public CombatAI
     }
 };
 
+// KriActions 战斗行为动作枚举
 enum KriActions
 {
     KRI_CLEAVE,
     KRI_TOXIC_VOLLEY,
     KRI_THRASH,
-    KRI_ACTION_MAX,
+    KRI_ACTION_MAX,                                         // 战斗行为动作
 };
 
+// boss_kriAI 首领战斗 AI
 struct boss_kriAI : public boss_silithidRoyaltyAI
 {
     boss_kriAI(Creature* creature) : boss_silithidRoyaltyAI(creature, KRI_ACTION_MAX)
@@ -199,7 +208,7 @@ struct boss_kriAI : public boss_silithidRoyaltyAI
         AddCombatAction(KRI_THRASH, 6u * IN_MILLISECONDS);
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         boss_silithidRoyaltyAI::Reset();
         m_deathAbility     = SPELL_SUMMON_CLOUD;
@@ -207,7 +216,7 @@ struct boss_kriAI : public boss_silithidRoyaltyAI
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -233,14 +242,16 @@ struct boss_kriAI : public boss_silithidRoyaltyAI
     }
 };
 
+// VemActions 战斗行为动作枚举
 enum VemActions
 {
     VEM_CHARGE,
     VEM_KNOCK_AWAY,
     VEM_KNOCK_DOWN,
-    VEM_ACTION_MAX,
+    VEM_ACTION_MAX,                                         // 战斗行为动作
 };
 
+// boss_vemAI 首领战斗 AI
 struct boss_vemAI : public boss_silithidRoyaltyAI
 {
     boss_vemAI(Creature* creature) : boss_silithidRoyaltyAI(creature, VEM_ACTION_MAX)
@@ -250,7 +261,7 @@ struct boss_vemAI : public boss_silithidRoyaltyAI
         AddCombatAction(VEM_KNOCK_DOWN, urand(5, 8) * IN_MILLISECONDS);
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         boss_silithidRoyaltyAI::Reset();
         m_deathAbility     = SPELL_VENGEANCE;
@@ -260,7 +271,7 @@ struct boss_vemAI : public boss_silithidRoyaltyAI
         m_creature->SetWalk(false);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -287,15 +298,17 @@ struct boss_vemAI : public boss_silithidRoyaltyAI
     }
 };
 
+// YaujActions 战斗行为动作枚举
 enum YaujActions
 {
     YAUJ_HEAL,
     YAUJ_DISPEL,
     YAUJ_FEAR,
     YAUJ_RAVAGE,
-    YAUJ_ACTION_MAX,
+    YAUJ_ACTION_MAX,                                        // 战斗行为动作
 };
 
+// boss_yaujAI 首领战斗 AI
 struct boss_yaujAI : public boss_silithidRoyaltyAI
 {
     boss_yaujAI(Creature* creature) : boss_silithidRoyaltyAI(creature, YAUJ_ACTION_MAX)
@@ -306,7 +319,7 @@ struct boss_yaujAI : public boss_silithidRoyaltyAI
         AddCombatAction(YAUJ_RAVAGE, 12u * IN_MILLISECONDS);
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         boss_silithidRoyaltyAI::Reset();
         m_deathAbility    = SPELL_SUMMON_BROOD;
@@ -314,7 +327,7 @@ struct boss_yaujAI : public boss_silithidRoyaltyAI
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         if (summoned->GetEntry() == NPC_YAUJ_BROOD)
         {
@@ -327,7 +340,7 @@ struct boss_yaujAI : public boss_silithidRoyaltyAI
         }
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -365,7 +378,7 @@ struct boss_yaujAI : public boss_silithidRoyaltyAI
     }
 };
 
-void AddSC_bug_trio()
+void AddSC_bug_trio() // 注册脚本到系统管理器
 {
     Script* newScript = new Script;
     newScript->Name = "boss_kri";

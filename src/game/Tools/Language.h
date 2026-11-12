@@ -19,13 +19,14 @@
 #ifndef __MANGOS_LANGUAGE_H
 #define __MANGOS_LANGUAGE_H
 
+// 数据库 mangos_string 文本资源枚举 ID 定义（供聊天命令、系统通知、战场/竞技场及 GM 工单系统引用）
 enum MangosStrings
 {
-    // for chat commands
+    // for chat commands (聊天命令通用提示)
     LANG_SELECT_CHAR_OR_CREATURE        = 1,
     LANG_SELECT_CREATURE                = 2,
 
-    // level 0 chat
+    // level 0 chat (0 级权限/普通玩家聊天命令提示)
     LANG_SYSTEMMESSAGE                  = 3,
     LANG_EVENTMESSAGE                   = 4,
     LANG_NO_HELP_CMD                    = 5,
@@ -93,7 +94,7 @@ enum MangosStrings
     LANG_GM_ANNOUNCE_COLOR              = 67,
     // Room for more level 0              67-99 not used
 
-    // level 1 chat
+    // level 1 chat (1 级 GM 权限命令提示)
     LANG_GLOBAL_NOTIFY                  = 100,
     LANG_MAP_POSITION                   = 101,
     LANG_IS_TELEPORTED                  = 102,
@@ -194,7 +195,7 @@ enum MangosStrings
     LANG_DEBUG_AREATRIGGER_REACHED      = 185,
     // Room for more level 1              186-199 not used
 
-    // level 2 chat
+    // level 2 chat (2 级 GM 权限命令提示：路径点、生物/对象管理、阵营与事件池等)
     LANG_NO_SELECTION                   = 200,
     LANG_OBJECT_GUID                    = 201,
     LANG_TOO_LONG_NAME                  = 202,
@@ -407,7 +408,7 @@ enum MangosStrings
     LANG_POOL_CHANCE_POOL_LIST_CHAT     = 399,
     // End Level 2 list, continued at 1500
 
-    // level 3 chat
+    // level 3 chat (3 级 GM 权限命令提示：封号、技能/物品/任务管理与系统调试)
     LANG_SCRIPTS_RELOADED_ANNOUNCE      = 400,
     LANG_YOU_CHANGE_SECURITY            = 401,
     LANG_YOURS_SECURITY_CHANGED         = 402,
@@ -642,7 +643,7 @@ enum MangosStrings
     LANG_GMLIST_EMPTY                   = 599,
     // End Level 3 list, continued at 1100
 
-    // Battleground
+    // Battleground (战场与竞技场播报文本)
     LANG_BG_A_WINS                      = 600,
     LANG_BG_H_WINS                      = 601,
 
@@ -807,7 +808,7 @@ enum MangosStrings
     LANG_BG_AV_A_GENERAL_DEAD           = 790,
     // Room for battleground/arena strings 791-799 not used
 
-    // in game strings
+    // in game strings (游戏内通用系统提示文本)
     //                                  = 800, not used
     LANG_NOT_ENOUGH_GOLD                = 801,
     LANG_NOT_FREE_TRADE_SLOTS           = 802,
@@ -829,7 +830,7 @@ enum MangosStrings
     LANG_TELEREQ_QUEST_BLACK_MORASS     = 818,
     // Room for in-game strings           819-999 not used
 
-    // Level 4 (CLI only commands)
+    // Level 4 (CLI only commands) (4 级控制台专属命令提示)
     LANG_COMMAND_EXIT                   = 1000,
     LANG_ACCOUNT_DELETED                = 1001,
     LANG_ACCOUNT_NOT_DELETED_SQL_ERROR  = 1002,
@@ -862,7 +863,7 @@ enum MangosStrings
     LANG_RA_ONLY_COMMAND                = 1029,
     // Room for more level 4              1030-1099 not used
 
-    // Level 3 (continue)
+    // Level 3 (continue) (3 级 GM 命令补充文本与拍卖行机器人状态)
     LANG_ACCOUNT_SETADDON               = 1100,
     LANG_MOTD_NEW                       = 1101,
     LANG_SENDMESSAGE                    = 1102,
@@ -953,7 +954,7 @@ enum MangosStrings
     LANG_TAXI_DEBUG_NODE_FINAL          = 1198,
     LANG_TAXI_DEBUG_PATH                = 1199,
 
-    // Debug commands
+    // Debug commands (调试命令输出文本)
     LANG_CINEMATIC_NOT_EXIST            = 1200,
     //                                    1201 used in master branch
     LANG_SPELLCOEFS                     = 1202,
@@ -963,11 +964,11 @@ enum MangosStrings
     LANG_DOT_DAMAGE                     = 1206,
     // Room for more debug                1207-1299 not used
 
-    // Reserved for old client release branches specific strings
+    // Reserved for old client release branches specific strings (预留给旧版本客户端分支的文本区间)
     // Room for old clients 2.x           1300-1399 not used
     // Room for old clients 1.x           1400-1499 not used
 
-    // Level 2 (continue)
+    // Level 2 (continue) (2 级 GM 补充：对象池、AI 状态与 GM 工单系统文本)
     LANG_POOL_CHANCE_POOL_LIST_CONSOLE  = 1500,
     LANG_POOL_POOL_LIST_CHAT            = 1501,
     LANG_POOL_POOL_LIST_CONSOLE         = 1502,
@@ -1045,7 +1046,7 @@ enum MangosStrings
     //                                  = 1582-1590,        // Reserved for possible strings related to tickets
     // Room for more Level 2              1591-1599 not used
 
-    // Outdoor PvP
+    // Outdoor PvP (外域野外 PvP 区域占领与进度播报文本)
     LANG_OPVP_EP_CAPTURE_NPT_H          = 1600,
     LANG_OPVP_EP_CAPTURE_NPT_A          = 1601,
     LANG_OPVP_EP_CAPTURE_CGT_H          = 1602,

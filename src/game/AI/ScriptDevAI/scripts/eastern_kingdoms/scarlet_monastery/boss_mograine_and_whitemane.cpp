@@ -21,51 +21,55 @@ SDComment:
 SDCategory: Scarlet Monastery
 EndScriptData */
 
+// 大检察官怀特迈恩与雷诺·莫格莱尼（Mograine & Whitemane）大教堂首领战 AI（“复活吧，我的勇士！”剧情机制）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "Globals/SharedDefines.h"
 #include "scarlet_monastery.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // Mograine says
-    SAY_MO_AGGRO                 = -1189005,
-    SAY_MO_KILL                  = -1189006,
-    SAY_MO_RESSURECTED           = -1189007,
+    // Mograine says (莫格莱尼says)
+    SAY_MO_AGGRO                 = -1189005,                // mo开战 台词广播 ID
+    SAY_MO_KILL                  = -1189006,                // mo击杀 台词广播 ID
+    SAY_MO_RESSURECTED           = -1189007,                // moressurected 台词广播 ID
 
-    // Whitemane says
-    SAY_WH_INTRO                 = -1189008,
-    SAY_WH_KILL                  = -1189009,
-    SAY_WH_RESSURECT             = -1189010,
+    // Whitemane says (怀特迈恩says)
+    SAY_WH_INTRO                 = -1189008,                // wh开场 台词广播 ID
+    SAY_WH_KILL                  = -1189009,                // wh击杀 台词广播 ID
+    SAY_WH_RESSURECT             = -1189010,                // whressurect 台词广播 ID
 
-    // Mograine Spells
-    SPELL_CRUSADERSTRIKE         = 14518,
-    SPELL_HAMMEROFJUSTICE        = 5589,
-    SPELL_LAYONHANDS             = 9257,
-    SPELL_RETRIBUTIONAURA        = 8990,
-    SPELL_DIVINESHIELD           = 642,
+    // Mograine Spells (莫格莱尼Spells)
+    SPELL_CRUSADERSTRIKE         = 14518,                   // crusaderstrike 法术 ID
+    SPELL_HAMMEROFJUSTICE        = 5589,                    // hammerofjustice 法术 ID
+    SPELL_LAYONHANDS             = 9257,                    // layonhands 法术 ID
+    SPELL_RETRIBUTIONAURA        = 8990,                    // retributionaura 法术 ID
+    SPELL_DIVINESHIELD           = 642,                     // divineshield 法术 ID
 
     // Whitemanes Spells
-    SPELL_DEEPSLEEP              = 9256,
-    SPELL_SCARLETRESURRECTION    = 9232,
-    SPELL_DOMINATEMIND           = 14515,
-    SPELL_HOLYSMITE              = 9481,
-    SPELL_HEAL                   = 12039,
-    SPELL_POWERWORDSHIELD        = 22187,
+    SPELL_DEEPSLEEP              = 9256,                    // deepsleep 法术 ID
+    SPELL_SCARLETRESURRECTION    = 9232,                    // scarletresurrection 法术 ID
+    SPELL_DOMINATEMIND           = 14515,                   // dominatemind 法术 ID
+    SPELL_HOLYSMITE              = 9481,                    // holysmite 法术 ID
+    SPELL_HEAL                   = 12039,                   // 治疗 法术 ID
+    SPELL_POWERWORDSHIELD        = 22187,                   // powerwordshield 法术 ID
 
-    NPC_SCARLET_ABBOT               = 4303,
-    NPC_SCARLET_MONK                = 4540,
-    NPC_SCARLET_CHAMPION            = 4302,
-    NPC_SCARLET_WIZARD              = 4300,
-    NPC_SCARLET_CENTURION           = 4301,
-    NPC_SCARLET_CHAPLAIN            = 4299,
+    NPC_SCARLET_ABBOT               = 4303,                 // scarletabbot Entry ID
+    NPC_SCARLET_MONK                = 4540,                 // scarletmonk Entry ID
+    NPC_SCARLET_CHAMPION            = 4302,                 // scarlet勇士 Entry ID
+    NPC_SCARLET_WIZARD              = 4300,                 // scarletwizard Entry ID
+    NPC_SCARLET_CENTURION           = 4301,                 // scarletcenturion Entry ID
+    NPC_SCARLET_CHAPLAIN            = 4299,                 // scarletchaplain Entry ID
 
-    ASHBRINGER_RELAY_SCRIPT_ID   = 9001,
-    SPELL_AB_EFFECT_000          = 28441,
+    ASHBRINGER_RELAY_SCRIPT_ID   = 9001,                    // relayscriptID 标识 ID
+    SPELL_AB_EFFECT_000          = 28441,                   // ab效果000 法术 ID
 
-    SOUND_MOGRAINE_FAKE_DEATH    = 1326,
+    SOUND_MOGRAINE_FAKE_DEATH    = 1326,                    // 莫格莱尼fake死亡 音效 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MograineActions
 {
     MOGRAINE_ACTION_CRUSADER_STRIKE,
@@ -77,6 +81,7 @@ enum MograineActions
     MOGRAINE_ACTION_ROAR,
 };
 
+// 首领战 AI：指挥官莫格莱尼（scarlet_commander_mograine）
 struct boss_scarlet_commander_mograineAI : public CombatAI
 {
     boss_scarlet_commander_mograineAI(Creature* creature) : CombatAI(creature, MOGRAINE_ACTION_MAX), m_instance(static_cast<instance_scarlet_monastery*>(creature->GetInstanceData()))
@@ -100,9 +105,10 @@ struct boss_scarlet_commander_mograineAI : public CombatAI
 
     instance_scarlet_monastery* m_instance;
 
-    bool m_bHasDied;
-    bool m_bHeal;
+    bool m_bHasDied;                                        // HasDied 状态标记
+    bool m_bHeal;                                           // Heal 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -123,10 +129,11 @@ struct boss_scarlet_commander_mograineAI : public CombatAI
         {
             case MOGRAINE_ACTION_CRUSADER_STRIKE: return urand(6000, 15000);
             case MOGRAINE_ACTION_HAMMER_OF_JUSTICE: return urand(7000, 18500);
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
@@ -192,6 +199,7 @@ struct boss_scarlet_commander_mograineAI : public CombatAI
         }
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pWho, const SpellEntry* pSpell) override
     {
         // When hit with ressurection say text
@@ -307,6 +315,7 @@ struct boss_scarlet_commander_mograineAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum WhitemaneActions
 {
     WHITEMANE_ACTION_DEEP_SLEEP,
@@ -320,6 +329,7 @@ enum WhitemaneActions
     WHITEMANE_ACTION_SCARLET_RESURRECTION_ENTER_COMBAT,
 };
 
+// 首领战 AI：inquisitor怀特迈恩（high_inquisitor_whitemane）
 struct boss_high_inquisitor_whitemaneAI : public CombatAI
 {
     boss_high_inquisitor_whitemaneAI(Creature* creature) : CombatAI(creature, WHITEMANE_ACTION_MAX), m_instance(static_cast<instance_scarlet_monastery*>(creature->GetInstanceData()))
@@ -355,7 +365,7 @@ struct boss_high_inquisitor_whitemaneAI : public CombatAI
             case WHITEMANE_ACTION_POWERWORD_SHIELD: return urand(22000, 45000);
             case WHITEMANE_ACTION_HOLY_SMITE: return GetCurrentRangedMode() ? urand(2000, 3000) : urand(3500, 8000);
             case WHITEMANE_ACTION_DOMINATE_MIND: return urand(5000, 10000);
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
     instance_scarlet_monastery* m_instance;
@@ -366,6 +376,7 @@ struct boss_high_inquisitor_whitemaneAI : public CombatAI
         SetDeathPrevention(true);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         SetCombatScriptStatus(false);
@@ -393,6 +404,7 @@ struct boss_high_inquisitor_whitemaneAI : public CombatAI
         }
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
     {
         if (uiMotionType == POINT_MOTION_TYPE && uiPointId == 2)
@@ -504,6 +516,7 @@ struct boss_high_inquisitor_whitemaneAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_mograine_and_whitemane
 void AddSC_boss_mograine_and_whitemane()
 {
     Script* pNewScript = new Script;

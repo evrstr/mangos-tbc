@@ -21,6 +21,8 @@ SDComment: Quest support: 3528, 8733
 SDCategory: Sunken Temple
 EndScriptData */
 
+// 阿塔哈卡神庙（Sunken Temple）阿塔莱雕像点亮谜题顺序与绿龙守卫 AI
+
 /* ContentData
 at_shade_of_eranikus
 npc_malfurion_stormrage
@@ -33,10 +35,11 @@ EndContentData */
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunken_temple.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_THE_CHARGE_OF_DRAGONFLIGHTS = 8555,
-    QUEST_ERANIKUS_TYRANT_OF_DREAMS   = 8733
+    QUEST_THE_CHARGE_OF_DRAGONFLIGHTS = 8555,               // the冲锋ofdragonflights 任务 ID
+    QUEST_ERANIKUS_TYRANT_OF_DREAMS   = 8733                // eranikustyrantofdreams 任务 ID
 };
 
 bool AreaTrigger_at_shade_of_eranikus(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
@@ -62,17 +65,19 @@ bool AreaTrigger_at_shade_of_eranikus(Player* pPlayer, AreaTriggerEntry const* /
 ## npc_malfurion_stormrage
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_MALFURION1              = -1109000,
-    SAY_MALFURION1                = -1109001,
-    SAY_MALFURION2                = -1109002,
-    SAY_MALFURION3                = -1109003,
-    SAY_MALFURION4                = -1109004,
+    EMOTE_MALFURION1              = -1109000,               // malfurion1 表情动作 ID
+    SAY_MALFURION1                = -1109001,               // malfurion1 台词广播 ID
+    SAY_MALFURION2                = -1109002,               // malfurion2 台词广播 ID
+    SAY_MALFURION3                = -1109003,               // malfurion3 台词广播 ID
+    SAY_MALFURION4                = -1109004,               // malfurion4 台词广播 ID
 
-    MAX_MALFURION_TEMPLE_SPEECHES = 6
+    MAX_MALFURION_TEMPLE_SPEECHES = 6                       // malfuriontemplespeeches 标识 ID
 };
 
+// 随从/NPC AI：标识 ID（malfurion）
 struct npc_malfurionAI : public ScriptedAI
 {
     npc_malfurionAI(Creature* pCreature) :
@@ -90,10 +95,12 @@ struct npc_malfurionAI : public ScriptedAI
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
     }
 
-    uint32 m_uiSayTimer;
+    uint32 m_uiSayTimer;                                    // Say 技能计时器
     uint32 m_uiSpeech;
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         // We are in Sunken Temple
@@ -141,6 +148,7 @@ struct npc_malfurionAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_malfurion
 UnitAI* GetAI_npc_malfurion(Creature* pCreature)
 {
     return new npc_malfurionAI(pCreature);
@@ -226,6 +234,7 @@ bool GOUse_go_eternal_flame(Player* /*pPlayer*/, GameObject* pGo)
     return true;
 }
 
+// 法术脚本逻辑实现：标识 ID（SummonHakkar）
 struct SummonHakkar : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -246,6 +255,7 @@ struct SummonHakkar : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（HakkarSummoned）
 struct HakkarSummoned : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -282,7 +292,7 @@ struct HexOfJammalanAura : public AuraScript // s.12479
     }
 };
 
-// 12890 - Deep Slumber
+// 12890 - Deep Slumber (12890 - 深度 沉睡)
 struct DeepSlumber : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -296,6 +306,7 @@ struct DeepSlumber : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：sunken_temple
 void AddSC_sunken_temple()
 {
     Script* pNewScript = new Script;

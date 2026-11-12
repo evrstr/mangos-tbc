@@ -21,6 +21,8 @@ SDComment: Instance Script for Karazhan to help in various encounters.
 SDCategory: Karazhan
 EndScriptData */
 
+// 卡拉赞（Karazhan）副本状态机与各大首领进度控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 
@@ -235,7 +237,7 @@ void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             if (uiData == FAIL)
             {
-                // Respawn Midnight on Fail
+                // Respawn Midnight on Fail (刷新午夜onFail)
                 if (Creature* pMidnight = GetSingleCreatureFromStorage(NPC_MIDNIGHT))
                 {
                     if (!pMidnight->IsAlive())
@@ -418,7 +420,7 @@ void instance_karazhan::OnCreatureDeath(Creature* pCreature)
         case NPC_TINHEAD:
         case NPC_STRAWMAN:
             ++m_uiOzDeathCount;
-            // Summon Chrone when all 4 Oz mobs are killed
+            // Summon Chrone when all 4 Oz mobs are killed (召唤 Chrone when all 4 Oz mobs are killed)
             if (m_uiOzDeathCount == MAX_OZ_OPERA_MOBS)
             {
                 if (Creature* pCrone = pCreature->SummonCreature(NPC_CRONE, afChroneSpawnLoc[0], afChroneSpawnLoc[1], afChroneSpawnLoc[2], afChroneSpawnLoc[3], TEMPSPAWN_DEAD_DESPAWN, 0))
@@ -526,7 +528,7 @@ void instance_karazhan::DoPrepareChessEvent()
         return;
     }
 
-    // get the proper statusBar npc
+    // get the proper statusBar npc (获取对应的状态栏通知 NPC)
     Creature* pStatusBar = instance->GetCreature(m_HordeStatusGuid);
     if (!pStatusBar)
         return;
@@ -548,7 +550,7 @@ void instance_karazhan::DoPrepareChessEvent()
         return;
     }
 
-    // get the proper statusBar npc
+    // get the proper statusBar npc (获取对应的状态栏通知 NPC)
     pStatusBar = instance->GetCreature(m_AllianceStatusGuid);
     if (!pStatusBar)
         return;
@@ -564,7 +566,7 @@ void instance_karazhan::DoMoveChessPieceToSides(uint32 uiSpellId, uint32 uiFacti
     GuidVector& vStalkers = uiFaction == FACTION_ID_CHESS_ALLIANCE ? m_vAllianceStalkers : m_vHordeStalkers;
     uint32 uiCount = uiFaction == FACTION_ID_CHESS_ALLIANCE ? m_uiAllianceStalkerCount : m_uiHordeStalkerCount;
 
-    // get the proper statusBar npc
+    // get the proper statusBar npc (获取对应的状态栏通知 NPC)
     Creature* pStatusBar = instance->GetCreature(uiFaction == FACTION_ID_CHESS_ALLIANCE ? m_AllianceStatusGuid : m_HordeStatusGuid);
     if (!pStatusBar)
         return;
@@ -613,7 +615,7 @@ void instance_karazhan::DoFailChessEvent()
     {
         if (Creature* pTemp = instance->GetCreature(guid))
         {
-            pTemp->RemoveAurasDueToSpell(32226); // remove attack timer
+            pTemp->RemoveAurasDueToSpell(32226); // remove attack timer (remove攻击计时器)
             if (Unit* player = pTemp->GetCharmer())
             {
                 player->RemoveAurasDueToSpell(30019); // remove charm effect on game end/fail
@@ -674,7 +676,7 @@ void instance_karazhan::DoFinishChessEvent()
     {
         if (Creature* pTemp = instance->GetCreature(guid))
         {
-            pTemp->RemoveAurasDueToSpell(32226); // remove attack timer
+            pTemp->RemoveAurasDueToSpell(32226); // remove attack timer (remove攻击计时器)
             if (Unit* player = pTemp->GetCharmer())
             {
                 player->RemoveAurasDueToSpell(30019); // remove charm effect on game end/fail
@@ -714,7 +716,7 @@ void instance_karazhan::DoPrepareOperaStage(Creature* pOrganizer)
 
     debug_log("SD2: Barnes Opera Event - Introduction complete - preparing encounter %d", GetData(TYPE_OPERA_PERFORMANCE));
 
-    // summon the bosses and respawn the stage background
+    // summon the bosses and respawn the stage background (召唤 the bosses and respawn the stage background)
     switch (GetData(TYPE_OPERA_PERFORMANCE))
     {
         case OPERA_EVENT_WIZARD_OZ:
@@ -882,6 +884,7 @@ InstanceData* GetInstanceData_instance_karazhan(Map* pMap)
     return new instance_karazhan(pMap);
 }
 
+// 注册并载入脚本模块：instance_karazhan
 void AddSC_instance_karazhan()
 {
     Script* pNewScript = new Script;

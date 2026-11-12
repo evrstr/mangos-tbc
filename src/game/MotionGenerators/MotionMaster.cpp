@@ -46,14 +46,17 @@
 namespace
 {
     // Minimum falling distance required to launch a FallMovement generator.
+    // 触发坠落移动生成器所需的最小离地落差（码）
     constexpr float g_moveFallMinFallDistance = 0.5f;
 }
 
+/// 判断是否为全局静态 IdleMovementGenerator 单例（释放栈元素时不可 delete）
 inline bool isStatic(MovementGenerator* mv)
 {
     return (mv == &si_idleMovement);
 }
 
+/// 初始化运动控制器：停止当前移动、清空全部旧生成器，并按生物默认配置创建栈底默认生成器
 void MotionMaster::Initialize()
 {
 #ifdef BUILD_METRICS
@@ -100,6 +103,7 @@ void MotionMaster::Initialize()
         push(&si_idleMovement);
 }
 
+/// 析构：直接释放非静态生成器内存（不可调用 Finalize，因宿主 Unit 成员可能已部分析构）
 MotionMaster::~MotionMaster()
 {
     // just deallocate movement generator, but do not Finalize since it may access to already deallocated owner's memory
@@ -112,6 +116,7 @@ MotionMaster::~MotionMaster()
     }
 }
 
+/// 每帧驱动栈顶移动生成器；若其返回 false 则触发过期清理，并在帧末统一释放延迟销毁列表
 void MotionMaster::UpdateMotion(uint32 diff)
 {
     if (m_owner->hasUnitState(UNIT_STAT_CAN_NOT_MOVE))
@@ -159,6 +164,7 @@ void MotionMaster::UpdateMotion(uint32 diff)
     }
 }
 
+/// 立即清栈（不在 Update 循环中时调用）
 void MotionMaster::DirectClean(bool reset, bool all)
 {
     while (all ? !empty() : size() > 1)
@@ -178,6 +184,7 @@ void MotionMaster::DirectClean(bool reset, bool all)
     }
 }
 
+/// 延迟清栈（在 Update 迭代内调用时将弹出的生成器放入 m_expList，帧末统一 delete）
 void MotionMaster::DelayedClean(bool reset, bool all)
 {
     if (reset)
@@ -202,18 +209,19 @@ void MotionMaster::DelayedClean(bool reset, bool all)
     }
 }
 
+/// 立即弹出已过期的栈顶生成器（以及其下方标记 IsRemovedOnExpire 的临时目标生成器）
 void MotionMaster::DirectExpire(bool reset)
 {
     if (empty() || size() == 1)
         return;
 
     MovementGenerator* curr = top();
-    bool onlyRemoveOne = false; // this is an ugly hack and is indicative of a need for a rework
+    bool onlyRemoveOne = false; // this is an ugly hack and is indicative of a need for a rework (EFFECT_MOTION_TYPE 仅弹出自身，不连带清理下层)
     if (curr->GetMovementGeneratorType() == EFFECT_MOTION_TYPE)
         onlyRemoveOne = true;
     pop();
 
-    // also drop stored under top() targeted motions
+    // also drop stored under top() targeted motions (连带清理栈顶下方随过期移除的目标跟踪生成器)
     if (!onlyRemoveOne)
     {
         while (!empty() && (top()->IsRemovedOnExpire()))
@@ -225,7 +233,7 @@ void MotionMaster::DirectExpire(bool reset)
         }
     }
 
-    // Store current top MMGen, as Finalize might push a new MMGen
+    // Store current top MMGen, as Finalize might push a new MMGen (记录当前栈顶，防止 Finalize 压入新生成器后被误 Reset)
     MovementGenerator* nowTop = empty() ? nullptr : top();
     // it can add another motions instead
     curr->Finalize(*m_owner);
@@ -241,6 +249,7 @@ void MotionMaster::DirectExpire(bool reset)
         top()->Reset(*m_owner);
 }
 
+/// 延迟弹出过期生成器（Update 迭代中安全入队等待释放）
 void MotionMaster::DelayedExpire(bool reset)
 {
     if (reset)
@@ -598,13 +607,14 @@ bool MotionMaster::MoveFall(ObjectGuid guid/* = ObjectGuid()*/, uint32 relayId/*
     return true;
 }
 
+/// 压栈激活新移动生成器：清理可被替代的栈顶（Home/Distract）、中断旧栈顶并初始化新生成器
 void MotionMaster::Mutate(MovementGenerator* m)
 {
     if (!empty())
     {
         switch (top()->GetMovementGeneratorType())
         {
-            // HomeMovement is not that important, delete it if meanwhile a new comes
+            // HomeMovement is not that important, delete it if meanwhile a new comes (返巢与扰乱被新移动请求直接取代移除)
             case HOME_MOTION_TYPE:
             // DistractMovement interrupted by any other movement
             case DISTRACT_MOTION_TYPE:

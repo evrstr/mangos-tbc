@@ -28,6 +28,7 @@
 #include <functional>
 #include <string>
 
+/// 世界事件涉及的区域 ID 常量
 enum ZoneIds
 {
     ZONEID_DUN_MOROGH           = 1,
@@ -131,6 +132,7 @@ enum Events
     CUSTOM_EVENT_HIGHLORD_KRUUL_DIED,
 };
 
+/// 世界状态持久化的数据库存档槽位编号
 enum SaveIds
 {
     SAVE_ID_EMERALD_DRAGONS = 0,
@@ -272,6 +274,7 @@ enum AQSilithusBoss
     AQ_SILITHUS_BOSS_ZORA  = 2,
 };
 
+/// 安其拉开门物资捐献进度与阶段数据
 struct AhnQirajData
 {
     uint32 m_phase;
@@ -334,6 +337,7 @@ enum SIRemaining
     SI_REMAINING_MAX,
 };
 
+/// 天灾入侵世界事件运行时数据（各地入侵点、主城攻防计时与状态）
 struct ScourgeInvasionData
 {
     struct InvasionZone
@@ -422,6 +426,7 @@ enum SunwellGateCounters
     COUNTERS_MAX_GATES,
 };
 
+/// 奎尔丹纳斯岛太阳之井高地阶段与城门解锁进度数据
 struct SunsReachReclamationData
 {
     uint32 m_phase;
@@ -461,38 +466,49 @@ struct LoveIsInTheAir
 };
 
 // Intended for implementing server wide scripts, note: all behaviour must be safeguarded towards multithreading
+// 全局世界状态单例子系统：负责跨地图全服型大型脚本事件（如安其拉开门、天灾入侵、奎尔丹纳斯岛阶段进度、翡翠四绿龙、仲夏节篝火、资料片开放事件等）。
+// 注意：部分方法可能从地图工作线程触发，因此所有共享容器与状态操作均需具备线程安全保护。
 class WorldState
 {
     public:
         WorldState();
         virtual ~WorldState();
 
+        /// 启动时从数据库加载全服事件持久化进度并初始化相关世界事件
         void Load();
+        /// 将指定子系统的当前进度序列化保存至数据库
         void Save(SaveIds saveId);
         void SaveHelper(std::string& stringToSave, SaveIds saveId);
 
-        // Called when a gameobject is created or removed
+        // Called when a gameobject is created or removed | 当游戏对象被使用或状态重置时触发全局事件联动
         void HandleGameObjectUse(GameObject* go, Unit* user);
         void HandleGameObjectRevertState(GameObject* go);
 
+        /// 玩家进入/离开指定 Zone 时登记或注销对应事件追踪列表并下发状态
         void HandlePlayerEnterZone(Player* player, uint32 zoneId);
         void HandlePlayerLeaveZone(Player* player, uint32 zoneId);
 
+        /// 玩家进入/离开指定 Area 时处理区域光环（如纳鲁之歌、仲夏火焰节祝福）
         void HandlePlayerEnterArea(Player* player, uint32 areaId);
         void HandlePlayerLeaveArea(Player* player, uint32 areaId);
 
+        /// 查询全局条件（如船只/飞艇停靠或战争物资倒计时）是否满足
         bool IsConditionFulfilled(uint32 conditionId, uint32 state) const;
+        /// 更新并处理外部条件状态变化（如飞艇/海船到达与离港事件）
         void HandleConditionStateChange(uint32 conditionId, uint32 state);
 
+        /// 响应外部脚本或世界 Boss 击杀/任务提交触发的自定义事件
         void HandleExternalEvent(uint32 eventId, uint32 param);
         void ExecuteOnAreaPlayers(uint32 areaId, std::function<void(Player*)> executor);
         void ExecuteOnZonePlayers(uint32 zoneId, std::function<void(Player*)> executor);
 
+        /// 主循环周期驱动：更新各世界事件计时器与定期存盘
         void Update(const uint32 diff);
 
+        /// 向指定玩家列表安全广播单个世界状态更新
         void SendWorldstateUpdate(std::mutex& mutex, GuidVector const& guids, uint32 value, uint32 worldStateId);
 
-        // vanilla section
+        // vanilla section | 经典旧世阶段事件（安其拉战争物资、情人节、天灾入侵、翡翠巨龙）
 
         uint32 GetLoveIsInTheAirCounter(LoveIsInTheAirLeaders leader) { return m_loveIsInTheAirData.counters[leader]; }
 
@@ -551,18 +567,18 @@ class WorldState
         void OnDisable(ScourgeInvasionData::InvasionZone& zone);
         void OnDisable(ScourgeInvasionData::CityAttack& zone);
 
-        // tbc section
+        // tbc section | TBC 燃烧的远征阶段事件（玛瑟里顿之首、阿达尔的战歌、太阳井岛、仲夏节）
         void BuffMagtheridonTeam(Team team);
         void DispelMagtheridonTeam(Team team);
 
         void BuffAdalsSongOfBattle();
         void DispelAdalsSongOfBattle();
 
-        // Release events
+        // Release events | 资料片动态开放阶段控制
         uint8 GetExpansion() const { return m_expansion; }
         bool SetExpansion(uint8 expansion);
 
-        // Sun's Reach Reclamation
+        // Sun's Reach Reclamation | 奎尔丹纳斯岛太阳之井阶段推进
         void AddSunsReachProgress(uint32 questId);
         void HandleSunsReachPhaseTransition(uint32 newPhase);
         void HandleSunsReachSubPhaseTransition(int32 subPhaseMask, bool initial = false);
@@ -582,9 +598,10 @@ class WorldState
         void SetBonfireActive(uint32 entry, bool team, bool apply);
         void SetBonfireZone(uint32 entry, uint32 zoneId, bool team);
 
+        /// 填充玩家所在 Zone/Area 的全服世界事件初始世界状态包
         void FillInitialWorldStates(ByteBuffer& data, uint32& count, uint32 zoneId, uint32 areaId);
 
-        // helper functions for world state list fill
+        // helper functions for world state list fill | 向数据包写入单条 (WorldStateID, Value) 并递增计数
         inline void FillInitialWorldStateData(ByteBuffer& data, uint32& count, uint32 state, uint32 value)
         {
             data << uint32(state);
@@ -603,7 +620,7 @@ class WorldState
         std::map<uint32, GuidVector> m_zonePlayers;
         std::map<uint32, std::atomic<uint32>> m_transportStates; // atomic to avoid having to lock
 
-        std::mutex m_mutex; // all World State operations are thread unsafe
+        std::mutex m_mutex; // all World State operations are thread unsafe | 保护非原子的全服事件成员状态互斥锁
         uint32 m_saveTimer;
 
         // vanilla section

@@ -24,11 +24,15 @@
 class TargetedMovementGeneratorBase;
 class Unit;
 
+/// 跟随关系引用节点：维护 TargetedMovementGeneratorBase 与被跟随 Unit 之间的双向生命周期联动
 class FollowerReference : public Reference<Unit, TargetedMovementGeneratorBase>
 {
     protected:
+        /// 建立引用时将自身注册到目标 Unit 的跟随者列表
         void targetObjectBuildLink() override;
+        /// 解除引用时从目标 Unit 的跟随者列表移除
         void targetObjectDestroyLink() override;
+        /// 当跟随生成器销毁或目标失效时触发停止跟随回调
         void sourceObjectDestroyLink() override;
 };
 #endif

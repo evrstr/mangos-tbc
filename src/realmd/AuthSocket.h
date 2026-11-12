@@ -44,6 +44,7 @@
 struct sAuthLogonProof_C;
 struct sAuthLogonPinData_C;
 
+/// 登录认证会话套接字类：处理 SRP6 握手、重连验证、PIN/TOTP 令牌校验与服务器列表下发
 class AuthSocket : public MaNGOS::AsyncSocket<AuthSocket>
 {
     public:
@@ -51,31 +52,41 @@ class AuthSocket : public MaNGOS::AsyncSocket<AuthSocket>
 
         AuthSocket(boost::asio::io_context& context);
 
+        /// 连接建立回调：初始化超时计时器
         bool OnOpen() override;
 
+        /// 发送重连或登录证明响应包
         void SendProof(Sha1Hash sha);
+        /// 组装服务器列表数据包并写入缓冲区
         void LoadRealmlist(ByteBuffer& pkt, uint32 acctid, uint8 accountSecurityLevel = 0);
+        /// 校验客户端上传的图形 PIN 码哈希
         bool VerifyPinData(uint32 pin, const sAuthLogonPinData_C& clientData);
-        void RegisterFailedLogin();           // counts a wrong password, PIN or authenticator code towards WrongPass.MaxCount
+        void RegisterFailedLogin();           // counts a wrong password, PIN or authenticator code towards WrongPass.MaxCount | 计入错误登录次数（密码/PIN/动态口令错误均计入 WrongPass.MaxCount）
+        /// 构造登录挑战成功应答包（包含 SRP6 公共参数、安全盐及安全输入提示）
         void BuildLogonChallengeSuccess(ByteBuffer& pkt, const char* v_hex, const char* s_hex, uint8 secLevel, const std::string& token);
+        /// 根据 Base32 密钥生成当前时间窗口的 6 位 TOTP 动态口令
         int32 generateToken(char const* b32key);
 
+        /// 统计指定安全等级账号可见的服务器数量
         uint8 getEligibleRealmCount(uint8 accountSecurityLevel);
 
+        /// 校验客户端版本 CRC 摘要是否匹配预期构建版本
         bool VerifyVersion(uint8 const* a, int32 aLength, uint8 const* versionProof, bool isReconnect);
         bool _HandleLogonChallenge();
         bool _HandleLogonProof();
         bool _HandleReconnectChallenge();
         bool _HandleReconnectProof();
         bool _HandleRealmList();
-        // data transfer handle for patch
+        // data transfer handle for patch | 补丁文件传输相关指令处理
 
         bool _HandleXferResume();
         bool _HandleXferCancel();
         bool _HandleXferAccept();
 
     private:
+        /// 校验客户端版本并完成登录认证（向客户端返回 Proof 并更新数据库会话密钥）
         void verifyVersionAndFinalizeAuthentication(std::shared_ptr<sAuthLogonProof_C> lp);
+        /// 重置或启动连接超时定时器
         void ArmTimeoutTimer();
 
         enum eStatus
@@ -83,7 +94,7 @@ class AuthSocket : public MaNGOS::AsyncSocket<AuthSocket>
             STATUS_CHALLENGE,
             STATUS_LOGON_PROOF,
             STATUS_RECON_PROOF,
-            STATUS_PATCH,      // unused in CMaNGOS
+            STATUS_PATCH,      // unused in CMaNGOS | CMaNGOS 中未使用补丁下发状态
             STATUS_AUTHED,
             STATUS_CLOSED
         };

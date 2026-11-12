@@ -21,51 +21,57 @@ SDComment: Some minor adjustments may be required
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：奥罗 (Ouro) 潜地沙尘与土堆召唤首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 常量与事件枚举
 enum
 {
-    // ground spells
-    SPELL_DOUBLE_ATTACK     = 18941,
-    SPELL_SWEEP             = 26103,
-    SPELL_SANDBLAST         = 26102,
-    SPELL_BOULDER           = 26616,
-    SPELL_BERSERK           = 26615,
+    // ground spells (法术)
+    SPELL_DOUBLE_ATTACK     = 18941,                        // 技能法术 ID
+    SPELL_SWEEP             = 26103,                        // 技能法术 ID
+    SPELL_SANDBLAST         = 26102,                        // 技能法术 ID
+    SPELL_BOULDER           = 26616,                        // 技能法术 ID
+    SPELL_BERSERK           = 26615,                        // 技能法术：狂暴
 
-    // emerge spells
-    SPELL_BIRTH_SPAWN       = 26586,
-    SPELL_GROUND_RUPTURE    = 26100,
-    SPELL_SUMMON_BASE       = 26133,                        // summons gameobject 180795
+    // emerge spells (法术)
+    SPELL_BIRTH_SPAWN       = 26586,                        // 技能法术 ID
+    SPELL_GROUND_RUPTURE    = 26100,                        // 技能法术 ID
+    SPELL_SUMMON_BASE       = 26133,                        // summons gameobject 180795 (召唤)
 
-    // submerge spells
-    SPELL_SUBMERGE_VISUAL   = 26063,
-    SPELL_SUMMON_OURO_MOUNDS = 26058,                        // summons 5 dirt mounds
-    SPELL_SUMMON_TRIGGER    = 26284,
+    // submerge spells (法术)
+    SPELL_SUBMERGE_VISUAL   = 26063,                        // 技能法术 ID
+    SPELL_SUMMON_OURO_MOUNDS = 26058,                        // summons 5 dirt mounds (召唤)
+    SPELL_SUMMON_TRIGGER    = 26284,                        // 技能法术 ID
 
-    SPELL_SUMMON_OURO_TRIGG = 26642,
-    SPELL_QUAKE             = 26093,
-    SPELL_DREAM_FOG         = 24780,                        // on mounds
+    SPELL_SUMMON_OURO_TRIGG = 26642,                        // 技能法术 ID
+    SPELL_QUAKE             = 26093,                        // 技能法术 ID
+    SPELL_DREAM_FOG         = 24780,                        // on mounds (说明)
 
-    // other spells - not used
-    SPELL_SUMMON_SCARABS    = 26060,                        // triggered after 30 secs - cast by the Dirt Mounds
-    SPELL_DIRTMOUND_PASSIVE = 26092,                        // casts 26093 every 1 sec - removed from DBC (readded)
-    // SPELL_SET_OURO_HEALTH   = 26075,                     // unused - done through AI
-    // SPELL_SAVE_OURO_HEALTH  = 26076,                     // unused - done through AI
-    // SPELL_TELEPORT_TRIGGER  = 26285,                     // unused
-    // SPELL_SUBMERGE_TRIGGER  = 26104,                     // unused
-    SPELL_SUMMON_OURO_MOUND = 26617,
-    SPELL_SCARABS_PERIODIC  = 26619,
+    // other spells - not used (法术)
+    SPELL_SUMMON_SCARABS    = 26060,                        // triggered after 30 secs - cast by the Dirt Mounds (说明)
+    SPELL_DIRTMOUND_PASSIVE = 26092,                        // casts 26093 every 1 sec - removed from DBC (readded) (说明)
+    // SPELL_SET_OURO_HEALTH   = 26075,                     // unused - done through AI (说明)
+    // SPELL_SAVE_OURO_HEALTH  = 26076,                     // unused - done through AI (说明)
+    // SPELL_TELEPORT_TRIGGER  = 26285,                     // unused (说明)
+    // SPELL_SUBMERGE_TRIGGER  = 26104,                     // unused (说明)
+    SPELL_SUMMON_OURO_MOUND = 26617,                        // 技能法术 ID
+    SPELL_SCARABS_PERIODIC  = 26619,                        // 技能法术 ID
 
-    // summoned npcs
-    NPC_OURO                = 15517,
-    // NPC_OURO_SCARAB       = 15718,                       // summoned by Dirt Mounds
-    NPC_OURO_TRIGGER        = 15717,
-    NPC_DIRT_MOUND          = 15712,                        // summoned also by missing spell 26617
+    // summoned npcs (说明)
+    NPC_OURO                = 15517,                        // NPC 条目 ID
+    // NPC_OURO_SCARAB       = 15718,                       // summoned by Dirt Mounds (说明)
+    NPC_OURO_TRIGGER        = 15717,                        // NPC 条目 ID
+    NPC_DIRT_MOUND          = 15712,                        // summoned also by missing spell 26617 (法术)
 };
 
+// OuroActions 战斗行为动作枚举
 enum OuroActions
 {
     OURO_SPAWN,
@@ -76,11 +82,11 @@ enum OuroActions
     OURO_SWEEP,
     OURO_DOUBLE_ATTACK,
     OURO_NO_MELEE_BURROW,
-    OURO_ACTION_MAX,
+    OURO_ACTION_MAX,                                        // 战斗行为动作
     OURO_SPAWN_DELAY_ATTACK,
 };
 
-struct npc_ouro_triggerAI : public ScriptedAI // needs to be before Ouro for compilation reasons
+struct npc_ouro_triggerAI : public ScriptedAI // needs to be before Ouro for compilation reasons (说明)
 {
     npc_ouro_triggerAI(Creature* creature) : ScriptedAI(creature)
     {
@@ -88,7 +94,7 @@ struct npc_ouro_triggerAI : public ScriptedAI // needs to be before Ouro for com
         SetCombatMovement(false);
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
 
     }
@@ -102,6 +108,7 @@ struct npc_ouro_triggerAI : public ScriptedAI // needs to be before Ouro for com
     }
 };
 
+// boss_ouroAI 首领战斗 AI
 struct boss_ouroAI : public CombatAI
 {
     boss_ouroAI(Creature* creature) : CombatAI(creature, OURO_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_firstMound(true)
@@ -124,7 +131,7 @@ struct boss_ouroAI : public CombatAI
     uint32 m_burrowCounter;
     ObjectGuid m_base;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         SetCombatMovement(false);
@@ -138,8 +145,8 @@ struct boss_ouroAI : public CombatAI
         CombatAI::JustRespawned();
         m_creature->CastSpell(nullptr, SPELL_SUMMON_BASE, TRIGGERED_OLD_TRIGGERED);
         m_creature->SetInCombatWithZone();
-        if (!m_creature->IsInCombat()) // noone left alive
-            JustReachedHome(); // handles fail
+        if (!m_creature->IsInCombat()) // noone left alive (说明)
+            JustReachedHome(); // handles fail (说明)
     }
 
     void JustReachedHome() override
@@ -166,7 +173,7 @@ struct boss_ouroAI : public CombatAI
         m_base = go->GetObjectGuid();
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         switch (summoned->GetEntry())
         {
@@ -216,7 +223,7 @@ struct boss_ouroAI : public CombatAI
             DoCastSpellIfCan(m_creature->GetVictim(), SPELL_GROUND_RUPTURE);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -225,7 +232,7 @@ struct boss_ouroAI : public CombatAI
                 DoCastSpellIfCan(nullptr, SPELL_BIRTH_SPAWN);
                 if (m_creature->GetUInt32Value(UNIT_CREATED_BY_SPELL))
                 {
-                    if (Creature* trigger = GetClosestCreatureWithEntry(m_creature, NPC_OURO_TRIGGER, 100.f)) // if not sufficient in the future, do using SPELL_SET_OURO_HEALTH
+                    if (Creature* trigger = GetClosestCreatureWithEntry(m_creature, NPC_OURO_TRIGGER, 100.f)) // if not sufficient in the future, do using SPELL_SET_OURO_HEALTH (说明)
                         m_creature->SetHealthPercent(static_cast<npc_ouro_triggerAI*>(trigger->AI())->m_ouroHealth);
                 }
                 else
@@ -246,7 +253,7 @@ struct boss_ouroAI : public CombatAI
                 {
                     if (DoCastSpellIfCan(nullptr, SPELL_BERSERK) == CAST_OK)
                     {
-                        m_firstMound = false; // in order to avoid spawning more ouros
+                        m_firstMound = false; // in order to avoid spawning more ouros (说明)
                         ResetCombatAction(OURO_BOULDER, 500);
                         SetActionReadyStatus(action, false);
                         DisableCombatAction(OURO_SUBMERGE);
@@ -312,13 +319,14 @@ struct boss_ouroAI : public CombatAI
     }
 };
 
+// npc_ouro_spawnerAI NPC 脚本 AI
 struct npc_ouro_spawnerAI : public Scripted_NoMovementAI
 {
     npc_ouro_spawnerAI(Creature* creature) : Scripted_NoMovementAI(creature) {Reset();}
 
     bool m_bHasSummoned;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_bHasSummoned = false;
 
@@ -334,9 +342,9 @@ struct npc_ouro_spawnerAI : public Scripted_NoMovementAI
         }
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
-        // Despawn when Ouro is spawned
+        // Despawn when Ouro is spawned (消失)
         if (summoned->GetEntry() == NPC_OURO)
         {
             m_creature->ForcedDespawn();
@@ -346,6 +354,7 @@ struct npc_ouro_spawnerAI : public Scripted_NoMovementAI
 
 };
 
+// npc_ouro_moundAI NPC 脚本 AI
 struct npc_ouro_moundAI : public ScriptedAI
 {
     npc_ouro_moundAI(Creature* creature) : ScriptedAI(creature, 0)
@@ -354,17 +363,17 @@ struct npc_ouro_moundAI : public ScriptedAI
         AddCustomAction(1, true, [&]() { PickNewTarget(); });
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         DoCastSpellIfCan(nullptr, SPELL_DIRTMOUND_PASSIVE, CAST_AURA_NOT_PRESENT | CAST_TRIGGERED);
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         if (m_creature->GetInstanceData() && m_creature->HasAura(SPELL_SUMMON_OURO_TRIGG))
             static_cast<ScriptedInstance*>(m_creature->GetInstanceData())->SetData(TYPE_OURO, FAIL);
         ScriptedAI::EnterEvadeMode();
-        m_creature->ForcedDespawn(1000); // despawn on wipe
+        m_creature->ForcedDespawn(1000); // despawn on wipe (消失)
     }
 
     void JustSummoned(Creature* /*summoned*/) override
@@ -387,17 +396,18 @@ struct npc_ouro_moundAI : public ScriptedAI
     void JustRespawned() override
     {
         ScriptedAI::JustRespawned();
-        ResetTimer(1, 1000); // delayed first target
+        ResetTimer(1, 1000); // delayed first target (目标)
     }
 };
 
+// OuroScarabActions 战斗行为动作枚举
 enum OuroScarabActions
 {
-    OURO_SCARAB_ACTION_MAX,
+    OURO_SCARAB_ACTION_MAX,                                 // 战斗行为动作
     OURO_SCARAB_DELAYED_ATTACK,
 };
 
-// TODO: verify 20477
+// TODO: verify 20477 (说明)
 struct OuroScarab : public CombatAI
 {
     OuroScarab(Creature* creature) : CombatAI(creature, OURO_SCARAB_ACTION_MAX)
@@ -423,10 +433,10 @@ struct OuroScarab : public CombatAI
         }
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         ScriptedAI::EnterEvadeMode();
-        m_creature->ForcedDespawn(1000); // despawn on wipe
+        m_creature->ForcedDespawn(1000); // despawn on wipe (消失)
     }
 
     void ExecuteAction(uint32 /*action*/) override
@@ -444,7 +454,7 @@ struct PeriodicScarabTrigger : public AuraScript
     }
 };
 
-void AddSC_boss_ouro()
+void AddSC_boss_ouro() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_ouro";

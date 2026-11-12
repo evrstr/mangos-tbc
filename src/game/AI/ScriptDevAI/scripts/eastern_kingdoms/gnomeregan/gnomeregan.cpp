@@ -21,6 +21,8 @@ SDComment:  Grubbis Encounter, quest 2904 (A fine mess)
 SDCategory: Gnomeregan
 EndScriptData */
 
+// 诺莫瑞根（Gnomeregan）辐射报警红灯与杂项生物 AI
+
 /* ContentData
 npc_blastmaster_emi_shortfuse
 npc_kernobee
@@ -35,48 +37,49 @@ EndContentData */
 ## npc_blastmaster_emi_shortfuse
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START                   = -1090000,
-    SAY_INTRO_1                 = -1090001,
-    SAY_INTRO_2                 = -1090002,
-    SAY_INTRO_3                 = -1090003,
-    SAY_INTRO_4                 = -1090004,
-    SAY_LOOK_1                  = -1090005,
-    SAY_HEAR_1                  = -1090006,
-    SAY_AGGRO_1                 = -1090007,
-    SAY_CHARGE_1                = -1090008,
-    SAY_CHARGE_2                = -1090009,
-    SAY_BLOW_1_10               = -1090010,
-    SAY_BLOW_1_5                = -1090011,
-    SAY_BLOW_1                  = -1090012,
-    SAY_FINISH_1                = -1090013,
-    SAY_LOOK_2                  = -1090014,
-    SAY_HEAR_2                  = -1090015,
-    SAY_CHARGE_3                = -1090016,
-    SAY_CHARGE_4                = -1090017,
-    SAY_BLOW_2_10               = -1090018,
-    SAY_BLOW_2_5                = -1090019,
-    SAY_BLOW_SOON               = -1090020,
-    SAY_BLOW_2                  = -1090021,
-    SAY_FINISH_2                = -1090022,
+    SAY_START                   = -1090000,                 // 开始 台词广播 ID
+    SAY_INTRO_1                 = -1090001,                 // 开场1 台词广播 ID
+    SAY_INTRO_2                 = -1090002,                 // 开场2 台词广播 ID
+    SAY_INTRO_3                 = -1090003,                 // 开场3 台词广播 ID
+    SAY_INTRO_4                 = -1090004,                 // 开场4 台词广播 ID
+    SAY_LOOK_1                  = -1090005,                 // look1 台词广播 ID
+    SAY_HEAR_1                  = -1090006,                 // hear1 台词广播 ID
+    SAY_AGGRO_1                 = -1090007,                 // 开战1 台词广播 ID
+    SAY_CHARGE_1                = -1090008,                 // 冲锋1 台词广播 ID
+    SAY_CHARGE_2                = -1090009,                 // 冲锋2 台词广播 ID
+    SAY_BLOW_1_10               = -1090010,                 // blow110 台词广播 ID
+    SAY_BLOW_1_5                = -1090011,                 // blow15 台词广播 ID
+    SAY_BLOW_1                  = -1090012,                 // blow1 台词广播 ID
+    SAY_FINISH_1                = -1090013,                 // finish1 台词广播 ID
+    SAY_LOOK_2                  = -1090014,                 // look2 台词广播 ID
+    SAY_HEAR_2                  = -1090015,                 // hear2 台词广播 ID
+    SAY_CHARGE_3                = -1090016,                 // 冲锋3 台词广播 ID
+    SAY_CHARGE_4                = -1090017,                 // 冲锋4 台词广播 ID
+    SAY_BLOW_2_10               = -1090018,                 // blow210 台词广播 ID
+    SAY_BLOW_2_5                = -1090019,                 // blow25 台词广播 ID
+    SAY_BLOW_SOON               = -1090020,                 // blowsoon 台词广播 ID
+    SAY_BLOW_2                  = -1090021,                 // blow2 台词广播 ID
+    SAY_FINISH_2                = -1090022,                 // finish2 台词广播 ID
 
-    SAY_AGGRO_2                 = -1090028,
+    SAY_AGGRO_2                 = -1090028,                 // 开战2 台词广播 ID
 
-    SAY_GRUBBIS_SPAWN           = -1090023,
+    SAY_GRUBBIS_SPAWN           = -1090023,                 // grubbis生成 台词广播 ID
 
-    GOSSIP_ITEM_START           = -3090000,
+    GOSSIP_ITEM_START           = -3090000,                 // 物品开始 对话菜单选项 ID
 
-    SPELL_EXPLOSION_NORTH       = 12158,
-    SPELL_EXPLOSION_SOUTH       = 12159,
-    SPELL_FIREWORKS_RED         = 11542,
+    SPELL_EXPLOSION_NORTH       = 12158,                    // 爆炸north 法术 ID
+    SPELL_EXPLOSION_SOUTH       = 12159,                    // 爆炸south 法术 ID
+    SPELL_FIREWORKS_RED         = 11542,                    // fireworksred 法术 ID
 
-    MAX_SUMMON_POSITIONS        = 33,
+    MAX_SUMMON_POSITIONS        = 33,                       // 召唤positions 标识 ID
 
-    NPC_GRUBBIS                 = 7361,
-    NPC_CHOMPER                 = 6215,
-    NPC_CAVERNDEEP_BURROWER     = 6206,
-    NPC_CAVERNDEEP_AMBUSHER     = 6207
+    NPC_GRUBBIS                 = 7361,                     // grubbis Entry ID
+    NPC_CHOMPER                 = 6215,                     // chomper Entry ID
+    NPC_CAVERNDEEP_BURROWER     = 6206,                     // caverndeepburrower Entry ID
+    NPC_CAVERNDEEP_AMBUSHER     = 6207                      // caverndeepambusher Entry ID
 };
 
 struct sSummonInformation
@@ -128,6 +131,7 @@ static const sSummonInformation asSummonInfo[MAX_SUMMON_POSITIONS] =
     {7, NPC_CHOMPER, -473.1326f, -103.0901f, -146.1155f, 2.042035f}
 };
 
+// 随从/NPC AI：emishortfuse（blastmaster_emi_shortfuse）
 struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
 {
     npc_blastmaster_emi_shortfuseAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -142,11 +146,12 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
     instance_gnomeregan* m_pInstance;
 
     uint8 m_uiPhase;
-    uint32 m_uiPhaseTimer;
-    ObjectGuid m_playerGuid;
+    uint32 m_uiPhaseTimer;                                  // Phase 技能计时器
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
     bool m_bDidAggroText, m_bSouthernCaveInOpened, m_bNorthernCaveInOpened;
     GuidList m_luiSummonedMobGUIDs;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_bDidAggroText = false;                            // Used for 'defend' text, is triggered when the npc is attacked
@@ -172,6 +177,7 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         switch (pSummoned->GetEntry())
@@ -195,6 +201,7 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         m_luiSummonedMobGUIDs.push_back(pSummoned->GetObjectGuid());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_GRUBBIS)
@@ -356,7 +363,7 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         break;
                     case 2:
                         DoScriptText(SAY_INTRO_1, m_creature);
-                        m_uiPhaseTimer = 3500;              // 6s delay, but 2500ms for escortstarting
+                        m_uiPhaseTimer = 3500;              // 6s delay, but 2500ms for escortstarting (6秒倒计时)
                         break;
                     case 3:
                         Start(false, m_creature->GetMap()->GetPlayer(m_playerGuid), nullptr, false, false);
@@ -397,33 +404,33 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         m_uiPhaseTimer = 0;
                         break;
 
-                    case 11:                                // 15s after reached WP 11
+                    case 11:                                // 15s after reached WP 11 (15秒倒计时)
                         DoSummonPack(2);
 
-                        // Summon first explosive charge
+                        // Summon first explosive charge (召唤 first explosive charge)
                         if (m_pInstance)
                             m_pInstance->SetData(TYPE_EXPLOSIVE_CHARGE, DATA_EXPLOSIVE_CHARGE_1);
-                        // Remove EMOTE_STATE_USESTANDING state-emote
+                        // Remove EMOTE_STATE_USESTANDING state-emote (移除站立使用状态表情)
                         m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
 
                         m_uiPhaseTimer = 1;
                         break;
-                    case 12:                                // Empty Phase, used to store information about set charge
+                    case 12:                                // Empty Phase, used to store information about set charge (空阶段，用于存储冲锋信息)
                         m_uiPhaseTimer = 0;
                         break;
 
-                    case 13:                                // 10s after reached WP 13
+                    case 13:                                // 10s after reached WP 13 (10秒倒计时)
                         DoSummonPack(3);
 
-                        // Summon second explosive charge
+                        // Summon second explosive charge (召唤 second explosive charge)
                         if (m_pInstance)
                             m_pInstance->SetData(TYPE_EXPLOSIVE_CHARGE, DATA_EXPLOSIVE_CHARGE_2);
-                        // Remove EMOTE_STATE_USESTANDING state-emote
+                        // Remove EMOTE_STATE_USESTANDING state-emote (移除站立使用状态表情)
                         m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
 
                         m_uiPhaseTimer = 11000;
                         break;
-                    case 14:                                // Empty Phase, used to store information about set charge
+                    case 14:                                // Empty Phase, used to store information about set charge (空阶段，用于存储冲锋信息)
                         m_uiPhaseTimer = 1;
                         break;
                     case 15:                                // shortly before starting WP 14
@@ -433,7 +440,7 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         m_uiPhaseTimer = 0;
                         break;
 
-                    case 16:                                // 5s after reaching WP 15
+                    case 16:                                // 5s after reaching WP 15 (5秒倒计时)
                         DoScriptText(SAY_BLOW_1_5, m_creature);
                         m_uiPhaseTimer = 5000;
                         break;
@@ -485,33 +492,33 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         m_uiPhaseTimer = 0;
                         break;
 
-                    case 26:                                // 15s after reaching WP 16
+                    case 26:                                // 15s after reaching WP 16 (15秒倒计时)
                         DoSummonPack(5);
 
-                        // Summon third explosive charge
+                        // Summon third explosive charge (召唤 third explosive charge)
                         if (m_pInstance)
                             m_pInstance->SetData(TYPE_EXPLOSIVE_CHARGE, DATA_EXPLOSIVE_CHARGE_3);
-                        // Remove EMOTE_STATE_USESTANDING state-emote
+                        // Remove EMOTE_STATE_USESTANDING state-emote (移除站立使用状态表情)
                         m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
 
                         m_uiPhaseTimer = 1;
                         break;
-                    case 27:                                // Empty Phase, used to store information about set charge
+                    case 27:                                // Empty Phase, used to store information about set charge (空阶段，用于存储冲锋信息)
                         m_uiPhaseTimer = 0;
                         break;
 
-                    case 28:                                // 10s after reaching WP 17
+                    case 28:                                // 10s after reaching WP 17 (10秒倒计时)
                         DoSummonPack(6);
 
-                        // Summon forth explosive charge
+                        // Summon forth explosive charge (召唤 forth explosive charge)
                         if (m_pInstance)
                             m_pInstance->SetData(TYPE_EXPLOSIVE_CHARGE, DATA_EXPLOSIVE_CHARGE_4);
-                        // Remove EMOTE_STATE_USESTANDING state-emote
+                        // Remove EMOTE_STATE_USESTANDING state-emote (移除站立使用状态表情)
                         m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
 
                         m_uiPhaseTimer = 10000;
                         break;
-                    case 29:                                // Empty Phase, used to store information about set charge
+                    case 29:                                // Empty Phase, used to store information about set charge (空阶段，用于存储冲锋信息)
                         m_uiPhaseTimer = 1;
                         break;
                     case 30:                                // shortly before starting WP 18
@@ -533,7 +540,7 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         m_uiPhaseTimer = 1000;
                         break;
                     case 33:
-                        DoSummonPack(7);                    // Summon Grubbis and add
+                        DoSummonPack(7);                    // Summon Grubbis and add (召唤 Grubbis and add)
                         m_uiPhaseTimer = 0;
                         break;
 
@@ -587,15 +594,17 @@ struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_blastmaster_emi_shortfuse
 UnitAI* GetAI_npc_blastmaster_emi_shortfuse(Creature* pCreature)
 {
     return new npc_blastmaster_emi_shortfuseAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_blastmaster_emi_shortfuse
 bool GossipHello_npc_blastmaster_emi_shortfuse(Player* pPlayer, Creature* pCreature)
 {
     if (instance_gnomeregan* pInstance = (instance_gnomeregan*)pCreature->GetInstanceData())
@@ -632,9 +641,10 @@ bool GossipSelect_npc_blastmaster_emi_shortfuse(Player* pPlayer, Creature* pCrea
 ## TODO: It appears there are some things missing, including his? alarm-bot
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_A_FINE_MESS           = 2904,
+    QUEST_A_FINE_MESS           = 2904,                     // afinemess 任务 ID
     TRIGGER_GNOME_EXIT          = 324,                      // Add scriptlib support for it, atm simply use hardcoded values
 };
 
@@ -644,6 +654,7 @@ static const float aKernobeePositions[2][3] =
     { -297.32f, -7.32f, -152.85f}                           // Walk out of the door
 };
 
+// 随从/NPC AI：标识 ID（kernobee）
 struct npc_kernobeeAI : public FollowerAI
 {
     npc_kernobeeAI(Creature* pCreature) : FollowerAI(pCreature)
@@ -652,8 +663,9 @@ struct npc_kernobeeAI : public FollowerAI
         Reset();
     }
 
-    uint32 m_uiCheckEndposTimer;
+    uint32 m_uiCheckEndposTimer;                            // CheckEndpos 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
@@ -690,11 +702,13 @@ struct npc_kernobeeAI : public FollowerAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_kernobee
 UnitAI* GetAI_npc_kernobee(Creature* pCreature)
 {
     return new npc_kernobeeAI(pCreature);
 }
 
+// 任务接取回调函数：npc_kernobee
 bool QuestAccept_npc_kernobee(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_A_FINE_MESS)
@@ -703,6 +717,7 @@ bool QuestAccept_npc_kernobee(Player* pPlayer, Creature* pCreature, const Quest*
     return true;
 }
 
+// 注册并载入脚本模块：gnomeregan
 void AddSC_gnomeregan()
 {
     Script* pNewScript = new Script;

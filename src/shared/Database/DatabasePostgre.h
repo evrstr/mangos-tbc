@@ -32,12 +32,14 @@
 #include <postgresql/libpq-fe.h>
 #endif
 
+// PostgreSQL 单连接实现类 | PostgreSQL single connection implementation
 class PostgreSQLConnection : public SqlConnection
 {
     public:
         PostgreSQLConnection(Database& db) : SqlConnection(db), mPGconn(nullptr) {}
         ~PostgreSQLConnection();
 
+        // 连接并初始化 PostgreSQL 会话 | Connect and initialize PostgreSQL session
         bool Initialize(const char* infoString) override;
 
         std::unique_ptr<QueryResult> Query(const char* sql) override;
@@ -51,12 +53,15 @@ class PostgreSQLConnection : public SqlConnection
         bool RollbackTransaction() override;
 
     private:
+        // 执行事务控制命令（START/COMMIT/ROLLBACK） | Execute transaction control command
         bool _TransactionCmd(const char* sql);
+        // 内部执行查询并返回 PGresult 与行列统计 | Internal query execution returning PGresult and row/field counts
         bool _Query(const char* sql, PGresult** pResult, uint64* pRowCount, uint32* pFieldCount);
 
         PGconn* mPGconn;
 };
 
+// PostgreSQL 数据库管理器实现类 | PostgreSQL Database manager implementation
 class DatabasePostgre : public Database
 {
         friend class MaNGOS::OperatorNew<DatabasePostgre>;
@@ -65,13 +70,14 @@ class DatabasePostgre : public Database
         DatabasePostgre();
         ~DatabasePostgre();
 
-        //! Initializes Postgres and connects to a server.
-        /*! infoString should be formated like hostname;username;password;database. */
+        //! Initializes Postgres and connects to a server. | 初始化 Postgres 并连接到服务器
+        /*! infoString should be formated like hostname;username;password;database. | infoString 格式应为 hostname;port_or_socket_dir;username;password;database */
 
     protected:
+        // 创建 PostgreSQL 连接实例 | Create a new PostgreSQLConnection instance
         virtual SqlConnection* CreateConnection() override;
 
     private:
-        static size_t db_count;
+        static size_t db_count;                             ///< 活跃 DatabasePostgre 实例计数
 };
 #endif

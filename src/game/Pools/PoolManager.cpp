@@ -29,36 +29,37 @@
 INSTANTIATE_SINGLETON_1(PoolManager);
 
 ////////////////////////////////////////////////////////////
-// template class SpawnedPoolData
+// template class SpawnedPoolData (模板类 SpawnedPoolData：追踪池内已生成对象数量与状态)
 
-// Method that tell amount spawned objects/subpools
+// Method that tell amount spawned objects/subpools (获取指定池当前已生成的对象或子池数量)
 uint32 SpawnedPoolData::GetSpawnedObjects(uint32 pool_id) const
 {
     SpawnedPoolPools::const_iterator itr = mSpawnedPools.find(pool_id);
     return itr != mSpawnedPools.end() ? itr->second : 0;
 }
 
-// Method that tell if a creature is spawned currently
+// Method that tell if a creature is spawned currently (判断生物是否已在池中生成)
 template<>
 bool SpawnedPoolData::IsSpawnedObject<Creature>(uint32 db_guid) const
 {
     return mSpawnedCreatures.find(db_guid) != mSpawnedCreatures.end();
 }
 
-// Method that tell if a gameobject is spawned currently
+// Method that tell if a gameobject is spawned currently (判断游戏对象是否已在池中生成)
 template<>
 bool SpawnedPoolData::IsSpawnedObject<GameObject>(uint32 db_guid) const
 {
     return mSpawnedGameobjects.find(db_guid) != mSpawnedGameobjects.end();
 }
 
-// Method that tell if a pool is spawned currently
+// Method that tell if a pool is spawned currently (判断子池是否已在池中激活)
 template<>
 bool SpawnedPoolData::IsSpawnedObject<Pool>(uint32 sub_pool_id) const
 {
     return mSpawnedPools.find(sub_pool_id) != mSpawnedPools.end();
 }
 
+// 记录已生成生物并递增所属池计数
 template<>
 void SpawnedPoolData::AddSpawn<Creature>(uint32 db_guid, uint32 pool_id)
 {
@@ -66,6 +67,7 @@ void SpawnedPoolData::AddSpawn<Creature>(uint32 db_guid, uint32 pool_id)
     ++mSpawnedPools[pool_id];
 }
 
+// 记录已生成游戏对象并递增所属池计数
 template<>
 void SpawnedPoolData::AddSpawn<GameObject>(uint32 db_guid, uint32 pool_id)
 {
@@ -73,6 +75,7 @@ void SpawnedPoolData::AddSpawn<GameObject>(uint32 db_guid, uint32 pool_id)
     ++mSpawnedPools[pool_id];
 }
 
+// 初始化子池生成计数并递增母池计数
 template<>
 void SpawnedPoolData::AddSpawn<Pool>(uint32 sub_pool_id, uint32 pool_id)
 {
@@ -80,6 +83,7 @@ void SpawnedPoolData::AddSpawn<Pool>(uint32 sub_pool_id, uint32 pool_id)
     ++mSpawnedPools[pool_id];
 }
 
+// 移除生物生成记录并递减所属池计数
 template<>
 void SpawnedPoolData::RemoveSpawn<Creature>(uint32 db_guid, uint32 pool_id)
 {
@@ -89,6 +93,7 @@ void SpawnedPoolData::RemoveSpawn<Creature>(uint32 db_guid, uint32 pool_id)
         --val;
 }
 
+// 移除游戏对象生成记录并递减所属池计数
 template<>
 void SpawnedPoolData::RemoveSpawn<GameObject>(uint32 db_guid, uint32 pool_id)
 {
@@ -98,6 +103,7 @@ void SpawnedPoolData::RemoveSpawn<GameObject>(uint32 db_guid, uint32 pool_id)
         --val;
 }
 
+// 移除子池生成记录并递减母池计数
 template<>
 void SpawnedPoolData::RemoveSpawn<Pool>(uint32 sub_pool_id, uint32 pool_id)
 {
@@ -108,7 +114,7 @@ void SpawnedPoolData::RemoveSpawn<Pool>(uint32 sub_pool_id, uint32 pool_id)
 }
 
 ////////////////////////////////////////////////////////////
-// Methods of class PoolObject
+// Methods of class PoolObject (PoolObject 方法：校验成员与世界事件的关联完整性)
 template<>
 void PoolObject::CheckEventLinkAndReport<Creature>(uint32 poolId, int16 event_id, std::map<uint32, int16> const& creature2event, std::map<uint32, int16> const& /*go2event*/) const
 {
@@ -132,9 +138,10 @@ void PoolObject::CheckEventLinkAndReport<Pool>(uint32 /*poolId*/, int16 event_id
 }
 
 ////////////////////////////////////////////////////////////
-// Methods of template class PoolGroup
+// Methods of template class PoolGroup (模板类 PoolGroup 方法)
 
 // Method to add a gameobject/creature guid to the proper list depending on pool type and chance value
+// 根据池上限及概率配置，将成员加入显式概率列表或等概率列表
 template <class T>
 void PoolGroup<T>::AddEntry(PoolObject& poolitem, uint32 maxentries)
 {
@@ -145,6 +152,7 @@ void PoolGroup<T>::AddEntry(PoolObject& poolitem, uint32 maxentries)
 }
 
 // Method to check the chances are proper in this object pool
+// 校验显式概率总和是否为 100% 或 0（当无等概率成员时）
 template <class T>
 bool PoolGroup<T>::CheckPool() const
 {
@@ -159,7 +167,7 @@ bool PoolGroup<T>::CheckPool() const
     return true;
 }
 
-// Method to check event linking
+// Method to check event linking (检查池内所有成员是否正确关联到指定世界事件)
 template <class T>
 void PoolGroup<T>::CheckEventLinkAndReport(int16 event_id, std::map<uint32, int16> const& creature2event, std::map<uint32, int16> const& go2event) const
 {
@@ -170,6 +178,7 @@ void PoolGroup<T>::CheckEventLinkAndReport(int16 event_id, std::map<uint32, int1
         ExplicitlyChanced[i].template CheckEventLinkAndReport<T>(poolId, event_id, creature2event, go2event);
 }
 
+// 设置或取消指定 GUID 成员的排除标记
 template <class T>
 void PoolGroup<T>::SetExcludeObject(uint32 guid, bool state)
 {
@@ -192,6 +201,7 @@ void PoolGroup<T>::SetExcludeObject(uint32 guid, bool state)
     }
 }
 
+// 从池中随机抽取一个可生成的成员（优先按显式概率，其次等概率）
 template <class T>
 PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom, MapPersistentState& mapState)
 {
@@ -204,13 +214,13 @@ PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom, M
 
         std::vector <PoolObject*> explicitlyChancedVector;
 
-        // call memory manager once to reserve enough memory for performance
+        // call memory manager once to reserve enough memory for performance (预分配向量空间减少内存重分配)
         explicitlyChancedVector.reserve(ExplicitlyChanced.size());
 
-        // fill new vector with address of object in EqualChanced list
+        // fill new vector with address of object in EqualChanced list (收集显式概率成员指针并随机打乱顺序)
         std::transform(ExplicitlyChanced.begin(), ExplicitlyChanced.end(), std::back_inserter(explicitlyChancedVector), [](PoolObject& objPtr) { return &objPtr; });
 
-        // randomize the new vector
+        // randomize the new vector (随机洗牌避免顺序偏差)
         std::shuffle(explicitlyChancedVector.begin(), explicitlyChancedVector.end(), *gen);
 
         for (auto obj : explicitlyChancedVector)
@@ -225,6 +235,7 @@ PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom, M
                 continue;
 
             // we found an object but it may have no luck to be picked so we save it in case of no other object have been picked.
+            // 记录首个合法候选对象作为保底，防止本轮概率均未命中
             if (!explicitlyObjFound)
                 explicitlyObjFound = obj;
 
@@ -237,10 +248,10 @@ PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom, M
     {
         std::vector <PoolObject*> equalyChancedVector;
 
-        // call memory manager once to reserve enough memory for performance
+        // call memory manager once to reserve enough memory for performance (预分配向量空间)
         equalyChancedVector.reserve(EqualChanced.size());
 
-        // fill new vector with address of object in EqualChanced list
+        // fill new vector with address of object in EqualChanced list (收集等概率成员指针并洗牌)
         std::transform(EqualChanced.begin(), EqualChanced.end(), std::back_inserter(equalyChancedVector), [](PoolObject& objPtr) { return &objPtr; });
 
         // randomize the new vector
@@ -261,22 +272,23 @@ PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom, M
         }
     }
 
-    // return first explicitly chanced object if there is one
+    // return first explicitly chanced object if there is one (未命中等概率且显式列表无直接命中时，返回保底候选)
     return explicitlyObjFound;
 }
 
 // Main method to despawn a creature or gameobject in a pool
 // If no guid is passed, the pool is just removed (event end case)
 // If guid is filled, cache will be used and no removal will occur, it just fill the cache
+// 移除池中已生成的生物/游戏对象/子池；传入 guid=0 时清空整个池（如事件结束）
 template<class T>
 void PoolGroup<T>::DespawnObject(MapPersistentState& mapState, uint32 guid)
 {
     for (size_t i = 0; i < EqualChanced.size(); ++i)
     {
-        // if spawned
+        // if spawned (仅处理当前已生成的对象)
         if (mapState.GetSpawnedPoolData().IsSpawnedObject<T>(EqualChanced[i].guid))
         {
-            // any or specially requested
+            // any or specially requested (全部移除或匹配指定 GUID)
             if (!guid || EqualChanced[i].guid == guid)
             {
                 Despawn1Object(mapState, EqualChanced[i].guid);
@@ -287,7 +299,7 @@ void PoolGroup<T>::DespawnObject(MapPersistentState& mapState, uint32 guid)
 
     for (size_t i = 0; i < ExplicitlyChanced.size(); ++i)
     {
-        // spawned
+        // spawned (仅处理当前已生成的对象)
         if (mapState.GetSpawnedPoolData().IsSpawnedObject<T>(ExplicitlyChanced[i].guid))
         {
             // any or specially requested
@@ -300,13 +312,13 @@ void PoolGroup<T>::DespawnObject(MapPersistentState& mapState, uint32 guid)
     }
 }
 
-// Method that is actualy doing the removal job on one creature
+// Method that is actualy doing the removal job on one creature (实际从网格和地图移除单个生物)
 template<>
 void PoolGroup<Creature>::Despawn1Object(MapPersistentState& mapState, uint32 guid)
 {
     if (CreatureData const* data = sObjectMgr.GetCreatureData(guid))
     {
-        // for non-instanceable maps pool spawn can be at different map from provided mapState
+        // for non-instanceable maps pool spawn can be at different map from provided mapState (非副本地图的池成员可能位于与当前 mapState 不同的地图)
         if (MapPersistentState* dataMapState = mapState.GetMapId() == data->mapid ? &mapState : sMapPersistentStateMgr.GetPersistentState(data->mapid, 0))
         {
             dataMapState->RemoveCreatureFromGrid(guid, data);
@@ -318,13 +330,13 @@ void PoolGroup<Creature>::Despawn1Object(MapPersistentState& mapState, uint32 gu
     }
 }
 
-// Same on one gameobject
+// Same on one gameobject (实际从网格和地图移除单个游戏对象)
 template<>
 void PoolGroup<GameObject>::Despawn1Object(MapPersistentState& mapState, uint32 guid)
 {
     if (GameObjectData const* data = sObjectMgr.GetGOData(guid))
     {
-        // for non-instanceable maps pool spawn can be at different map from provided mapState
+        // for non-instanceable maps pool spawn can be at different map from provided mapState (非副本地图的池成员可能位于其他地图)
         if (MapPersistentState* dataMapState = mapState.GetMapId() == data->mapid ? &mapState : sMapPersistentStateMgr.GetPersistentState(data->mapid, 0))
         {
             dataMapState->RemoveGameobjectFromGrid(guid, data);
@@ -336,14 +348,14 @@ void PoolGroup<GameObject>::Despawn1Object(MapPersistentState& mapState, uint32 
     }
 }
 
-// Same on one pool
+// Same on one pool (递归移除子池)
 template<>
 void PoolGroup<Pool>::Despawn1Object(MapPersistentState& mapState, uint32 child_pool_id)
 {
     sPoolMgr.DespawnPool(mapState, child_pool_id);
 }
 
-// Method for a pool only to remove any found record causing a circular dependency loop
+// Method for a pool only to remove any found record causing a circular dependency loop (移除导致循环引用的子池关联)
 template<>
 void PoolGroup<Pool>::RemoveOneRelation(uint16 child_pool_id)
 {
@@ -365,18 +377,20 @@ void PoolGroup<Pool>::RemoveOneRelation(uint16 child_pool_id)
     }
 }
 
+// 校验生物当前是否允许在地图生成
 template<>
 bool PoolGroup<Creature>::CanSpawn(PoolObject* object, MapPersistentState& mapState)
 {
-    if (Map* map = mapState.GetMap()) // for world maps this will fail on world start
+    if (Map* map = mapState.GetMap()) // for world maps this will fail on world start (世界启动阶段地图指针尚不存在，跳过检查)
         map->CanSpawn(TYPEID_UNIT, object->guid);
     return true;
 }
 
+// 校验游戏对象当前是否允许在地图生成
 template<>
 bool PoolGroup<GameObject>::CanSpawn(PoolObject* object, MapPersistentState& mapState)
 {
-    if (Map* map = mapState.GetMap()) // for world maps this will fail on world start
+    if (Map* map = mapState.GetMap()) // for world maps this will fail on world start (世界启动阶段地图指针尚不存在，跳过检查)
         return map->CanSpawn(TYPEID_GAMEOBJECT, object->guid);
     return true;
 }
@@ -387,6 +401,7 @@ bool PoolGroup<Pool>::CanSpawn(PoolObject* /*object*/, MapPersistentState& /*map
     return true;
 }
 
+// 按上限抽取并生成池内缺失的对象；若由 triggerFrom 触发则同步替换掉原对象
 template <class T>
 void PoolGroup<T>::SpawnObject(MapPersistentState& mapState, uint32 limit, uint32 triggerFrom, bool instantly)
 {
@@ -398,6 +413,7 @@ void PoolGroup<T>::SpawnObject(MapPersistentState& mapState, uint32 limit, uint3
     // If triggered from some object respawn this object is still marked as spawned
     // and also counted into m_SpawnedPoolAmount so we need increase count to be
     // spawned by 1
+    // 若由成员重生触发，该成员仍计入已生成数量，因此需将待生成配额加 1 以支持轮换替换
     if (triggerFrom)
     {
         if (spawns.IsSpawnedObject<T>(triggerFrom))
@@ -406,7 +422,7 @@ void PoolGroup<T>::SpawnObject(MapPersistentState& mapState, uint32 limit, uint3
             triggerFrom = 0;
     }
 
-    // This will try to spawn the rest of pool, not guaranteed
+    // This will try to spawn the rest of pool, not guaranteed (尝试补足剩余配额，但不保证每次都能抽满)
     for (int i = 0; i < count; ++i)
     {
         PoolObject* obj = RollOne(spawns, triggerFrom, mapState);
@@ -429,7 +445,7 @@ void PoolGroup<T>::SpawnObject(MapPersistentState& mapState, uint32 limit, uint3
 
         if (triggerFrom)
         {
-            // One spawn one despawn no count increase
+            // One spawn one despawn no count increase (生成新成员后立即移除旧成员，保持池内总数不变)
             DespawnObject(mapState, triggerFrom);
             lastDespawned = triggerFrom;
             triggerFrom = 0;
@@ -437,7 +453,7 @@ void PoolGroup<T>::SpawnObject(MapPersistentState& mapState, uint32 limit, uint3
     }
 }
 
-// Method that is actualy doing the spawn job on 1 creature
+// Method that is actualy doing the spawn job on 1 creature (将单个生物加入网格并在地图已加载时实例化)
 template <>
 void PoolGroup<Creature>::Spawn1Object(MapPersistentState& mapState, PoolObject* obj, bool instantly)
 {
@@ -446,7 +462,7 @@ void PoolGroup<Creature>::Spawn1Object(MapPersistentState& mapState, PoolObject*
         mapState.AddCreatureToGrid(obj->guid, data);
         Map* dataMap = mapState.GetMap();
 
-        // We use spawn coords to spawn
+        // We use spawn coords to spawn (仅在目标网格已加载时创建实体)
         if (dataMap && dataMap->IsLoaded(data->posX, data->posY))
         {
             Creature* pCreature = new Creature;
@@ -455,6 +471,7 @@ void PoolGroup<Creature>::Spawn1Object(MapPersistentState& mapState, PoolObject*
             else
             {
                 // if new spawn replaces a just despawned creature, not instantly spawn but set respawn timer
+                // 若非立即生成（替换刚死亡/消失的生物），则设置延迟重生计时器
                 if (!instantly)
                 {
                     pCreature->SetRespawnDelay(data->GetRandomRespawnTime());
@@ -465,12 +482,13 @@ void PoolGroup<Creature>::Spawn1Object(MapPersistentState& mapState, PoolObject*
             }
         }
         // for not loaded grid just update respawn time (avoid work for instances until implemented support)
+        // 若网格尚未加载且非立即生成，仅更新持久化重生时间
         else if (!instantly)
             mapState.SaveCreatureRespawnTime(obj->guid, time(nullptr) + data->GetRandomRespawnTime());
     }
 }
 
-// Same for 1 gameobject
+// Same for 1 gameobject (将单个游戏对象加入网格并在地图已加载时实例化)
 template <>
 void PoolGroup<GameObject>::Spawn1Object(MapPersistentState& mapState, PoolObject* obj, bool instantly)
 {
@@ -480,7 +498,7 @@ void PoolGroup<GameObject>::Spawn1Object(MapPersistentState& mapState, PoolObjec
 
         Map* dataMap = mapState.GetMap();
 
-        // We use spawn coords to spawn
+        // We use spawn coords to spawn (仅在目标网格已加载时创建实体)
         if (dataMap && dataMap->IsLoaded(data->posX, data->posY))
         {
             GameObjectData const* data = sObjectMgr.GetGOData(obj->guid);
@@ -491,6 +509,7 @@ void PoolGroup<GameObject>::Spawn1Object(MapPersistentState& mapState, PoolObjec
             else
             {
                 // if new spawn replaces a just despawned object, not instantly spawn but set respawn timer
+                // 若非立即生成，则设置游戏对象重生计时器
                 if (!instantly)
                 {
                     pGameobject->SetRespawnTime(data->GetRandomRespawnTime());
@@ -500,9 +519,10 @@ void PoolGroup<GameObject>::Spawn1Object(MapPersistentState& mapState, PoolObjec
             }
         }
         // for not loaded grid just update respawn time (avoid work for instances until implemented support)
+        // 若网格尚未加载且非立即生成，仅记录重生时间并通知动态 GUID 刷新管理器
         else if (!instantly)
         {
-            // for spawned by default object only
+            // for spawned by default object only (仅处理默认刷新的对象)
             if (data->spawntimesecsmin >= 0)
             {
                 uint32 respawnTime = data->GetRandomRespawnTime();
@@ -518,20 +538,20 @@ void PoolGroup<GameObject>::Spawn1Object(MapPersistentState& mapState, PoolObjec
     }
 }
 
-// Same for 1 pool
+// Same for 1 pool (递归生成子池)
 template <>
 void PoolGroup<Pool>::Spawn1Object(MapPersistentState& mapState, PoolObject* obj, bool instantly)
 {
     sPoolMgr.SpawnPool(mapState, obj->guid, instantly);
 }
 
-// Method that does the respawn job on the specified creature
+// Method that does the respawn job on the specified creature (将同一生物重新加入地图触发重生)
 template <>
 void PoolGroup<Creature>::ReSpawn1Object(MapPersistentState& mapState, PoolObject* obj)
 {
     if (CreatureData const* data = sObjectMgr.GetCreatureData(obj->guid))
     {
-        // for non-instanceable maps pool spawn can be at different map from provided mapState
+        // for non-instanceable maps pool spawn can be at different map from provided mapState (非副本地图按生物实际 mapid 查找持久化状态)
         if (MapPersistentState* dataMapState = mapState.GetMapId() == data->mapid ? &mapState : sMapPersistentStateMgr.GetPersistentState(data->mapid, 0))
             if (Map* dataMap = dataMapState->GetMap())
                 if (Creature* pCreature = dataMap->GetCreature(obj->guid))
@@ -539,13 +559,13 @@ void PoolGroup<Creature>::ReSpawn1Object(MapPersistentState& mapState, PoolObjec
     }
 }
 
-// Method that does the respawn job on the specified gameobject
+// Method that does the respawn job on the specified gameobject (将同一游戏对象重新加入地图触发重生)
 template <>
 void PoolGroup<GameObject>::ReSpawn1Object(MapPersistentState& mapState, PoolObject* obj)
 {
     if (GameObjectData const* data = sObjectMgr.GetGOData(obj->guid))
     {
-        // for non-instanceable maps pool spawn can be at different map from provided mapState
+        // for non-instanceable maps pool spawn can be at different map from provided mapState (非副本地图按游戏对象实际 mapid 查找持久化状态)
         if (MapPersistentState* dataMapState = mapState.GetMapId() == data->mapid ? &mapState : sMapPersistentStateMgr.GetPersistentState(data->mapid, 0))
             if (Map* dataMap = dataMapState->GetMap())
                 if (GameObject* pGameobject = dataMap->GetGameObject(obj->guid))
@@ -553,7 +573,7 @@ void PoolGroup<GameObject>::ReSpawn1Object(MapPersistentState& mapState, PoolObj
     }
 }
 
-// Nothing to do for a child Pool
+// Nothing to do for a child Pool (子池无需单独执行 ReSpawn1Object)
 template <>
 void PoolGroup<Pool>::ReSpawn1Object(MapPersistentState& /*mapState*/, PoolObject* /*obj*/)
 {
@@ -561,7 +581,7 @@ void PoolGroup<Pool>::ReSpawn1Object(MapPersistentState& /*mapState*/, PoolObjec
 
 
 ////////////////////////////////////////////////////////////
-// Methods of class PoolManager
+// Methods of class PoolManager (PoolManager 类方法)
 
 PoolManager::PoolManager() : max_pool_id(0)
 {
@@ -569,6 +589,8 @@ PoolManager::PoolManager() : max_pool_id(0)
 
 // Check listing all pool spawns in single instanceable map or only in non-instanceable maps
 // This applied to all pools have common mother pool
+// 校验池内所有成员是否均位于同一张地图（适用于共享母池的所有子池）
+// 校验池内所有成员是否均位于同一张地图（适用于共享母池的所有子池）
 struct PoolMapChecker
 {
     PoolManager::PoolTemplateDataMap& m_poolTemplates;
@@ -583,24 +605,25 @@ struct PoolMapChecker
 
         MapEntry const* poolMapEntry = m_poolTemplates[pool_id].mapEntry;
 
-        // if not listed then just remember
+        // if not listed then just remember (尚未记录地图则直接绑定当前地图)
         if (!poolMapEntry)
         {
             m_poolTemplates[pool_id].mapEntry = mapEntry;
             return true;
         }
 
-        // if at same map, then all ok
+        // if at same map, then all ok (与已记录地图一致则返回成功)
         if (poolMapEntry == mapEntry)
             return true;
 
-        // pool spawns must be at single map
+        // pool spawns must be at single map (同一个对象池的所有刷新点必须位于同一张地图，冲突则跳过)
         sLog.outErrorDb("`%s` has %s spawned at map %u when one or several other spawned at different instanceable map %u in pool id %i, skipped.",
             tableName, elementName, mapid, poolMapEntry->MapID, pool_id);
         return false;
     }
 };
 
+// 从数据库加载对象池模板、生物池、游戏对象池与子池映射关系，并检测环路与概率完整性
 void PoolManager::LoadFromDB()
 {
     auto queryResult = WorldDatabase.Query("SELECT MAX(entry) FROM pool_template");
@@ -639,7 +662,7 @@ void PoolManager::LoadFromDB()
         PoolTemplateData& pPoolTemplate = mPoolTemplate[pool_id];
         pPoolTemplate.MaxLimit    = fields[1].GetUInt32();
         pPoolTemplate.description = fields[2].GetCppString();
-        pPoolTemplate.AutoSpawn = true;          // will update and later data loading
+        pPoolTemplate.AutoSpawn = true;          // will update and later data loading (默认标记为自动生成，后续加载子池或事件关联时会修正)
     }
     while (queryResult->NextRow());
 
@@ -648,7 +671,7 @@ void PoolManager::LoadFromDB()
 
     PoolMapChecker mapChecker(mPoolTemplate);
 
-    // Creatures (guids and entries)
+    // Creatures (guids and entries) (加载生物池成员：先按 GUID 再按模板)
 
     mPoolCreatureGroups.resize(max_pool_id + 1);
     mCreatureSearchMap.clear();
@@ -736,7 +759,7 @@ void PoolManager::LoadFromDB()
             uint32 guid    = fields[0].GetUInt32();
             uint16 pool_id = fields[1].GetUInt16();
             float chance   = fields[2].GetFloat();
-            uint16 entry_id = fields[3].GetUInt32();        // for errors output only
+            uint16 entry_id = fields[3].GetUInt32();        // for errors output only (仅用于错误日志输出)
 
             CreatureData const* data = sObjectMgr.GetCreatureData(guid);
             if (!data)
@@ -758,6 +781,7 @@ void PoolManager::LoadFromDB()
             // `pool_creature` and `pool_creature_template` can't have guids duplicates (in second case because entries also unique)
             // So if guid already listed in pools then this duplicate from alt.table
             // Also note: for added guid not important what case we skip from 2 tables
+            // 检查该 GUID 是否已在 pool_creature 中注册，若重复则跳过
             if (uint16 alt_pool_id = IsPartOfAPool<Creature>(guid))
             {
                 sLog.outErrorDb("`pool_creature` has guid %u for pool %u that already added to pool %u from `pool_creature_template` for creature entry %u, skipped.",
@@ -784,7 +808,7 @@ void PoolManager::LoadFromDB()
         sLog.outString(">> Loaded %u creatures in pools from `pool_creature_template`", count);
     }
 
-    // Gameobjects (guids and entries)
+    // Gameobjects (guids and entries) (加载游戏对象池成员：先按 GUID 再按模板)
 
     mPoolGameobjectGroups.resize(max_pool_id + 1);
     mGameobjectSearchMap.clear();
@@ -873,7 +897,7 @@ void PoolManager::LoadFromDB()
             uint32 guid    = fields[0].GetUInt32();
             uint16 pool_id = fields[1].GetUInt16();
             float chance   = fields[2].GetFloat();
-            uint16 entry_id = fields[3].GetUInt32();        // for errors output only
+            uint16 entry_id = fields[3].GetUInt32();        // for errors output only (仅用于错误日志输出)
 
             GameObjectData const* data = sObjectMgr.GetGOData(guid);
             if (!data)
@@ -895,6 +919,7 @@ void PoolManager::LoadFromDB()
             // `pool_gameobject` and `pool_gameobject_template` can't have guids duplicates (in second case because entries also unique)
             // So if guid already listed in pools then this duplicate from alt.table
             // Also note: for added guid not important what case we skip from 2 tables
+            // 检查游戏对象 GUID 是否已在 pool_gameobject 中注册，若重复则跳过
             if (uint16 alt_pool_id = IsPartOfAPool<GameObject>(guid))
             {
                 sLog.outErrorDb("`pool_gameobject` has guid %u for pool %u that already added to pool %u from `pool_gameobject_template` for gameobject entry %u, skipped.",
@@ -921,7 +946,7 @@ void PoolManager::LoadFromDB()
         sLog.outString(">> Loaded %u gameobject in pools from `pool_gameobject_template`", count);
     }
 
-    // Pool of pools
+    // Pool of pools (加载子池嵌套母池关系)
     mPoolPoolGroups.resize(max_pool_id + 1);
     //                                   1        2            3
     queryResult = WorldDatabase.Query("SELECT pool_id, mother_pool, chance FROM pool_pool");
@@ -980,18 +1005,19 @@ void PoolManager::LoadFromDB()
             SearchPair p(child_pool_id, mother_pool_id);
             mPoolSearchMap.insert(p);
 
-            // update top independent pool flag
+            // update top independent pool flag (子池归母池调度，取消独立自动生成标记)
             mPoolTemplate[child_pool_id].AutoSpawn = false;
         }
         while (queryResult->NextRow());
 
-        // Now check for circular reference
+        // Now check for circular reference (检测母子池之间是否存在环形引用与跨地图冲突)
         for (uint16 i = 0; i < max_pool_id; ++i)
         {
             std::set<uint16> checkedPools;
             for (SearchMap::iterator poolItr = mPoolSearchMap.find(i); poolItr != mPoolSearchMap.end(); poolItr = mPoolSearchMap.find(poolItr->second))
             {
                 // if child pool not have map data then it empty or have not checked child then will checked and all line later
+                // 若子池已有地图绑定，则校验并向上传递至母池
                 if (MapEntry const* childMapEntry = mPoolTemplate[poolItr->first].mapEntry)
                 {
                     if (!mapChecker.CheckAndRemember(childMapEntry->MapID, poolItr->second, "pool_pool", "pool with creature/gameobject"))
@@ -1025,7 +1051,7 @@ void PoolManager::LoadFromDB()
         sLog.outString(">> Loaded %u pools in mother pools", count);
     }
 
-    // check chances integrity
+    // check chances integrity (校验所有自动生成池的概率总和及空池告警)
     for (uint16 pool_entry = 0; pool_entry < mPoolTemplate.size(); ++pool_entry)
     {
         auto& poolTemplate = mPoolTemplate[pool_entry];
@@ -1047,9 +1073,11 @@ void PoolManager::LoadFromDB()
 }
 
 // The initialize method will spawn all pools not in an event and not in another pool
+// 初始化地图持久化状态对应的所有顶层自动生成池（不含事件池与子池）
 void PoolManager::Initialize(MapPersistentState* state)
 {
     // spawn pools for expected map or for not initialized shared pools state for non-instanceable maps
+    // 在目标地图或未初始化的非副本地图共享状态中初始化各自动生成池
     for (uint16 pool_entry = 0; pool_entry < mPoolTemplate.size(); ++pool_entry)
         if (mPoolTemplate[pool_entry].AutoSpawn)
             InitSpawnPool(*state, pool_entry);
@@ -1057,6 +1085,7 @@ void PoolManager::Initialize(MapPersistentState* state)
 
 // Call to spawn a pool, if cache if true the method will spawn only if cached entry is different
 // If it's same, the creature is respawned only (added back to map)
+// 生成或轮换生物池成员（若抽中同一生物则直接将其重新加入地图）
 template<>
 void PoolManager::SpawnPoolGroup<Creature>(MapPersistentState& mapState, uint16 pool_id, uint32 db_guid, bool instantly)
 {
@@ -1066,6 +1095,7 @@ void PoolManager::SpawnPoolGroup<Creature>(MapPersistentState& mapState, uint16 
 
 // Call to spawn a pool, if cache if true the method will spawn only if cached entry is different
 // If it's same, the gameobject is respawned only (added back to map)
+// 生成或轮换游戏对象池成员
 template<>
 void PoolManager::SpawnPoolGroup<GameObject>(MapPersistentState& mapState, uint16 pool_id, uint32 db_guid, bool instantly)
 {
@@ -1075,6 +1105,7 @@ void PoolManager::SpawnPoolGroup<GameObject>(MapPersistentState& mapState, uint1
 
 // Call to spawn a pool, if cache if true the method will spawn only if cached entry is different
 // If it's same, the pool is respawned only
+// 生成或轮换子池成员
 template<>
 void PoolManager::SpawnPoolGroup<Pool>(MapPersistentState& mapState, uint16 pool_id, uint32 sub_pool_id, bool instantly)
 {
@@ -1083,7 +1114,8 @@ void PoolManager::SpawnPoolGroup<Pool>(MapPersistentState& mapState, uint16 pool
 }
 
 /*!
-    \param instantly defines if (leaf-)objects are spawned instantly or with fresh respawn timer */
+    \param instantly defines if (leaf-)objects are spawned instantly or with fresh respawn timer
+    生成指定池中的所有子池、游戏对象及生物；instantly 控制叶子对象是否立即出现还是进入正常刷新倒计时 */
 void PoolManager::SpawnPool(MapPersistentState& mapState, uint16 pool_id, bool instantly)
 {
     SpawnPoolGroup<Pool>(mapState, pool_id, 0, instantly);
@@ -1091,7 +1123,7 @@ void PoolManager::SpawnPool(MapPersistentState& mapState, uint16 pool_id, bool i
     SpawnPoolGroup<Creature>(mapState, pool_id, 0, instantly);
 }
 
-// Call to despawn a pool, all gameobjects/creatures in this pool are removed
+// Call to despawn a pool, all gameobjects/creatures in this pool are removed (移除指定对象池内的全部生物、游戏对象及子池)
 void PoolManager::DespawnPool(MapPersistentState& mapState, uint16 pool_id)
 {
     if (!mPoolCreatureGroups[pool_id].isEmpty())
@@ -1104,7 +1136,7 @@ void PoolManager::DespawnPool(MapPersistentState& mapState, uint16 pool_id)
         mPoolPoolGroups[pool_id].DespawnObject(mapState);
 }
 
-// Method that check chance integrity of the creatures and gameobjects in this pool
+// Method that check chance integrity of the creatures and gameobjects in this pool (校验对象池的概率配置是否合法)
 bool PoolManager::CheckPool(uint16 pool_id) const
 {
     return pool_id <= max_pool_id &&
@@ -1113,7 +1145,7 @@ bool PoolManager::CheckPool(uint16 pool_id) const
            mPoolPoolGroups[pool_id].CheckPool();
 }
 
-// Method that check linking all elements to event
+// Method that check linking all elements to event (校验池中所有元素是否与指定世界事件正确关联)
 void PoolManager::CheckEventLinkAndReport(uint16 pool_id, int16 event_id, std::map<uint32, int16> const& creature2event, std::map<uint32, int16> const& go2event) const
 {
     mPoolGameobjectGroups[pool_id].CheckEventLinkAndReport(event_id, creature2event, go2event);
@@ -1121,13 +1153,14 @@ void PoolManager::CheckEventLinkAndReport(uint16 pool_id, int16 event_id, std::m
     mPoolPoolGroups[pool_id].CheckEventLinkAndReport(event_id, creature2event, go2event);
 }
 
-// Method that exclude some elements from next spawn
+// Method that exclude some elements from next spawn (将指定生物从下次池抽取中排除或恢复)
 template<>
 void PoolManager::SetExcludeObject<Creature>(uint16 pool_id, uint32 db_guid_or_pool_id, bool state)
 {
     mPoolCreatureGroups[pool_id].SetExcludeObject(db_guid_or_pool_id, state);
 }
 
+// 将指定游戏对象从下次池抽取中排除或恢复
 template<>
 void PoolManager::SetExcludeObject<GameObject>(uint16 pool_id, uint32 db_guid_or_pool_id, bool state)
 {
@@ -1137,6 +1170,7 @@ void PoolManager::SetExcludeObject<GameObject>(uint16 pool_id, uint32 db_guid_or
 // Call to update the pool when a gameobject/creature part of pool [pool_id] is ready to respawn
 // Here we cache only the creature/gameobject whose guid is passed as parameter
 // Then the spawn pool call will use this cache to decide
+// 当池内某个生物或游戏对象到期准备重生时更新池状态：若属于母池则通过母池轮换，否则直接在当前池中替换生成
 template<typename T>
 void PoolManager::UpdatePool(MapPersistentState& mapState, uint16 pool_id, uint32 db_guid_or_pool_id)
 {
@@ -1150,6 +1184,7 @@ template void PoolManager::UpdatePool<Pool>(MapPersistentState& mapState, uint16
 template void PoolManager::UpdatePool<GameObject>(MapPersistentState& mapState, uint16 pool_id, uint32 db_guid_or_pool_id);
 template void PoolManager::UpdatePool<Creature>(MapPersistentState& mapState, uint16 pool_id, uint32 db_guid_or_pool_id);
 
+// 跨地图状态遍历器：在所有匹配的地图持久化状态中生成指定对象池
 struct SpawnPoolInMapsWorker
 {
     explicit SpawnPoolInMapsWorker(PoolManager& mgr, uint32 pool_id, bool instantly)
@@ -1166,11 +1201,12 @@ struct SpawnPoolInMapsWorker
 };
 
 // used for calling from global systems when need spawn pool in all appropriate map persistent states
+// 供全局系统调用：在目标地图的所有持久化实例状态中生成对象池
 void PoolManager::SpawnPoolInMaps(uint16 pool_id, bool instantly)
 {
     PoolTemplateData& poolTemplate = mPoolTemplate[pool_id];
 
-    // pool no have spawns (base at loading algo)
+    // pool no have spawns (base at loading algo) (该池无任何关联刷新点，直接跳过)
     if (!poolTemplate.mapEntry)
         return;
 
@@ -1178,6 +1214,7 @@ void PoolManager::SpawnPoolInMaps(uint16 pool_id, bool instantly)
     sMapPersistentStateMgr.DoForAllStatesWithMapId(poolTemplate.mapEntry->MapID, worker);
 }
 
+// 跨地图状态遍历器：在所有匹配的地图持久化状态中移除指定对象池
 struct DespawnPoolInMapsWorker
 {
     explicit DespawnPoolInMapsWorker(PoolManager& mgr, uint32 pool_id)
@@ -1193,11 +1230,12 @@ struct DespawnPoolInMapsWorker
 };
 
 // used for calling from global systems when need spawn pool in all appropriate map persistent states
+// 供全局系统调用：在目标地图的所有持久化实例状态中移除对象池
 void PoolManager::DespawnPoolInMaps(uint16 pool_id)
 {
     PoolTemplateData& poolTemplate = mPoolTemplate[pool_id];
 
-    // pool no have spawns (base at loading algo
+    // pool no have spawns (base at loading algo (该池无任何关联刷新点，直接跳过)
     if (!poolTemplate.mapEntry)
         return;
 
@@ -1205,13 +1243,15 @@ void PoolManager::DespawnPoolInMaps(uint16 pool_id)
     sMapPersistentStateMgr.DoForAllStatesWithMapId(poolTemplate.mapEntry->MapID, worker);
 }
 
+// 若该池属于指定地图状态则立即初始化生成
 void PoolManager::InitSpawnPool(MapPersistentState& mapState, uint16 pool_id)
 {
-    // spawn pool for expected map
+    // spawn pool for expected map (仅在匹配的目标地图上生成)
     if (mPoolTemplate[pool_id].CanBeSpawnedAtMap(mapState.GetMapEntry()))
         SpawnPool(mapState, pool_id, true);
 }
 
+// 跨地图状态遍历器：在所有匹配的地图持久化状态中触发对象池轮换更新
 template<typename T>
 struct UpdatePoolInMapsWorker
 {
@@ -1228,12 +1268,13 @@ struct UpdatePoolInMapsWorker
     uint32 i_db_guid_or_pool_id;
 };
 
+// 在目标地图的所有持久化状态中更新指定对象池
 template<typename T>
 void PoolManager::UpdatePoolInMaps(uint16 pool_id, uint32 db_guid_or_pool_id)
 {
     PoolTemplateData& poolTemplate = mPoolTemplate[pool_id];
 
-    // pool no have spawns (base at loading algo
+    // pool no have spawns (base at loading algo (该池无任何关联刷新点，直接跳过)
     if (!poolTemplate.mapEntry)
         return;
 

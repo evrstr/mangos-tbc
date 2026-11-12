@@ -21,6 +21,8 @@ SDComment:  Support for Grubbis and Thermaplugg Encounters
 SDCategory: Gnomeregan
 EndScriptData */
 
+// 诺莫瑞根（Gnomeregan）副本状态机与高科技大门管理
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "gnomeregan.h"
 
@@ -276,6 +278,7 @@ InstanceData* GetInstanceData_instance_gnomeregan(Map* pMap)
     return new instance_gnomeregan(pMap);
 }
 
+// 注册并载入脚本模块：instance_gnomeregan
 void AddSC_instance_gnomeregan()
 {
     Script* pNewScript = new Script;

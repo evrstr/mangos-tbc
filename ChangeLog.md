@@ -1,4 +1,6 @@
-# Changelog of CMaNGOS
+# Changelog of CMaNGOS / CMaNGOS 更新日志
+
+> **中文概述 / Overview**：本文件记录了 MaNGOS / CMaNGOS 从早期 0.0.1（2005 年）到 0.12.3（2015 年）各个历史版本的详细更新日志，按版本分为游戏功能（Game Features）、服务端特性（Server Features）和统计数据（Statistics）。下文保留全部历史英文更新条目。
 
 ## MaNGOS 0.12.3   (03 September 2015)
 

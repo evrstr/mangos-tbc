@@ -31,7 +31,7 @@
 #include "OutdoorPvP/OutdoorPvPMgr.h"
 #include "OutdoorPvP/OutdoorPvP.h"
 
-// Attention: make sure to keep this list in sync with ConditionSource to avoid array
+// Attention: make sure to keep this list in sync with ConditionSource to avoid array | 注意：此表必须与 ConditionSource 枚举保持严格下标同步
 //            out of bounds access! It is accessed with ConditionSource as index!
 char const* conditionSourceToStr[] =
 {
@@ -51,7 +51,7 @@ char const* conditionSourceToStr[] =
     "world state"                    // CONDITION_FROM_WORLDSTATE
 };
 
-// Stores what params need to be provided to each condition type.
+// Stores what params need to be provided to each condition type. | 各条件类型所需的输入对象参数约束表（按 ConditionType + 3 索引）
 // (source, target, map)
 uint8 const ConditionTargetsInternal[] =
 {
@@ -104,10 +104,10 @@ uint8 const ConditionTargetsInternal[] =
     CONDITION_REQ_TARGET_UNIT,        //  43
 };
 
-// Starts from 4th element so that -3 will return first element.
+// Starts from 4th element so that -3 will return first element. | 偏移 3 个位置以支持负枚举值（-3..-1）直接下标访问
 uint8 const* ConditionTargets = &ConditionTargetsInternal[3];
 
-// Checks if player meets the condition
+// Checks if player meets the condition | 检查是否满足当前条件（处理目标交换、参数校验、求值与结果取反标志）
 bool ConditionEntry::Meets(WorldObject const* target, Map const* map, WorldObject const* source, ConditionSource conditionSourceType) const
 {
     DEBUG_LOG("Condition-System: Check condition %u, type %i - called from %s with params target: %s, map %i, source %s",
@@ -131,6 +131,7 @@ bool ConditionEntry::Meets(WorldObject const* target, Map const* map, WorldObjec
     return result;
 }
 
+/// 按 ConditionOperation 执行两个有符号整数的比较运算
 bool ConditionEntry::CheckOp(ConditionOperation op, int32 value, int32 operand)
 {
     switch (op)
@@ -146,7 +147,7 @@ bool ConditionEntry::CheckOp(ConditionOperation op, int32 value, int32 operand)
     return true;
 }
 
-// Actual evaluation of the condition done here.
+// Actual evaluation of the condition done here. | 根据条件类型分支执行实际条件判断逻辑
 bool inline ConditionEntry::Evaluate(WorldObject const* target, Map const* map, WorldObject const* source, ConditionSource conditionSourceType) const
 {
     switch (m_condition)
@@ -508,7 +509,7 @@ bool inline ConditionEntry::Evaluate(WorldObject const* target, Map const* map, 
     return false;
 }
 
-// Which params must be provided to a Condition
+// Which params must be provided to a Condition | 校验传入的 target/map/source 是否满足当前条件类型的对象类型要求
 bool ConditionEntry::CheckParamRequirements(WorldObject const* target, Map const* map, WorldObject const* source) const
 {
     switch (ConditionTargets[m_condition])
@@ -592,7 +593,7 @@ bool ConditionEntry::CheckParamRequirements(WorldObject const* target, Map const
     return true;
 }
 
-// Verification of condition values validity
+// Verification of condition values validity | 加载阶段静态校验条件条目配置字段与引用 ID 是否有效
 bool ConditionEntry::IsValid() const
 {
     switch (m_condition)
@@ -988,7 +989,7 @@ bool ConditionEntry::IsValid() const
     return true;
 }
 
-// Check if a condition can be used without providing a player param
+// Check if a condition can be used without providing a player param | 递归检查该条件及其子条件是否均不依赖玩家对象参数
 bool ConditionEntry::CanBeUsedWithoutPlayer(uint32 entry)
 {
     ConditionEntry const* condition = sConditionStorage.LookupEntry<ConditionEntry>(entry);
@@ -1009,6 +1010,7 @@ bool ConditionEntry::CanBeUsedWithoutPlayer(uint32 entry)
     return false;
 }
 
+/// 对外通用条件检查入口：按 conditionId 查找条件并评估是否满足
 bool IsConditionSatisfied(uint32 conditionId, WorldObject const* target, Map const* map, WorldObject const* source, ConditionSource conditionSourceType)
 {
     if (ConditionEntry const* condition = sConditionStorage.LookupEntry<ConditionEntry>(conditionId))

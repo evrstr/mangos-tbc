@@ -18,6 +18,7 @@ A commercial use license is available from Genivia Inc., contact@genivia.com
 #include "soapH.h"
 
 SOAP_SOURCE_STAMP("@(#) soapServer.cpp ver 2.8.55 2017-10-31 00:08:52 GMT")
+/// SOAP 服务端主循环：接收、解析并持续服务客户端连接（支持 keep-alive）
 extern "C" SOAP_FMAC5 int SOAP_FMAC6 soap_serve(struct soap* soap)
 {
 #ifndef WITH_FASTCGI
@@ -55,6 +56,7 @@ extern "C" SOAP_FMAC5 int SOAP_FMAC6 soap_serve(struct soap* soap)
 }
 
 #ifndef WITH_NOSERVEREQUEST
+/// 根据请求 XML 标签路由到对应的 SOAP 服务端处理函数
 extern "C" SOAP_FMAC5 int SOAP_FMAC6 soap_serve_request(struct soap* soap)
 {
     soap_peek_element(soap);
@@ -64,6 +66,7 @@ extern "C" SOAP_FMAC5 int SOAP_FMAC6 soap_serve_request(struct soap* soap)
 }
 #endif
 
+/// 反序列化 ns1:executeCommand 请求、调用服务端实现并序列化返回响应
 SOAP_FMAC5 int SOAP_FMAC6 soap_serve_ns1__executeCommand(struct soap* soap)
 {
     struct ns1__executeCommand soap_tmp_ns1__executeCommand;
@@ -115,4 +118,4 @@ SOAP_FMAC5 int SOAP_FMAC6 soap_serve_ns1__executeCommand(struct soap* soap)
 #pragma option pop
 #endif
 
-/* End of soapServer.cpp */
+/* End of soapServer.cpp | soapServer.cpp 文件结束 */

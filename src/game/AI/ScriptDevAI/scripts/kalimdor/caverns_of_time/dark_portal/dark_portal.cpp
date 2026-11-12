@@ -21,6 +21,10 @@ SDComment: Quest support: 9836, 10297. Some visuals for the event are missing;
 SDCategory: Caverns of Time, The Dark Portal
 EndScriptData */
 
+/**
+ * 开启黑暗之门 (黑色沼泽) 副本主流程与时空裂隙波次管理脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "dark_portal.h"
 
@@ -79,7 +83,7 @@ void instance_dark_portal::DoHandleAreaTrigger(uint32 uiTriggerId)
 {
     if (uiTriggerId == AREATRIGGER_ENTER)
     {
-        // Yell at instance entrance
+        // Yell at instance entrance (说明)
         if (!m_bHasIntroYelled)
         {
             if (Creature* pSaat = GetSingleCreatureFromStorage(NPC_SAAT))
@@ -89,7 +93,7 @@ void instance_dark_portal::DoHandleAreaTrigger(uint32 uiTriggerId)
     }
     else if (uiTriggerId == AREATRIGGER_MEDIVH)
     {
-        // Start Dark Portal event
+        // Start Dark Portal event (开始事件)
         if (GetData(TYPE_MEDIVH) == NOT_STARTED || GetData(TYPE_MEDIVH) == FAIL)
             SetData(TYPE_MEDIVH, IN_PROGRESS);
     }
@@ -134,7 +138,7 @@ void instance_dark_portal::SetData(uint32 uiType, uint32 uiData)
                         if (Creature* pSaat = GetSingleCreatureFromStorage(NPC_SAAT)) // Sa'at is not a questgiver while event is in progress
                             pSaat->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
                     }
-                    // If Medivh is not available the do not store the uiData;
+                    // If Medivh is not available the do not store the uiData; (说明)
                     else
                         return;
                 }
@@ -167,7 +171,7 @@ void instance_dark_portal::SetData(uint32 uiType, uint32 uiData)
                 --m_uiWorldStateShieldCount;
                 DoUpdateWorldState(WORLD_STATE_OPENING_THE_DARK_PORTAL_SHIELD_STATE, m_uiWorldStateShieldCount);
 
-                // Yell at 75%, 50% and 25% shield
+                // Yell at 75%, 50% and 25% shield (说明)
                 if (m_uiWorldStateShieldCount < 100 - 25 * m_uiMedivhYellCount)
                 {
                     if (Creature* pMedivh = GetSingleCreatureFromStorage(NPC_MEDIVH))
@@ -180,7 +184,7 @@ void instance_dark_portal::SetData(uint32 uiType, uint32 uiData)
                         pDarkPortalDummy->CastSpell(pDarkPortalDummy, SPELL_CRYSTAL_SHATTER, TRIGGERED_OLD_TRIGGERED);
                 }
 
-                // Kill the npc when the shield is broken
+                // Kill the npc when the shield is broken (说明)
                 if (!m_uiWorldStateShieldCount)
                 {
                     if (Creature* medivh = GetSingleCreatureFromStorage(NPC_MEDIVH))
@@ -194,11 +198,11 @@ void instance_dark_portal::SetData(uint32 uiType, uint32 uiData)
             return;
         case TYPE_TIME_RIFT:
         {
-            // Set the delay to the next time rift from the point the rift despawns
+            // Set the delay to the next time rift from the point the rift despawns (说明)
             if (uiData == DONE)
                 m_uiNextPortalTimer = IsBossTimeRift() ? 125000 : 3000;
             // Set the delay to the next time rift from the point the rift summons it's guardian
-            // ToDo: research if these timers are correct
+            // ToDo: research if these timers are correct (说明)
             else if (uiData == SPECIAL)
                 m_uiNextPortalTimer = IsBossTimeRift() ? 0 : m_uiWorldStateRiftCount > 12 ? 90000 : 2 * MINUTE * IN_MILLISECONDS;
 
@@ -207,14 +211,14 @@ void instance_dark_portal::SetData(uint32 uiType, uint32 uiData)
         }
         case TYPE_CHRONO_LORD:
         case TYPE_TEMPORUS:
-            if (m_auiEncounter[uiType] != DONE)             // Keep the DONE-information stored
+            if (m_auiEncounter[uiType] != DONE)             // Keep the DONE-information stored (说明)
                 m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_AEONUS:
             if (uiData == DONE)
             {
                 UpdateWorldState(false);
-                SetData(TYPE_MEDIVH, DONE); // Start Post Event
+                SetData(TYPE_MEDIVH, DONE); // Start Post Event (开始事件)
             }
             m_auiEncounter[uiType] = uiData;
             break;
@@ -282,7 +286,7 @@ void instance_dark_portal::OnCreatureEnterCombat(Creature* pCreature)
             break;
         case NPC_AEONUS:
             SetData(TYPE_AEONUS, IN_PROGRESS);
-        // no break
+        // no break (无 break 直落)
         case NPC_ASSASSIN:
         case NPC_ASSASSIN_2:
         case NPC_WHELP:
@@ -311,8 +315,8 @@ void instance_dark_portal::OnCreatureEvade(Creature* pCreature)
             break;
         case NPC_AEONUS:
             SetData(TYPE_AEONUS, FAIL);
-        // no break;
-        // Allow these guys to go and finish off Medivh
+        // no break; (无 break 直落)
+        // Allow these guys to go and finish off Medivh (说明)
         case NPC_ASSASSIN:
         case NPC_ASSASSIN_2:
         case NPC_WHELP:
@@ -354,7 +358,7 @@ void instance_dark_portal::DoSpawnNextPortal()
 {
     if (Creature* pMedivh = GetSingleCreatureFromStorage(NPC_MEDIVH))
     {
-        // Randomize portal locations
+        // Randomize portal locations (说明)
         uint8 uiTmp = urand(0, 2);
 
         if (uiTmp >= m_uiCurrentRiftId)
@@ -364,7 +368,7 @@ void instance_dark_portal::DoSpawnNextPortal()
 
         m_uiCurrentRiftId = uiTmp;
 
-        // Summon next portal
+        // Summon next portal (召唤)
         pMedivh->SummonCreature(NPC_TIME_RIFT, afPortalLocation[uiTmp].fX, afPortalLocation[uiTmp].fY, afPortalLocation[uiTmp].fZ, afPortalLocation[uiTmp].fOrient, TEMPSPAWN_CORPSE_DESPAWN, 0);
     }
 }
@@ -554,7 +558,7 @@ bool instance_dark_portal::CheckConditionCriteriaMeet(Player const* pPlayer, uin
 {
     switch (uiInstanceConditionId)
     {
-        case INSTANCE_CONDITION_ID_SAAT_BEACON: // Event not in progress and Medivh is spawned and alive
+        case INSTANCE_CONDITION_ID_SAAT_BEACON: // Event not in progress and Medivh is spawned and alive (说明)
         {
             if (GetData(TYPE_MEDIVH) == IN_PROGRESS)
                 return false;
@@ -577,7 +581,7 @@ bool instance_dark_portal::CheckConditionCriteriaMeet(Player const* pPlayer, uin
 }
 
 
-InstanceData* GetInstanceData_instance_dark_portal(Map* pMap)
+InstanceData* GetInstanceData_instance_dark_portal(Map* pMap) // 创建并返回副本数据实例
 {
     return new instance_dark_portal(pMap);
 }
@@ -624,7 +628,7 @@ void instance_dark_portal::ExecuteChatCommand(ChatHandler* handler, char* args)
     }
 }
 
-void AddSC_instance_dark_portal()
+void AddSC_instance_dark_portal() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_dark_portal";

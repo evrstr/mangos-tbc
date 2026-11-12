@@ -32,9 +32,10 @@
 #include "Server/SQLStorages.h"
 #include "Maps/GridDefines.h"
 
+// 发送角色名称查询响应包（SMSG_NAME_QUERY_RESPONSE）
 void WorldSession::SendNameQueryResponse(CharacterNameQueryResponse& response) const
 {
-    // guess size
+    // guess size (预估数据包缓冲区大小)
     WorldPacket data(SMSG_NAME_QUERY_RESPONSE, (8 + 1 + 4 + 4 + 4 + 10));
     data << response.guid;
     data << (!response.name.empty() ? response.name : GetMangosString(LANG_NON_EXIST_CHARACTER));
@@ -48,7 +49,7 @@ void WorldSession::SendNameQueryResponse(CharacterNameQueryResponse& response) c
     data << response.gender;
     data << response.classid;
 
-    // if the first declined name field is empty, the rest must be too
+    // if the first declined name field is empty, the rest must be too (若首个变格名称字段为空，则视为未设置变格名称)
     if (response.declined.name[0].empty())
         data << uint8(0);
     else
@@ -62,16 +63,17 @@ void WorldSession::SendNameQueryResponse(CharacterNameQueryResponse& response) c
     SendPacket(data, true);
 }
 
+// 从角色数据库异步查询离线玩家名称与种族职业信息
 void WorldSession::SendNameQueryResponseFromDB(ObjectGuid guid) const
 {
     CharacterDatabase.AsyncPQuery(&WorldSession::SendNameQueryResponseFromDBCallBack, GetAccountId(),
                                   !sWorld.getConfig(CONFIG_BOOL_DECLINED_NAMES_USED) ?
-                                  //   ------- Query Without Declined Names --------
+                                  //   ------- Query Without Declined Names -------- (不含俄语等变格名称的查询语句)
                                   //          0     1     2     3       4
                                   "SELECT guid, name, race, gender, class "
                                   "FROM characters WHERE guid = '%u'"
                                   :
-                                  //   --------- Query With Declined Names ---------
+                                  //   --------- Query With Declined Names --------- (包含变格名称表的联合查询语句)
                                   //          0                1     2     3       4
                                   "SELECT characters.guid, name, race, gender, class, "
                                   //   5         6       7           8             9
@@ -80,6 +82,7 @@ void WorldSession::SendNameQueryResponseFromDB(ObjectGuid guid) const
                                   guid.GetCounter());
 }
 
+// 异步数据库角色名查询回调：组装响应并在会话未就绪时暂存
 void WorldSession::SendNameQueryResponseFromDBCallBack(QueryResult* result, uint32 accountId)
 {
     if (!result)
@@ -107,7 +110,7 @@ void WorldSession::SendNameQueryResponseFromDBCallBack(QueryResult* result, uint
         response.classid = fields[4].GetUInt8();
     }
 
-    // if the first declined name field (5) is empty, the rest must be too
+    // if the first declined name field (5) is empty, the rest must be too (若第 5 列主变格名称非空，则读取全部 5 种格变体)
     if (sWorld.getConfig(CONFIG_BOOL_DECLINED_NAMES_USED) && !fields[5].GetCppString().empty())
     {
          for (int i = 0; i < MAX_DECLINED_NAME_CASES; ++i)
@@ -122,13 +125,14 @@ void WorldSession::SendNameQueryResponseFromDBCallBack(QueryResult* result, uint
     delete result;
 }
 
+// 处理角色名称查询请求（CMSG_NAME_QUERY）
 void WorldSession::HandleNameQueryOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
 
     recv_data >> guid;
 
-    // When not logged in: check if name was already queried
+    // When not logged in: check if name was already queried (尚未完全登录前去重，避免同一 GUID 重复查询)
     if (m_sessionState != WORLD_SESSION_STATE_READY)
     {
         auto result = m_offlineNameQueries.insert(guid);
@@ -139,6 +143,7 @@ void WorldSession::HandleNameQueryOpcode(WorldPacket& recv_data)
 
     Player* pChar = sObjectMgr.GetPlayer(guid);
 
+    // 若玩家在线则直接从内存读取，否则异步查库
     if (pChar)
     {
         CharacterNameQueryResponse response;
@@ -165,12 +170,13 @@ void WorldSession::HandleNameQueryOpcode(WorldPacket& recv_data)
         SendNameQueryResponseFromDB(guid);
 }
 
+// 处理服务器时间查询请求（CMSG_QUERY_TIME）
 void WorldSession::HandleQueryTimeOpcode(WorldPacket& /*recv_data*/)
 {
     SendQueryTimeResponse();
 }
 
-/// Only _static_ data send in this packet !!!
+/// Only _static_ data send in this packet !!! (该包仅下发生物模板静态数据；处理 CMSG_CREATURE_QUERY)
 void WorldSession::HandleCreatureQueryOpcode(WorldPacket& recv_data)
 {
     uint32 entry;
@@ -188,25 +194,25 @@ void WorldSession::HandleCreatureQueryOpcode(WorldPacket& recv_data)
         sObjectMgr.GetCreatureLocaleStrings(entry, loc_idx, &name, &subName);
 
         DETAIL_LOG("WORLD: CMSG_CREATURE_QUERY '%s' - Entry: %u.", ci->Name, entry);
-        // guess size
+        // guess size (预估包长并填充生物静态模板信息)
         WorldPacket data(SMSG_CREATURE_QUERY_RESPONSE, 100);
-        data << uint32(entry);                              // creature entry
+        data << uint32(entry);                              // creature entry (生物模板 Entry)
         data << name;
-        data << uint8(0) << uint8(0) << uint8(0);           // name2, name3, name4, always empty
+        data << uint8(0) << uint8(0) << uint8(0);           // name2, name3, name4, always empty (备用名称字段恒为空)
         data << subName;
-        data << ci->IconName;                               // "Directions" for guard, string for Icons 2.3.0
-        data << uint32(ci->TypeFlags);                      // flags
-        data << uint32(ci->CreatureType);                   // CreatureType.dbc
-        data << uint32(ci->Family);                         // CreatureFamily.dbc
-        data << uint32(ci->Rank);                           // Creature Rank (elite, boss, etc)
-        data << uint32(0);                                  // unknown        wdbFeild11
-        data << uint32(ci->PetSpellDataId);                 // Id from CreatureSpellData.dbc    wdbField12
+        data << ci->IconName;                               // "Directions" for guard, string for Icons 2.3.0 (守卫指示文本或 2.3.0+ 鼠标悬停图标名)
+        data << uint32(ci->TypeFlags);                      // flags (生物类型标志位)
+        data << uint32(ci->CreatureType);                   // CreatureType.dbc (生物大类 ID)
+        data << uint32(ci->Family);                         // CreatureFamily.dbc (野兽家族 ID)
+        data << uint32(ci->Rank);                           // Creature Rank (elite, boss, etc) (稀有/精英/首领等级)
+        data << uint32(0);                                  // unknown        wdbFeild11 (未知 WDB 字段 11)
+        data << uint32(ci->PetSpellDataId);                 // Id from CreatureSpellData.dbc    wdbField12 (宠物技能数据 ID)
 
         for (uint32 i : ci->DisplayId)
             data << i;
 
-        data << float(ci->HealthMultiplier);                 // health multiplier
-        data << float(ci->PowerMultiplier);                   // mana multiplier
+        data << float(ci->HealthMultiplier);                 // health multiplier (生命值倍率)
+        data << float(ci->PowerMultiplier);                   // mana multiplier (法力值倍率)
         data << uint8(ci->RacialLeader);
         SendPacket(data);
         DEBUG_LOG("WORLD: Sent SMSG_CREATURE_QUERY_RESPONSE");
@@ -222,7 +228,7 @@ void WorldSession::HandleCreatureQueryOpcode(WorldPacket& recv_data)
     }
 }
 
-/// Only _static_ data send in this packet !!!
+/// Only _static_ data send in this packet !!! (该包仅下发游戏对象模板静态数据；处理 CMSG_GAMEOBJECT_QUERY)
 void WorldSession::HandleGameObjectQueryOpcode(WorldPacket& recv_data)
 {
     uint32 entryID;
@@ -238,6 +244,7 @@ void WorldSession::HandleGameObjectQueryOpcode(WorldPacket& recv_data)
         std::string openingText = info->OpeningText;
         std::string closingText = info->ClosingText;
 
+        // 按客户端语言区域加载本地化名称与开关门文本
         int loc_idx = GetSessionDbLocaleIndex();
         if (loc_idx >= 0)
         {
@@ -258,12 +265,12 @@ void WorldSession::HandleGameObjectQueryOpcode(WorldPacket& recv_data)
         data << uint32(info->type);
         data << uint32(info->displayId);
         data << Name;
-        data << uint8(0) << uint8(0) << uint8(0);           // name2, name3, name4
-        data << IconName;                                   // 1.12.0, string. Icon name to use instead of default icon for go's (ex: "Attack" makes sword)
-        data << openingText;                                // 2.0.3, string - when lock specifies action 0 or 1
-        data << closingText;                                // 2.0.3, string - when lock specifies action 2
+        data << uint8(0) << uint8(0) << uint8(0);           // name2, name3, name4 (备用名称占位)
+        data << IconName;                                   // 1.12.0, string. Icon name to use instead of default icon for go's (ex: "Attack" makes sword) (自定义鼠标悬停图标名称)
+        data << openingText;                                // 2.0.3, string - when lock specifies action 0 or 1 (开锁动作 0/1 提示文本)
+        data << closingText;                                // 2.0.3, string - when lock specifies action 2 (闭锁动作 2 提示文本)
         data.append(info->raw.data, 24);
-        data << float(info->size);                          // go size
+        data << float(info->size);                          // go size (游戏对象缩放大小)
         SendPacket(data);
         DEBUG_LOG("WORLD: Sent SMSG_GAMEOBJECT_QUERY_RESPONSE");
     }
@@ -278,6 +285,7 @@ void WorldSession::HandleGameObjectQueryOpcode(WorldPacket& recv_data)
     }
 }
 
+// 处理尸体位置查询请求（MSG_CORPSE_QUERY），支持跨副本地图映射为副本入口位置
 void WorldSession::HandleCorpseQueryOpcode(WorldPacket& /*recv_data*/)
 {
     DETAIL_LOG("WORLD: Received opcode MSG_CORPSE_QUERY");
@@ -287,7 +295,7 @@ void WorldSession::HandleCorpseQueryOpcode(WorldPacket& /*recv_data*/)
     if (!corpse)
     {
         WorldPacket data(MSG_CORPSE_QUERY, 1);
-        data << uint8(0);                                   // corpse not found
+        data << uint8(0);                                   // corpse not found (未找到玩家尸体)
         SendPacket(data);
         return;
     }
@@ -298,15 +306,15 @@ void WorldSession::HandleCorpseQueryOpcode(WorldPacket& /*recv_data*/)
     float z = corpse->GetPositionZ();
     int32 mapid = corpsemapid;
 
-    // if corpse at different map
+    // if corpse at different map (若尸体位于其他地图，且为有幽灵入口的地下城，则返回副本入口坐标)
     if (corpsemapid != _player->GetMapId())
     {
-        // search entrance map for proper show entrance
+        // search entrance map for proper show entrance (查找对应副本地图的幽灵入口地图及坐标)
         if (MapEntry const* corpseMapEntry = sMapStore.LookupEntry(corpsemapid))
         {
             if (corpseMapEntry->IsDungeon() && corpseMapEntry->ghost_entrance_map >= 0)
             {
-                // if corpse map have entrance
+                // if corpse map have entrance (加载入口地图地形以获取准确地表高度)
                 if (TerrainInfo const* entranceMap = sTerrainMgr.LoadTerrain(corpseMapEntry->ghost_entrance_map))
                 {
                     mapid = corpseMapEntry->ghost_entrance_map;
@@ -319,7 +327,7 @@ void WorldSession::HandleCorpseQueryOpcode(WorldPacket& /*recv_data*/)
     }
 
     WorldPacket data(MSG_CORPSE_QUERY, 1 + (5 * 4));
-    data << uint8(1);                                       // corpse found
+    data << uint8(1);                                       // corpse found (已找到尸体位置)
     data << int32(mapid);
     data << float(x);
     data << float(y);
@@ -328,6 +336,7 @@ void WorldSession::HandleCorpseQueryOpcode(WorldPacket& /*recv_data*/)
     SendPacket(data);
 }
 
+// 处理 NPC 对话文本查询请求（CMSG_NPC_TEXT_QUERY）
 void WorldSession::HandleNpcTextQueryOpcode(WorldPacket& recv_data)
 {
     uint32 textID;
@@ -340,7 +349,7 @@ void WorldSession::HandleNpcTextQueryOpcode(WorldPacket& recv_data)
 
     GossipText const* gossip = sObjectMgr.GetGossipText(textID);
 
-    WorldPacket data(SMSG_NPC_TEXT_UPDATE, 100);            // guess size
+    WorldPacket data(SMSG_NPC_TEXT_UPDATE, 100);            // guess size (预估包长)
     data << textID;
 
     if (!gossip)
@@ -366,6 +375,7 @@ void WorldSession::HandleNpcTextQueryOpcode(WorldPacket& recv_data)
         int loc_idx = GetSessionDbLocaleIndex();
         for (int i = 0; i < MAX_GOSSIP_TEXT_OPTIONS; ++i)
         {
+            // 优先使用关联的 broadcast_text 多语言文本，否则读取 npc_text 及本地化表
             if (gossip->Options[i].broadcastTextId)
             {
                 locales = false;
@@ -411,6 +421,7 @@ void WorldSession::HandleNpcTextQueryOpcode(WorldPacket& recv_data)
     DEBUG_LOG("WORLD: Sent SMSG_NPC_TEXT_UPDATE");
 }
 
+// 处理书页文本查询请求（CMSG_PAGE_TEXT_QUERY），沿 Next_Page 链连续下发后续所有书页
 void WorldSession::HandlePageTextQueryOpcode(WorldPacket& recv_data)
 {
     DETAIL_LOG("WORLD: Received opcode CMSG_PAGE_TEXT_QUERY");
@@ -421,7 +432,7 @@ void WorldSession::HandlePageTextQueryOpcode(WorldPacket& recv_data)
     while (pageID)
     {
         PageText const* pPage = sPageTextStore.LookupEntry<PageText>(pageID);
-        // guess size
+        // guess size (预估书页响应包大小)
         WorldPacket data(SMSG_PAGE_TEXT_QUERY_RESPONSE, 50);
         data << pageID;
 
@@ -456,6 +467,7 @@ void WorldSession::HandlePageTextQueryOpcode(WorldPacket& recv_data)
     }
 }
 
+// 发送服务器当前时间戳及距下次日常任务重置的剩余秒数（SMSG_QUERY_TIME_RESPONSE）
 void WorldSession::SendQueryTimeResponse() const
 {
     WorldPacket data(SMSG_QUERY_TIME_RESPONSE, 4 + 4);

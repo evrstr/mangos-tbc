@@ -20,6 +20,7 @@
 #include "Entities/Player.h"
 #include "World/World.h"
 
+// 从数据库 quest_template 查询记录构造 Quest 模板并预计算各目标计数
 Quest::Quest(Field* questRecord)
 {
     QuestId = questRecord[0].GetUInt32();
@@ -173,6 +174,7 @@ Quest::Quest(Field* questRecord)
     }
 }
 
+// 根据满级金钱折算基数（RewMoneyMaxLevel）与任务/玩家等级差计算任务经验奖励
 uint32 Quest::XPValue(Player* pPlayer) const
 {
     if (pPlayer)
@@ -195,6 +197,7 @@ uint32 Quest::XPValue(Player* pPlayer) const
             else if (qLevel > 0 && qLevel <= 60)
                 fullxp = RewMoneyMaxLevel / 0.6f;
 
+            // 玩家等级高于任务等级 5 级以上时经验逐步递减至 10%
             if (pLevel <= qLevel +  5)
                 return uint32(ceilf(fullxp));
             else if (pLevel == qLevel +  6)
@@ -213,6 +216,7 @@ uint32 Quest::XPValue(Player* pPlayer) const
     return 0;
 }
 
+// 获取任务奖励或需求金币（正数奖励应用服务器金币掉落倍率）
 int32  Quest::GetRewOrReqMoney() const
 {
     if (RewOrReqMoney <= 0)
@@ -221,6 +225,7 @@ int32  Quest::GetRewOrReqMoney() const
     return int32(RewOrReqMoney * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY));
 }
 
+// 判断该任务是否允许在团队副本中推进进度
 bool Quest::IsAllowedInRaid() const
 {
     if (Type == QUEST_TYPE_RAID)
@@ -229,6 +234,7 @@ bool Quest::IsAllowedInRaid() const
     return sWorld.getConfig(CONFIG_BOOL_QUEST_IGNORE_RAID);
 }
 
+// 获取任务奖励头衔在客户端 bitmask 中的位索引
 uint32 Quest::GetCharTitleBitIndex() const
 {
     if (!CharTitleId)
@@ -237,6 +243,7 @@ uint32 Quest::GetCharTitleBitIndex() const
     return titleEntry ? titleEntry->bit_index : 0;
 }
 
+// 获取满级替代经验奖励的金币数（带 QUEST_FLAGS_NO_MONEY_FROM_XP 标志则返回 0）
 uint32 Quest::GetRewMoneyMaxLevel() const
 {
     if (HasQuestFlag(QUEST_FLAGS_NO_MONEY_FROM_XP))

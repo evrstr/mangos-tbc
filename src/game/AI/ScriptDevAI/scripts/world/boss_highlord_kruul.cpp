@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Boss_Highlord_Kruul
 SD%Complete: 50
-SDComment: Alot of this info is based on guesswork/hearsay
+SDComment: Alot of this info is based on guesswork/hearsay (大领主库鲁尔：燃烧的远征前夕世界入侵首领)
 SDCategory: Bosses
 EndScriptData
 */
@@ -28,6 +28,7 @@ EndScriptData
 
 enum
 {
+    // 台词文本 ID 与技能/生物常量
     SAY_INTRO1                          = -1015073,
     SAY_INTRO2                          = -1015074,
     SAY_AGGRO1                          = -1015075,
@@ -37,23 +38,23 @@ enum
     SAY_DESPAWN                         = -1015079,
     EMOTE_FRENZY                        = -1000002,
 
-    SPELL_SHADOW_VOLLEY                 = 21341,
-    SPELL_BERSERK                       = 21340,    // triggers 21341
-    SPELL_CLEAVE                        = 20691,
-    SPELL_THUNDERCLAP                   = 26554,
-    SPELL_VOIDBOLT                      = 21066,
-    SPELL_MARK_OF_KAZZAK                = 21056,    // triggers 21058 when target gets to 0 mana
-    SPELL_CAPTURESOUL                   = 21053,    // procs 21054 on kill (Doom Lord Kazzak uses 48473 Capture Soul, procs 32966 on kill)
-    SPELL_TWISTED_REFLECTION            = 21063,
+    SPELL_SHADOW_VOLLEY                 = 21341,    // 暗影箭雨
+    SPELL_BERSERK                       = 21340,    // triggers 21341 (狂暴：触发暗影箭雨)
+    SPELL_CLEAVE                        = 20691,    // 顺劈斩
+    SPELL_THUNDERCLAP                   = 26554,    // 雷霆一击
+    SPELL_VOIDBOLT                      = 21066,    // 虚空箭
+    SPELL_MARK_OF_KAZZAK                = 21056,    // triggers 21058 when target gets to 0 mana (卡扎克印记：目标法力归零时爆炸)
+    SPELL_CAPTURESOUL                   = 21053,    // procs 21054 on kill (Doom Lord Kazzak uses 48473 Capture Soul, procs 32966 on kill) (灵魂吸取：击杀玩家时回血)
+    SPELL_TWISTED_REFLECTION            = 21063,    // 扭曲反射
 
-    SPELL_SUMMON_INFERNALING            = 33533,    // summons creature Infernal Hound 19207 
-    SPELL_CREATE_INFERNALING_SUMMONER   = 33536,    // summons gameobjects 183283 Infernaling Summoner Visual and 183282 Infernaling Summoner Damage Trap - triggers spell 29115 Flames
+    SPELL_SUMMON_INFERNALING            = 33533,    // summons creature Infernal Hound 19207 (召唤地狱犬)
+    SPELL_CREATE_INFERNALING_SUMMONER   = 33536,    // summons gameobjects 183283 Infernaling Summoner Visual and 183282 Infernaling Summoner Damage Trap - triggers spell 29115 Flames (创建地狱犬传送门)
     SPELL_CREATE_INFERNALING_SUMMONER_C = 33541,    // triggered by 33536, summons trap gameobject 183278 Infernaling Summoner (go_infernaling_summoner)
-    SPELL_INFERNALING_SPAWN_IN          = 33543,
-    SPELL_INFERNALING_DURATION          = 33544,    // server-side
-    SPELL_INFERNALING_DESPAWN           = 33545,
-    SPELL_INFERNALING_IMMOLATION        = 19483,
-    SPELL_KAZZAKS_ASSAULT               = 33512,    // used to insta-kill npcs
+    SPELL_INFERNALING_SPAWN_IN          = 33543,    // 地狱犬生成视觉
+    SPELL_INFERNALING_DURATION          = 33544,    // server-side (地狱犬持续时间)
+    SPELL_INFERNALING_DESPAWN           = 33545,    // 地狱犬消失
+    SPELL_INFERNALING_IMMOLATION        = 19483,    // 地狱犬献祭
+    SPELL_KAZZAKS_ASSAULT               = 33512,    // used to insta-kill npcs (卡扎克的突袭：秒杀 NPC)
 
     NPC_HAND_OF_THE_HIGHLORD            = 19214,
     NPC_HIGHLORD_KRUUL                  = 18338,
@@ -62,6 +63,7 @@ enum
     MAX_INFERNAL_HOUNDS                 = 15,
 };
 
+// 库鲁尔战斗动作枚举（按优先级排序）
 enum KruulActions // order based on priority
 {
     KRUUL_ACTION_SUPREME,
@@ -77,6 +79,8 @@ enum KruulActions // order based on priority
 };
 
 
+// 大领主库鲁尔 AI (boss_highlord_kruulAI)
+// 前夕世界入侵 Boss：高伤害近战、顺劈、雷霆一击、虚空箭、卡扎克印记、扭曲反射与召唤地狱犬，90秒狂暴施放暗影箭雨
 struct boss_highlord_kruulAI : public ScriptedAI
 {
     boss_highlord_kruulAI(Creature* creature) : ScriptedAI(creature, KRUUL_ACTION_MAX)
@@ -102,6 +106,7 @@ struct boss_highlord_kruulAI : public ScriptedAI
     uint32 m_uiCreateInfernalingSummonerTimer;
     uint32 m_uiDespawnTimer;
 
+    // 召唤库鲁尔之手护卫阵型
     void SummonFormation()
     {
         if (Creature* hand1 = m_creature->SummonCreature(NPC_HAND_OF_THE_HIGHLORD, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0.0f, TEMPSPAWN_DEAD_DESPAWN, 1800000, true))
@@ -122,6 +127,7 @@ struct boss_highlord_kruulAI : public ScriptedAI
         }
     }
 
+    // 重置首领状态与所有战斗技能计时器
     void Reset() override
     {
         for (uint32 i = 0; i < KRUUL_ACTION_MAX; ++i)
@@ -140,6 +146,7 @@ struct boss_highlord_kruulAI : public ScriptedAI
         SetCombatScriptStatus(false);
     }
 
+    // 获取技能初始冷却时间
     uint32 GetInitialActionTimer(const uint32 action) const
     {
         switch (action)
@@ -156,6 +163,7 @@ struct boss_highlord_kruulAI : public ScriptedAI
         }
     }
 
+    // 获取技能后续冷却时间
     uint32 GetSubsequentActionTimer(const uint32 action) const
     {
         switch (action)
@@ -172,16 +180,19 @@ struct boss_highlord_kruulAI : public ScriptedAI
         }
     }
 
+    // 死亡回调：通知世界状态库鲁尔被击杀
     void JustDied(Unit* /*killer*/) override
     {
         sWorldState.HandleExternalEvent(CUSTOM_EVENT_HIGHLORD_KRUUL_DIED, 0);
     }
 
+    // 重生回调：随机喊话
     void JustRespawned() override
     {
         DoScriptText(urand(0, 1) ? SAY_INTRO1 : SAY_INTRO2, m_creature);
     }
 
+    // 进入战斗回调：附加灵魂吸取光环并喊话
     void Aggro(Unit* /*pWho*/) override
     {
         DoCastSpellIfCan(m_creature, SPELL_CAPTURESOUL, CAST_TRIGGERED);
@@ -194,6 +205,7 @@ struct boss_highlord_kruulAI : public ScriptedAI
         }
     }
 
+    // 击杀目标回调：击杀玩家时播放嘲讽喊话
     void KilledUnit(Unit* pVictim) override
     {
         if (pVictim->GetTypeId() != TYPEID_PLAYER)
@@ -202,6 +214,7 @@ struct boss_highlord_kruulAI : public ScriptedAI
         DoScriptText(SAY_KILL, m_creature, pVictim);
     }
 
+    // 战斗技能执行循环
     void ExecuteActions() override
     {
         if (!CanExecuteCombatAction())
@@ -309,6 +322,7 @@ struct boss_highlord_kruulAI : public ScriptedAI
         }
     }
 
+    // AI 每帧更新：处理计时器、门召唤、超时消失及技能施放
     void UpdateAI(const uint32 diff) override
     {
         UpdateTimers(diff, m_creature->IsInCombat());
@@ -352,6 +366,7 @@ UnitAI* GetAI_boss_highlord_kruul(Creature* pCreature)
     return new boss_highlord_kruulAI(pCreature);
 }
 
+// 地狱犬 AI (npc_infernal_houndAI)
 struct npc_infernal_houndAI : public ScriptedAI
 {
     npc_infernal_houndAI(Creature* creature) : ScriptedAI(creature)
@@ -360,6 +375,7 @@ struct npc_infernal_houndAI : public ScriptedAI
         DoCastSpellIfCan(m_creature, SPELL_INFERNALING_SPAWN_IN);
     }
 
+    // 重置首领状态与所有战斗技能计时器
     void Reset() override
     {   
         DoCastSpellIfCan(m_creature, SPELL_INFERNALING_IMMOLATION);
@@ -371,6 +387,7 @@ UnitAI* GetAI_npc_infernal_hound(Creature* pCreature)
     return new npc_infernal_houndAI(pCreature);
 }
 
+// 地狱犬召唤门游戏对象 AI (go_infernaling_summoner)
 struct go_infernaling_summoner : public GameObjectAI
 {
     go_infernaling_summoner(GameObject* go) : GameObjectAI(go)
@@ -407,6 +424,7 @@ GameObjectAI* GetAI_go_infernaling_summoner(GameObject* go)
 }
 
 // 21056 - Mark of Kazzak
+// 卡扎克印记光环脚本：周期检测目标法力，法力归零时造成巨额爆炸伤害
 struct MarkOfLordKazzak : public AuraScript
 {
     void OnPeriodicTickEnd(Aura* aura) const override
@@ -422,6 +440,7 @@ struct MarkOfLordKazzak : public AuraScript
     }
 };
 
+// 注册大领主库鲁尔相关脚本
 void AddSC_boss_highlord_kruul()
 {
     Script* pNewScript = new Script;

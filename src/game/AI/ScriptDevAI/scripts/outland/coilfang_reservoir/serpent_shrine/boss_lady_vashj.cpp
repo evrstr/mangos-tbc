@@ -21,11 +21,20 @@ SDComment: Some details are not very clear: the usage of Shoot and Multishot spe
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
+// 瓦丝琪（毒蛇神殿最终首领）
+/* 遭遇战概述：
+ * 瓦丝琪是伊利丹最重要的副官之一，盘蛇水泵总督，战斗分为三阶段：
+ * 阶段一：闪电箭、多重射击与缠绕；
+ * 阶段二：开启魔法护盾并召唤长者、长步怪与毒水滴，玩家需拾取受污染的龙尾核心关闭四座发电机柱；
+ * 阶段三：解除护盾狂暴参战，剧毒孢子蝠漫天覆盖场地。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // yells
@@ -126,6 +135,7 @@ static const float afMiddlePos[3]   = { 29.8326f, -923.274f, 42.90189f};
 
 static const float batSpells[] = { SPELL_WAVE_E_1, SPELL_WAVE_E_3, SPELL_WAVE_E_4};
 
+// VashjActions 相关枚举
 enum VashjActions
 {
     VASHJ_ACTION_PHASE_2 = 0,
@@ -145,6 +155,7 @@ enum VashjActions
     VASHJ_TAINTED_ELEMENTAL,
 };
 
+// boss_lady_vashjAI 逻辑实现
 struct boss_lady_vashjAI : public CombatAI
 {
     boss_lady_vashjAI(Creature* creature) : CombatAI(creature, VASHJ_ACTION_MAX), m_instance(static_cast<instance_serpentshrine_cavern*>(creature->GetInstanceData()))
@@ -188,6 +199,7 @@ struct boss_lady_vashjAI : public CombatAI
     GuidVector m_triggerGuidsAll;
     GuidVector m_spawns;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -221,6 +233,7 @@ struct boss_lady_vashjAI : public CombatAI
         }
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 4))
@@ -323,6 +336,7 @@ struct boss_lady_vashjAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -366,6 +380,7 @@ struct boss_lady_vashjAI : public CombatAI
         m_spawns.push_back(summoned->GetObjectGuid());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -383,6 +398,7 @@ struct boss_lady_vashjAI : public CombatAI
         }
     }
 
+    // 召唤生物消失回调
     void SummonedCreatureDespawn(Creature* summoned) override
     {
         // Set the timer when summoned despawned, if not already killed
@@ -390,6 +406,7 @@ struct boss_lady_vashjAI : public CombatAI
             ResetIfNotStarted(VASHJ_TAINTED_ELEMENTAL, 50000);
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* /*victim*/) override
     {
         switch (urand(0, 2))
@@ -400,6 +417,7 @@ struct boss_lady_vashjAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
@@ -536,6 +554,7 @@ struct boss_lady_vashjAI : public CombatAI
             m_creature->CastSpell(creature, SPELL_WAVE_D, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -651,6 +670,7 @@ struct boss_lady_vashjAI : public CombatAI
     }
 };
 
+// mob_enchanted_elementalAI 逻辑实现
 struct mob_enchanted_elementalAI : public ScriptedAI
 {
     mob_enchanted_elementalAI(Creature* creature) : ScriptedAI(creature)
@@ -658,8 +678,10 @@ struct mob_enchanted_elementalAI : public ScriptedAI
         Reset();
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override { }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* pWho) override
     {
         // Buff Lady Vashj on range check - spell has script target
@@ -671,6 +693,7 @@ struct mob_enchanted_elementalAI : public ScriptedAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
+// 游戏对象使用交互回调
 bool GOUse_go_shield_generator(Player* /*pPlayer*/, GameObject* pGo)
 {
     // Interrupt Magic barrier spell casting, inform the boss and make the GO unusable
@@ -700,6 +723,7 @@ bool OnLootItemTaintedCore(Player* player, Item* /*item*/, bool apply)
     return true;
 }
 
+// 游戏对象使用交互回调
 bool GOUse_go_vashj_bridge(Player* player, GameObject* go)
 {
     if (ScriptedInstance* instance = (ScriptedInstance*)go->GetInstanceData())
@@ -717,6 +741,7 @@ bool GOUse_go_vashj_bridge(Player* player, GameObject* go)
     return true;
 }
 
+// VashjPersuasion 法术脚本
 struct VashjPersuasion : public SpellScript, public AuraScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -727,6 +752,7 @@ struct VashjPersuasion : public SpellScript, public AuraScript
         return true;
     }
 
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -736,8 +762,10 @@ struct VashjPersuasion : public SpellScript, public AuraScript
     }
 };
 
+// SporeDropEffect 法术脚本
 struct SporeDropEffect : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (!spell->GetUnitTarget())
@@ -747,6 +775,7 @@ struct SporeDropEffect : public SpellScript
     }
 };
 
+// 注册 boss_lady_vashj 脚本
 void AddSC_boss_lady_vashj()
 {
     Script* pNewScript = new Script;

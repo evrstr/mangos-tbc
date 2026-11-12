@@ -21,6 +21,8 @@ SDComment: Contains GO for Iron Clad door event
 SDCategory: Deadmines
 EndScriptData */
 
+// 死亡矿井（Deadmines）迪菲亚火炮爆破大门与杂项事件脚本
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "deadmines.h"
 
@@ -54,6 +56,7 @@ struct UnarmedWoodcutter : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：deadmines
 void AddSC_deadmines()
 {
     Script* pNewScript = new Script;

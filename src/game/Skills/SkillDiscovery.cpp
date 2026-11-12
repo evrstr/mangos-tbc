@@ -29,10 +29,11 @@
 #include "Server/DBCStores.h"
 #include <map>
 
+// 单条专业技能领悟记录
 struct SkillDiscoveryEntry
 {
-    uint32  spellId;                                        // discavered spell
-    float   chance;                                         // chance
+    uint32  spellId;                                        // discavered spell (可领悟到的目标法术/配方 ID)
+    float   chance;                                         // chance (基础领悟触发概率，百分比)
 
     SkillDiscoveryEntry()
         : spellId(0), chance(0) {}
@@ -42,13 +43,15 @@ struct SkillDiscoveryEntry
 };
 
 typedef std::list<SkillDiscoveryEntry> SkillDiscoveryList;
+// 正数键表示前置法术 ID，负数键表示专业技能 ID 的相反数（reqSpell=0 时按技能匹配）
 typedef std::unordered_map<int32, SkillDiscoveryList> SkillDiscoveryMap;
 
 static SkillDiscoveryMap SkillDiscoveryStore;
 
+// 从 skill_discovery_template 表加载全部配方领悟规则并校验法术有效性
 void LoadSkillDiscoveryTable()
 {
-    SkillDiscoveryStore.clear();                            // need for reload
+    SkillDiscoveryStore.clear();                            // need for reload (支持运行时重载)
 
     uint32 count = 0;
 
@@ -76,14 +79,14 @@ void LoadSkillDiscoveryTable()
         int32  reqSkillOrSpell = fields[1].GetInt32();
         float  chance          = fields[2].GetFloat();
 
-        if (chance <= 0)                                    // chance
+        if (chance <= 0)                                    // chance (概率非正则无法触发领悟，记录告警)
         {
             ssNonDiscoverableEntries << "spellId = " << spellId << " reqSkillOrSpell = " << reqSkillOrSpell
                                      << " chance = " << chance << "\n";
             continue;
         }
 
-        if (reqSkillOrSpell > 0)                            // spell case
+        if (reqSkillOrSpell > 0)                            // spell case (按特定制作法术触发领悟)
         {
             SpellEntry const* reqSpellEntry = sSpellTemplate.LookupEntry<SpellEntry>(reqSkillOrSpell);
             if (!reqSpellEntry)
@@ -108,7 +111,7 @@ void LoadSkillDiscoveryTable()
 
             SkillDiscoveryStore[reqSkillOrSpell].push_back(SkillDiscoveryEntry(spellId, chance));
         }
-        else if (reqSkillOrSpell == 0)                      // skill case
+        else if (reqSkillOrSpell == 0)                      // skill case (按所属专业技能任意制作触发领悟)
         {
             SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(spellId);
 
@@ -135,9 +138,10 @@ void LoadSkillDiscoveryTable()
         sLog.outErrorDb("Some items can't be successfully discovered: have in chance field value < 0.000001 in `skill_discovery_template` DB table . List:\n%s", ssNonDiscoverableEntries.str().c_str());
 }
 
+// 判定玩家施放 spellId（或所属专业 skillId）时是否领悟到新配方（未学会且随机命中）
 uint32 GetSkillDiscoverySpell(uint32 skillId, uint32 spellId, Player* player)
 {
-    // check spell case
+    // check spell case (优先检查特定法术关联的领悟列表)
     SkillDiscoveryMap::const_iterator tab = SkillDiscoveryStore.find(spellId);
 
     if (tab != SkillDiscoveryStore.end())
@@ -155,7 +159,7 @@ uint32 GetSkillDiscoverySpell(uint32 skillId, uint32 spellId, Player* player)
     if (!skillId)
         return 0;
 
-    // check skill line case
+    // check skill line case (再检查按专业技能 ID 注册的通用领悟列表)
     tab = SkillDiscoveryStore.find(-(int32)skillId);
     if (tab != SkillDiscoveryStore.end())
     {

@@ -71,6 +71,7 @@ void SpawnGroup::AddObject(uint32 dbGuid, uint32 entry)
     m_objects[dbGuid] = entry;
 }
 
+// 将生物或游戏对象移出刷怪组，若野外全组清空则触发冷却与同概率刷怪时间同步
 void SpawnGroup::RemoveObject(WorldObject* wo)
 {
     m_objects.erase(wo->GetDbGuid());
@@ -79,7 +80,7 @@ void SpawnGroup::RemoveObject(WorldObject* wo)
     {
         if (m_entry.RespawnOverrideMin)
             m_cooldown = m_map.GetCurrentClockTime() + std::chrono::seconds(urand(*m_entry.RespawnOverrideMin, m_entry.RespawnOverrideMax ? *m_entry.RespawnOverrideMax : *m_entry.RespawnOverrideMin));
-        else if (m_chosenSquad != -1) // avoid instant respawn artifacts - schedule respawn so full group is around after full wipe
+        else if (m_chosenSquad != -1) // avoid instant respawn artifacts - schedule respawn so full group is around after full wipe (避免小队全灭后立即重刷的异常，设置冷却使整队同步出现)
             m_cooldown = m_map.GetCurrentClockTime() + std::chrono::seconds(wo->GetRespawnDelay());
 
         m_chosenSquad = -1;
@@ -88,6 +89,7 @@ void SpawnGroup::RemoveObject(WorldObject* wo)
         {
             m_chosenSpawns.clear();
             // save same respawn time for all guids so they all respawn at the same time if chanced
+            // 为组内所有概率刷新 GUID 写入相同的重生时间，确保下次统一重新判定刷出
             time_t lastRespawnTime = m_map.GetPersistentState()->GetObjectRespawnTime(GetObjectTypeId(), wo->GetDbGuid());
             for (auto& dbGuid : m_entry.DbGuids)
             {
@@ -113,6 +115,7 @@ void SpawnGroup::Update()
     Spawn(false, false);
 }
 
+// 从随机条目池中按最小数量保障、显式概率及均等概率挑选一个符合上限的 Entry
 uint32 SpawnGroup::GetEligibleEntry(std::map<uint32, uint32>& existingEntries, std::map<uint32, uint32>& minEntries)
 {
     if (m_entry.RandomEntries.empty())
@@ -154,6 +157,7 @@ uint32 SpawnGroup::GetEligibleEntry(std::map<uint32, uint32>& existingEntries, s
     return 0;
 }
 
+// 执行刷怪组刷新逻辑：校验启用状态/冷却/世界状态条件，筛选可用 GUID 与随机 Entry 并构造入图
 void SpawnGroup::Spawn(bool forced, bool ignoreRespawntime)
 {
     if (!m_enabled && !forced)
@@ -162,12 +166,12 @@ void SpawnGroup::Spawn(bool forced, bool ignoreRespawntime)
     if (m_cooldown > m_map.GetCurrentClockTime())
         return;
 
-    // duplicated code for optimization - way fewer cond fails
+    // duplicated code for optimization - way fewer cond fails (先于数量检查判断是否因条件失效而立即消隐)
     if ((m_entry.Flags & SPAWN_GROUP_DESPAWN_ON_COND_FAIL) != 0) // must be before count check
     {
         if (!m_objects.empty() && !IsWorldstateConditionSatisfied())
         {
-            Despawn(0, 1); // respawn delay 1 to immediately be available for spawn on next condition success
+            Despawn(0, 1); // respawn delay 1 to immediately be available for spawn on next condition success (设为 1 秒延迟以便条件再次满足时立刻可刷)
             return;
         }
     }
@@ -235,7 +239,7 @@ void SpawnGroup::Spawn(bool forced, bool ignoreRespawntime)
 
     if (m_entry.Squads.empty())
     {
-        // once picked, only reuse
+        // once picked, only reuse (副本中一旦选定到上限后仅复用已选 GUID，避免切换组合)
         if (m_map.IsDungeon() && m_chosenEntries.size() == m_entry.MaxCount)
         {
             for (auto& guid : m_entry.DbGuids)
@@ -275,9 +279,9 @@ void SpawnGroup::Spawn(bool forced, bool ignoreRespawntime)
             }
         }
     }
-    else // squad code
+    else // squad code (小队模式：随机挑选或沿用已选定的固定小队成员列表)
     {
-        if (!m_map.IsDungeon() || m_chosenSquad == -1) // choose only on first spawn in dungeon
+        if (!m_map.IsDungeon() || m_chosenSquad == -1) // choose only on first spawn in dungeon (副本内仅首次刷怪时抽取小队)
         {
             auto randIdx = urand(0, m_entry.Squads.size() - 1);
             m_chosenSquad = randIdx;
@@ -295,7 +299,7 @@ void SpawnGroup::Spawn(bool forced, bool ignoreRespawntime)
         {
             if (!ignoreRespawntime)
             {
-                if (m_entry.MaxCount == 1) // rare mob case - prevent respawn until all are off CD
+                if (m_entry.MaxCount == 1) // rare mob case - prevent respawn until all are off CD (稀有怪情形：任一刷新点仍在冷却则整组暂不刷新)
                     return;
                 itr = eligibleGuids.erase(itr);
                 continue;
@@ -357,6 +361,7 @@ void SpawnGroup::Spawn(bool forced, bool ignoreRespawntime)
         eligibleGuids.resize(std::min(eligibleGuids.size(), m_entry.MaxCount - m_objects.size())); // now we have final count for processing
 
         // pick static and random entry first in dungeons so spawn group logic can decide after
+        // 副本内优先为带有随机/专属 Entry 的点位分配，再分配共享随机池条目
         if (m_map.IsDungeon() && GetObjectTypeId() == TYPEID_UNIT)
         {
             for (auto data : eligibleGuids)
@@ -435,6 +440,7 @@ void SpawnGroup::Spawn(bool forced, bool ignoreRespawntime)
     }
 }
 
+// 检查当前刷怪组的世界状态条件或世界状态表达式是否满足
 bool SpawnGroup::IsWorldstateConditionSatisfied() const
 {
     if (m_entry.WorldStateCondition)
@@ -449,6 +455,7 @@ bool SpawnGroup::IsWorldstateConditionSatisfied() const
     return true;
 }
 
+// 若组内任一刷怪点在指定坐标范围内，则重置整组的重生冷却时间
 void SpawnGroup::RespawnIfInVicinity(Position pos, float range)
 {
     if (!IsWorldstateConditionSatisfied())
@@ -535,6 +542,7 @@ void CreatureGroup::RemoveObject(WorldObject* wo)
     }
 }
 
+// 触发生物组联动事件（同仇恨拉怪、同脱战归位、同归位/同复活清除冷却、成员死亡通知）
 void CreatureGroup::TriggerLinkingEvent(uint32 event, Unit* target)
 {
     switch (event)
@@ -638,6 +646,7 @@ void CreatureGroup::MoveHome()
     }
 }
 
+// 立即或定时消隐组内生物；若生物当前未加载进网格且为立即消隐，则直接更新网格与重生时间
 void CreatureGroup::Despawn(uint32 timeMSToDespawn, bool onlyAlive, uint32 forcedDespawnTime)
 {
     time_t when = time(nullptr) + forcedDespawnTime;
@@ -750,7 +759,7 @@ void GameObjectGroup::Despawn(uint32 timeMSToDespawn /*= 0*/, uint32 forcedDespa
 }
 
 ////////////////////
-// Formation code //
+// Formation code // (生物组编队系统实现)
 ////////////////////
 
 FormationData::FormationData(CreatureGroup* gData, FormationEntry const& fEntry) :
@@ -760,17 +769,17 @@ FormationData::FormationData(CreatureGroup* gData, FormationEntry const& fEntry)
     {
         m_slotsMap.emplace(sData.SlotId, new FormationSlotData(sData.SlotId, sData.DbGuid, m_groupData));
 
-        // save real master guid
+        // save real master guid (记录 0 号默认领队槽位的数据库 GUID)
         if (sData.SlotId == 0)
             m_realMasterDBGuid = sData.DbGuid;
     }
 
     m_masterMotionType = static_cast<MovementGeneratorType>(m_formationEntry.MovementType);
 
-    // provided slot id should be ordered with no gap!
+    // provided slot id should be ordered with no gap! (要求配置中的槽位 ID 从 0 起连续无空洞)
     m_slotGuid = m_slotsMap.size();
 
-    // set current value from their defaults
+    // set current value from their defaults (初始化当前队形、间距与行为选项)
     m_currentFormationShape = m_formationEntry.Type;
     m_currentSpread = m_formationEntry.Spread;
     m_currentOptions = m_formationEntry.Options;
@@ -781,6 +790,7 @@ FormationData::~FormationData()
     sLog.outDebug("Deleting formation (%u)!!!!!", m_groupData->GetGroupEntry().Id);
 }
 
+// 为所有存活跟随者绑定 FORMATION_MOTION_TYPE 移动生成器以跟随当前领队
 bool FormationData::SetFollowersMaster()
 {
     Unit* master = GetMaster();
@@ -845,7 +855,7 @@ void FormationData::SetOptions(uint32 options)
     m_currentOptions = options;
 }
 
-// remove all creatures from formation data
+// remove all creatures from formation data (解散编队，清除移动生成器并解除成员槽位关联)
 void FormationData::Disband()
 {
     ClearMoveGen();
@@ -894,6 +904,7 @@ Unit* FormationData::GetMaster()
     return nullptr;
 }
 
+// 按配置的移动类型（路径点/线性路径/随机漫步/原地）启动领队移动并续接断点路点
 void FormationData::SetMasterMovement()
 {
     auto newMaster = GetMaster();
@@ -952,6 +963,7 @@ FormationSlotDataSPtr FormationData::GetFirstAliveSlot()
     return nullptr;
 }
 
+// 尝试选举新的编队领队（优先使用指定候选者，否则选择首个存活静态成员）并重算阵型
 bool FormationData::TrySetNewMaster(Unit* masterCandidat /*= nullptr*/)
 {
     auto masterSlotItr = m_slotsMap.find(0);
@@ -993,6 +1005,7 @@ bool FormationData::TrySetNewMaster(Unit* masterCandidat /*= nullptr*/)
     return false;
 }
 
+// 重置编队：移除脚本/玩家临时槽位，恢复静态成员与默认领队并启动跟随
 void FormationData::Reset()
 {
     m_mirrorState = false;
@@ -1048,6 +1061,7 @@ void FormationData::Reset()
     StartFollower();
 }
 
+// 编队成员死亡回调：若领队死亡则保存路点进度并在脱战后选举新领队
 void FormationData::OnDeath(Creature* creature)
 {
     auto slot = creature->GetFormationSlot();
@@ -1502,6 +1516,7 @@ void FormationData::SetMovementInfo(MovementGeneratorType moveType, uint32 wande
     }
 }
 
+// 周期性更新编队：恢复暂停的跟随者，并在随机队形移动时平滑更新成员微调偏移
 void FormationData::Update()
 {
     // check if stop timer for follower is hit
@@ -1552,6 +1567,7 @@ void FormationData::Update()
     }
 }
 
+// 根据当前编队形状（随机/纵队/横队/雁行/后扇形/前扇形/环绕）重新计算每个槽位的相对角度与距离
 void FormationData::FixSlotsPositions()
 {
     float defaultDist = m_currentSpread;

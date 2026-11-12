@@ -3,8 +3,14 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_MECHANAR_H
+
+// 能源舰副本数据头文件
+/* 遭遇战概述：
+ * 定义能源舰首领与电梯大门枚举。
+ */
 #define DEF_MECHANAR_H
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER           = 6,
@@ -84,20 +90,28 @@ static const SpawnLocation aBridgeEventLocs[MAX_BRIDGE_LOCATIONS][4] =
     },
 };
 
+// instance_mechanar 副本数据管理类
 class instance_mechanar : public ScriptedInstance
 {
     public:
         instance_mechanar(Map* pMap);
 
+        // 初始化副本数据与状态
         void Initialize() override;
 
+        // 玩家进入副本回调
         void OnPlayerEnter(Player* player) override;
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* go) override;
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* creature) override;
 
+        // 副本生物死亡处理
         void OnCreatureDeath(Creature* creature) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 type, uint32 data) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 uiType) const override;
 
         const char* Save() const override { return m_strInstData.c_str(); }

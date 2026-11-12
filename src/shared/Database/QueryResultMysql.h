@@ -30,6 +30,7 @@
 
 #include <mysql.h>
 
+// MySQL 查询结果集封装类，逐行拉取并释放 MYSQL_RES | MySQL query result wrapper fetching rows sequentially from MYSQL_RES
 class QueryResultMysql : public QueryResult
 {
     public:
@@ -37,10 +38,13 @@ class QueryResultMysql : public QueryResult
 
         ~QueryResultMysql();
 
+        // 读取下一行数据到 mCurrentRow，若无更多行则自动释放结果集 | Fetch next row into mCurrentRow, freeing result set at end
         bool NextRow() override;
 
     private:
+        // 将 MySQL 列类型转换为内部 Field::DataTypes | Convert MySQL column type to Field::DataTypes
         enum Field::DataTypes ConvertNativeType(enum_field_types mysqlType) const;
+        // 释放当前行数组和 MYSQL_RES 句柄 | Release mCurrentRow and free MYSQL_RES handle
         void EndQuery();
 
         MYSQL_RES* mResult;

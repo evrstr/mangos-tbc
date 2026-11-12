@@ -21,83 +21,87 @@ SDComment: Intro movement NYI; Event cleanup (despawn & resummon) NYI; Breath ph
 SDCategory: Sunwell Plateau
 EndScriptData */
 
+// 菲米丝（Felmyst）3号首领战 AI（地面毒气新星、空中深呼吸迷雾心控两阶段循环）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_INTRO           = -1580036,
-    SAY_KILL_1          = 25640,
-    SAY_KILL_2          = 25641,
-    SAY_DEATH           = -1580042,
-    SAY_TAKEOFF         = -1580040,
-    SAY_BREATH          = -1580039,
-    SAY_BERSERK         = -1580041,
-    EMOTE_DEEP_BREATH   = -1580107,
+    SAY_INTRO           = -1580036,                         // 开场 台词广播 ID
+    SAY_KILL_1          = 25640,                            // 击杀1 台词广播 ID
+    SAY_KILL_2          = 25641,                            // 击杀2 台词广播 ID
+    SAY_DEATH           = -1580042,                         // 死亡 台词广播 ID
+    SAY_TAKEOFF         = -1580040,                         // takeoff 台词广播 ID
+    SAY_BREATH          = -1580039,                         // 吐息 台词广播 ID
+    SAY_BERSERK         = -1580041,                         // 狂暴 台词广播 ID
+    EMOTE_DEEP_BREATH   = -1580107,                         // 深度吐息 表情动作 ID
 
-    SPELL_FELBLAZE_VISUAL       = 45068,        // Visual transform aura
-    SPELL_NOXIOUS_FUMES         = 47002,
+    SPELL_FELBLAZE_VISUAL       = 45068,        // Visual transform aura (视觉特效变形光环)
+    SPELL_NOXIOUS_FUMES         = 47002,                    // noxiousfumes 法术 ID
     SPELL_SOUL_SEVER            = 45918,        // kills all charmed targets at wipe - script effect for 45917
-    SPELL_SOUL_SEVER_INSTAKILL  = 45917,
-    SPELL_BERSERK               = 26662,
+    SPELL_SOUL_SEVER_INSTAKILL  = 45917,                    // 灵魂severinstakill 法术 ID
+    SPELL_BERSERK               = 26662,                    // 狂暴 法术 ID
 
-    // ground phase
-    SPELL_CLEAVE                = 19983,
-    SPELL_CORROSION             = 45866,
-    SPELL_GAS_NOVA              = 45855,
-    SPELL_ENCAPSULATE           = 45665,
-    SPELL_ENCAPSULATE_CHANNEL   = 45661,
+    // ground phase (ground阶段)
+    SPELL_CLEAVE                = 19983,                    // 顺劈斩 法术 ID
+    SPELL_CORROSION             = 45866,                    // corrosion 法术 ID
+    SPELL_GAS_NOVA              = 45855,                    // gas新星 法术 ID
+    SPELL_ENCAPSULATE           = 45665,                    // encapsulate 法术 ID
+    SPELL_ENCAPSULATE_CHANNEL   = 45661,                    // encapsulatechannel 法术 ID
 
-    // flight phase
-    SPELL_SUMMON_VAPOR          = 45391,
-    SPELL_VAPOR_SPAWN_TRIGGER   = 45388,
-    SPELL_SPEED_BURST           = 45495,
+    // flight phase (flight阶段)
+    SPELL_SUMMON_VAPOR          = 45391,                    // 召唤vapor 法术 ID
+    SPELL_VAPOR_SPAWN_TRIGGER   = 45388,                    // vapor生成触发 法术 ID
+    SPELL_SPEED_BURST           = 45495,                    // speedburst 法术 ID
     // SPELL_FOG_CORRUPTION        = 45582,
 
-    SPELL_TRIGGER_TOP_STRAFE    = 45586,
-    SPELL_TRIGGER_MIDDLE_STRAFE = 45622,
-    SPELL_TRIGGER_BOTTOM_STRAFE = 45623,
+    SPELL_TRIGGER_TOP_STRAFE    = 45586,                    // 触发topstrafe 法术 ID
+    SPELL_TRIGGER_MIDDLE_STRAFE = 45622,                    // 触发middlestrafe 法术 ID
+    SPELL_TRIGGER_BOTTOM_STRAFE = 45623,                    // 触发bottomstrafe 法术 ID
 
-    SPELL_STRAFE_TOP            = 45585,
-    SPELL_STRAFE_MIDDLE         = 45633,
-    SPELL_STRAFE_BOTTOM         = 45635,
+    SPELL_STRAFE_TOP            = 45585,                    // strafetop 法术 ID
+    SPELL_STRAFE_MIDDLE         = 45633,                    // strafemiddle 法术 ID
+    SPELL_STRAFE_BOTTOM         = 45635,                    // strafebottom 法术 ID
 
     // demonic vapor spells
-    SPELL_DEMONIC_VAPOR_PER     = 45411,
-    SPELL_DEMONIC_VAPOR         = 45399,
+    SPELL_DEMONIC_VAPOR_PER     = 45411,                    // demonicvaporper 法术 ID
+    SPELL_DEMONIC_VAPOR         = 45399,                    // demonicvapor 法术 ID
     // SPELL_SUMMON_BLAZING_DEAD = 45400,
     
-    SPELL_FOG_OF_CORRUPTION_CHARM = 45717,
-    SPELL_FOG_OF_CORRUPTION_BUFF = 45726,
+    SPELL_FOG_OF_CORRUPTION_CHARM = 45717,                  // fogof腐蚀charm 法术 ID
+    SPELL_FOG_OF_CORRUPTION_BUFF = 45726,                   // fogof腐蚀增益 法术 ID
 
-    SPELL_DUMMY_NUKE            = 21912,
+    SPELL_DUMMY_NUKE            = 21912,                    // dummynuke 法术 ID
 
-    // npcs
+    // npcs (相关 NPC)
     // NPC_UNYELDING_DEAD       = 25268,        // spawned during flight phase
     // NPC_DEMONIC_VAPOR           = 25265,        // npc which follows the player
     // NPC_DEMONIC_VAPOR_TRAIL     = 25267,
 
     // phases
-    PHASE_GROUND                = 1,
-    PHASE_AIR                   = 2,
-    PHASE_TRANSITION            = 3,
+    PHASE_GROUND                = 1,                        // ground 阶段 ID
+    PHASE_AIR                   = 2,                        // air 阶段 ID
+    PHASE_TRANSITION            = 3,                        // transition 阶段 ID
 
     // subphases for air phase
-    SUBPHASE_VAPOR              = 4,
-    SUBPHASE_BREATH_SIDE        = 5,
-    SUBPHASE_BREATH_PREPARE     = 6,
-    SUBPHASE_BREATH_MOVE        = 7,
+    SUBPHASE_VAPOR              = 4,                        // vapor 标识 ID
+    SUBPHASE_BREATH_SIDE        = 5,                        // 吐息side 标识 ID
+    SUBPHASE_BREATH_PREPARE     = 6,                        // 吐息prepare 标识 ID
+    SUBPHASE_BREATH_MOVE        = 7,                        // 吐息move 标识 ID
 
-    POINT_AGGRO                 = 8,
+    POINT_AGGRO                 = 8,                        // 开战 路径点 ID
 };
 
 /*######
 ## boss_felmyst
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum FelmystActions
 {
     FELMYST_BERSERK,
@@ -117,6 +121,7 @@ enum FelmystActions
     FELMYST_DUMMY_NUKE,
 };
 
+// 首领战 AI：标识 ID（felmyst）
 struct boss_felmystAI : public CombatAI
 {
     boss_felmystAI(Creature* creature) : CombatAI(creature, FELMYST_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -156,18 +161,19 @@ struct boss_felmystAI : public CombatAI
 
     // Air Phase timers
     uint8 m_uiSubPhase;
-    bool m_bIsLeftSide;
+    bool m_bIsLeftSide;                                     // IsLeftSide 状态标记
 
     uint8 m_uiDemonicVaporCount;
     uint8 m_uiCorruptionCount;
     uint8 m_uiCorruptionIndex;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
         m_uiPhase               = PHASE_GROUND;
 
-        // Air phase
+        // Air phase (Air阶段)
         m_uiSubPhase            = SUBPHASE_VAPOR;
         m_uiDemonicVaporCount   = 0;
         m_uiCorruptionCount     = 0;
@@ -240,6 +246,7 @@ struct boss_felmystAI : public CombatAI
             ResetTimer(FELMYST_WAYPOINT_DELAY, timer);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
@@ -254,6 +261,7 @@ struct boss_felmystAI : public CombatAI
         m_creature->ForcedDespawn();
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         if (m_instance)
@@ -280,6 +288,7 @@ struct boss_felmystAI : public CombatAI
             m_instance->SetData(TYPE_FELMYST, DONE);
     }
 
+    // 尸体清除回调
     void CorpseRemoved(uint32& time) override
     {
         CombatAI::CorpseRemoved(time);
@@ -288,6 +297,7 @@ struct boss_felmystAI : public CombatAI
                 static_cast<TemporarySpawn*>(m_creature)->UnSummon();
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != POINT_MOTION_TYPE)
@@ -519,6 +529,7 @@ struct boss_felmystAI : public CombatAI
 ## npc_demonic_vapor
 ######*/
 
+// 随从/NPC AI：vapor（demonic_vapor）
 struct npc_demonic_vaporAI : public CombatAI
 {
     npc_demonic_vaporAI(Creature* creature) : CombatAI(creature, 0)
@@ -552,6 +563,7 @@ struct npc_demonic_vaporAI : public CombatAI
         m_creature->CastSpell(nullptr, SPELL_VAPOR_SPAWN_TRIGGER, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_DEMONIC_VAPOR_TRAIL)
@@ -564,6 +576,7 @@ struct npc_demonic_vaporAI : public CombatAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SoulSever）
 struct SoulSever : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -577,6 +590,7 @@ struct SoulSever : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（FogOfCorruption）
 struct FogOfCorruption : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -603,6 +617,7 @@ struct FogOfCorruptionCharm : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（TriggerStrafe）
 struct TriggerStrafe : public SpellScript, public AuraScript
 {
     void OnInit(Spell* spell) const override
@@ -654,6 +669,7 @@ struct Encapsulate : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_felmyst
 void AddSC_boss_felmyst()
 {
     Script* pNewScript = new Script;

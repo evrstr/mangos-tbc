@@ -21,6 +21,14 @@ SDComment: Quest support: 9670, 9759
 SDCategory: Bloodmyst Isle
 EndScriptData */
 
+/**
+ * 秘血岛 (Bloodmyst Isle) 任务与护送 NPC 脚本
+ */
+
+/**
+ * 秘血岛 (Bloodmyst Isle) 任务与护送 NPC 脚本
+ */
+
 /* ContentData
 mob_webbed_creature
 npc_demolitionist_legoso
@@ -33,23 +41,25 @@ EndContentData */
 ## mob_webbed_creature
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    NPC_EXPEDITION_RESEARCHER       = 17681,
+    NPC_EXPEDITION_RESEARCHER       = 17681,                // NPC 条目 ID
 };
 
-// possible creatures to be spawned (too many to be added to enum)
+// possible creatures to be spawned (too many to be added to enum) (说明)
 const uint32 possibleSpawns[31] = {17322, 17661, 17496, 17522, 17340, 17352, 17333, 17524, 17654, 17348, 17339, 17345, 17353, 17336, 17550, 17330, 17701, 17321, 17325, 17320, 17683, 17342, 17715, 17334, 17341, 17338, 17337, 17346, 17344, 17327};
 
+// mob_webbed_creatureAI AI 逻辑实现
 struct mob_webbed_creatureAI : public Scripted_NoMovementAI
 {
     mob_webbed_creatureAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
     void AttackStart(Unit* /*pWho*/) override { }
     void MoveInLineOfSight(Unit* /*pWho*/) override { }
 
-    void JustDied(Unit* pKiller) override
+    void JustDied(Unit* pKiller) override                   // 死亡回调处理
     {
         uint32 uiSpawnCreatureEntry = 0;
 
@@ -68,11 +78,11 @@ struct mob_webbed_creatureAI : public Scripted_NoMovementAI
 
         if (uiSpawnCreatureEntry)
             if (Creature* spawnedCreature = m_creature->SummonCreature(uiSpawnCreatureEntry, 0.0f, 0.0f, 0.0f, m_creature->GetOrientation(), TEMPSPAWN_TIMED_OOC_DESPAWN, 25000))
-                spawnedCreature->GetMotionMaster()->MoveRandomAroundPoint(spawnedCreature->GetPositionX(), spawnedCreature->GetPositionY(), spawnedCreature->GetPositionZ(), 5.f); // Needed because one or more of the spawned creatures has MovementType 2 by default, causing them to go flying to the first default waypoint
+                spawnedCreature->GetMotionMaster()->MoveRandomAroundPoint(spawnedCreature->GetPositionX(), spawnedCreature->GetPositionY(), spawnedCreature->GetPositionZ(), 5.f); // Needed because one or more of the spawned creatures has MovementType 2 by default, causing them to go flying to the first default waypoint (说明)
     }
 };
 
-UnitAI* GetAI_mob_webbed_creature(Creature* pCreature)
+UnitAI* GetAI_mob_webbed_creature(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new mob_webbed_creatureAI(pCreature);
 }
@@ -81,68 +91,69 @@ UnitAI* GetAI_mob_webbed_creature(Creature* pCreature)
 ## npc_demolitionist_legoso
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_ESCORT_START            = -1000185,
-    SAY_ESCORT_LEGOSO_1         = -1000186,
-    SAY_ESCORT_LEGOSO_2         = -1001198,
-    SAY_ESCORT_LEGOSO_3         = -1001199,
-    SAY_ESCORT_LEGOSO_4         = -1001200,
-    SAY_ESCORT_COUNT_3          = -1001201,
-    SAY_ESCORT_COUNT_2          = -1001202,
-    SAY_ESCORT_COUNT_1          = -1001203,
-    SAY_ESCORT_CONTINUE         = -1001204,
-    SAY_ESCORT_LEGOSO_5         = -1001205,
-    SAY_ESCORT_LEGOSO_6         = -1001206,
-    SAY_ESCORT_LEGOSO_7         = -1001207,
-    SAY_ESCORT_LEGOSO_8         = -1001208,
-    SAY_ESCORT_LEGOSO_9         = -1001209,
-    SAY_ESCORT_LEGOSO_10        = -1001210,
-    SAY_LEGOSO_AGGRO            = -1001211,
-    SAY_ESCORT_COMPLETE_1       = -1001212,
-    SAY_ESCORT_COMPLETE_2       = -1001213,
+    SAY_ESCORT_START            = -1000185,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_1         = -1000186,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_2         = -1001198,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_3         = -1001199,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_4         = -1001200,                 // 喊话/表情文本 ID
+    SAY_ESCORT_COUNT_3          = -1001201,                 // 喊话/表情文本 ID
+    SAY_ESCORT_COUNT_2          = -1001202,                 // 喊话/表情文本 ID
+    SAY_ESCORT_COUNT_1          = -1001203,                 // 喊话/表情文本 ID
+    SAY_ESCORT_CONTINUE         = -1001204,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_5         = -1001205,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_6         = -1001206,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_7         = -1001207,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_8         = -1001208,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_9         = -1001209,                 // 喊话/表情文本 ID
+    SAY_ESCORT_LEGOSO_10        = -1001210,                 // 喊话/表情文本 ID
+    SAY_LEGOSO_AGGRO            = -1001211,                 // 喊话/表情文本 ID
+    SAY_ESCORT_COMPLETE_1       = -1001212,                 // 喊话/表情文本 ID
+    SAY_ESCORT_COMPLETE_2       = -1001213,                 // 喊话/表情文本 ID
 
-    NPC_LEGOSO                  = 17982,
-    NPC_SIRONAS                 = 17678,
+    NPC_LEGOSO                  = 17982,                    // NPC 条目 ID
+    NPC_SIRONAS                 = 17678,                    // NPC 条目 ID
 
-    GO_EXPLOSIVES_1             = 182088,
-    GO_EXPLOSIVES_2             = 182091,
-    GO_COIL_FIRE_L              = 182090,
-    GO_COIL_FIRE_S              = 182089,
+    GO_EXPLOSIVES_1             = 182088,                   // 游戏对象条目 ID
+    GO_EXPLOSIVES_2             = 182091,                   // 游戏对象条目 ID
+    GO_COIL_FIRE_L              = 182090,                   // 游戏对象条目 ID
+    GO_COIL_FIRE_S              = 182089,                   // 游戏对象条目 ID
 
-    QUEST_ENDING_THEIR_WORLD    = 9759,
+    QUEST_ENDING_THEIR_WORLD    = 9759,                     // 任务 ID
 
-    POINT_ID_EXPLOSIVES_1       = 11,
-    POINT_ID_EXPLOSIVES_2       = 12,
-    POINT_ID_EXPLOSIVES_3       = 13,
-    POINT_ID_EXPLOSIVES_4       = 14,
-    POINT_ID_EXPLOSIVES_5       = 15,
-    POINT_ID_EXPLOSIVES_6       = 16,
-    POINT_ID_EXPLOSIVES_7       = 17,
-    POINT_ID_EXPLOSIVES_8       = 18,
-    POINT_ID_EXPLOSIVES_9       = 19,
+    POINT_ID_EXPLOSIVES_1       = 11,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_2       = 12,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_3       = 13,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_4       = 14,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_5       = 15,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_6       = 16,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_7       = 17,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_8       = 18,                       // 路径点 ID
+    POINT_ID_EXPLOSIVES_9       = 19,                       // 路径点 ID
 
-    POINT_ID_COUNT_START        = 20,
-    POINT_ID_COUNT_FINISHED     = 21,
+    POINT_ID_COUNT_START        = 20,                       // 路径点 ID
+    POINT_ID_COUNT_FINISHED     = 21,                       // 路径点 ID
 
-    POINT_ID_TEXT_1             = 30,
-    POINT_ID_TEXT_2             = 31,
-    POINT_ID_TEXT_3             = 32,
+    POINT_ID_TEXT_1             = 30,                       // 路径点 ID
+    POINT_ID_TEXT_2             = 31,                       // 路径点 ID
+    POINT_ID_TEXT_3             = 32,                       // 路径点 ID
 };
 
 static const DialogueEntry aLegosoDialogue[] =
 {
-    {POINT_ID_EXPLOSIVES_1,     0,          10000},             // reach explosive site 1
+    {POINT_ID_EXPLOSIVES_1,     0,          10000},             // reach explosive site 1 (到达第1处炸药安放点)
     {POINT_ID_TEXT_1,           0,          18000},
     {SAY_ESCORT_LEGOSO_4,       NPC_LEGOSO, 0},
 
-    {POINT_ID_COUNT_START,      0,          1000},              // countdown for explosion
+    {POINT_ID_COUNT_START,      0,          1000},              // countdown for explosion (爆炸倒计时)
     {SAY_ESCORT_COUNT_3,        NPC_LEGOSO, 1000},
     {SAY_ESCORT_COUNT_2,        NPC_LEGOSO, 1000},
     {SAY_ESCORT_COUNT_1,        NPC_LEGOSO, 1000},
     {POINT_ID_COUNT_FINISHED,   0,          0},
 
-    {POINT_ID_EXPLOSIVES_2,     0,          1000},              // explode first site
+    {POINT_ID_EXPLOSIVES_2,     0,          1000},              // explode first site (引爆第一处据点)
     {POINT_ID_EXPLOSIVES_3,     0,          2000},
     {SAY_ESCORT_CONTINUE,       NPC_LEGOSO, 6000},
     {POINT_ID_EXPLOSIVES_4,     0,          0},
@@ -153,15 +164,15 @@ static const DialogueEntry aLegosoDialogue[] =
     {SAY_ESCORT_LEGOSO_7,       NPC_LEGOSO, 5000},
     {SAY_ESCORT_LEGOSO_8,       NPC_LEGOSO, 0},
 
-    {POINT_ID_EXPLOSIVES_5,     0,          10000},             // reach explosive site 2
+    {POINT_ID_EXPLOSIVES_5,     0,          10000},             // reach explosive site 2 (到达第2处炸药安放点)
     {SAY_ESCORT_LEGOSO_9,       NPC_LEGOSO, 17000},
     {POINT_ID_TEXT_3,           0,          4000},
     {POINT_ID_EXPLOSIVES_6,     0,          0},
 
-    {SAY_LEGOSO_AGGRO,          NPC_LEGOSO, 1000},              // combat start
+    {SAY_LEGOSO_AGGRO,          NPC_LEGOSO, 1000},              // combat start (战斗开始)
     {POINT_ID_EXPLOSIVES_7,     0,          0},
 
-    {POINT_ID_EXPLOSIVES_8,     0,          5000},              // quest ending event
+    {POINT_ID_EXPLOSIVES_8,     0,          5000},              // quest ending event (任务终章结算事件)
     {SAY_ESCORT_COMPLETE_1,     NPC_LEGOSO, 2000},
     {QUEST_ENDING_THEIR_WORLD,  0,          7000},
     {SAY_ESCORT_COMPLETE_2,     NPC_LEGOSO, 5000},
@@ -169,6 +180,7 @@ static const DialogueEntry aLegosoDialogue[] =
     {0, 0, 0},
 };
 
+// npc_demolitionist_legosoAI NPC 脚本 AI
 struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
 {
     npc_demolitionist_legosoAI(Creature* pCreature) : npc_escortAI(pCreature),
@@ -182,11 +194,11 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
 
     GuidList m_lExplosivesGuidsList;
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
-    void ReceiveAIEvent(AIEventType eventType, Unit* pSender, Unit* pInvoker, uint32 uiMiscValue) override
+    void ReceiveAIEvent(AIEventType eventType, Unit* pSender, Unit* pInvoker, uint32 uiMiscValue) override    // 接收 AI 脚本事件通知
     {
-        // start quest
+        // start quest (开启任务)
         if (eventType == AI_EVENT_START_ESCORT && pInvoker->GetTypeId() == TYPEID_PLAYER)
         {
             m_bFirstExplosives = true;
@@ -194,12 +206,12 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
             m_creature->SetFactionTemporary(FACTION_ESCORT_A_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
             Start(true, (Player*)pInvoker, GetQuestTemplateStore(uiMiscValue));
         }
-        // start event epilog
+        // start event epilog (开启事件尾声剧情)
         else if (eventType == AI_EVENT_CUSTOM_EVENTAI_A && pSender->GetEntry() == NPC_SIRONAS)
             StartNextDialogueText(POINT_ID_EXPLOSIVES_8);
     }
 
-    void WaypointStart(uint32 uiWP) override
+    void WaypointStart(uint32 uiWP) override                // 出发前往指定路径点回调
     {
         switch (uiWP)
         {
@@ -209,7 +221,7 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void WaypointReached(uint32 uiWP) override
+    void WaypointReached(uint32 uiWP) override              // 到达指定路径点回调
     {
         switch (uiWP)
         {
@@ -217,14 +229,14 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
                 DoScriptText(SAY_ESCORT_LEGOSO_1, m_creature);
                 break;
             case 24:
-                // prepare first event
+                // prepare first event (准备第一阶段事件)
                 SetEscortPaused(true);
                 m_creature->SetFacingTo(1.334f);
                 m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
                 StartNextDialogueText(POINT_ID_EXPLOSIVES_1);
                 break;
             case 26:
-                // countdown for first event
+                // countdown for first event (第一阶段倒计时)
                 SetEscortPaused(true);
                 m_creature->SetFacingTo(1.099f);
                 StartNextDialogueText(POINT_ID_COUNT_START);
@@ -238,14 +250,14 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
                 StartNextDialogueText(SAY_ESCORT_LEGOSO_7);
                 break;
             case 38:
-                // prepare second event
+                // prepare second event (准备第二阶段事件)
                 SetEscortPaused(true);
                 m_creature->SetFacingTo(5.961f);
                 m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
                 StartNextDialogueText(POINT_ID_EXPLOSIVES_5);
                 break;
             case 39:
-                // countdown for second event
+                // countdown for second event (第二阶段倒计时)
                 m_creature->SetFacingTo(5.654f);
                 StartNextDialogueText(POINT_ID_COUNT_START);
                 break;
@@ -256,7 +268,7 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    // Function to respawn GOs
+    // Function to respawn GOs (重新刷新游戏对象)
     void DoRespawnObjects(uint32 uiEntry, float fRange)
     {
         std::list<GameObject*> lBarrelsInRange;
@@ -269,7 +281,7 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
             return;
         }
 
-        // respawn explosives and store for future use
+        // respawn explosives and store for future use (刷新炸药桶并存储GUID供后续使用)
         for (std::list<GameObject*>::const_iterator itr = lBarrelsInRange.begin(); itr != lBarrelsInRange.end(); ++itr)
         {
             (*itr)->SetRespawnTime(5 * MINUTE);
@@ -278,7 +290,7 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    // Function to use the recently spawned GOs
+    // Function to use the recently spawned GOs (使用刚刷新的游戏对象)
     void DoUseExplosiveTraps()
     {
         for (GuidList::const_iterator itr = m_lExplosivesGuidsList.begin(); itr != m_lExplosivesGuidsList.end(); ++itr)
@@ -291,7 +303,7 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    // Function to respawn fire GOs
+    // Function to respawn fire GOs (重新刷新火堆游戏对象)
     void DoRespawnFires(bool bFirstEvent)
     {
         std::list<GameObject*> lFiresInRange;
@@ -331,7 +343,7 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
                     DoScriptText(SAY_ESCORT_LEGOSO_10, m_creature, pPlayer);
                 break;
             case SAY_ESCORT_LEGOSO_4:
-                // first event
+                // first event (第一阶段事件)
                 SetEscortPaused(false);
                 m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                 m_creature->HandleEmote(EMOTE_STATE_NONE);
@@ -339,7 +351,7 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
                 DoRespawnObjects(GO_EXPLOSIVES_1, 10.0f);
                 break;
             case POINT_ID_COUNT_FINISHED:
-                // different actions depending on the event
+                // different actions depending on the event (根据事件类型执行不同动作)
                 if (m_bFirstExplosives)
                 {
                     StartNextDialogueText(POINT_ID_EXPLOSIVES_2);
@@ -357,21 +369,21 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
                 SetEscortPaused(false);
                 break;
             case POINT_ID_EXPLOSIVES_6:
-                // second event
+                // second event (第二阶段事件)
                 SetEscortPaused(false);
                 m_creature->SetStandState(UNIT_STAND_STATE_STAND);
 
                 DoRespawnObjects(GO_EXPLOSIVES_2, 10.0f);
                 break;
             case SAY_LEGOSO_AGGRO:
-                // explode traps and start combat event
+                // explode traps and start combat event (引爆炸弹陷阱并开启战斗)
                 DoUseExplosiveTraps();
                 if (Creature* pSironas = GetClosestCreatureWithEntry(m_creature, NPC_SIRONAS, 40.0f))
                 {
                     m_creature->SetFacingToObject(pSironas);
                     pSironas->InterruptNonMeleeSpells(false);
                     pSironas->RemoveAllAurasOnEvade();
-                    // ToDo: find the proper spell to scale up Sironas
+                    // ToDo: find the proper spell to scale up Sironas (说明)
                 }
                 break;
             case POINT_ID_EXPLOSIVES_7:
@@ -384,12 +396,12 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
                 break;
             case QUEST_ENDING_THEIR_WORLD:
                 m_creature->HandleEmote(EMOTE_ONESHOT_CHEER_NOSHEATHE);
-                // complete quest
+                // complete quest (完成任务)
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_ENDING_THEIR_WORLD, m_creature);
                 break;
             case POINT_ID_EXPLOSIVES_9:
-                // event complete
+                // event complete (事件完成)
                 SetEscortPaused(false);
                 break;
         }
@@ -403,14 +415,14 @@ struct npc_demolitionist_legosoAI : public npc_escortAI, private DialogueHelper
         return nullptr;
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         DialogueUpdate(uiDiff);
         npc_escortAI::UpdateEscortAI(uiDiff);
     }
 };
 
-bool QuestAccept_npc_demolitionist_legoso(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_demolitionist_legoso(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_ENDING_THEIR_WORLD)
         pCreature->AI()->SendAIEvent(AI_EVENT_START_ESCORT, pPlayer, pCreature, pQuest->GetQuestId());
@@ -418,16 +430,17 @@ bool QuestAccept_npc_demolitionist_legoso(Player* pPlayer, Creature* pCreature, 
     return true;
 }
 
+// 常量与事件枚举
 enum
 {
-    // quest 9629
-    SPELL_TAG_MURLOC                    = 30877,
-    SPELL_TAG_MURLOC_PROC               = 30875,
-    NPC_BLACKSILT_MURLOC                = 17326,
-    NPC_TAGGED_MURLOC                   = 17654,
+    // quest 9629 (任务 9629)
+    SPELL_TAG_MURLOC                    = 30877,            // 技能法术 ID
+    SPELL_TAG_MURLOC_PROC               = 30875,            // 技能法术 ID
+    NPC_BLACKSILT_MURLOC                = 17326,            // NPC 条目 ID
+    NPC_TAGGED_MURLOC                   = 17654,            // NPC 条目 ID
 };
 
-// 30877 - Tag Murloc
+// 30877 - Tag Murloc (法术 30877 - Tag Murloc)
 struct TagMurloc : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -449,7 +462,7 @@ struct TagMurloc : public AuraScript
     }
 };
 
-// 30875 - Tag Murloc
+// 30875 - Tag Murloc (法术 30875 - Tag Murloc)
 struct TagMurlocDummy : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -461,7 +474,7 @@ struct TagMurlocDummy : public SpellScript
     }
 };
 
-void AddSC_bloodmyst_isle()
+void AddSC_bloodmyst_isle() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "mob_webbed_creature";

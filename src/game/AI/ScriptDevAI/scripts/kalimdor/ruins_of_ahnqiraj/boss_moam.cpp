@@ -21,30 +21,36 @@ SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟：莫阿姆 (Moam) 充能石像首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_AGGRO              = -1509000,
-    EMOTE_MANA_FULL          = -1509001,
-    EMOTE_ENERGIZING         = -1509028,
+    EMOTE_AGGRO              = -1509000,                    // 剧情台词/喊话文本 ID
+    EMOTE_MANA_FULL          = -1509001,                    // 剧情台词/喊话文本 ID
+    EMOTE_ENERGIZING         = -1509028,                    // 剧情台词/喊话文本 ID
 
-    SPELL_TRAMPLE            = 15550,
-    SPELL_DOUBLE_ATTACK      = 18941,
-    SPELL_DRAIN_MANA         = 25676,
-    SPELL_ARCANE_ERUPTION    = 25672,
-    SPELL_SUMMON_MANAFIENDS  = 25684,
-    SPELL_ENERGIZE           = 25685,
+    SPELL_TRAMPLE            = 15550,                       // 技能法术 ID
+    SPELL_DOUBLE_ATTACK      = 18941,                       // 技能法术 ID
+    SPELL_DRAIN_MANA         = 25676,                       // 技能法术：吸取法力
+    SPELL_ARCANE_ERUPTION    = 25672,                       // 技能法术 ID
+    SPELL_SUMMON_MANAFIENDS  = 25684,                       // 技能法术 ID
+    SPELL_ENERGIZE           = 25685,                       // 技能法术 ID
 
-    SPELL_SUMMON_MANA_FIEND_1 = 25681,
-    SPELL_SUMMON_MANA_FIEND_2 = 25682,
-    SPELL_SUMMON_MANA_FIEND_3 = 25683,
+    SPELL_SUMMON_MANA_FIEND_1 = 25681,                      // 技能法术 ID
+    SPELL_SUMMON_MANA_FIEND_2 = 25682,                      // 技能法术 ID
+    SPELL_SUMMON_MANA_FIEND_3 = 25683,                      // 技能法术 ID
 
-    NPC_MANA_FIEND           = 15527,
+    NPC_MANA_FIEND           = 15527,                       // NPC 条目 ID
 };
 
+// MoamActions 战斗行为动作枚举
 enum MoamActions
 {
     MOAM_ARCANE_ERUPTION,
@@ -53,10 +59,11 @@ enum MoamActions
     MOAM_TRAMPLE,
     MOAM_DOUBLE_ATTACK,
     MOAM_MANA_DRAIN,
-    MOAM_ACTION_MAX,
+    MOAM_ACTION_MAX,                                        // 战斗行为动作
     MOAM_CANCEL_ENERGIZE,
 };
 
+// boss_moamAI 首领战斗 AI
 struct boss_moamAI : public CombatAI
 {
     boss_moamAI(Creature* creature) :
@@ -86,7 +93,7 @@ struct boss_moamAI : public CombatAI
     uint8 m_uiPhase;
     GuidVector m_summons;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         m_creature->SetPower(POWER_MANA, 0);
@@ -98,7 +105,7 @@ struct boss_moamAI : public CombatAI
         DoScriptText(EMOTE_AGGRO, m_creature);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         if (summoned->GetEntry() == NPC_MANA_FIEND)
         {
@@ -120,7 +127,7 @@ struct boss_moamAI : public CombatAI
             m_creature->RemoveAurasDueToSpell(SPELL_ENERGIZE);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -129,7 +136,7 @@ struct boss_moamAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_ERUPTION) == CAST_OK)
                 {
                     DoScriptText(EMOTE_MANA_FULL, m_creature);
-                    ResetCombatAction(action, 5000); // small CD to prevent AI spam
+                    ResetCombatAction(action, 5000); // small CD to prevent AI spam (说明)
                 }
                 break;
             }
@@ -181,7 +188,7 @@ struct SummonManaFiendsMoam : public SpellScript
     }
 };
 
-void AddSC_boss_moam()
+void AddSC_boss_moam() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_moam";

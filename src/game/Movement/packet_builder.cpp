@@ -32,6 +32,7 @@ namespace Movement
         b >> v.x >> v.y >> v.z;
     }
 
+    /// 写入怪物移动封包的公共头部（当前位置、样条 ID、朝向参数、样条标志与总耗时）
     void PacketBuilder::WriteCommonMonsterMovePart(const MoveSpline& move_spline, WorldPacket& data)
     {
         MoveSplineFlag splineflags = move_spline.splineflags;
@@ -65,21 +66,23 @@ namespace Movement
         }
 
         // add fake Runmode flag - client has strange issues without that flag
+        // 强制附加 Runmode 标志：客户端缺少该位时会出现异常表现
         data << uint32((splineflags & ~MoveSplineFlag::Mask_No_Monster_Move) | MoveSplineFlag::Runmode);
         data << move_spline.Duration();
     }
 
+    /// 序列化线性路径顶点：先写终点坐标，中间节点按与中点的 11-bit 压缩偏移量写入
     void WriteLinearPath(const Spline<int32>& spline, ByteBuffer& data)
     {
         uint32 last_idx = spline.getPointCount() - 3;
         const Vector3* real_path = &spline.getPoint(1);
 
         data << last_idx;
-        data << real_path[last_idx];   // destination
+        data << real_path[last_idx];   // destination (终点绝对坐标)
         if (last_idx > 1)
         {
             Vector3 middle = (real_path[0] + real_path[last_idx]) / 2.f;
-            // first and last points already appended
+            // first and last points already appended (首尾点已分别写入公共头部与终点字段，此处仅打包中间偏移点)
             for (uint32 i = 1; i < last_idx; ++i)
             {
                 Vector3 offset = middle - real_path[i];
@@ -88,6 +91,7 @@ namespace Movement
         }
     }
 
+    /// 序列化非循环 Catmull-Rom 路径顶点（跳过首尾虚拟控制点，直接写入原始 Vector3）
     void WriteCatmullRomPath(const Spline<int32>& spline, ByteBuffer& data)
     {
         uint32 count = spline.getPointCount() - 3;
@@ -95,6 +99,7 @@ namespace Movement
         data.append<Vector3>(&spline.getPoint(2), count);
     }
 
+    /// 序列化循环 Catmull-Rom 路径顶点（去掉首尾虚拟及闭合重复点）
     void WriteCatmullRomCyclicPath(Spline<int32> const& spline, ByteBuffer& data)
     {
         uint32 count = spline.getPointCount() - 4;
@@ -102,6 +107,7 @@ namespace Movement
         data.append<Vector3>(&spline.getPoint(2), count);
     }
 
+    /// 写入完整的 SMSG_MONSTER_MOVE 封包体（公共头部 + 线性或 Catmull-Rom 路径点列表）
     void PacketBuilder::WriteMonsterMove(const MoveSpline& move_spline, WorldPacket& data)
     {
         WriteCommonMonsterMovePart(move_spline, data);
@@ -119,6 +125,7 @@ namespace Movement
             WriteLinearPath(spline, data);
     }
 
+    /// 写入对象创建块（SMSG_UPDATE_OBJECT）中的运动样条完整状态快照
     void PacketBuilder::WriteCreate(const MoveSpline& move_spline, ByteBuffer& data)
     {
         // WriteClientStatus(mov,data);

@@ -20,6 +20,7 @@
 
 #include "DatabaseEnv.h"
 
+// 构造 PostgreSQL 结果集并初始化各列字段类型 | Construct PostgreSQL result wrapper and set column types from PQftype
 QueryResultPostgre::QueryResultPostgre(PGresult* result, uint64 rowCount, uint32 fieldCount) :
     QueryResult(rowCount, fieldCount), mResult(result),  mTableIndex(0)
 {
@@ -36,6 +37,7 @@ QueryResultPostgre::~QueryResultPostgre()
     EndQuery();
 }
 
+// 读取下一行元组数据到 mCurrentRow | Fetch next tuple row into mCurrentRow
 bool QueryResultPostgre::NextRow()
 {
     if (!mResult)
@@ -61,6 +63,7 @@ bool QueryResultPostgre::NextRow()
     return true;
 }
 
+// 释放行缓冲区与 PGresult 句柄 | Release row buffer and clear PGresult
 void QueryResultPostgre::EndQuery()
 {
     delete[] mCurrentRow;
@@ -73,7 +76,8 @@ void QueryResultPostgre::EndQuery()
     }
 }
 
-// see types in #include <postgre/pg_type.h>
+// see types in #include <postgre/pg_type.h> | 参见 <postgre/pg_type.h> 中的类型 OID 定义
+// 将 PostgreSQL OID 转换为内部通用数据类型 | Map PostgreSQL OID to internal Field::DataTypes
 enum Field::DataTypes QueryResultPostgre::ConvertNativeType(Oid  pOid) const
 {
     switch (pOid)
@@ -92,23 +96,23 @@ enum Field::DataTypes QueryResultPostgre::ConvertNativeType(Oid  pOid) const
         case FLOAT8OID:
         case NUMERICOID:
             return Field::DB_TYPE_FLOAT;
-        case DATEOID:                                       // Date
-        case RELTIMEOID:                                    // Date
-        case TIMEOID:                                       // Time
-        case TIMETZOID:                                     // Time
-        case ABSTIMEOID:                                    // DateTime
-        case INTERVALOID:                                   // DateTime
-        case TIMESTAMPOID:                                  // DateTime
-        case TIMESTAMPTZOID:                                // DateTime
-        case INT2OID:                                       // Int
-        case INT2VECTOROID:                                 // Int
-        case INT4OID:                                       // Int
-        case OIDOID:                                        // Int
-        case CHAROID:                                       // UInt
-        case INT8OID:                                       // LongLong
+        case DATEOID:                                       // Date | 日期类型
+        case RELTIMEOID:                                    // Date | 相对时间
+        case TIMEOID:                                       // Time | 时间类型
+        case TIMETZOID:                                     // Time | 带时区时间
+        case ABSTIMEOID:                                    // DateTime | 绝对时间
+        case INTERVALOID:                                   // DateTime | 时间间隔
+        case TIMESTAMPOID:                                  // DateTime | 时间戳
+        case TIMESTAMPTZOID:                                // DateTime | 带时区时间戳
+        case INT2OID:                                       // Int | 16位整数
+        case INT2VECTOROID:                                 // Int | 16位整数向量
+        case INT4OID:                                       // Int | 32位整数
+        case OIDOID:                                        // Int | 对象标识符
+        case CHAROID:                                       // UInt | 单字符/无符号整型
+        case INT8OID:                                       // LongLong | 64位整数
             return Field::DB_TYPE_INTEGER;
         case BOOLOID:
-            return Field::DB_TYPE_BOOL;                     // Bool
+            return Field::DB_TYPE_BOOL;                     // Bool | 布尔类型
         /*
                 case BOXOID:    Rect;
                 case LINEOID:   Rect;

@@ -21,13 +21,14 @@
 
 /**
  * @class ThreadingModel<T>
- *
+ * 线程同步模型策略（包含无锁单线程、对象级锁与类级锁）
  */
 
 #include "Platform/Define.h"
 
 namespace MaNGOS
 {
+    /// RAII 通用互斥锁守卫
     template<typename MUTEX>
     class GeneralLock
     {
@@ -51,12 +52,13 @@ namespace MaNGOS
             MUTEX& i_mutex;
     };
 
+    /// 单线程空锁策略（无实际加锁开销）
     template<class T>
     class SingleThreaded
     {
         public:
 
-            struct Lock                                     // empty object
+            struct Lock                                     // empty object | 空锁对象
             {
                 Lock()
                 {
@@ -65,12 +67,13 @@ namespace MaNGOS
                 {
                 }
 
-                Lock(const SingleThreaded<T>&)              // for single threaded we ignore this
+                Lock(const SingleThreaded<T>&)              // for single threaded we ignore this | 单线程模型下忽略此参数
                 {
                 }
             };
     };
 
+    /// 对象级锁定策略（每个对象实例持有独立互斥锁）
     template<class T, class MUTEX>
     class ObjectLevelLockable
     {
@@ -99,13 +102,14 @@ namespace MaNGOS
 
         private:
 
-            // prevent the compiler creating a copy construct
+            // prevent the compiler creating a copy construct | 阻止编译器生成默认拷贝构造函数与赋值运算符
             ObjectLevelLockable(const ObjectLevelLockable<T, MUTEX>&);
             ObjectLevelLockable<T, MUTEX>& operator=(const ObjectLevelLockable<T, MUTEX>&);
 
             MUTEX i_mtx;
     };
 
+    /// 类级锁定策略（同一类型所有实例共享静态互斥锁）
     template<class T, class MUTEX>
     class ClassLevelLockable
     {

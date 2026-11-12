@@ -19,7 +19,7 @@
 #include "Spells/Scripts/SpellScript.h"
 #include "Spells/SpellMgr.h"
 
-// 11170 - Shatter
+// 11170 - Shatter (碎冰天赋：对处于冻结状态的目标大幅提高法术暴击几率)
 struct ShatterMage : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -31,7 +31,7 @@ struct ShatterMage : public AuraScript
     {
         switch (aura->GetModifier()->m_miscvalue)
         {
-            // Shatter
+            // Shatter (按天赋等级增加 +10% ~ +50% 暴击率)
             case 849: if (target->isFrozen()) chance += 10.0f; break;
             case 910: if (target->isFrozen()) chance += 20.0f; break;
             case 911: if (target->isFrozen()) chance += 30.0f; break;
@@ -43,16 +43,16 @@ struct ShatterMage : public AuraScript
     }
 };
 
-// 543 - Fire Ward
+// 543 - Fire Ward (防护火焰结界：若已学习“熔岩护盾”天赋，则叠加反弹法术反射几率效果)
 struct FireWardMage : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         if (data.caster)
         {
-            if (data.caster->HasSpell(13043)) // Molten Shields
+            if (data.caster->HasSpell(13043)) // Molten Shields (熔岩护盾等级 2)
                 value += data.caster->CalculateSpellEffectValue(data.target, sSpellTemplate.LookupEntry<SpellEntry>(13043), EFFECT_INDEX_0);
-            else if (data.caster->HasSpell(11094)) // Molten Shields
+            else if (data.caster->HasSpell(11094)) // Molten Shields (熔岩护盾等级 1)
                 value += data.caster->CalculateSpellEffectValue(data.target, sSpellTemplate.LookupEntry<SpellEntry>(11094), EFFECT_INDEX_0);
             
         }
@@ -60,16 +60,16 @@ struct FireWardMage : public AuraScript
     }
 };
 
-// 6143 - Frost Ward
+// 6143 - Frost Ward (防护冰霜结界：受“冰霜结界”天赋影响提高反射/吸收值)
 struct FrostWardMage : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         if (data.caster)
         {
-            if (data.caster->HasAura(11189)) // Frost Warding
+            if (data.caster->HasAura(11189)) // Frost Warding (冰霜结界等级 1)
                 value += data.caster->CalculateSpellEffectValue(data.target, sSpellTemplate.LookupEntry<SpellEntry>(11189), EFFECT_INDEX_1);
-            else if (data.caster->HasAura(28332)) // Frost Warding
+            else if (data.caster->HasAura(28332)) // Frost Warding (冰霜结界等级 2)
                 value += data.caster->CalculateSpellEffectValue(data.target, sSpellTemplate.LookupEntry<SpellEntry>(28332), EFFECT_INDEX_1);
 
         }
@@ -77,7 +77,7 @@ struct FrostWardMage : public AuraScript
     }
 };
 
-// 42208 - Blizzard
+// 42208 - Blizzard (暴风雪：根据“强化暴风雪”天赋预施放对应的寒冷减速子法术)
 struct Blizzard : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -91,7 +91,7 @@ struct Blizzard : public SpellScript
     }
 };
 
-// 31679 - Molten Fury
+// 31679 - Molten Fury (熔岩之怒：目标生命值低于 20% 时按百分比提高对其造成的法术伤害)
 struct MoltenFury : public AuraScript
 {
     void OnDamageCalculate(Aura* aura, Unit* /*attacker*/, Unit* victim, int32& /*advertisedBenefit*/, float& totalMod) const override
@@ -101,7 +101,7 @@ struct MoltenFury : public AuraScript
     }
 };
 
-// 30455 - Ice Lance
+// 30455 - Ice Lance (冰枪术：对冻结目标造成 3 倍伤害)
 struct IceLance : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -110,11 +110,12 @@ struct IceLance : public SpellScript
             return;
 
         Unit* target = spell->GetUnitTarget();
-        if (target->isFrozen()) // does not affect damage taken modifiers per research
+        if (target->isFrozen()) // does not affect damage taken modifiers per research (冻结目标伤害倍率置为 3.0)
             spell->SetDamageDoneModifier(3.f, EFFECT_INDEX_0);
     }
 };
 
+// 注册法师职业法术脚本
 void LoadMageScripts()
 {
     RegisterSpellScript<ShatterMage>("spell_shatter_mage");

@@ -21,21 +21,25 @@ SDComment:
 SDCategory: Caverns of Time, Mount Hyjal
 EndScriptData */
 
+/**
+ * 海加尔峰战役：亡灵天灾与联盟部落基地援军通用战斗 AI 实现
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "hyjalAI.h"
 
 struct HyjalYells
 {
     uint32   uiCreatureEntry;
-    YellType m_pYellType;                                   // Used to determine the type of yell (attack, rally, etc)
-    int32    m_iTextId;                                     // The text id to be yelled
+    YellType m_pYellType;                                   // Used to determine the type of yell (attack, rally, etc) (说明)
+    int32    m_iTextId;                                     // The text id to be yelled (说明)
 };
 
 static const HyjalYells aHyjalYell[] =
 {
     {NPC_JAINA,  ATTACKED, -1534000},
     {NPC_JAINA,  ATTACKED, -1534001},
-    //{NPC_JAINA,  INCOMING, -1534002}, // No official source confirming this text exists or was ever used
+    // {NPC_JAINA,  INCOMING, -1534002}, // No official source confirming this text exists or was ever used (说明)
     {NPC_JAINA,  RALLY,    -1534003},
     {NPC_JAINA,  RALLY,    -1534004},
     {NPC_JAINA,  RALLY,    -1534005},
@@ -45,13 +49,13 @@ static const HyjalYells aHyjalYell[] =
 
     {NPC_THRALL, ATTACKED, -1534009},
     {NPC_THRALL, ATTACKED, -1534010},
-    //{NPC_THRALL, INCOMING, -1534011}, // No official source confirming this text exists or was ever used
+    // {NPC_THRALL, INCOMING, -1534011}, // No official source confirming this text exists or was ever used (说明)
     {NPC_THRALL, RALLY,    -1534012},
     {NPC_THRALL, RALLY,    -1534013},
     {NPC_THRALL, RALLY,    -1534014},
     {NPC_THRALL, RETREAT,  -1534015},
     {NPC_THRALL, WIN,      -1534016},
-    //{NPC_THRALL, DEATH,    -1534017} // Only sound used
+    // {NPC_THRALL, DEATH,    -1534017} // Only sound used (说明)
 };
 
 hyjalAI::hyjalAI(Creature* pCreature, uint32 maxActions) : CombatAI(pCreature, maxActions), m_instance(static_cast<instance_mount_hyjal*>(pCreature->GetInstanceData()))
@@ -69,7 +73,7 @@ void hyjalAI::Reset()
 {
     CombatAI::Reset();
 
-    // Set base area based on creature entry
+    // Set base area based on creature entry (说明)
     switch (m_creature->GetEntry())
     {
         case NPC_JAINA:
@@ -147,7 +151,7 @@ void hyjalAI::DoTalk(YellType pYellType)
 
 void hyjalAI::Win()
 {
-    // This will despawn the won base
+    // This will despawn the won base (消失)
     if (m_instance)
         m_instance->SetData(TYPE_WIN, DONE);
 }
@@ -172,10 +176,10 @@ void hyjalAI::ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* /*invoke
                 m_creature->GetMotionMaster()->MoveWaypoint(miscValue);
             break;
         }
-        case AI_EVENT_CUSTOM_C: // Event failed due to exceeding max number of wave mobs
+        case AI_EVENT_CUSTOM_C: // Event failed due to exceeding max number of wave mobs (说明)
             Retreat();
             break;
-        case AI_EVENT_CUSTOM_D: // Boss was killed - stop yelling
+        case AI_EVENT_CUSTOM_D: // Boss was killed - stop yelling (说明)
             m_started = false;
             DisableTimer(HYJAL_AI_RALLY_TIMER);
             break;
@@ -184,7 +188,7 @@ void hyjalAI::ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* /*invoke
             if (m_creature->GetEntry() != NPC_JAINA)
                 return;
 
-            if (sender != m_creature) // Only retreat if AI Event is sent by Jaina herself
+            if (sender != m_creature) // Only retreat if AI Event is sent by Jaina herself (说明)
                 return;
 
             Win();

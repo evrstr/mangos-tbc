@@ -1,51 +1,61 @@
 Warning: New feature - do not go blindly converting to it as of 10.11.2021
+警告：新特性 —— 截至 2021.11.10 请勿盲目将旧数据全部转换至此系统
 
 Meant to emulate official server tool image logic. Ties into not just AI but also Charms and Possess for giving spells and cooldowns.
 Set ID is changeable in EAI and C++ for now. Default is in creature_template SpellList column.
 Logically a consolidation of EAI timer 0 event, 9 event for combat spells, creature_template_spells and creature_cooldowns tables. Meant to replace non-conditional
 timers in CombatAI and is hot-reloadable.
+旨在模拟官方服务器工具的法术配置逻辑。不仅关联 AI，还用于魅惑（Charm）和精神控制/附身（Possess）以提供技能及冷却时间。
+目前可通过 EAI 和 C++ 更改法术列表 Set ID，默认值位于 creature_template 表的 SpellList 字段。
+逻辑上整合了 EAI 的 0 号计时器事件、9 号战斗技能事件、creature_template_spells 表以及 creature_cooldowns 表。用于替代 CombatAI 中的无条件计时器，且支持热重载。
 
-Table creature_spell_list_entry:
+Table creature_spell_list_entry: (表 creature_spell_list_entry)
 Id - Spell List ID - recommended either entry or entry * 100 + 01 if entry has multiple
+     法术列表 ID —— 建议使用生物 entry，若同一 entry 有多套列表则建议使用 entry * 100 + 01
 Name - Mandatory - Spell name with zone prefix. Example: Westfall - Defias Pillager. This naming enables querying npcs by zone, very useful in dungeons.
+       必填 —— 带区域前缀的法术列表名称。示例：Westfall - Defias Pillager。此命名规范便于按区域查询 NPC，在副本中非常实用。
 ChanceSupportAction and ChanceRangedAttack - Chance at each spell list tick in combat (1200ms) for the action with SPELL_LIST_FLAG_SUPPORT_ACTION (1) or
 SPELL_LIST_FLAG_RANGED_ACTION (2) set respectively. If multiple are set, always one spell is selected. During melee mode, ranged attack chance is -50.
 The 1200ms loop has been checked on official servers and will intentionally make the AI less responsive and less impactful on performance. EAI has a 500ms tick rate on timers,
 however that is not an issue due to it needing a finer control. A normal spell list entry should never have more than 10 spells, since that was an official limitation.
+ChanceSupportAction 与 ChanceRangedAttack —— 在战斗中每次法术列表轮询（1200ms）时，分别触发带有 SPELL_LIST_FLAG_SUPPORT_ACTION (1) 或 SPELL_LIST_FLAG_RANGED_ACTION (2) 标记的动作的概率。若多个技能同时满足条件，每次只会从中选择一个。在近战模式下，远程攻击概率会降低 50（-50）。
+1200ms 的循环间隔已在官服实测验证，有意降低 AI 响应频率以减少性能开销。EAI 计时器的轮询频率为 500ms，但这并不冲突，因为 EAI 需要更精细的控制。常规法术列表条目中的法术数量不应超过 10 个，这是官服的限制。
 
-Tabke creature_spell_targeting:
+Tabke creature_spell_targeting: (表 creature_spell_targeting)
 Id - Spell Targeting ID - Ids below 100 are reserved for future use with hardcoded targets.
+     法术目标选择 ID —— 小于 100 的 ID 保留给未来硬编码目标使用。
 Type - Hardcoded/Attack/Support - Hardcoded dont need additional parameters
+       目标类型：Hardcoded（硬编码）/ Attack（攻击）/ Support（辅助）—— Hardcoded 类型无需额外参数。
 Comments - Description of target in format: Type - Use.
+           目标说明，格式为：Type - Use（类型 - 用途）。
 
-Attack:
-Param1 - enum AttackingTarget
-Param2 - Number of positions from the top of the threat list to be skipped.
-Param3 - enum SelectFlags
+Attack: (攻击型目标)
+Param1 - enum AttackingTarget (枚举 AttackingTarget)
+Param2 - Number of positions from the top of the threat list to be skipped. (从仇恨列表顶部起跳过的目标名次数量)
+Param3 - enum SelectFlags (枚举 SelectFlags)
 
-Support:
-Param1 - Minimum missing health
-Param2 - 0 or 1, 0 if minimum missing is flat health and 1 if minimum missing is percentage.
-Param3 - 0 or 1, 0 if self should not be eligible.
+Support: (辅助型目标)
+Param1 - Minimum missing health (最低已损失生命值)
+Param2 - 0 or 1, 0 if minimum missing is flat health and 1 if minimum missing is percentage. (0 或 1：0 表示固定生命值损失，1 表示百分比损失)
+Param3 - 0 or 1, 0 if self should not be eligible. (0 或 1：0 表示自身不可作为目标，1 表示包含自身)
 
-Table creature_spell_list:
-Id - Spell List ID
-Position - Position on spell list bar - needed for Charms and Possess
-SpellId - Spell ID that will be casted when this spell list is eligible
-Flags - SPELL_LIST_FLAG_SUPPORT_ACTION (1) SPELL_LIST_FLAG_RANGED_ACTION (2)
-TargetId - creature_spell_targeting ID
-ScriptId - dbscripts_on_relay ID launched at successful cast start.
-Availability - Chance for spell to be included in spell list at assignment. Assignment happens by default on spawn.
+Table creature_spell_list: (表 creature_spell_list)
+Id - Spell List ID (法术列表 ID)
+Position - Position on spell list bar - needed for Charms and Possess (在技能栏上的槽位索引 —— 用于魅惑和附身控制)
+SpellId - Spell ID that will be casted when this spell list is eligible (条件满足时将要施放的法术 ID)
+Flags - SPELL_LIST_FLAG_SUPPORT_ACTION (1) SPELL_LIST_FLAG_RANGED_ACTION (2) (法术标记：辅助动作 1 / 远程动作 2)
+TargetId - creature_spell_targeting ID (对应 creature_spell_targeting 表的目标选择 ID)
+ScriptId - dbscripts_on_relay ID launched at successful cast start. (成功开始施法时触发的 dbscripts_on_relay 脚本 ID)
+Availability - Chance for spell to be included in spell list at assignment. Assignment happens by default on spawn. (分配法术列表时该法术被包含进列表的概率；默认在生物刷新生成时进行分配)
 Probability - If several spells are eligible in the same spell list tick, this is the weight with which its likely this spell will go off. Higher probability,
-higher chance for spell to go off.
+higher chance for spell to go off. (权重概率 —— 当同一次轮询中有多个法术满足施放条件时，决定该法术被选中的权重。数值越高，触发概率越大)
 InitialMin, InitialMax, RepeatMin, RepeatMax - Timers used for casting spell. Will emplace a cooldown on the user unlike EAI which only starts a timer. Repeat timers are used
-during charm to give spells cooldowns as well.
-Comments - Description of spell use - Preferred format: NPC name - <phase ID if needed> - Spell use on who
+during charm to give spells cooldowns as well. (施法计时器：初始最小/最大时间与重复最小/最大时间。与 EAI 仅启动计时器不同，此机制会为施法者附加真实冷却时间；在魅惑期间也会使用 Repeat 计时器作为技能冷却)
+Comments - Description of spell use - Preferred format: NPC name - <phase ID if needed> - Spell use on who (法术用途说明 —— 推荐格式：NPC 名称 - <阶段 ID（如需要）> - 对何目标施放何法术)
 
-Hardcoded targets:
-0 - None - nullptr
-1 - Current aggro target - getVictim in c++
-2 - Self
-3 - Eligible friendly dispel - automatically detects eligible spells for dispel from spell id
-4 - Eligible friendly dispel excluding self - same as 3
-
+Hardcoded targets: (硬编码目标)
+0 - None - nullptr (无目标 - nullptr)
+1 - Current aggro target - getVictim in c++ (当前仇恨目标 - C++ 中的 getVictim)
+2 - Self (自身)
+3 - Eligible friendly dispel - automatically detects eligible spells for dispel from spell id (符合条件的可驱散友方目标 —— 根据法术 ID 自动检测可驱散的法术)
+4 - Eligible friendly dispel excluding self - same as 3 (符合条件的可驱散友方目标，不含自身 —— 同 3)

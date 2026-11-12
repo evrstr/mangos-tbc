@@ -21,6 +21,10 @@ SDComment:
 SDCategory: Silithus
 EndScriptData */
 
+/**
+ * 希利苏斯 (Silithus) 暮光信徒与风石召唤召唤仪式脚本
+ */
+
 /* ContentData
 EndContentData */
 
@@ -31,23 +35,24 @@ EndContentData */
 ## npc_nelson_the_nice
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SPELL_FOOLS_PLIGHT          = 23504,
+    SPELL_FOOLS_PLIGHT          = 23504,                    // 技能法术 ID
 
-    SPELL_SOUL_FLAME            = 23272,
-    SPELL_DREADFUL_FRIGHT       = 23275,
-    SPELL_CREEPING_DOOM         = 23589,
-    SPELL_CRIPPLING_CLIP        = 23279,
+    SPELL_SOUL_FLAME            = 23272,                    // 技能法术 ID
+    SPELL_DREADFUL_FRIGHT       = 23275,                    // 技能法术 ID
+    SPELL_CREEPING_DOOM         = 23589,                    // 技能法术 ID
+    SPELL_CRIPPLING_CLIP        = 23279,                    // 技能法术 ID
 
-    EMOTE_IMMOBILIZED           = -1001252,
+    EMOTE_IMMOBILIZED           = -1001252,                 // 剧情台词/喊话文本 ID
 
-    SPELL_FROST_TRAP            = 13810,
+    SPELL_FROST_TRAP            = 13810,                    // 技能法术 ID
 
-    NPC_NELSON_THE_NICE         = 14536,
-    NPC_SOLENOR_THE_SLAYER      = 14530,
-    NPC_CREEPING_DOOM           = 14761,
-    NPC_THE_CLEANER             = 14503,
+    NPC_NELSON_THE_NICE         = 14536,                    // NPC 条目 ID
+    NPC_SOLENOR_THE_SLAYER      = 14530,                    // NPC 条目 ID
+    NPC_CREEPING_DOOM           = 14761,                    // NPC 条目 ID
+    NPC_THE_CLEANER             = 14503,                    // NPC 条目 ID
 
     QUEST_STAVE_OF_THE_ANCIENTS = 7636
 };
@@ -58,6 +63,7 @@ enum
 ## npc_solenor_the_slayer
 ######*/
 
+// npc_solenorAI NPC 脚本 AI
 struct npc_solenorAI : public ScriptedAI
 {
     npc_solenorAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -77,7 +83,7 @@ struct npc_solenorAI : public ScriptedAI
     uint32 m_uiCastSoulFlame_Timer;
     uint32 m_uiDespawn_Timer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         switch (m_creature->GetEntry())
         {
@@ -131,7 +137,7 @@ struct npc_solenorAI : public ScriptedAI
     }
 
     /** Solenor the Slayer */
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         if (pWho->getClass() == CLASS_HUNTER && (m_hunterGuid.IsEmpty() || m_hunterGuid == pWho->GetObjectGuid())/*&& pWho->GetQuestStatus(QUEST_STAVE_OF_THE_ANCIENTS) == QUEST_STATUS_INCOMPLETE*/)
         {
@@ -141,14 +147,14 @@ struct npc_solenorAI : public ScriptedAI
             DemonDespawn();
     }
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         m_creature->RemoveGuardians();
 
         ScriptedAI::EnterEvadeMode();
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         if (m_creature->GetVictim())
             pSummoned->AI()->AttackStart(m_creature->GetVictim());
@@ -193,14 +199,14 @@ struct npc_solenorAI : public ScriptedAI
     void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
 
-        if (pSpell && pSpell->Id == 14268)   // Wing Clip (Rank 3)
+        if (pSpell && pSpell->Id == 14268)   // Wing Clip (Rank 3) (说明)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_CRIPPLING_CLIP, CAST_TRIGGERED) == CAST_OK)
                 DoScriptText(EMOTE_IMMOBILIZED, m_creature);
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         /** Nelson the Nice */
         if (m_bTransform)
@@ -241,7 +247,7 @@ struct npc_solenorAI : public ScriptedAI
         {
             if (m_uiCastSoulFlame_Timer <= uiDiff)
             {
-                // delay this cast so spell animation is visible to the player
+                // delay this cast so spell animation is visible to the player (说明)
                 DoCastSpellIfCan(m_creature, SPELL_SOUL_FLAME);
                 m_uiCastSoulFlame_Timer = 0;
             }
@@ -284,7 +290,7 @@ struct npc_solenorAI : public ScriptedAI
     }
 };
 
-bool GossipHello_npc_solenor(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_solenor(Player* pPlayer, Creature* pCreature) // 对话交互问候处理
 {
     if (pPlayer->GetQuestStatus(QUEST_STAVE_OF_THE_ANCIENTS) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(0, GOSSIP_ITEM, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
@@ -305,7 +311,7 @@ bool AreaTrigger_at_southwind_tower(Player* player, AreaTriggerEntry const* /*ar
     if (player->IsGameMaster() || !player->IsAlive())
         return false;
 
-    if (!player->IsCurrentQuest(1126)) // Hive in the Tower
+    if (!player->IsCurrentQuest(1126)) // Hive in the Tower (说明)
         return false;
 
     SpawnGroup* spawnGroup = player->GetMap()->GetSpawnManager().GetSpawnGroup("SILITHUS_HIVE_ASHI_TRAP_AREATRIGGER");
@@ -319,7 +325,7 @@ bool AreaTrigger_at_southwind_tower(Player* player, AreaTriggerEntry const* /*ar
     return false;
 }
 
-void AddSC_silithus()
+void AddSC_silithus() // 注册脚本到系统管理器
 {
     Script* newScript = new Script;
     newScript->Name = "npc_solenor"; // npc_solenor_the_slayer

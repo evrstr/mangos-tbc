@@ -21,35 +21,41 @@
 
 #include <type_traits>
 
+/// 强类型枚举位掩码支持判定模板（默认关闭，需通过 DEFINE_ENUM_FLAG 显式启用）
 template<typename T>
 constexpr bool IsEnumFlag(T) { return false; }
 
 #define DEFINE_ENUM_FLAG(enumType) constexpr bool IsEnumFlag(enumType) { return std::is_enum_v<enumType>; }
 
+/// 按位与运算符（仅对启用 DEFINE_ENUM_FLAG 的枚举生效）
 template<typename T, typename = std::enable_if_t<IsEnumFlag(T{})>>
 inline constexpr T operator&(T left, T right)
 {
     return static_cast<T>(static_cast<std::underlying_type_t<T>>(left) & static_cast<std::underlying_type_t<T>>(right));
 }
 
+/// 按位与赋值运算符
 template<typename T, typename = std::enable_if_t<IsEnumFlag(T{})>>
 inline constexpr T& operator&=(T& left, T right)
 {
     return left = left & right;
 }
 
+/// 按位或运算符
 template<typename T, typename = std::enable_if_t<IsEnumFlag(T{})>>
 inline constexpr T operator|(T left, T right)
 {
     return static_cast<T>(static_cast<std::underlying_type_t<T>>(left) | static_cast<std::underlying_type_t<T>>(right));
 }
 
+/// 按位或赋值运算符
 template<typename T, typename = std::enable_if_t<IsEnumFlag(T{})>>
 inline constexpr T& operator|=(T& left, T right)
 {
     return left = left | right;
 }
 
+/// 按位取反运算符
 template<typename T, typename = std::enable_if_t<IsEnumFlag(T{})>>
 inline constexpr T operator~(T value)
 {

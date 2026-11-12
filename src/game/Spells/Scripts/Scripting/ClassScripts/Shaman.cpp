@@ -22,7 +22,7 @@
 #include "AI/BaseAI/TotemAI.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
 
-// 6495 - Sentry Totem
+// 6495 - Sentry Totem (岗哨图腾：召唤并绑定玩家视角到图腾上，光环激活/移除时同步切换或重置视角)
 struct SentryTotem : public SpellScript, public AuraScript
 {
     void OnRadiusCalculate(Spell* /*spell*/, SpellEffectIndex effIdx, bool targetB, float& radius) const override
@@ -52,6 +52,7 @@ struct SentryTotem : public SpellScript, public AuraScript
     }
 };
 
+// 岗哨图腾 AI：图腾死亡或解散时自动移除召唤者身上的视角光环
 struct SentryTotemAI : public TotemAI
 {
     using TotemAI::TotemAI;
@@ -75,7 +76,7 @@ struct SentryTotemAI : public TotemAI
     }
 };
 
-// 974 - Earth Shield
+// 974 - Earth Shield (大地之盾：计算治疗加成后缓存到光环值，受击时触发带内置冷却的治疗法术 379)
 struct EarthShield : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
@@ -105,7 +106,7 @@ struct EarthShield : public AuraScript
     }
 };
 
-// 29203 - Healing Way
+// 29203 - Healing Way (治疗之道：按层数百分比提高目标受到的治疗波治疗量)
 struct HealingWay : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -119,7 +120,7 @@ struct HealingWay : public AuraScript
     }
 };
 
-// 8516 - Windfury Totem
+// 8516 - Windfury Totem (风怒图腾光环：由强化武器图腾天赋或装备附魔修正额外攻强加成)
 struct WindfuryTotemAura : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
@@ -130,7 +131,7 @@ struct WindfuryTotemAura : public AuraScript
     }
 };
 
-// 8017 - Rockbiter Weapon
+// 8017 - Rockbiter Weapon (石化武器：根据“元素武器”天赋等级选择对应附魔子法术并施加到主/副手武器)
 struct RockbiterWeaponSelector : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -140,7 +141,7 @@ struct RockbiterWeaponSelector : public SpellScript
 
         Unit* caster = spell->GetCaster();
         uint32 spell_id = 0;
-        switch (spell->m_spellInfo->Id) // selection per Elemental Weapons talent
+        switch (spell->m_spellInfo->Id) // selection per Elemental Weapons talent (按元素武器天赋等级 29080/29079/16266 匹配附魔法术)
         {
             case 8017:   // Rank 1
                 if (caster->HasAura(29080))
@@ -246,6 +247,7 @@ struct RockbiterWeaponSelector : public SpellScript
         if (!caster->IsPlayer())
             return;
 
+        // 检查主手和副手武器是否满足附魔条件
         for (int j = BASE_ATTACK; j <= OFF_ATTACK; ++j)
         {
             if (Item* item = static_cast<Player*>(caster)->GetWeaponForAttack(WeaponAttackType(j)))
@@ -262,6 +264,7 @@ struct RockbiterWeaponSelector : public SpellScript
     }
 };
 
+// 注册萨满祭司 NPC 与法术脚本
 void LoadShamanScripts()
 {
     Script* pNewScript = new Script;

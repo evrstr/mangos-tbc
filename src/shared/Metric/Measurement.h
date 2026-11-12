@@ -25,16 +25,19 @@
 
 #include "Common.h"
 
+/// InfluxDB 指标采样点数据结构（包含指标名、标签、字段及纳秒时间戳）
 struct Measurement
 {
+    /// 构造一个指标采样点；若 timestamp 为 0 则自动取当前系统纳秒时间戳
     Measurement(std::string measurement, std::map<std::string, std::string> tags, std::map<std::string, boost::any> fields, uint64 timestamp = 0);
 
+    /// 序列化为 InfluxDB Line Protocol 行文本格式
     friend std::stringstream& operator<<(std::stringstream &out, const Measurement &measurement);
 
-    std::string _measurement;
-    std::map<std::string, std::string> _tags; // tags are used for selecting queries
-    std::map<std::string, boost::any> _fields; // fields are used for displaying data
-    uint64 _timestamp;
+    std::string _measurement;                   ///< 指标名称
+    std::map<std::string, std::string> _tags;   // tags are used for selecting queries | 标签键值对（用于索引与查询过滤）
+    std::map<std::string, boost::any> _fields;  // fields are used for displaying data | 字段键值对（用于存储与展示具体指标数值）
+    uint64 _timestamp;                          ///< 纳秒级 UNIX 时间戳
 };
 
 #endif // MANGOSSERVER_MEASUREMENT_H

@@ -14,7 +14,7 @@ EndScriptData */
 #include "AI/ScriptDevAI/system/system.h"
 #include "MotionGenerators/WaypointManager.h"
 
-const float MAX_PLAYER_DISTANCE = 66.0f;
+const float MAX_PLAYER_DISTANCE = 66.0f;                    // 玩家与护送 NPC 允许的最大距离
 
 npc_escortAI::npc_escortAI(Creature* creature) : npc_escortAI(creature, 0)
 {
@@ -34,6 +34,7 @@ npc_escortAI::npc_escortAI(Creature* creature, uint32 combatActions) : ScriptedA
 {
 }
 
+// 获取护送 AI 状态信息
 void npc_escortAI::GetAIInformation(ChatHandler& reader)
 {
     std::ostringstream oss;
@@ -57,7 +58,7 @@ void npc_escortAI::GetAIInformation(ChatHandler& reader)
 
 void npc_escortAI::Aggro(Unit* /*enemy*/) {}
 
-// see followerAI
+// see followerAI (协助处于战斗中的玩家)
 bool npc_escortAI::AssistPlayerInCombat(Unit* who)
 {
     if (!HasEscortState(STATE_ESCORT_ESCORTING))
@@ -66,26 +67,26 @@ bool npc_escortAI::AssistPlayerInCombat(Unit* who)
     if (!who->GetVictim())
         return false;
 
-    // experimental (unknown) flag not present
+    // experimental (unknown) flag not present (未配置可协助标记)
     if (!(m_creature->GetCreatureInfo()->HasFlag(CreatureTypeFlags::CAN_ASSIST)))
         return false;
 
-    // unit state prevents (similar check is done in CanInitiateAttack which also include checking unit_flags. We skip those here)
+    // unit state prevents (similar check is done in CanInitiateAttack which also include checking unit_flags. We skip those here) (控制状态禁止协助)
     if (m_creature->hasUnitState(UNIT_STAT_STUNNED | UNIT_STAT_FEIGN_DEATH | UNIT_STAT_CONFUSED | UNIT_STAT_FLEEING))
         return false;
 
-    // victim of pWho is not a player
+    // victim of pWho is not a player (受害者不是玩家)
     if (!who->GetVictim()->GetBeneficiaryPlayer())
         return false;
 
-    // never attack friendly
+    // never attack friendly (不可攻击友方)
     if (!m_creature->CanAttackNow(who))
         return false;
 
-    // too far away and no free sight?
+    // too far away and no free sight? (超出距离或无视野)
     if (m_creature->IsWithinDistInMap(who, MAX_PLAYER_DISTANCE) && m_creature->IsWithinLOSInMap(who))
     {
-        // already fighting someone?
+        // already fighting someone? (若未处于战斗，则发起攻击)
         if (!m_creature->GetVictim())
         {
             AttackStart(who);
@@ -98,6 +99,7 @@ bool npc_escortAI::AssistPlayerInCombat(Unit* who)
     return false;
 }
 
+// 死亡回调：护送中死亡使任务失败
 void npc_escortAI::JustDied(Unit* /*killer*/)
 {
     if (!HasEscortState(STATE_ESCORT_ESCORTING) || !m_playerGuid || !m_questForEscort)
@@ -106,6 +108,7 @@ void npc_escortAI::JustDied(Unit* /*killer*/)
     FailQuestForPlayerAndGroup();
 }
 
+// 使受护送玩家及其小队任务失败
 void npc_escortAI::FailQuestForPlayerAndGroup()
 {
     if (!m_questForEscort)
@@ -115,6 +118,7 @@ void npc_escortAI::FailQuestForPlayerAndGroup()
         player->FailQuestForGroup(m_questForEscort->GetQuestId());
 }
 
+// 尸体清除回调：重置护送状态并恢复战斗移动
 void npc_escortAI::CorpseRemoved(uint32& /*respawnDelay*/)
 {
     m_escortState = STATE_ESCORT_NONE;
@@ -123,6 +127,7 @@ void npc_escortAI::CorpseRemoved(uint32& /*respawnDelay*/)
         SetCombatMovement(true);
 }
 
+// 检查玩家或其小队成员是否在允许距离内
 bool npc_escortAI::IsPlayerOrGroupInRange()
 {
     if (Player* player = GetPlayerForEscort())
@@ -132,16 +137,17 @@ bool npc_escortAI::IsPlayerOrGroupInRange()
     return false;
 }
 
+// 内部主更新：周期性检查玩家距离，玩家脱节则判定任务失败并重置/消失
 void npc_escortAI::UpdateAI(const uint32 diff)
 {
-    // Check if player or any member of his group is within range
+    // Check if player or any member of his group is within range (检查玩家或小队成员是否在有效范围内)
     if (m_questForEscort && HasEscortState(STATE_ESCORT_ESCORTING) && m_playerGuid && !m_creature->GetVictim() && !HasEscortState(STATE_ESCORT_RETURNING))
     {
         if (m_playerCheckTimer < diff)
         {
             if (!HasEscortState(STATE_ESCORT_PAUSED) && !IsPlayerOrGroupInRange())
             {
-                // set the quest status as failed
+                // set the quest status as failed (置任务状态为失败)
                 FailQuestForPlayerAndGroup();
 
                 // TODO: i am not sure this is correct, isn't that the creature should continue until it get killed?
@@ -174,17 +180,19 @@ void npc_escortAI::UpdateAI(const uint32 diff)
     UpdateEscortAI(diff);
 }
 
+// 护送 AI 子类更新虚函数
 void npc_escortAI::UpdateEscortAI(const uint32 diff)
 {
     ScriptedAI::UpdateAI(diff);
 }
 
-/// Helper function for transition between old Escort Movment and using WaypointMMGen
+/// Helper function for transition between old Escort Movment and using WaypointMMGen (辅助判断是否为 SD2 护送移动类型)
 bool npc_escortAI::IsSD2EscortMovement(uint32 moveType) const
 {
     return moveType >= EXTERNAL_WAYPOINT_MOVE;
 }
 
+// 移动到达通知：分发到达、出发或完成路径事件
 void npc_escortAI::MovementInform(uint32 moveType, uint32 pointId)
 {
     if (!IsSD2EscortMovement(moveType) || !HasEscortState(STATE_ESCORT_ESCORTING))
@@ -196,7 +204,7 @@ void npc_escortAI::MovementInform(uint32 moveType, uint32 pointId)
         WaypointReached(pointId);
     else if (moveType < EXTERNAL_WAYPOINT_FINISHED_LAST)
         WaypointStart(pointId);
-    else                                                    // Last WP Reached
+    else                                                    // Last WP Reached (到达最后一个路径点)
     {
         if (m_canInstantRespawn)
         {
@@ -208,9 +216,10 @@ void npc_escortAI::MovementInform(uint32 moveType, uint32 pointId)
     }
 }
 
+// 设置下一个路径点 ID（仅暂停时允许）
 void npc_escortAI::SetCurrentWaypoint(uint32 pointId)
 {
-    if (!(HasEscortState(STATE_ESCORT_PAUSED)))             // Only when paused
+    if (!(HasEscortState(STATE_ESCORT_PAUSED)))             // Only when paused (仅在暂停状态下允许切换)
     {
         script_error_log("EscortAI for %s tried to set new waypoint %u, but not paused", m_creature->GetGuidStr().c_str(), pointId);
         return;
@@ -222,6 +231,7 @@ void npc_escortAI::SetCurrentWaypoint(uint32 pointId)
     }
 }
 
+// 设置跑步或行走模式
 void npc_escortAI::SetRun(bool run)
 {
     if (run)
@@ -242,6 +252,7 @@ void npc_escortAI::SetRun(bool run)
 }
 
 // TODO: get rid of this many variables passed in function.
+// 启动护送任务主流程
 void npc_escortAI::Start(bool run, const Player* player, const Quest* quest, bool instantRespawn, bool canLoopPath, uint32 waypointPath)
 {
     if (m_creature->GetVictim())
@@ -273,7 +284,7 @@ void npc_escortAI::Start(bool run, const Player* player, const Quest* quest, boo
     if (origin == PATH_FROM_WAYPOINT_PATH)
         m_currentEscortWaypointPath = pathId;
 
-    // set variables
+    // set variables (设置护送运行变量)
     m_isRunning = run;
 
     m_playerGuid = player ? player->GetObjectGuid() : ObjectGuid();
@@ -285,23 +296,24 @@ void npc_escortAI::Start(bool run, const Player* player, const Quest* quest, boo
     if (m_canReturnToStart && m_canInstantRespawn)
         debug_log("SD2: EscortAI is set to return home after waypoint end and instant respawn at waypoint end. Creature will never despawn.");
 
-    // disable npcflags
+    // disable npcflags (清除 NPC 交互标志，防止护送中被重复交互)
     m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
 
     AddEscortState(STATE_ESCORT_ESCORTING);
 
-    // Set initial speed
+    // Set initial speed (设置移动速度)
     m_creature->SetWalk(!m_isRunning);
 
     m_creature->StopMoving();
 
-    // Start moving along the path with 2500ms delay
+    // Start moving along the path with 2500ms delay (延迟 2500 毫秒后开始沿路径移动)
     m_creature->GetMotionMaster()->Clear(false, true);
     m_creature->GetMotionMaster()->MoveWaypoint(pathId, origin, 2500);
 
     JustStartedEscort();
 }
 
+// 正常结束护送流程并清理状态
 void npc_escortAI::End()
 {
     RemoveEscortState(STATE_ESCORT_ESCORTING);
@@ -309,11 +321,13 @@ void npc_escortAI::End()
     m_questForEscort = nullptr;
 }
 
+// 护送任务结束回调
 void npc_escortAI::QuestEnd()
 {
     m_questForEscort = nullptr;
 }
 
+// 暂停或恢复护送移动
 void npc_escortAI::SetEscortPaused(bool paused)
 {
     if (!HasEscortState(STATE_ESCORT_ESCORTING))
@@ -331,6 +345,7 @@ void npc_escortAI::SetEscortPaused(bool paused)
     }
 }
 
+// 设置护送路径 ID
 void npc_escortAI::SetEscortWaypoints(uint32 pathId)
 {
     m_waypointPathID = pathId;

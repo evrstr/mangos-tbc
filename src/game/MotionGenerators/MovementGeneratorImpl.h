@@ -21,6 +21,7 @@
 
 #include "MotionGenerators/MovementGenerator.h"
 
+/// 工厂方法模板实现：为指定 Creature 创建对应类型的移动生成器实例
 template<class MOVEMENT_GEN>
 inline MovementGenerator*
 MovementGeneratorFactory<MOVEMENT_GEN>::Create(void* data) const

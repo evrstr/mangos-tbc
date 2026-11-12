@@ -21,26 +21,32 @@ SDComment: Small adjustments; Timers
 SDCategory: Caverns of Time, The Dark Portal
 EndScriptData */
 
+/**
+ * 开启黑暗之门：编年史领主德亚 (Chrono Lord Deja) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "dark_portal.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_AGGRO                   = 16815,
-    SAY_BANISH                  = 16817,
-    SAY_SLAY1                   = 16818,
-    SAY_SLAY2                   = 16819,
-    SAY_DEATH                   = 16816,
+    SAY_AGGRO                   = 16815,                    // 剧情台词/喊话文本 ID
+    SAY_BANISH                  = 16817,                    // 剧情台词/喊话文本 ID
+    SAY_SLAY1                   = 16818,                    // 剧情台词/喊话文本 ID
+    SAY_SLAY2                   = 16819,                    // 剧情台词/喊话文本 ID
+    SAY_DEATH                   = 16816,                    // 剧情台词/喊话文本 ID
 
-    SPELL_ARCANE_BLAST          = 31457,
-    SPELL_ARCANE_BLAST_H        = 38538,
-    SPELL_ARCANE_DISCHARGE      = 31472,
-    SPELL_ARCANE_DISCHARGE_H    = 38539,
-    SPELL_TIME_LAPSE            = 31467,
+    SPELL_ARCANE_BLAST          = 31457,                    // 技能法术 ID
+    SPELL_ARCANE_BLAST_H        = 38538,                    // 技能法术 ID
+    SPELL_ARCANE_DISCHARGE      = 31472,                    // 技能法术 ID
+    SPELL_ARCANE_DISCHARGE_H    = 38539,                    // 技能法术 ID
+    SPELL_TIME_LAPSE            = 31467,                    // 技能法术 ID
     SPELL_ATTRACTION            = 38540
 };
 
+// boss_chrono_lord_dejaAI 首领战斗 AI
 struct boss_chrono_lord_dejaAI : public CombatAI
 {
     boss_chrono_lord_dejaAI(Creature* creature) : CombatAI(creature, 0),
@@ -59,7 +65,7 @@ struct boss_chrono_lord_dejaAI : public CombatAI
 
     void MoveInLineOfSight(Unit* who) override
     {
-        // Despawn Time Keeper
+        // Despawn Time Keeper (使时间管理者消失)
         if (who->IsCreature() && who->GetEntry() == NPC_TIME_KEEPER)
         {
             if (m_creature->IsWithinDistInMap(who, 20.0f))
@@ -78,7 +84,7 @@ struct boss_chrono_lord_dejaAI : public CombatAI
     }
 };
 
-void AddSC_boss_chrono_lord_deja()
+void AddSC_boss_chrono_lord_deja() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_chrono_lord_deja";

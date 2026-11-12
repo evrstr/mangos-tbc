@@ -31,6 +31,7 @@
 
 // Since C++20 there will be standard defines for target platform endianess, we use Boost ones meanwhile
 // TODO: Review and fix endianess usages
+// | 在全面迁移至 C++20 标准字节序宏之前，暂借用 Boost 字节序定义检测平台大小端
 #if !defined(MANGOS_ENDIAN)
 #  if BOOST_ENDIAN_BIG_BYTE || BOOST_ENDIAN_BIG_WORD
 #    define MANGOS_ENDIAN MANGOS_BIG_ENDIAN
@@ -49,6 +50,7 @@
 #  ifndef _WIN32_WINNT
 #    define _WIN32_WINNT 0x0603
 #  endif
+/// 跨平台动态库句柄及加载/卸载/符号解析宏抽象
 typedef HMODULE MANGOS_LIBRARY_HANDLE;
 #  define MANGOS_DYNAMIC_LIBRARY_SUFFIX ".dll"
 #  define MANGOS_DYNAMIC_LIBRARY_PREFIX ""
@@ -70,7 +72,7 @@ typedef void* MANGOS_LIBRARY_HANDLE;
 #    define MANGOS_DYNAMIC_LIBRARY_SUFFIX ".so"
 #  endif
 #  define MANGOS_DYNAMIC_LIBRARY_PREFIX "lib"
-#  if defined(__APPLE_CC__) && defined(BIG_ENDIAN) // TODO:: more work to do with byte order. Have to be rechecked after boost integration.
+#  if defined(__APPLE_CC__) && defined(BIG_ENDIAN) // TODO:: more work to do with byte order. Have to be rechecked after boost integration. | 待办：集成 Boost 后需重新校验大端序 Apple 平台字节序处理
 #    if (defined (__ppc__) || defined (__powerpc__))
 #      define MANGOS_IMPORT __attribute__ ((longcall))
 #    else
@@ -108,6 +110,7 @@ typedef void* MANGOS_LIBRARY_HANDLE;
 #  define ATTR_PRINTF(F,V)
 #endif // COMPILER == COMPILER_GNU
 
+/// 跨平台固定宽度整型及对象句柄类型别名
 typedef std::int64_t int64;
 typedef std::int32_t int32;
 typedef std::int16_t int16;

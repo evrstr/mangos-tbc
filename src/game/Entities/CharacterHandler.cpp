@@ -45,7 +45,7 @@
 #include "playerbot/PlayerbotAIConfig.h"
 #endif
 
-// config option SkipCinematics supported values
+// config option SkipCinematics supported values (跳过新手开场动画配置选项取值：0=不跳过, 1=跳过同种族, 2=跳过全部)
 enum CinematicsSkipMode
 {
     CINEMATICS_SKIP_NONE      = 0,
@@ -53,6 +53,7 @@ enum CinematicsSkipMode
     CINEMATICS_SKIP_ALL       = 2,
 };
 
+// 玩家角色登录异步 SQL 查询持有容器
 class LoginQueryHolder : public SqlQueryHolder
 {
     private:
@@ -63,10 +64,12 @@ class LoginQueryHolder : public SqlQueryHolder
             : m_accountId(accountId), m_guid(guid) { }
         ObjectGuid GetGuid() const { return m_guid; }
         uint32 GetAccountId() const { return m_accountId; }
+        // 初始化并并发提交所有登录关联数据表（基础信息、技能、法术、任务、物品、好友等）的查询
         bool Initialize();
 };
 
 #ifdef ENABLE_PLAYERBOTS
+// 机器人专属登录查询容器（记录主控账号与所属 PlayerbotHolder）
 class PlayerbotLoginQueryHolder : public LoginQueryHolder
 {
 private:
@@ -82,9 +85,10 @@ public:
     PlayerbotHolder* GetPlayerbotHolder() { return playerbotHolder; }
 };
 
+// 将指定 GUID 的 Bot 加入登录加载队列并触发异步 SQL 查询
 void PlayerbotHolder::AddPlayerBot(uint32 playerGuid, uint32 masterAccount)
 {
-    // has bot already been added?
+    // has bot already been added? (检查该 Bot 是否已在世界中)
     ObjectGuid guid = ObjectGuid(HIGHGUID_PLAYER, playerGuid);
     Player* bot = sObjectMgr.GetPlayer(guid);
 
@@ -105,6 +109,7 @@ void PlayerbotHolder::AddPlayerBot(uint32 playerGuid, uint32 masterAccount)
     CharacterDatabase.DelayQueryHolder(this, &PlayerbotHolder::HandlePlayerBotLoginCallback, holder);
 }
 
+// Bot 异步数据加载完成回调：实例化 Bot、执行入世并挂载 AI
 void PlayerbotHolder::HandlePlayerBotLoginCallback(QueryResult* dummy, SqlQueryHolder* holder)
 {
     if (!holder)
@@ -212,7 +217,9 @@ bool LoginQueryHolder::Initialize()
 
 // Don't call WorldSession directly, because it may get deleted before the query
 // callbacks get executed. Instead, pass an account id to these handlers.
+// 异步 SQL 回调不可直接引用 WorldSession 指针（执行前 Session 可能已被释放），需按 AccountId 动态查找
 
+// 角色列表异步查询完成回调
 void HandleCharEnumCallback(std::unique_ptr<QueryResult> result, uint32 account)
 {
     WorldSession* session = sWorld.FindSession(account);
@@ -227,6 +234,7 @@ class CharacterHandler
 {
     public:
 
+        // 玩家登录数据并发查询全部完成回调：进入主线程执行角色加载与初始化
         void HandlePlayerLoginCallback(QueryResult* /*dummy*/, SqlQueryHolder* holder)
         {
             if (!holder) return;
@@ -256,6 +264,7 @@ class CharacterHandler
         }
 } chrHandler;
 
+// 遍历查询记录，构建角色选择列表数据包 (SMSG_CHAR_ENUM) 并发送给客户端（最多 10 个角色）
 void WorldSession::HandleCharEnum(std::unique_ptr<QueryResult> queryResult)
 {
     WorldPacket data(SMSG_CHAR_ENUM, 100);                  // we guess size
@@ -268,7 +277,7 @@ void WorldSession::HandleCharEnum(std::unique_ptr<QueryResult> queryResult)
     {
         do
         {
-            // the client rejects the whole list beyond 10 characters
+            // the client rejects the whole list beyond 10 characters (客户端单账号最多仅支持列出前 10 个角色)
             if (num == 10)
             {
                 sLog.outError("Account %u has more than 10 characters, only the first 10 are listed.", GetAccountId());
@@ -288,9 +297,11 @@ void WorldSession::HandleCharEnum(std::unique_ptr<QueryResult> queryResult)
     m_anticheat->SendCharEnum(std::move(data));
 }
 
+// 响应客户端请求账号角色列表 (CMSG_CHAR_ENUM)，发起异步 SQL 查询
 void WorldSession::HandleCharEnumOpcode(WorldPacket& /*recv_data*/)
 {
     /// get all the data necessary for loading all characters (along with their pets) on the account
+    // 异步查询该账号下所有角色的基础外观、等级、公会、宠物以及装备展示缓存
     auto queryCallback = std::bind(HandleCharEnumCallback, std::placeholders::_1, GetAccountId());
     CharacterDatabase.AsyncPQuery(std::move(queryCallback),
                                   !sWorld.getConfig(CONFIG_BOOL_DECLINED_NAMES_USED) ?
@@ -319,6 +330,7 @@ void WorldSession::HandleCharEnumOpcode(WorldPacket& /*recv_data*/)
                                   PET_SAVE_AS_CURRENT, GetAccountId());
 }
 
+// 处理客户端创建角色请求 (CMSG_CHAR_CREATE)
 void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
 {
     std::string name;
@@ -329,7 +341,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
     recv_data >> race_;
     recv_data >> class_;
 
-    // extract other data required for player creating
+    // extract other data required for player creating (解析外观发型肤色与初始套装)
     uint8 gender, skin, face, hairStyle, hairColor, facialHair, outfitId;
     recv_data >> gender >> skin >> face;
     recv_data >> hairStyle >> hairColor >> facialHair >> outfitId;
@@ -378,7 +390,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // prevent character creating Expansion race without Expansion account
+    // prevent character creating Expansion race without Expansion account (资料片账号等级校验，防止未激活 TBC 账号创建血精灵/德莱尼)
     if (raceEntry->expansion > GetExpansion())
     {
         data << (uint8)CHAR_CREATE_EXPANSION;
@@ -387,7 +399,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // prevent character creating with invalid name
+    // prevent character creating with invalid name (角色名字规范化校验)
     if (!normalizePlayerName(name))
     {
         data << (uint8)CHAR_NAME_NO_NAME;
@@ -396,7 +408,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // check name limitations
+    // check name limitations (检查命名长度、违禁词及保留字)
     uint8 res = ObjectMgr::CheckPlayerName(name, true);
     if (res != CHAR_NAME_SUCCESS)
     {
@@ -463,7 +475,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
             Field* field = queryResult2->Fetch();
             uint8 acc_race  = field[0].GetUInt32();
 
-            // need to check team only for first character
+            // need to check team only for first character (PvP 服务器默认限制同账号不可双阵营共存)
             // TODO: what to if account already has characters of both races?
             if (!AllowTwoSideAccounts)
             {
@@ -493,7 +505,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
     Player* pNewChar = new Player(this);
     if (!pNewChar->Create(sObjectMgr.GeneratePlayerLowGuid(), name, race_, class_, gender, skin, face, hairStyle, hairColor, facialHair, outfitId))
     {
-        // Player not create (race/class problem?)
+        // Player not create (race/class problem?) (角色创建失败)
         delete pNewChar;
 
         data << (uint8)CHAR_CREATE_ERROR;
@@ -503,11 +515,11 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
     }
 
     if ((have_same_race && skipCinematics == CINEMATICS_SKIP_SAME_RACE) || skipCinematics == CINEMATICS_SKIP_ALL)
-        pNewChar->setCinematic(1);                          // not show intro
+        pNewChar->setCinematic(1);                          // not show intro (跳过开场动画)
 
-    pNewChar->SetAtLoginFlag(AT_LOGIN_FIRST);               // First login
+    pNewChar->SetAtLoginFlag(AT_LOGIN_FIRST);               // First login (标记首次登录)
 
-    // Player created, save it now
+    // Player created, save it now (将新角色信息保存至数据库)
     pNewChar->SaveToDB();
     charcount += 1;
 
@@ -521,22 +533,23 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
     DETAIL_LOG("Account: %d (IP: %s) Create Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), pNewChar->GetGUIDLow());
     sLog.outChar("Account: %d (IP: %s) Create Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), pNewChar->GetGUIDLow());
 
-    delete pNewChar;                                        // created only to call SaveToDB()
+    delete pNewChar;                                        // created only to call SaveToDB() (入库后释放临时玩家对象)
 }
 
+// 处理客户端删除角色请求 (CMSG_CHAR_DELETE)
 void WorldSession::HandleCharDeleteOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
     recv_data >> guid;
 
-    // can't delete loaded character
+    // can't delete loaded character (已在线角色不可删除)
     if (sObjectMgr.GetPlayer(guid))
         return;
 
     uint32 accountId = 0;
     std::string name;
 
-    // is guild leader
+    // is guild leader (公会会长不能直接删号)
     if (sGuildMgr.GetGuildByLeader(guid))
     {
         WorldPacket data(SMSG_CHAR_DELETE, 1);
@@ -545,7 +558,7 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // is arena team captain
+    // is arena team captain (竞技场战队队长不能直接删号)
     if (sObjectMgr.GetArenaTeamByCaptain(guid))
     {
         WorldPacket data(SMSG_CHAR_DELETE, 1);
@@ -564,7 +577,7 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recv_data)
         name = fields[1].GetCppString();
     }
 
-    // prevent deleting other players' characters using cheating tools
+    // prevent deleting other players' characters using cheating tools (防止通过作弊数据包跨账号删除他人角色)
     if (accountId != GetAccountId())
         return;
 
@@ -572,7 +585,7 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recv_data)
     BASIC_LOG("Account: %d (IP: %s) Delete Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), lowguid);
     sLog.outChar("Account: %d (IP: %s) Delete Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), lowguid);
 
-    if (sLog.IsOutCharDump())                               // optimize GetPlayerDump call
+    if (sLog.IsOutCharDump())                               // optimize GetPlayerDump call (若开启转储配置则在删除前生成快照 dump)
     {
         std::string dump = PlayerDumpWriter().GetDump(lowguid);
         sLog.outCharDump(dump.c_str(), GetAccountId(), lowguid, name.c_str());
@@ -585,6 +598,7 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recv_data)
     SendPacket(data, true);
 }
 
+// 处理玩家点击进入世界登录请求 (CMSG_PLAYER_LOGIN)
 void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recv_data)
 {
     ObjectGuid playerGuid;
@@ -679,6 +693,7 @@ void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recv_data)
     CharacterDatabase.DelayQueryHolder(&chrHandler, &CharacterHandler::HandlePlayerLoginCallback, holder);
 }
 
+// 异步数据查询完成后，实例化 Player 对象、装载全部字段并加入地图 (SMSG_LOGIN_VERIFY_WORLD)
 void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
 {
     ObjectGuid playerGuid = holder->GetGuid();
@@ -692,9 +707,10 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     SetOnline();
 
     // "GetAccountId()==db stored account id" checked in LoadFromDB (prevent login not own character using cheating tools)
+    // 校验账号归属并在 LoadFromDB 中装载角色属性、背包、法术、任务等全部数据
     if (!pCurrChar->LoadFromDB(playerGuid, holder))
     {
-        KickPlayer();                                       // disconnect client, player no set to session and it will not deleted or saved at kick
+        KickPlayer();                                       // disconnect client, player no set to session and it will not deleted or saved at kick (加载失败踢下线)
         // also deletes player
         delete holder;                                      // delete all unprocessed queries
         m_playerLoading = false;
@@ -944,25 +960,26 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     delete holder;
 }
 
+// 玩家断线重连处理（重置客户端可见对象集合、同步控制权、镜像计时器并恢复世界包）
 void WorldSession::HandlePlayerReconnect()
 {
-    // Detect if reconnecting in combat
+    // Detect if reconnecting in combat (检测是否在战斗中重连)
     const bool inCombat = _player->IsInCombat();
 
-    // stop logout timer if need
+    // stop logout timer if need (取消登出倒计时)
     LogoutRequest(0);
 
-    // if DC during cinematic - just stop it
+    // if DC during cinematic - just stop it (如果在过场动画中掉线，直接终止动画)
     if (_player->getCinematic() != 0)
         _player->StopCinematic();
 
-    // silently kick from chat channels player lists to allow reconnect correctly
+    // silently kick from chat channels player lists to allow reconnect correctly (静默重置聊天频道列表)
     _player->CleanupChannels();
 
     // set loading flag
     m_playerLoading = true;
 
-    // reset all visible objects to be able to resend them
+    // reset all visible objects to be able to resend them (重置已下发可见实体集合以重新构建周围世界)
     for (auto guid : _player->m_clientGUIDs)
     {
         if (WorldObject* object = _player->GetMap()->GetWorldObject(guid))
@@ -1061,7 +1078,7 @@ void WorldSession::HandlePlayerReconnect()
     sLog.outChar("Account: %d (IP: %s) Login Character:[%s] (guid: %u)",
         GetAccountId(), IP_str.c_str(), _player->GetName(), _player->GetGUIDLow());
 
-    // sync client control (if taxi flying the client is already sync)
+    // sync client control (if taxi flying the client is already sync) (同步控制权状态)
     if (_player->IsTaxiFlying())
         _player->TaxiFlightResume(true);
     else if (!_player->IsClientControlled(_player))
@@ -1086,6 +1103,7 @@ void WorldSession::HandlePlayerReconnect()
     m_playerLoading = false;
 }
 
+// 设置阵营交战状态 (CMSG_SET_FACTION_ATWAR)
 void WorldSession::HandleSetFactionAtWarOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_FACTION_ATWAR");
@@ -1099,11 +1117,13 @@ void WorldSession::HandleSetFactionAtWarOpcode(WorldPacket& recv_data)
     GetPlayer()->GetReputationMgr().SetAtWar(repListID, flag != 0);
 }
 
+// 集合石信息请求 (CMSG_MEETING_STONE_INFO)
 void WorldSession::HandleMeetingStoneInfoOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received CMSG_MEETING_STONE_INFO");
 }
 
+// 标记已完成的新手教程步骤位掩码 (CMSG_TUTORIAL_FLAG)
 void WorldSession::HandleTutorialFlagOpcode(WorldPacket& recv_data)
 {
     uint32 iFlag;
@@ -1124,18 +1144,21 @@ void WorldSession::HandleTutorialFlagOpcode(WorldPacket& recv_data)
     // DEBUG_LOG("Received Tutorial Flag Set {%u}.", iFlag);
 }
 
+// 清空所有教程提示（全部标记为已查看 0xFFFFFFFF） (CMSG_TUTORIAL_CLEAR)
 void WorldSession::HandleTutorialClearOpcode(WorldPacket& /*recv_data*/)
 {
     for (int i = 0; i < 8; ++i)
         SetTutorialInt(i, 0xFFFFFFFF);
 }
 
+// 重置所有教程提示（全部置 0 以重新触发新手引导） (CMSG_TUTORIAL_RESET)
 void WorldSession::HandleTutorialResetOpcode(WorldPacket& /*recv_data*/)
 {
     for (int i = 0; i < 8; ++i)
         SetTutorialInt(i, 0x00000000);
 }
 
+// 设置在界面经验条上监控显示的声望阵营 (CMSG_SET_WATCHED_FACTION)
 void WorldSession::HandleSetWatchedFactionOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_WATCHED_FACTION");
@@ -1144,6 +1167,7 @@ void WorldSession::HandleSetWatchedFactionOpcode(WorldPacket& recv_data)
     GetPlayer()->SetInt32Value(PLAYER_FIELD_WATCHED_FACTION_INDEX, repId);
 }
 
+// 设置指定阵营为非活动/折叠状态 (CMSG_SET_FACTION_INACTIVE)
 void WorldSession::HandleSetFactionInactiveOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_FACTION_INACTIVE");
@@ -1154,18 +1178,21 @@ void WorldSession::HandleSetFactionInactiveOpcode(WorldPacket& recv_data)
     _player->GetReputationMgr().SetInactive(replistid, inactive != 0);
 }
 
+// 切换头盔外观显示/隐藏 (CMSG_SHOWING_HELM)
 void WorldSession::HandleShowingHelmOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("CMSG_SHOWING_HELM for %s", _player->GetName());
     _player->ToggleFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_HELM);
 }
 
+// 切换披风外观显示/隐藏 (CMSG_SHOWING_CLOAK)
 void WorldSession::HandleShowingCloakOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("CMSG_SHOWING_CLOAK for %s", _player->GetName());
     _player->ToggleFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_CLOAK);
 }
 
+// 处理在角色选择界面更名请求 (CMSG_CHAR_RENAME)
 void WorldSession::HandleCharRenameOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -1174,7 +1201,7 @@ void WorldSession::HandleCharRenameOpcode(WorldPacket& recv_data)
     recv_data >> guid;
     recv_data >> newname;
 
-    // prevent character rename to invalid name
+    // prevent character rename to invalid name (名称规范化校验)
     if (!normalizePlayerName(newname))
     {
         WorldPacket data(SMSG_CHAR_RENAME, 1);
@@ -1192,7 +1219,7 @@ void WorldSession::HandleCharRenameOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // check name limitations
+    // check name limitations (检查保留名)
     if (GetSecurity() == SEC_PLAYER && sObjectMgr.IsReservedName(newname))
     {
         WorldPacket data(SMSG_CHAR_RENAME, 1);
@@ -1206,6 +1233,7 @@ void WorldSession::HandleCharRenameOpcode(WorldPacket& recv_data)
 
     // make sure that the character belongs to the current account, that rename at login is enabled
     // and that there is no character with the desired new name
+    // 异步查询校验：角色属于当前账号、处于 AT_LOGIN_RENAME 状态且新名字尚未被占用
     CharacterDatabase.AsyncPQuery(&WorldSession::HandleChangePlayerNameOpcodeCallBack,
                                   GetAccountId(), newname,
                                   "SELECT guid, name FROM characters WHERE guid = %u AND account = %u AND (at_login & %u) = %u AND NOT EXISTS (SELECT NULL FROM characters WHERE name = '%s')",
@@ -1213,6 +1241,7 @@ void WorldSession::HandleCharRenameOpcode(WorldPacket& recv_data)
                                  );
 }
 
+// 角色更名异步校验与数据库执行回调
 void WorldSession::HandleChangePlayerNameOpcodeCallBack(QueryResult* result, uint32 accountId, std::string newname)
 {
     WorldSession* session = sWorld.FindSession(accountId);
@@ -1252,13 +1281,14 @@ void WorldSession::HandleChangePlayerNameOpcodeCallBack(QueryResult* result, uin
     sWorld.InvalidatePlayerDataToAllClient(guid);
 }
 
+// 处理设置角色变格名称请求（主要用于俄语等斯拉夫语系客户端） (CMSG_SET_PLAYER_DECLINED_NAMES)
 void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
 
     recv_data >> guid;
 
-    // not accept declined names for unsupported languages
+    // not accept declined names for unsupported languages (仅支持特定西里尔语系字母)
     std::string name;
     if (!sObjectMgr.GetPlayerNameByGUID(guid, name))
     {
@@ -1279,7 +1309,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
         return;
     }
 
-    if (!isCyrillicCharacter(wname[0]))                     // name already stored as only single alphabet using
+    if (!isCyrillicCharacter(wname[0]))                     // name already stored as only single alphabet using (非西里尔文字符直接拒绝)
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
         data << uint32(1);
@@ -1293,7 +1323,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
 
     recv_data >> name2;
 
-    if (name2 != name)                                      // character have different name
+    if (name2 != name)                                      // character have different name (名称不匹配)
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
         data << uint32(1);

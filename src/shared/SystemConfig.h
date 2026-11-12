@@ -36,6 +36,7 @@
 
 // Format is YYYYMMDDRR where RR is the change in the conf file
 // for that day.
+// | 版本格式为 YYYYMMDDRR，其中 RR 表示当天配置文件的修订序号
 #ifndef _MANGOSDCONFVERSION
 # define _MANGOSDCONFVERSION 2022012301
 #endif
@@ -63,7 +64,7 @@
 # define ARCHITECTURE "x32"
 #endif
 
-// The path to config files
+// The path to config files | 配置文件目录路径与默认配置文件名定义
 #ifndef SYSCONFDIR
 #  define SYSCONFDIR        ""
 #endif
@@ -100,7 +101,8 @@
 
 #define _FULLVERSION(REVD,REVH) _PACKAGENAME "/" _VERSION(REVD,REVH) " for " _ENDIAN_PLATFORM
 
+/// 默认最大玩家人数上限与世界/认证服务器监听端口
 #define DEFAULT_PLAYER_LIMIT 100
-#define DEFAULT_WORLDSERVER_PORT 8085                       //8129
+#define DEFAULT_WORLDSERVER_PORT 8085                       //8129 | 原调试端口 8129，现默认 8085
 #define DEFAULT_REALMSERVER_PORT 3724
 #endif

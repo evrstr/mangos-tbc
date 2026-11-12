@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Stratholme
 EndScriptData */
 
+// 斯坦索姆（Stratholme）血色十字军区、通灵塔水晶与斯坦索姆救援任务
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "stratholme.h"
 
@@ -313,7 +315,7 @@ void instance_stratholme::SetData(uint32 type, uint32 data)
                 m_mindlessCount = 0;
                 m_undeadGUIDs.clear();
 
-                // Summon 5 guards
+                // Summon 5 guards (召唤 guards)
                 if (Creature* baron = GetSingleCreatureFromStorage(NPC_BARON))
                 {
                     for (uint8 i = 0; i < 5; ++i)
@@ -418,7 +420,7 @@ void instance_stratholme::SetData(uint32 type, uint32 data)
             {
                 // Open Slaughterhouse door again
                 DoUseOpenableObject(GO_PORT_GAUNTLET, true);
-                // Open Baron door
+                // Open Baron door (Open男爵门)
                 DoUseOpenableObject(GO_ZIGGURAT_DOOR_5, true);
             }
 
@@ -440,7 +442,7 @@ void instance_stratholme::SetData(uint32 type, uint32 data)
             m_auiEncounter[type] = data;
             break;
         case TYPE_BLACK_GUARDS:
-            // Prevent double action
+            // Prevent double action (Prevent双重动作)
             if (m_auiEncounter[type] == data)
                 return;
 
@@ -458,7 +460,7 @@ void instance_stratholme::SetData(uint32 type, uint32 data)
             }
             m_auiEncounter[type] = data;
 
-            // No need to save anything here, so return
+            // No need to save anything here, so return (无需保存任何进度数据，直接返回)
             return;
         case TYPE_POSTMASTER:
             m_auiEncounter[type] = data;
@@ -470,7 +472,7 @@ void instance_stratholme::SetData(uint32 type, uint32 data)
                 if (m_postboxesUsed == 2)
                     SetData(TYPE_POSTMASTER, SPECIAL);
             }
-            // No need to save anything here, so return
+            // No need to save anything here, so return (无需保存任何进度数据，直接返回)
             return;
         case TYPE_TRUE_MASTERS:
             m_auiEncounter[type] = data;
@@ -482,7 +484,7 @@ void instance_stratholme::SetData(uint32 type, uint32 data)
                 if (m_silverHandKilled == MAX_SILVERHAND)
                     SetData(TYPE_TRUE_MASTERS, DONE);
             }
-            // No need to save anything here, so return
+            // No need to save anything here, so return (无需保存任何进度数据，直接返回)
             return;
         case TYPE_AURIUS:
             // Prevent further players to complete the quest in that instance or autocomplete the follow-up quest. the flag will be set back if event is succeed
@@ -662,7 +664,7 @@ void instance_stratholme::OnCreatureEnterCombat(Creature* creature)
 
         case NPC_ABOM_BILE:
         case NPC_ABOM_VENOM:
-            // Start Slaughterhouse Event
+            // Start Slaughterhouse Event (开始Slaughterhouse事件)
             SetData(TYPE_RAMSTEIN, SPECIAL);
             break;
 
@@ -721,7 +723,7 @@ void instance_stratholme::OnCreatureDeath(Creature* creature)
 
         case NPC_ABOM_BILE:
         case NPC_ABOM_VENOM:
-            // Start Slaughterhouse Event
+            // Start Slaughterhouse Event (开始Slaughterhouse事件)
             SetData(TYPE_RAMSTEIN, SPECIAL);
             break;
 
@@ -802,7 +804,7 @@ void instance_stratholme::ThazudinAcolyteJustDied(Creature* creature)
             int32 aAnnounceSay[MAX_ZIGGURATS] = {SAY_ANNOUNCE_ZIGGURAT_1, SAY_ANNOUNCE_ZIGGURAT_2, SAY_ANNOUNCE_ZIGGURAT_3};
             DoOrSimulateScriptTextForThisInstance(aAnnounceSay[i], NPC_THUZADIN_ACOLYTE);
 
-            // Kill Crystal
+            // Kill Crystal (击杀Crystal)
             if (Creature* crystal = instance->GetCreature(m_zigguratStorage[i].m_crystalGuid))
                 crystal->CastSpell(nullptr, SPELL_SUICIDE, TRIGGERED_OLD_TRIGGERED);
 
@@ -886,7 +888,7 @@ void instance_stratholme::DoSpawnScourgeInvaders(uint8 step, Player* summoner)
         default: return;    // avoid indexing the following table with a wrong index. Should never happen.
     }
 
-    // Summon the five invaders and make them run into the room
+    // Summon the five invaders and make them run into the room (召唤 the five invaders and make them run into the room)
     for (uint8 i = 0; i < 5; i++)
     {
         float targetPosX, targetPosY, targetPosZ;
@@ -1099,7 +1101,7 @@ void instance_stratholme::Update(uint32 diff)
         else
             m_slaughterDoorTimer -= diff;
     }
-    // Timer to teleport Barthilas
+    // Timer to teleport Barthilas (计时器to传送Barthilas)
     if (m_barthilasRunTimer)
     {
         if (m_barthilasRunTimer <= diff)
@@ -1211,7 +1213,7 @@ void instance_stratholme::Update(uint32 diff)
             {
                 if (Creature* baron = GetSingleCreatureFromStorage(NPC_BARON))
                 {
-                    // Summon mindless skeletons and move them to random point in the center of the square
+                    // Summon mindless skeletons and move them to random point in the center of the square (召唤 mindless skeletons and move them to random point in the center of the square)
                     if (Creature* temp = baron->SummonCreature(NPC_MINDLESS_UNDEAD, stratholmeLocation[4].x, stratholmeLocation[4].y, stratholmeLocation[4].z, stratholmeLocation[4].o, TEMPSPAWN_DEAD_DESPAWN, 0))
                     {
                         float fX, fY, fZ;
@@ -1279,6 +1281,7 @@ InstanceData* GetInstanceData_instance_stratholme(Map* map)
     return new instance_stratholme(map);
 }
 
+// 注册并载入脚本模块：instance_stratholme
 void AddSC_instance_stratholme()
 {
     Script* newScript = new Script;

@@ -5,12 +5,22 @@ randomly based on the parameters you define. If an auction expires, auctions
 are deleted quietly. AHBot will not buy it's own items, and will not receive
 mail from the AH or get returned mail.
 
+拍卖行机器人（Auction House Bot / AHBot）用于向拍卖行填充物品。
+它可以让游戏的拍卖行系统显得更加活跃，尤其适合在线人数较少的服务器。
+物品和价格会根据您定义的参数随机选择。如果拍卖过期，相关拍卖会被静默删除。
+AHBot 不会购买自己上架的物品，也不会接收来自拍卖行的邮件或退回的邮件。
+
 ===============================================================================
-~~HOW TO CONFIGURE~~
+~~HOW TO CONFIGURE / 如何配置~~
 ===============================================================================
 
 You must copy config file template as ahbot.conf from src/game/AuctionHouseBot/ahbot.conf.dist.in
 to directory wher use store mangosd.conf file, and modify values to appropriate for you state.
 Read ahbot.conf option descriptions for details.
 
+您必须将配置文件模板 src/game/AuctionHouseBot/ahbot.conf.dist.in 复制为 ahbot.conf，
+放到存放 mangosd.conf 文件的目录中，并根据服务器状态修改各项参数。
+详细信息请阅读 ahbot.conf 中的选项说明。
+
 Note: But default AHBot disabled by provided config options values
+注意：默认情况下，配置文件提供的选项值会将 AHBot 设为禁用状态。

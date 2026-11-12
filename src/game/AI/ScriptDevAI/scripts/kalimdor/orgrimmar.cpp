@@ -21,21 +21,26 @@ SDComment: Quest support: 2460
 SDCategory: Orgrimmar
 EndScriptData */
 
+/**
+ * 奥格瑞玛 (Orgrimmar) 主城卫兵与任务 NPC 脚本
+ */
+
 /* ContentData
 npc_shenthul
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 常量与事件枚举
 enum
 {
-    GO_HEAD_OF_NEFARIAN_OG = 179881,
-    GO_HEAD_OF_ONYXIA_OG = 179556,
+    GO_HEAD_OF_NEFARIAN_OG = 179881,                        // 游戏对象条目 ID
+    GO_HEAD_OF_ONYXIA_OG = 179556,                          // 游戏对象条目 ID
 
     GOSSIP_HEAD_OG = 6024,
 };
 
-bool GossipHello_npc_overlord_runthalak(Player* player, Creature* creature)
+bool GossipHello_npc_overlord_runthalak(Player* player, Creature* creature) // 对话交互问候处理
 {
     uint32 gossipId = creature->GetCreatureInfo()->GossipMenuId;
     if (GameObject* go = GetClosestGameObjectWithEntry(creature, GO_HEAD_OF_NEFARIAN_OG, 100.f))
@@ -47,7 +52,7 @@ bool GossipHello_npc_overlord_runthalak(Player* player, Creature* creature)
     return true;
 }
 
-bool GossipHello_npc_high_overlord_saurfang(Player* player, Creature* creature)
+bool GossipHello_npc_high_overlord_saurfang(Player* player, Creature* creature) // 对话交互问候处理
 {
     uint32 gossipId = creature->GetCreatureInfo()->GossipMenuId;
     if (GameObject* go = GetClosestGameObjectWithEntry(creature, GO_HEAD_OF_ONYXIA_OG, 100.f))
@@ -59,7 +64,7 @@ bool GossipHello_npc_high_overlord_saurfang(Player* player, Creature* creature)
     return true;
 }
 
-void AddSC_orgrimmar()
+void AddSC_orgrimmar() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_overlord_runthalak";

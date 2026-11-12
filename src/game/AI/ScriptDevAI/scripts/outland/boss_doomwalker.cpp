@@ -21,9 +21,15 @@ SDComment:
 SDCategory: Shadowmoon Valley
 EndScriptData */
 
+// 末日行者（世界首领）
+/* 遭遇战概述：
+ * 末日行者是游荡在黑暗神殿正门外的巨型恶魔攻城机甲，施放地震术、超载、粉碎打击与死亡标记。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     NPC_DREADLORD               = 21166,
@@ -60,12 +66,14 @@ enum
     POINT_OVERRUN               = 1,
 };
 
+// DoomwalkerActions 相关枚举
 enum DoomwalkerActions
 {
     DOOMWALKER_ACTION_MAX,
     DOOMWALKER_OVERRUN_SPELL,
 };
 
+// boss_doomwalkerAI 逻辑实现
 struct boss_doomwalkerAI : public CombatAI
 {
     boss_doomwalkerAI(Creature* creature) : CombatAI(creature, DOOMWALKER_ACTION_MAX)
@@ -84,6 +92,7 @@ struct boss_doomwalkerAI : public CombatAI
     GuidVector m_overrunCandidates;
     SelectAttackingTargetParams m_overrunParams;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -99,6 +108,7 @@ struct boss_doomwalkerAI : public CombatAI
         SetCombatScriptStatus(false);
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* victim) override
     {
         CombatAI::KilledUnit(victim);
@@ -114,6 +124,7 @@ struct boss_doomwalkerAI : public CombatAI
             HandleOverrun();
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         SetCombatMovement(false);
@@ -141,12 +152,14 @@ struct boss_doomwalkerAI : public CombatAI
             creature->Suicide();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
         m_creature->RemoveAurasDueToSpell(SPELL_MARK_OF_DEATH_AURA);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoCastSpellIfCan(nullptr, SPELL_MARK_OF_DEATH_AURA, CAST_TRIGGERED);
@@ -190,6 +203,7 @@ struct boss_doomwalkerAI : public CombatAI
         ResetTimer(DOOMWALKER_OVERRUN_SPELL, 250); // meant to be done by spell script effect
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -209,6 +223,7 @@ struct boss_doomwalkerAI : public CombatAI
 };
 
 // 32686 - Earthquake
+// EarthquakeDoomwalker 光环脚本
 struct EarthquakeDoomwalker : public AuraScript
 {
     void OnPeriodicTrigger(Aura* /*aura*/, PeriodicTriggerData& data) const override
@@ -219,8 +234,10 @@ struct EarthquakeDoomwalker : public AuraScript
 };
 
 // 37127 - Mark of Death
+// MarkofDeath 光环脚本
 struct MarkofDeath : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply && aura->GetTarget()->HasAura(37128))
@@ -228,6 +245,7 @@ struct MarkofDeath : public AuraScript
     }
 };
 
+// 注册 boss_doomwalker 脚本
 void AddSC_boss_doomwalker()
 {
     Script* pNewScript = new Script;

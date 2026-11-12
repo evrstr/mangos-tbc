@@ -16,45 +16,56 @@
 
 /* ScriptData
 SDName: Boss_Murmur
-SD%Complete: 90
-SDComment: Sonic Boom and Murmur's Touch require additional research and core support
+SD%Complete: 80
+SDComment:
 SDCategory: Auchindoun, Shadow Labyrinth
 EndScriptData */
+
+// 摩摩尔（暗影迷宫最终首领，声音之神）
+/* 遭遇战概述：
+ * 摩摩尔是暗影迷宫的最终首领，开战时处于虚弱状态（初始生命值仅为 40%）且固定在中央无法移动；
+ * 核心机制为音速爆炸（大范围高伤害 AOE，玩家必须及时退至外圈边缘规避）；
+ * 若近战范围内无玩家，首领会施放共鸣造成持续全团剧烈伤害；
+ * 此外还会随机对目标施放摩摩尔之触、磁力吸引以及雷霆风暴（英雄难度）。
+ */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "shadow_labyrinth.h"
 
+// 表情与法术枚举
 enum
 {
-    EMOTE_SONIC_BOOM            = 18799,
+    EMOTE_SONIC_BOOM            = 18799,                    // 音速爆炸警示表情
 
-    // Intro spells - used on npcs
-    SPELL_SUPPRESSION_BLAST     = 33332,
-    SPELL_MURMURS_WRATH         = 33331,
+    // Intro spells - used on npcs (开场剧情击杀小怪法术)
+    SPELL_SUPPRESSION_BLAST     = 33332,                    // 压制冲击
+    SPELL_MURMURS_WRATH         = 33331,                    // 摩摩尔之怒
     SPELL_MURMURS_WRATH_2       = 33329,
 
-    SPELL_MAGNETIC_PULL         = 33689,
-    SPELL_SONIC_BOOM            = 33923,        // dummy spell - triggers 33666
-    SPELL_SONIC_BOOM_H          = 38796,        // dummy spell - triggers 38795
-    SPELL_MURMURS_TOUCH         = 33711,        // on expire silences the party members using shockwave - 33686 - also related to spell 33760
-    SPELL_MURMURS_TOUCH_H       = 38794,
-    SPELL_RESONANCE             = 33657,
+    SPELL_MAGNETIC_PULL         = 33689,                    // 磁力吸引
+    SPELL_SONIC_BOOM            = 33923,        // dummy spell - triggers 33666 (音速爆炸，普通难度)
+    SPELL_SONIC_BOOM_H          = 38796,        // dummy spell - triggers 38795 (音速爆炸，英雄难度)
+    SPELL_MURMURS_TOUCH         = 33711,        // on expire silences the party members using shockwave - 33686 - also related to spell 33760 (摩摩尔之触，普通难度)
+    SPELL_MURMURS_TOUCH_H       = 38794,                    // 摩摩尔之触（英雄难度）
+    SPELL_RESONANCE             = 33657,                    // 共鸣（近战无人时全团高伤）
 
-    SPELL_SONIC_SHOCK           = 38797,        // Heroic Spell
-    SPELL_THUNDERING_STORM      = 39365,        // Heroic Spell
+    SPELL_SONIC_SHOCK           = 38797,        // Heroic Spell (音速震击，英雄难度技能)
+    SPELL_THUNDERING_STORM      = 39365,        // Heroic Spell (雷霆风暴，英雄难度技能)
 };
 
+// 摩摩尔行为枚举
 enum MurmurActions
 {
     MURMUR_ACTION_MAX,
-    // After door opens 2 Cabal Spellbinder run out of the room, both get killed from murmur individually
+    // After door opens 2 Cabal Spellbinder run out of the room, both get killed from murmur individually (大门开启后击杀逃跑的苦修者)
     MURMUR_INTRO_KILL_01,
     MURMUR_INTRO_KILL_02,
-    // Random cast of Suppresion Blast or Murmurs Wrath
+    // Random cast of Suppresion Blast or Murmurs Wrath (脱战剧情随机施法)
     MURMUR_OOC_RP_ATTACK,
 };
 
+// 摩摩尔 AI
 struct boss_murmurAI : public CombatAI
 {
     boss_murmurAI(Creature* creature) : CombatAI(creature, MURMUR_ACTION_MAX),
@@ -66,14 +77,14 @@ struct boss_murmurAI : public CombatAI
         AddCustomAction(MURMUR_OOC_RP_ATTACK, true, [&]() { HandleOocAttack(); }, TIMER_COMBAT_OOC);
     }
 
-    ScriptedInstance* m_instance;
-    bool m_bIsRegularMode;
-    bool m_firstCast;
+    ScriptedInstance* m_instance;                           // 副本数据指针
+    bool m_bIsRegularMode;                                   // 是否为普通难度模式
+    bool m_firstCast;                                       // 开门后是否已完成首次压制施法
 
-    uint32 m_uiResonanceTimer;
-    uint32 m_uiThunderingStormTimer;
+    uint32 m_uiResonanceTimer;                              // 共鸣计时器
+    uint32 m_uiThunderingStormTimer;                        // 雷霆风暴计时器
 
-    void Reset() override
+    void Reset() override                                   // 遭遇战重置：初始生命值置为 40% 且无法移动
     {
         CombatAI::Reset();
 
@@ -82,11 +93,11 @@ struct boss_murmurAI : public CombatAI
     }
 
 
-    void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
+    void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override // 接收 AI 事件（大门打开启动剧情击杀）
     {
         if (eventType == AI_EVENT_CUSTOM_A)
         {
-            // Murmur can cast Supression Blast first after door opens
+            // Murmur can cast Supression Blast first after door opens (大门开启后启动逃跑信使击杀计时)
             // resulting in a higher timer to kill the 2 Spellbinders that run out of the room
             ResetTimer(MURMUR_INTRO_KILL_01, urand(0, 5000));
             ResetTimer(MURMUR_INTRO_KILL_02, urand(0, 5000));
@@ -95,7 +106,7 @@ struct boss_murmurAI : public CombatAI
         }
     }
 
-    // After door opens 2 Cabal Spellbinder run out of the room, both get killed from murmur individually
+    // After door opens 2 Cabal Spellbinder run out of the room, both get killed from murmur individually (开门剧情：击杀逃跑的第1名信使)
     void HandleIntroKill01()
     {
         std::vector<Creature*> const* killTarget = m_creature->GetMap()->GetCreatures(MURMURS_WRATH_TARGETS_01);
@@ -106,6 +117,7 @@ struct boss_murmurAI : public CombatAI
         }       
     }
 
+    // 开门剧情：击杀逃跑的第2名信使
     void HandleIntroKill02()
     {
         std::vector<Creature*> const* killTarget = m_creature->GetMap()->GetCreatures(MURMURS_WRATH_TARGETS_02);
@@ -116,12 +128,13 @@ struct boss_murmurAI : public CombatAI
         }
     }
 
+    // 脱战状态下的随机剧情轰击处理
     void HandleOocAttack()
     {
         if (m_creature->IsInCombat())
             return;
 
-        // First cast after door opens should always be a Suprression Blast
+        // First cast after door opens should always be a Suprression Blast (开门后首次必施放压制冲击)
         if (!m_firstCast)
         {
             DoCastSpellIfCan(nullptr, SPELL_SUPPRESSION_BLAST);
@@ -129,7 +142,7 @@ struct boss_murmurAI : public CombatAI
         }
         else
         { 
-            // Kill a moving target
+            // Kill a moving target (随机击杀移动目标)
             if (urand(0, 1))
             {
                 GuidVector WrathTargetGuid;
@@ -150,7 +163,7 @@ struct boss_murmurAI : public CombatAI
                     }                    
                 }
             }
-            // stun 5 targets
+            // stun 5 targets (击晕 5 个目标)
             else
                 DoCastSpellIfCan(nullptr, SPELL_SUPPRESSION_BLAST);
         }
@@ -158,14 +171,14 @@ struct boss_murmurAI : public CombatAI
         ResetTimer(MURMUR_OOC_RP_ATTACK, 3000);
     }
 
-    void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
+    void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override // 施法成功触发音速爆炸警示
     {
         if (spellInfo->Id == SPELL_SONIC_BOOM || spellInfo->Id == SPELL_SONIC_BOOM_H)
             DoBroadcastText(EMOTE_SONIC_BOOM, m_creature);
     }
 };
 
-// 33332 - Suppression Blast
+// 33332 - Suppression Blast (压制冲击法术脚本：脱战最多命中 5 个目标)
 struct SuppressionBlast : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -182,7 +195,7 @@ struct SuppressionBlast : public SpellScript
     }
 };
 
-// 39365 - Thundering Storm
+// 39365 - Thundering Storm (雷霆风暴法术脚本：仅命中距离 25 至 100 码内的外圈目标)
 struct ThunderingStorm : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -195,6 +208,7 @@ struct ThunderingStorm : public SpellScript
     }
 };
 
+// 注册摩摩尔脚本
 void AddSC_boss_murmur()
 {
     Script* pNewScript = new Script;

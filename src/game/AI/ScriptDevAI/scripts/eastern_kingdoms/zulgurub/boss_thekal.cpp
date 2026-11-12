@@ -21,54 +21,57 @@ SDComment: Needs a good shake-up.
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 高阶祭司塞卡尔（High Priest Thekal）狂暴猎豹祭司首领战 AI（两位追随者必须同时死亡否则复活、合体狂暴虎神）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 #include "AI//ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO               = -1309009,
-    SAY_DEATH               = -1309010,
+    SAY_AGGRO               = -1309009,                     // 开战 台词广播 ID
+    SAY_DEATH               = -1309010,                     // 死亡 台词广播 ID
 
-    SAY_DIES_EMOTE          = 10453,
+    SAY_DIES_EMOTE          = 10453,                        // dies表情 台词广播 ID
 
-    SPELL_PACIFY_SELF       = 19951,
+    SPELL_PACIFY_SELF       = 19951,                        // pacifyself 法术 ID
 
-    SPELL_MORTAL_CLEAVE     = 22859,
-    SPELL_SILENCE           = 22666,
-    SPELL_FRENZY            = 23128,
-    SPELL_FORCE_PUNCH       = 24189,
-    SPELL_CHARGE            = 24408,
-    SPELL_ENRAGE            = 8269,
-    SPELL_SUMMON_TIGERS     = 24183,
-    SPELL_TIGER_FORM        = 24169,
-    SPELL_RESURRECT         = 24173,
+    SPELL_MORTAL_CLEAVE     = 22859,                        // mortal顺劈斩 法术 ID
+    SPELL_SILENCE           = 22666,                        // 沉默 法术 ID
+    SPELL_FRENZY            = 23128,                        // 狂乱 法术 ID
+    SPELL_FORCE_PUNCH       = 24189,                        // forcepunch 法术 ID
+    SPELL_CHARGE            = 24408,                        // 冲锋 法术 ID
+    SPELL_ENRAGE            = 8269,                         // 狂暴 法术 ID
+    SPELL_SUMMON_TIGERS     = 24183,                        // 召唤tigers 法术 ID
+    SPELL_TIGER_FORM        = 24169,                        // tigerform 法术 ID
+    SPELL_RESURRECT         = 24173,                        // resurrect 法术 ID
     SPELL_THEKAL_TRIGGER    = 24172,        // TODO: Need to find use for this
-    SPELL_BLOODLUST         = 24185,
-    SPELL_RESSURECTION_IMPACT_VISUAL = 24171,
+    SPELL_BLOODLUST         = 24185,                        // 嗜血 法术 ID
+    SPELL_RESSURECTION_IMPACT_VISUAL = 24171,               // ressurectionimpact视觉特效 法术 ID
 
     // Zealot Lor'Khan Spells
-    SPELL_LIGHTNING_SHIELD  = 20545,
-    SPELL_DISPEL_MAGIC      = 17201,
-    SPELL_GREAT_HEAL        = 24208,
-    SPELL_DISARM            = 6713,
+    SPELL_LIGHTNING_SHIELD  = 20545,                        // 闪电护盾 法术 ID
+    SPELL_DISPEL_MAGIC      = 17201,                        // dispelmagic 法术 ID
+    SPELL_GREAT_HEAL        = 24208,                        // great治疗 法术 ID
+    SPELL_DISARM            = 6713,                         // 缴械 法术 ID
 
     // Zealot Zath Spells
-    SPELL_SWEEPING_STRIKES  = 18765,
-    SPELL_SINISTER_STRIKE   = 15581,
-    SPELL_GOUGE             = 12540,
-    SPELL_KICK              = 15614,
-    SPELL_BLIND             = 21060,
+    SPELL_SWEEPING_STRIKES  = 18765,                        // sweepingstrikes 法术 ID
+    SPELL_SINISTER_STRIKE   = 15581,                        // sinister打击 法术 ID
+    SPELL_GOUGE             = 12540,                        // gouge 法术 ID
+    SPELL_KICK              = 15614,                        // kick 法术 ID
+    SPELL_BLIND             = 21060,                        // blind 法术 ID
 
-    PHASE_NORMAL            = 1,
-    PHASE_FAKE_DEATH        = 2,
-    PHASE_WAITING           = 3,
-    PHASE_TIGER             = 4,
+    PHASE_NORMAL            = 1,                            // normal 阶段 ID
+    PHASE_FAKE_DEATH        = 2,                            // fake死亡 阶段 ID
+    PHASE_WAITING           = 3,                            // waiting 阶段 ID
+    PHASE_TIGER             = 4,                            // tiger 阶段 ID
 
-    ACTION_RESSURECTION     = 10,
+    ACTION_RESSURECTION     = 10,                           // ressurection 动作指令 ID
 
-    SPELL_LIST_PHASE_1 = 1450901,
-    SPELL_LIST_PHASE_2 = 1450902,
+    SPELL_LIST_PHASE_1 = 1450901,                           // list阶段1 法术 ID
+    SPELL_LIST_PHASE_2 = 1450902,                           // list阶段2 法术 ID
 };
 
 // abstract base class for faking death
@@ -81,6 +84,7 @@ struct boss_thekalBaseAI : public CombatAI
         SetDeathPrevention(true);
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -137,7 +141,7 @@ struct boss_thekalBaseAI : public CombatAI
         DoResetThreat();
         Reset();
 
-        // Assume Attack
+        // Assume Attack (Assume攻击)
         if (!OnRevive())
         {
             SetCombatMovement(true, true);
@@ -155,6 +159,7 @@ struct boss_thekalBaseAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ThekalActions
 {
     THEKAL_TIGER_ENRAGE,
@@ -162,6 +167,7 @@ enum ThekalActions
     THEKAL_RESS_PHASE_2_DELAY,
 };
 
+// 首领战 AI：标识 ID（thekal）
 struct boss_thekalAI : public boss_thekalBaseAI
 {
     boss_thekalAI(Creature* creature) : boss_thekalBaseAI(creature, THEKAL_ACTION_MAX)
@@ -193,6 +199,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
         });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         boss_thekalBaseAI::Reset();
@@ -234,6 +241,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -294,6 +302,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
         return false;
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         CombatAI::EnterEvadeMode();
@@ -320,6 +329,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
 ## mob_zealot_lorkhan
 ######*/
 
+// 随从/NPC AI：lorkhan（zealot_lorkhan）
 struct mob_zealot_lorkhanAI : public boss_thekalBaseAI
 {
     mob_zealot_lorkhanAI(Creature* creature) : boss_thekalBaseAI(creature, 0)
@@ -334,6 +344,7 @@ struct mob_zealot_lorkhanAI : public boss_thekalBaseAI
         });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         boss_thekalBaseAI::Reset();
@@ -371,6 +382,7 @@ struct mob_zealot_lorkhanAI : public boss_thekalBaseAI
 ## npc_zealot_zath
 ######*/
 
+// 随从/NPC AI：zath（zealot_zath）
 struct mob_zealot_zathAI : public boss_thekalBaseAI
 {
     mob_zealot_zathAI(Creature* creature) : boss_thekalBaseAI(creature, 0)
@@ -385,6 +397,7 @@ struct mob_zealot_zathAI : public boss_thekalBaseAI
         });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         boss_thekalBaseAI::Reset();
@@ -416,6 +429,7 @@ struct mob_zealot_zathAI : public boss_thekalBaseAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（ThekalResurrect）
 struct ThekalResurrect : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -426,6 +440,7 @@ struct ThekalResurrect : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_thekal
 void AddSC_boss_thekal()
 {
     Script* pNewScript = new Script;

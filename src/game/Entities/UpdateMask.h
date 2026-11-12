@@ -21,6 +21,7 @@
 
 #include "Util/Errors.h"
 
+// 对象更新字段位掩码容器（按 32 位块组织，标记哪些 UpdateField 发生了变化需要同步到客户端）
 class UpdateMask
 {
     public:
@@ -32,28 +33,32 @@ class UpdateMask
             delete[] mUpdateMask;
         }
 
+        // 置位指定字段索引的更新标志并标记存在待同步数据
         void SetBit(uint32 index)
         {
             ((uint8*)mUpdateMask)[ index >> 3 ] |= 1 << (index & 0x7);
             mHasData = true;
         }
 
+        // 清除指定字段索引的更新标志
         void UnsetBit(uint32 index)
         {
             ((uint8*)mUpdateMask)[ index >> 3 ] &= (0xff ^ (1 << (index & 0x7)));
         }
 
+        // 查询指定字段索引的更新标志是否已置位
         bool GetBit(uint32 index) const
         {
             return (((uint8*)mUpdateMask)[ index >> 3 ] & (1 << (index & 0x7))) != 0;
         }
 
-        uint32 GetBlockCount() const { return mBlocks; }
-        uint32 GetLength() const { return mBlocks << 2; }
-        uint32 GetCount() const { return mCount; }
-        uint8* GetMask() const { return (uint8*)mUpdateMask; }
-        bool HasData() const { return mHasData; }
+        uint32 GetBlockCount() const { return mBlocks; }    // 返回 32 位掩码块数量
+        uint32 GetLength() const { return mBlocks << 2; }   // 返回掩码总字节长度
+        uint32 GetCount() const { return mCount; }          // 返回跟踪的字段总数
+        uint8* GetMask() const { return (uint8*)mUpdateMask; } // 返回掩码底层字节指针
+        bool HasData() const { return mHasData; }           // 是否存在已置位的字段
 
+        // 分配并清零对应字段数量的掩码数组（每 32 个字段占 1 个 uint32 块）
         void SetCount(uint32 valuesCount)
         {
             delete[] mUpdateMask;
@@ -65,6 +70,7 @@ class UpdateMask
             memset(mUpdateMask, 0, mBlocks << 2);
         }
 
+        // 清零全部掩码位并重置数据标志
         void Clear()
         {
             if (mUpdateMask)
@@ -72,6 +78,7 @@ class UpdateMask
             mHasData = false;
         }
 
+        // 深拷贝赋值运算符
         UpdateMask& operator = (const UpdateMask& mask)
         {
             SetCount(mask.mCount);
@@ -80,6 +87,7 @@ class UpdateMask
             return *this;
         }
 
+        // 按位与复合赋值（用于与视野权限掩码求交集）
         void operator &= (const UpdateMask& mask)
         {
             MANGOS_ASSERT(mask.mCount <= mCount);
@@ -87,6 +95,7 @@ class UpdateMask
                 mUpdateMask[i] &= mask.mUpdateMask[i];
         }
 
+        // 按位或复合赋值
         void operator |= (const UpdateMask& mask)
         {
             MANGOS_ASSERT(mask.mCount <= mCount);
@@ -94,6 +103,7 @@ class UpdateMask
                 mUpdateMask[i] |= mask.mUpdateMask[i];
         }
 
+        // 按位与运算（返回新掩码）
         UpdateMask operator & (const UpdateMask& mask) const
         {
             MANGOS_ASSERT(mask.mCount <= mCount);
@@ -104,6 +114,7 @@ class UpdateMask
             return newmask;
         }
 
+        // 按位或运算（返回新掩码）
         UpdateMask operator | (const UpdateMask& mask) const
         {
             MANGOS_ASSERT(mask.mCount <= mCount);
@@ -115,9 +126,9 @@ class UpdateMask
         }
 
     private:
-        bool mHasData;
-        uint32 mCount;
-        uint32 mBlocks;
-        uint32* mUpdateMask;
+        bool mHasData;                                      // 是否至少有一位被设置过
+        uint32 mCount;                                      // 字段总数
+        uint32 mBlocks;                                     // 32 位块数
+        uint32* mUpdateMask;                                // 动态分配的掩码数组
 };
 #endif

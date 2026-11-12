@@ -26,6 +26,7 @@
 #include "Globals/CombatCondition.h"
 #include "BattleGround/BattleGroundMgr.h"
 
+// 默认构造时从各全局管理器获取只读共享数据容器的 shared_ptr 引用
 MapDataContainer::MapDataContainer() : m_spellListContainer(sObjectMgr.GetCreatureSpellListContainer()), m_petAutocastContainer(sObjectMgr.GetPetAutocastContainer()),
     m_spawnGroupContainer(sObjectMgr.GetSpawnGroupContainer()), m_CreatureEventAIEventEntryMap(sEventAIMgr.GetCreatureEventEntryAIMap()),
     m_CreatureEventAIEventGuidMap(sEventAIMgr.GetCreatureEventGuidAIMap()), m_creatureEventAIComputedDataMap(sEventAIMgr.GetEAIComputedDataMap()),
@@ -43,6 +44,7 @@ void MapDataContainer::SetCreatureSpellListContainer(std::shared_ptr<CreatureSpe
     m_spellListContainer = container;
 }
 
+// 按法术列表 ID 查找生物法术列表
 CreatureSpellList* MapDataContainer::GetCreatureSpellList(uint32 Id) const
 {
     auto itr = m_spellListContainer->spellLists.find(Id);
@@ -70,6 +72,7 @@ PetAutocastSpellList* MapDataContainer::GetPetAutocastSpellList(uint32 creatureE
     return &(*itr).second;
 }
 
+// 按刷怪组 ID 查找刷怪组配置条目
 SpawnGroupEntry* MapDataContainer::GetSpawnGroup(uint32 Id) const
 {
     auto itr = m_spawnGroupContainer->spawnGroupMap.find(Id);
@@ -125,6 +128,7 @@ std::shared_ptr<ScriptMapMapName> MapDataContainer::GetScriptMap(ScriptMapType s
     return m_scriptMaps[scriptMapType];
 }
 
+// 将字符串脚本 ID 解析为内部数值 ID（未找到返回 0）
 uint32 MapDataContainer::GetStringId(const std::string& stringId) const
 {
     auto itr = m_stringIdsByString->find(stringId);
@@ -164,6 +168,7 @@ std::shared_ptr<std::map<int32, CombatConditionEntry>> MapDataContainer::GetComb
     return m_combatConditions;
 }
 
+// 根据生物数据库 GUID 获取对应的战场事件索引（找不到时回退到默认键 -1）
 const BattleGroundEventIdx MapDataContainer::GetCreatureEventIndex(uint32 dbGuid) const
 {
     CreatureBattleEventIndexesMap::const_iterator itr = m_creatureBattleEventIndexMap->find(dbGuid);

@@ -15,30 +15,31 @@
 */
 
 /*
-SD2 file for global quests scripts
+SD2 file for global quests scripts (全局任务脚本：TBC 开门任务头衔与阿卡玛进攻神殿事件)
 */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
 enum
 {
-    NPC_AKAMA                               = 22990,
-    NPC_VAGATH                              = 23152,
-    NPC_ASHTONGUE_DEATHSWORN                = 21701,
-    NPC_SHADOWLORD                          = 22988,
-    NPC_MAIEV                               = 22989,
+    NPC_AKAMA                               = 22990,        // 阿卡玛
+    NPC_VAGATH                              = 23152,        // 瓦加斯 (黑暗神殿门前首领)
+    NPC_ASHTONGUE_DEATHSWORN                = 21701,        // 灰舌死誓者
+    NPC_SHADOWLORD                          = 22988,        // 暗影领主
+    NPC_MAIEV                               = 22989,        // 玛维·影歌
     
-    RELAY_SCRIPT_AKAMA                      = 10135,
+    RELAY_SCRIPT_AKAMA                      = 10135,        // 阿卡玛剧情转播脚本 ID
 
-    QUEST_DISTRACTION_FOR_AKAMA             = 10985,
-    QUEST_VIALS_OF_ETERNITY                 = 10445,
-    QUEST_TRIAL_OF_THE_NAARU_MAGTHERIDON    = 10888,
-    QUEST_CUDGEL_OF_KARDESH                 = 10901,
+    QUEST_DISTRACTION_FOR_AKAMA             = 10985,        // 任务：阿卡玛的保证
+    QUEST_VIALS_OF_ETERNITY                 = 10445,        // 任务：永恒之瓶
+    QUEST_TRIAL_OF_THE_NAARU_MAGTHERIDON    = 10888,        // 任务：纳鲁的试炼 - 玛瑟里顿
+    QUEST_CUDGEL_OF_KARDESH                 = 10901,        // 任务：卡德什圣杖
 
-    TITLE_CHAMPION_OF_THE_NAARU             = 53,
-    TITLE_HAND_OF_ADAL                      = 64,
+    TITLE_CHAMPION_OF_THE_NAARU             = 53,           // 头衔：纳鲁的勇士
+    TITLE_HAND_OF_ADAL                      = 64,           // 头衔：阿达尔之手
 };
 
+// TBC 开门任务奖励头衔判定
 bool QuestRewarded_tbc_attunement_titles(Player* player, Creature* /*creature*/, Quest const* quest)
 {
     switch (quest->GetQuestId())
@@ -60,6 +61,7 @@ bool QuestRewarded_tbc_attunement_titles(Player* player, Creature* /*creature*/,
     return false;
 }
 
+// 灰舌死誓者队伍生成坐标
 float DeathswornSpawnCoords[8][3] = {
     { -3562.689f, 696.251f, -8.158f },
     { -3559.341f, 699.388f, -8.877f },
@@ -70,6 +72,7 @@ float DeathswornSpawnCoords[8][3] = {
     { -3571.522f, 706.726f, -9.5219f },
     { -3562.928f, 704.436f, -9.5568f } };
 
+// 暗影领主队伍生成坐标
 float ShadowlordSpawnCoords[6][3] = {
     { -3612.274f, 400.077f, 32.444f },
     { -3591.716f, 392.962f, 32.895f },
@@ -94,6 +97,7 @@ float* ShadowlordLeader2 = ShadowlordSpawnCoords[5];
 float* ShadowlordLeft2 = ShadowlordSpawnCoords[4];
 float* ShadowlordRight2 = ShadowlordSpawnCoords[3];
 
+// 纳鲁使者希瑞 AI (npc_xiri)
 struct npc_xiri : public ScriptedAI
 {
     npc_xiri(Creature* creature) : ScriptedAI(creature)
@@ -101,13 +105,13 @@ struct npc_xiri : public ScriptedAI
         Reset();
     }
 
-    GuidList m_lSummonedDeathsworn;
-    ObjectGuid m_leaderGUID;
+    GuidList m_lSummonedDeathsworn;                          // 已召唤的死誓者 GUID 列表
+    ObjectGuid m_leaderGUID;                                // 队伍领头死誓者 GUID
 
-    bool m_bAkamaInteractionPerformed;
-    bool m_bVagathDead;
+    bool m_bAkamaInteractionPerformed;                      // 是否已执行阿卡玛交互剧情
+    bool m_bVagathDead;                                     // 瓦加斯是否已被消灭
 
-    uint32 m_uiAkamaNextWaypoint;
+    uint32 m_uiAkamaNextWaypoint;                           // 阿卡玛下一路径点编号
 
     void Reset() override
     {
@@ -115,6 +119,7 @@ struct npc_xiri : public ScriptedAI
         m_leaderGUID.Clear();
     }
 
+    // 接收事件调度：控制阿卡玛队伍进军与暗影领主剧情
     void ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         /* A:
@@ -130,7 +135,7 @@ struct npc_xiri : public ScriptedAI
                 m_bAkamaInteractionPerformed = false;
                 m_bVagathDead = false;
 
-                // Follow the leader crap
+                // Follow the leader crap (召唤死誓者卫队并保持阵型跟随领队)
                 if (Creature *leader = m_creature->SummonCreature(NPC_ASHTONGUE_DEATHSWORN, DeathswornPackLeader[0], DeathswornPackLeader[1], DeathswornPackLeader[2], 0.0f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 120000, true, true))
                 {
                     m_leaderGUID = leader->GetObjectGuid();
@@ -253,13 +258,14 @@ struct npc_xiri : public ScriptedAI
                     RunAkamaRPEvent();
                 }
                 else if (Creature* maiev = GetClosestCreatureWithEntry(m_creature, NPC_MAIEV, 300.0f))
-                    maiev->ForcedDespawn(2000); // despawn maiev if akama not present to do RP
+                    maiev->ForcedDespawn(2000); // despawn maiev if akama not present to do RP (阿卡玛不在场则让玛维消失)
 
                 m_bVagathDead = true;
             }
         }
     }
 
+    // 启动阿卡玛剧情演出
     void RunAkamaRPEvent()
     {
         m_creature->GetMap()->ScriptsStart(SCRIPT_TYPE_RELAY, RELAY_SCRIPT_AKAMA, m_creature, m_creature);
@@ -267,6 +273,7 @@ struct npc_xiri : public ScriptedAI
         m_bAkamaInteractionPerformed = true;
     }
 
+    // 召唤物移动到达通知：死誓者完成护送后强制消失
     void SummonedMovementInform(Creature* pSummoned, uint32 /*uiMotionType*/, uint32 uiPointId) override
     {
         if (/*pSummoned->GetObjectGuid() == m_leaderGUID*/pSummoned->GetEntry() == NPC_ASHTONGUE_DEATHSWORN && uiPointId == 5)
@@ -280,6 +287,7 @@ struct npc_xiri : public ScriptedAI
         }
     }
 
+    // 召唤出生物时记录 GUID
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_ASHTONGUE_DEATHSWORN)
@@ -292,11 +300,13 @@ struct npc_xiri : public ScriptedAI
     }
 };
 
+// 获取希瑞 AI 实例
 UnitAI* GetAI_npc_xiri(Creature* pCreature)
 {
     return new npc_xiri(pCreature);
 }
 
+// 注册任务相关脚本
 void AddSC_quests_scripts()
 {
     Script* pNewScript = new Script;

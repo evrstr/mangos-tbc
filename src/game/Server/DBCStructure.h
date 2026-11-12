@@ -29,6 +29,7 @@
 #include <vector>
 
 // Structures using to access raw DBC data and required packing to portability
+// 用于直接映射原始 DBC 二进制记录的结构体定义，需按 1 字节对齐以保证跨平台内存布局一致
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
 #if defined( __GNUC__ )
@@ -37,6 +38,7 @@
 #pragma pack(push,1)
 #endif
 
+/// AreaTable.dbc 区域与子区域定义结构
 struct AreaTableEntry
 {
     uint32  ID;                                             // 0        m_ID
@@ -58,6 +60,7 @@ struct AreaTableEntry
     // 34       m_ambient_multiplier
 };
 
+/// AreaTrigger.dbc 区域触发器（传送门/事件触发区）结构
 struct AreaTriggerEntry
 {
     uint32    id;                                           // 0
@@ -123,6 +126,7 @@ struct BattlemasterListEntry
 #define MAX_OUTFIT_ITEMS 12
 // #define MAX_OUTFIT_ITEMS 24                              // 12->24 in 3.0.x
 
+/// CharStartOutfit.dbc 新建角色初始装备配置
 struct CharStartOutfitEntry
 {
     // uint32 Id;                                           // 0        m_ID
@@ -395,6 +399,7 @@ struct EmotesTextSoundEntry
 };
 #endif
 
+/// Faction.dbc 阵营声望定义结构
 struct FactionEntry
 {
     uint32      ID;                                         // 0        m_ID
@@ -441,19 +446,21 @@ struct FactionGroupEntry
 };
 */
 
+/// FactionTemplate.dbc 阵营模板及敌友判定结构
 struct FactionTemplateEntry
 {
     uint32      ID;                                         // 0
     uint32      faction;                                    // 1
-    uint32      factionFlags;                               // 2 specific flags for that faction
-    uint32      factionGroupMask;                           // 3 if mask set (see FactionGroupMask) then faction included in masked group
-    uint32      friendGroupMask;                            // 4 if mask set (see FactionGroupMask) then faction friendly to masked group
-    uint32      enemyGroupMask;                             // 5 if mask set (see FactionGroupMask) then faction hostile to masked group
+    uint32      factionFlags;                               // 2 specific flags for that faction | 阵营行为标志
+    uint32      factionGroupMask;                           // 3 if mask set (see FactionGroupMask) then faction included in masked group | 所属阵营组掩码
+    uint32      friendGroupMask;                            // 4 if mask set (see FactionGroupMask) then faction friendly to masked group | 友好阵营组掩码
+    uint32      enemyGroupMask;                             // 5 if mask set (see FactionGroupMask) then faction hostile to masked group | 敌对阵营组掩码
     uint32      enemyFaction[4];                            // 6-9
     uint32      friendFaction[4];                           // 10-13
     //-------------------------------------------------------  end structure
 
-    // helpers
+    // helpers | 敌友阵营判定辅助方法
+    /// 判断当前阵营模板对目标阵营模板是否友好
     bool IsFriendlyTo(FactionTemplateEntry const& entry) const
     {
         if (entry.faction)
@@ -467,6 +474,7 @@ struct FactionTemplateEntry
         }
         return (friendGroupMask & entry.factionGroupMask) || (factionGroupMask & entry.friendGroupMask);
     }
+    /// 判断当前阵营模板对目标阵营模板是否敌对
     bool IsHostileTo(FactionTemplateEntry const& entry) const
     {
         if (entry.faction)
@@ -741,6 +749,7 @@ struct MailTemplateEntry
     char*       content[16];                                // 18-33    m_body_lang
 };
 
+/// Map.dbc 地图基础信息与副本类型判定结构
 struct MapEntry
 {
     uint32  MapID;                                          // 0        m_ID
@@ -883,6 +892,7 @@ struct SoundEntriesEntry
     // 28       m_EAXDef
 };
 
+/// 职业法术家族位掩码封装（64 位标识法术所属技能系，用于天赋/雕文/套装匹配）
 struct ClassFamilyMask
 {
     uint64 Flags;
@@ -892,13 +902,13 @@ struct ClassFamilyMask
 
     bool Empty() const { return Flags == 0; }
     bool operator!() const { return Empty(); }
-    operator void const* () const { return Empty() ? nullptr : this; } // for allow normal use in if(mask)
+    operator void const* () const { return Empty() ? nullptr : this; } // for allow normal use in if(mask) | 支持在 if(mask) 布尔上下文中直接使用
     bool operator== (const ClassFamilyMask& another) const { return (Flags == another.Flags); }
 
     bool IsFitToFamilyMask(uint64 familyFlags) const { return !!(Flags & familyFlags); }
     bool IsFitToFamilyMask(ClassFamilyMask const& mask) const { return !!(Flags & mask.Flags); }
 
-    // possible will removed at finish convertion code use IsFitToFamilyMask
+    // possible will removed at finish convertion code use IsFitToFamilyMask | 兼容旧代码的按位与运算符（后续将统一替换为 IsFitToFamilyMask）
     uint64 operator& (uint64 mask) const { return !!(Flags & mask); }
 
     ClassFamilyMask& operator|= (ClassFamilyMask const& mask)
@@ -912,6 +922,7 @@ struct ClassFamilyMask
 #define MAX_SPELL_TOTEMS 2
 #define MAX_SPELL_TOTEM_CATEGORIES 2
 
+/// Spell.dbc / spell_template 法术核心数据结构
 struct SpellEntry
 {
         uint32    Id;                                       // 0        m_ID
@@ -1020,7 +1031,8 @@ struct SpellEntry
         uint32    IsServerSide;                             // 219
         uint32    AttributesServerside;                     // 220
 
-        // helpers
+        // helpers | 法术属性与家族匹配辅助函数
+        /// 计算指定效果槽的基础简单数值（BasePoints + BaseDice）
         int32 CalculateSimpleValue(SpellEffectIndex eff) const { return EffectBasePoints[eff] + int32(EffectBaseDice[eff]); }
 
         bool IsFitToFamilyMask(uint64 familyFlags) const
@@ -1051,9 +1063,10 @@ struct SpellEntry
         inline bool HasAttribute(SpellAttributesEx5 attribute) const { return (AttributesEx5 & attribute) != 0; }
         inline bool HasAttribute(SpellAttributesEx6 attribute) const { return (AttributesEx6 & attribute) != 0; }
 
-        // custom
+        // custom | 服务端扩展属性检查
         bool HasAttribute(SpellAttributesServerside attribute) const { return (AttributesServerside & attribute) != 0; }
 
+        /// 汇总法术本身及所有效果槽涉及的机制位掩码
         uint32 GetAllEffectsMechanicMask() const
         {
             uint32 mask = 0;
@@ -1065,6 +1078,7 @@ struct SpellEntry
             return mask;
         }
 
+        /// 判断该法术是否可在指定变形姿态下施放
         bool CanBeUsedInForm(ShapeshiftForm form) const
         {
             uint32 mask = (1 << (form - 1));
@@ -1072,12 +1086,13 @@ struct SpellEntry
         }
 
     private:
-        // prevent creating custom entries (copy data from original in fact)
+        // prevent creating custom entries (copy data from original in fact) | 禁止外部拷贝构造 SpellEntry
         SpellEntry(SpellEntry const&);                      // DON'T must have implementation
 };
 
 // A few fields which are required for automated convertion
 // NOTE that these fields are count by _skipping_ the fields that are unused!
+// 自动转换所需的关键字段偏移（按跳过未使用字段后的加载索引计数）
 #define LOADED_SPELLDBC_FIELD_POS_EQUIPPED_ITEM_CLASS  60   // Must be converted to -1
 #define LOADED_SPELLDBC_FIELD_POS_SPELLNAME_0          123  // Links to "MaNGOS server-side spell"
 
@@ -1220,6 +1235,7 @@ struct SummonPropertiesEntry
 
 #define MAX_TALENT_RANK 5
 
+/// Talent.dbc 天赋条目结构（含位置行列、5 级法术 ID 及前置依赖）
 struct TalentEntry
 {
     uint32    TalentID;                                     // 0        m_ID
@@ -1248,6 +1264,7 @@ struct TalentTabEntry
     // char* internalname;                                  // 22       m_backgroundFile
 };
 
+/// TaxiNodes.dbc 飞行点节点坐标与坐骑模型定义
 struct TaxiNodesEntry
 {
     uint32    ID;                                           // 0        m_ID
@@ -1391,6 +1408,7 @@ typedef std::set<uint32> PetFamilySpellsSet;
 typedef std::map<uint32, PetFamilySpellsSet > PetFamilySpellsStore;
 
 // Structures not used for casting to loaded DBC data and not required then packing
+// 派生缓存结构：不直接映射原始 DBC 内存块，无需 1 字节紧凑对齐
 struct TalentSpellPos
 {
     TalentSpellPos() : talent_id(0), rank(0) {}

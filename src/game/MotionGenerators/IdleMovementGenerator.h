@@ -21,6 +21,7 @@
 
 #include "MotionGenerators/MovementGenerator.h"
 
+/// 空闲静止移动生成器（全局单例，用于站立不动时的栈底占位）
 class IdleMovementGenerator : public MovementGenerator
 {
     public:
@@ -33,8 +34,9 @@ class IdleMovementGenerator : public MovementGenerator
         MovementGeneratorType GetMovementGeneratorType() const override { return IDLE_MOTION_TYPE; }
 };
 
-extern IdleMovementGenerator si_idleMovement;
+extern IdleMovementGenerator si_idleMovement; // 全局空闲移动生成器单例
 
+/// 扰乱移动生成器（如潜行者“扰乱”技能，定时将生物锁定在原地并保持指定朝向）
 class DistractMovementGenerator : public IdleMovementGenerator
 {
     public:
@@ -48,7 +50,7 @@ class DistractMovementGenerator : public IdleMovementGenerator
         MovementGeneratorType GetMovementGeneratorType() const override { return DISTRACT_MOTION_TYPE; }
 
     private:
-        ShortTimeTracker m_timer;
+        ShortTimeTracker m_timer; // 扰乱持续计时器
 };
 
 #endif

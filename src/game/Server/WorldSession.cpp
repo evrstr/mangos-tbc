@@ -51,18 +51,19 @@
 #endif
 
 // select opcodes appropriate for processing in Map::Update context for current session state
+// 判断指定操作码处理器在当前会话状态下是否适合在 Map::Update 上下文中执行
 static bool MapSessionFilterHelper(WorldSession* session, OpcodeHandler const& opHandle)
 {
-    // we do not process thread-unsafe packets
+    // we do not process thread-unsafe packets | 不在地图线程中处理非线程安全数据包
     if (opHandle.packetProcessing == PROCESS_THREADUNSAFE)
         return false;
 
-    // we do not process not loggined player packets
+    // we do not process not loggined player packets | 未登录角色的数据包不在地图线程中处理
     Player* plr = session->GetPlayer();
     if (!plr)
         return false;
 
-    // in Map::Update() we do not process packets where player is not in world!
+    // in Map::Update() we do not process packets where player is not in world! | 玩家尚未加入世界（如跨图传送中）时不处理
     return plr->IsInWorld();
 }
 
@@ -73,24 +74,25 @@ bool MapSessionFilter::Process(WorldPacket const& packet) const
     if (opHandle.packetProcessing == PROCESS_INPLACE)
         return true;
 
-    // let's check if our opcode can be really processed in Map::Update()
+    // let's check if our opcode can be really processed in Map::Update() | 检查是否允许在 Map::Update() 中处理
     return MapSessionFilterHelper(m_pSession, opHandle);
 }
 
 // we should process ALL packets when player is not in world/logged in
 // OR packet handler is not thread-safe!
+// 当玩家未进入世界/未登录，或数据包处理器非线程安全时，统一交由世界主线程处理
 bool WorldSessionFilter::Process(WorldPacket const& packet) const
 {
     OpcodeHandler const& opHandle = opcodeTable[packet.GetOpcode()];
-    // check if packet handler is supposed to be safe
+    // check if packet handler is supposed to be safe | 就地处理包直接放行
     if (opHandle.packetProcessing == PROCESS_INPLACE)
         return true;
 
-    // let's check if our opcode can't be processed in Map::Update()
+    // let's check if our opcode can't be processed in Map::Update() | 仅处理不能在 Map::Update() 中执行的操作码
     return !MapSessionFilterHelper(m_pSession, opHandle);
 }
 
-/// WorldSession constructor
+/// WorldSession constructor | WorldSession 构造函数
 WorldSession::WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, uint8 expansion, time_t mute_time, LocaleConstant locale, std::string accountName, uint32 accountFlags, uint32 recruitingFriend, bool isARecruiter) :
     m_muteTime(mute_time),
     _player(nullptr), m_socket(sock ? sock->shared_from_this() : nullptr), m_requestSocket(nullptr), m_localAddress("127.0.0.1"), m_sessionState(WORLD_SESSION_STATE_CREATED),
@@ -103,15 +105,16 @@ WorldSession::WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, uint8
     m_recruitingFriendId(recruitingFriend), m_isRecruiter(isARecruiter)
     {}
 
-/// WorldSession destructor
+/// WorldSession destructor | WorldSession 析构函数：确保玩家已登出并解绑底层 Socket
 WorldSession::~WorldSession()
 {
-    ///- unload player if not unloaded
+    ///- unload player if not unloaded | 若玩家尚未卸载则执行登出清理
     if (_player)
         LogoutPlayer();
 
     // marks this session as finalized in the socket which references (BUT DOES NOT OWN) it.
     // this lets the socket handling code know that the socket can be safely deleted
+    // 通知关联的 WorldSocket 本会话已销毁，使其可安全释放
     if (m_socket)
     {
         if (!m_socket->IsClosed())
@@ -256,7 +259,7 @@ void WorldSession::SendPacket(WorldPacket const& packet, bool forcedSend /*= fal
     m_socket->SendPacket(packet);
 }
 
-/// Add an incoming packet to the queue
+/// Add an incoming packet to the queue | 按操作码线程模型分发客户端来包：立即执行、投递至地图队列或投递至世界主线程队列
 void WorldSession::QueuePacket(std::unique_ptr<WorldPacket> new_packet)
 {
     sWorld.IncrementOpcodeCounter(new_packet->GetOpcode());
@@ -350,7 +353,7 @@ void WorldSession::ProcessByteBufferException(WorldPacket const& packet)
     }
 }
 
-/// Update the WorldSession (triggered by World update)
+/// Update the WorldSession (triggered by World update) | 更新会话状态（由世界主线程 World::UpdateSessions 调用）
 bool WorldSession::Update(uint32 /*diff*/)
 {
     GetMessager().Execute(this);
@@ -368,8 +371,8 @@ bool WorldSession::Update(uint32 /*diff*/)
         m_lastAnticheatUpdate = now;
     }
 
-    ///- Retrieve packets from the receive queue and call the appropriate handlers
-    /// not process packets if socket already closed
+    ///- Retrieve packets from the receive queue and call the appropriate handlers | 逐一取出收包队列中的数据包，校验会话状态并分派至对应处理器
+    /// not process packets if socket already closed | 若 Socket 已关闭则停止处理队列包
     while (m_socket && !m_socket->IsClosed() && !recvQueueCopy.empty())
     {
         // sLog.outError("MOEP: %s (0x%.4X)", packet->GetOpcodeName(), packet->GetOpcode());
@@ -384,6 +387,7 @@ bool WorldSession::Update(uint32 /*diff*/)
                 if (!_player)
                 {
                     // skip STATUS_LOGGEDIN opcode unexpected errors if player logout sometime ago - this can be network lag delayed packets
+                    // 若玩家近期刚登出，忽略因网络延迟抵达的 STATUS_LOGGEDIN 报错
                     if (!m_playerRecentlyLogout)
                         LogUnexpectedOpcode(*packet, "the player has not logged in yet");
                 }
@@ -391,6 +395,7 @@ bool WorldSession::Update(uint32 /*diff*/)
                     ExecuteOpcode(opHandle, *packet);
 
                 // lag can cause STATUS_LOGGEDIN opcodes to arrive after the player started a transfer
+                // 网络延迟可能导致玩家已开始跨图传送后仍收到 STATUS_LOGGEDIN 操作码
 
 #ifdef ENABLE_PLAYERBOTS
                 if (_player && _player->GetPlayerbotMgr())
@@ -403,7 +408,7 @@ bool WorldSession::Update(uint32 /*diff*/)
                     LogUnexpectedOpcode(*packet, "the player has not logged in yet and not recently logout");
                 }
                 else
-                    // not expected _player or must checked in packet hanlder
+                    // not expected _player or must checked in packet hanlder | 允许 _player 为空，具体由处理器自行校验
                     ExecuteOpcode(opHandle, *packet);
                 break;
             case STATUS_TRANSFER:
@@ -415,7 +420,7 @@ bool WorldSession::Update(uint32 /*diff*/)
                     ExecuteOpcode(opHandle, *packet);
                 break;
             case STATUS_AUTHED:
-                // prevent cheating with skip queue wait
+                // prevent cheating with skip queue wait | 防止在排队期间发送已认证操作码绕过队列等待
                 if (m_inQueue && packet->GetOpcode() != CMSG_WARDEN_DATA)
                 {
                     LogUnexpectedOpcode(*packet, "the player not pass queue yet");
@@ -424,6 +429,7 @@ bool WorldSession::Update(uint32 /*diff*/)
 
                 // single from authed time opcodes send in to after logout time
                 // and before other STATUS_LOGGEDIN_OR_RECENTLY_LOGGOUT opcodes.
+                // 收到选人阶段操作码后清除“刚登出”标记（语音频道切换包除外）
                 if (packet->GetOpcode() != CMSG_SET_ACTIVE_VOICE_CHANNEL)
                     m_playerRecentlyLogout = false;
 
@@ -454,6 +460,7 @@ bool WorldSession::Update(uint32 /*diff*/)
 
     // check if we are safe to proceed with logout
     // logout procedure should happen only in World::UpdateSessions() method!!!
+    // 驱动会话状态机（注意：登出清理流程只能在 World::UpdateSessions() 主线程中安全执行）
     switch (m_sessionState)
     {
         case WORLD_SESSION_STATE_CREATED:
@@ -485,11 +492,11 @@ bool WorldSession::Update(uint32 /*diff*/)
             // TODO:: Maybe check if have to send queue update?
             if (!m_socket || (m_socket && m_socket->IsClosed()))
             {
-                // directly remove this session
+                // directly remove this session | 选人界面断线则直接销毁会话
                 return false;
             }
 
-            if (ShouldLogOut(time(nullptr)) && !m_playerLoading)   // check if delayed logout is fired
+            if (ShouldLogOut(time(nullptr)) && !m_playerLoading)   // check if delayed logout is fired | 检查是否触发延迟登出
                 LogoutPlayer();
 
             if (m_kickTime && m_kickTime <= time(nullptr))
@@ -507,13 +514,13 @@ bool WorldSession::Update(uint32 /*diff*/)
                 if (!_player)
                     return false;
 
-                // give the opportunity for this player to reconnect within 20 sec
+                // give the opportunity for this player to reconnect within 20 sec | 连接断开后保留角色短暂时间，允许玩家在宽限期内重连
                 SetOffline();
             }
             else if (!m_playerLoading)
             {
                 time_t curTime = time(nullptr);
-                if (ShouldAfkDisconnect(curTime) || ShouldLogOut(curTime)) // check if delayed logout or afk is fired
+                if (ShouldAfkDisconnect(curTime) || ShouldLogOut(curTime)) // check if delayed logout or afk is fired | 检查 AFK 超时或延迟登出倒计时
                     LogoutPlayer();
             }
 
@@ -522,7 +529,7 @@ bool WorldSession::Update(uint32 /*diff*/)
 
         case WORLD_SESSION_STATE_OFFLINE:
         {
-            if (ShouldDisconnect(time(nullptr)))   // check if delayed logout is fired
+            if (ShouldDisconnect(time(nullptr)))   // check if delayed logout is fired | 离线宽限期超时，正式登出角色并销毁会话
             {
                 LogoutPlayer();
                 if (!m_requestSocket && (!m_socket || m_socket->IsClosed()))
@@ -540,7 +547,7 @@ bool WorldSession::Update(uint32 /*diff*/)
 
 void WorldSession::UpdateMap(uint32 diff)
 {
-    // Send time sync packet every 10s, to a client only: bots never answer it
+    // Send time sync packet every 10s, to a client only: bots never answer it | 每 10 秒向真实客户端下发一次时间同步请求（Bot 无需同步）
     if (m_socket && m_timeSyncTimer > 0)
     {
         if (diff >= m_timeSyncTimer)
@@ -596,14 +603,14 @@ void WorldSession::HandleBotPackets()
 }
 #endif
 
-/// %Log the player out
+/// %Log the player out | 执行玩家登出清理流程
 void WorldSession::LogoutPlayer()
 {
-    // if the player has just logged out, there is no need to do anything here
+    // if the player has just logged out, there is no need to do anything here | 若已处于刚登出状态则直接跳过
     if (m_playerRecentlyLogout)
         return;
 
-    // finish pending transfers before starting the logout
+    // finish pending transfers before starting the logout | 开始登出前先完成挂起的跨地图传送
     while (_player && _player->IsBeingTeleportedFar())
         HandleMoveWorldportAckOpcode();
 
@@ -735,7 +742,7 @@ void WorldSession::LogoutPlayer()
         uint32 guid = _player->GetGUIDLow();
 #endif
 
-        ///- Remove the player from the world
+        ///- Remove the player from the world | 将玩家实体从当前地图世界或内存中移除
         // the player may not be in the world when logging out
         // e.g if he got disconnected during a transfer to another map
         // calls to GetMap in this case may cause crashes
@@ -751,9 +758,9 @@ void WorldSession::LogoutPlayer()
             Map::DeleteFromWorld(_player);
         }
 
-        SetPlayer(nullptr, 0);                                    // deleted in Remove/DeleteFromWorld call
+        SetPlayer(nullptr, 0);                                    // deleted in Remove/DeleteFromWorld call | 实体已在上方 Remove/DeleteFromWorld 中销毁
 
-        ///- Send the 'logout complete' packet to the client
+        ///- Send the 'logout complete' packet to the client | 向客户端发送登出完成确认包 SMSG_LOGOUT_COMPLETE
         WorldPacket data(SMSG_LOGOUT_COMPLETE, 0);
         SendPacket(data);
 
@@ -1160,6 +1167,7 @@ void WorldSession::ExecuteOpcode(OpcodeHandler const& opHandle, WorldPacket& pac
 {
     // need prevent do internal far teleports in handlers because some handlers do lot steps
     // or call code that can do far teleports in some conditions unexpectedly for generic way work code
+    // 处理操作码期间开启延迟传送保护，避免在多步骤处理中途触发远距离跨图传送导致状态异常
     if (_player)
         _player->SetCanDelayTeleport(true);
 
@@ -1179,6 +1187,7 @@ void WorldSession::ExecuteOpcode(OpcodeHandler const& opHandle, WorldPacket& pac
 
         // we should execute delayed teleports only for alive(!) players
         // because we don't want player's ghost teleported from graveyard
+        // 执行处理器期间挂起的延迟传送
         if (_player->IsHasDelayedTeleport())
             _player->TeleportTo(_player->m_teleport_dest, _player->m_teleport_options);
     }
@@ -1197,6 +1206,7 @@ void WorldSession::SendPlaySpellVisual(ObjectGuid guid, uint32 spellArtKit) cons
 
 // Time a packet takes to reach the client: half the round trip of the clock synchronisation, or of the ping until the
 // synchronisation has measured one, at most one second
+// 估算服务端到客户端的单程网络延迟（取时钟同步 RTT 或 Ping 延迟的一半，上限 1 秒）
 uint32 WorldSession::GetOneWayDelay() const
 {
     uint32 const roundTrip = m_timeSyncRoundTrip ? m_timeSyncRoundTrip.load() : m_latency.load();
@@ -1205,6 +1215,7 @@ uint32 WorldSession::GetOneWayDelay() const
 
 void WorldSession::SynchronizeMovement(MovementInfo& movementInfo)
 {
+    // 根据计算得到的时钟偏移量将客户端移动时间戳换算为服务端时间基准
     int64 movementTime = (int64)movementInfo.ctime + m_timeSyncClockDelta;
     if (m_timeSyncClockDelta == 0 || movementTime < 0 || movementTime > 0xFFFFFFFF)
     {

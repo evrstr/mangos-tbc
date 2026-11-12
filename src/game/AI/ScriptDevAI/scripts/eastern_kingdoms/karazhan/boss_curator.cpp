@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Karazhan
 EndScriptData */
 
+// 馆长（The Curator）首领战 AI（召唤奥术畸体与唤醒虚弱易伤阶段）
+
 /* Pre-nerf Changes
 Add Astral Armor ability - present whenever Curator is not evocating or enraged.
 
@@ -33,45 +35,47 @@ Removed sometime prior to 2.1.
 #include "Spells/Spell.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1532057,
-    SAY_SUMMON1                 = -1532058,
-    SAY_SUMMON2                 = -1532059,
-    SAY_EVOCATE                 = -1532060,
-    SAY_ENRAGE                  = -1532061,
-    SAY_KILL1                   = 15335,
-    SAY_KILL2                   = 15336,
-    SAY_DEATH                   = -1532064,
+    SAY_AGGRO                   = -1532057,                 // 开战 台词广播 ID
+    SAY_SUMMON1                 = -1532058,                 // summon1 台词广播 ID
+    SAY_SUMMON2                 = -1532059,                 // summon2 台词广播 ID
+    SAY_EVOCATE                 = -1532060,                 // evocate 台词广播 ID
+    SAY_ENRAGE                  = -1532061,                 // 狂暴 台词广播 ID
+    SAY_KILL1                   = 15335,                    // kill1 台词广播 ID
+    SAY_KILL2                   = 15336,                    // kill2 台词广播 ID
+    SAY_DEATH                   = -1532064,                 // 死亡 台词广播 ID
 
     // Flare
-    NPC_ASTRAL_FLARE_1          = 17096,
-    NPC_ASTRAL_FLARE_2          = 19781,
-    NPC_ASTRAL_FLARE_3          = 19782,
-    NPC_ASTRAL_FLARE_4          = 19783,
+    NPC_ASTRAL_FLARE_1          = 17096,                    // astralflare1 Entry ID
+    NPC_ASTRAL_FLARE_2          = 19781,                    // astralflare2 Entry ID
+    NPC_ASTRAL_FLARE_3          = 19782,                    // astralflare3 Entry ID
+    NPC_ASTRAL_FLARE_4          = 19783,                    // astralflare4 Entry ID
 
-    SPELL_ASTRAL_FLARE_NE       = 30236,
-    SPELL_ASTRAL_FLARE_NW       = 30239,
-    SPELL_ASTRAL_FLARE_SE       = 30240,
-    SPELL_ASTRAL_FLARE_SW       = 30241,
+    SPELL_ASTRAL_FLARE_NE       = 30236,                    // astralflarene 法术 ID
+    SPELL_ASTRAL_FLARE_NW       = 30239,                    // astralflarenw 法术 ID
+    SPELL_ASTRAL_FLARE_SE       = 30240,                    // astralflarese 法术 ID
+    SPELL_ASTRAL_FLARE_SW       = 30241,                    // astralflaresw 法术 ID
 
-    SPELL_ASTRAL_FLARE_PASSIVE  = 30234,
-    SPELL_ASTRAL_FLARE_VISUAL   = 30237,
+    SPELL_ASTRAL_FLARE_PASSIVE  = 30234,                    // astralflarepassive 法术 ID
+    SPELL_ASTRAL_FLARE_VISUAL   = 30237,                    // astralflare视觉特效 法术 ID
 
-    // The Curator
-    SPELL_HATEFUL_BOLT          = 30383,
-    SPELL_EVOCATION             = 30254,
-    SPELL_ARCANE_INFUSION       = 30403,
-    SPELL_ARCANE_DECONSTRUCTION = 30407,
+    // The Curator (The馆长)
+    SPELL_HATEFUL_BOLT          = 30383,                    // 仇恨箭 法术 ID
+    SPELL_EVOCATION             = 30254,                    // 唤醒 法术 ID
+    SPELL_ARCANE_INFUSION       = 30403,                    // 奥术infusion 法术 ID
+    SPELL_ARCANE_DECONSTRUCTION = 30407,                    // 奥术deconstruction 法术 ID
 
-    SPELL_ASTRAL_ARMOR          = 29476,
+    SPELL_ASTRAL_ARMOR          = 29476,                    // astralarmor 法术 ID
 
-    CURATOR_PHASE_1 = 0,
-    CURATOR_PHASE_2 = 1,
+    CURATOR_PHASE_1 = 0,                                    // 阶段1 标识 ID
+    CURATOR_PHASE_2 = 1,                                    // 阶段2 标识 ID
 };
 
 static uint32 astralFlareSpells[]{ SPELL_ASTRAL_FLARE_NE, SPELL_ASTRAL_FLARE_NW, SPELL_ASTRAL_FLARE_SE, SPELL_ASTRAL_FLARE_SW };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum CuratorActions
 {
     CURATOR_ACTION_BERSERK,
@@ -81,6 +85,7 @@ enum CuratorActions
     CURATOR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（curator）
 struct boss_curatorAI : public CombatAI
 {
     boss_curatorAI(Creature* creature) : CombatAI(creature, CURATOR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -101,6 +106,7 @@ struct boss_curatorAI : public CombatAI
     GuidVector m_sparkGuids;
     uint8 m_phase;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -122,7 +128,7 @@ struct boss_curatorAI : public CombatAI
         {
             case CURATOR_ACTION_FLARE: return 11000;
             case CURATOR_ACTION_HATEFUL_BOLT: return GetActionReadyStatus(CURATOR_ACTION_ARCANE_INFUSION) ? 15000 : 7000;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
@@ -144,6 +150,7 @@ struct boss_curatorAI : public CombatAI
             m_instance->SetData(TYPE_CURATOR, IN_PROGRESS);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -156,6 +163,7 @@ struct boss_curatorAI : public CombatAI
         m_sparkGuids.clear();
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -192,7 +200,7 @@ struct boss_curatorAI : public CombatAI
             case CURATOR_ACTION_BERSERK:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_DECONSTRUCTION) == CAST_OK)
-                    DisableCombatAction(action); // once per fight
+                    DisableCombatAction(action); // once per fight (每场战斗仅触发一次)
                 return;
             }
             case CURATOR_ACTION_ARCANE_INFUSION:
@@ -202,7 +210,7 @@ struct boss_curatorAI : public CombatAI
                     if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_INFUSION) == CAST_OK)
                     {
                         DoScriptText(SAY_ENRAGE, m_creature);
-                        SetActionReadyStatus(action, false); // once per fight
+                        SetActionReadyStatus(action, false); // once per fight (每场战斗仅触发一次)
                         m_phase = CURATOR_PHASE_2;
                     }
                 }
@@ -213,7 +221,7 @@ struct boss_curatorAI : public CombatAI
                 if (m_phase != CURATOR_PHASE_1)
                     return;
 
-                // summon Astral Flare
+                // summon Astral Flare (召唤 Astral Flare)
                 uint32 randomSpell = astralFlareSpells[urand(0, 3)];
                 DoCastSpellIfCan(nullptr, randomSpell);
                 ResetCombatAction(action, GetSubsequentActionTimer(action));
@@ -240,6 +248,7 @@ struct boss_curatorAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_curator
 void AddSC_boss_curator()
 {
     Script* pNewScript = new Script;

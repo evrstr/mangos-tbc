@@ -31,14 +31,14 @@ EventProcessor::~EventProcessor()
 
 void EventProcessor::Update(uint32 p_time)
 {
-    // update time
+    // update time | 累加内部经过时间
     m_time += p_time;
 
-    // main event loop
+    // main event loop | 主事件处理循环：按时间戳顺序处理所有已到期事件
     EventList::iterator i;
     while (((i = m_events.begin()) != m_events.end()) && i->first <= m_time)
     {
-        // get and remove event from queue
+        // get and remove event from queue | 从队列取出并移除队首事件
         BasicEvent* Event = i->second;
         m_events.erase(i);
 
@@ -46,7 +46,7 @@ void EventProcessor::Update(uint32 p_time)
         {
             if (Event->Execute(m_time, p_time))
             {
-                // completely destroy event if it is not re-added
+                // completely destroy event if it is not re-added | 若未重新调度则销毁事件对象
                 delete Event;
             }
         }
@@ -60,10 +60,10 @@ void EventProcessor::Update(uint32 p_time)
 
 void EventProcessor::KillAllEvents(bool force)
 {
-    // prevent event insertions
+    // prevent event insertions | 标记正在中止，阻止后续行为继续依赖队列
     m_aborting = true;
 
-    // first, abort all existing events
+    // first, abort all existing events | 遍历中止并按需释放所有现有事件
     for (EventList::iterator i = m_events.begin(); i != m_events.end();)
     {
         EventList::iterator i_old = i;
@@ -75,12 +75,12 @@ void EventProcessor::KillAllEvents(bool force)
         {
             delete i_old->second;
 
-            if (!force)                                     // need per-element cleanup
+            if (!force)                                     // need per-element cleanup | 非强制清空模式下逐个擦除元素
                 m_events.erase(i_old);
         }
     }
 
-    // fast clear event list (in force case)
+    // fast clear event list (in force case) | 强制模式下直接整表清空
     if (force)
         m_events.clear();
 }

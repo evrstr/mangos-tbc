@@ -28,6 +28,7 @@ enum
     SPELL_LIGHT_BONFIRE = 46904,
 };
 
+// 仲夏火焰节篝火游戏对象 AI (go_bonfire)：管理篝火点燃与熄灭/亵渎状态
 struct go_bonfire : GameObjectAI
 {
     go_bonfire(GameObject* go) : GameObjectAI(go), m_state(true){ m_go->SetGoArtKit(121); }
@@ -59,6 +60,7 @@ struct go_bonfire : GameObjectAI
     }
 };
 
+// 亵渎敌对阵营篝火任务完成回调：施放熄灭篝火法术并切换视觉
 bool QuestRewardedBonfireDesecrate(Player* player, GameObject* /*go*/, Quest const* /*quest*/)
 {
     player->CastSpell(nullptr, SPELL_STAMP_OUT_BONFIRE, TRIGGERED_NONE);
@@ -66,6 +68,7 @@ bool QuestRewardedBonfireDesecrate(Player* player, GameObject* /*go*/, Quest con
     return true;
 }
 
+// 点燃己方篝火法术脚本
 struct LightBonfire : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -77,6 +80,7 @@ struct LightBonfire : public SpellScript
     }
 };
 
+// 篝火视觉组件切换法术脚本
 struct BonfireArtkit : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -492,6 +496,7 @@ struct JuggleTorchCatch : public SpellScript
     }
 };
 
+// 注册仲夏火焰节脚本
 void AddSC_midsummer_festival()
 {
     Script* pNewScript = new Script;

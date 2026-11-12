@@ -21,6 +21,8 @@ SDComment: Creature support for 10498
 SDCategory: Scholomance
 EndScriptData */
 
+// 通灵学院（Scholomance）六大讲堂小首领与杂项生物 AI
+
 /* ContentData
 npc_spectral_tutor
 EndContentData */
@@ -31,24 +33,27 @@ EndContentData */
 ## npc_spectral_tutor
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_IMAGE_PROJECTION          = 17651,
-    SPELL_IMAGE_PROJECTION_HEAL     = 17652,
-    SPELL_IMAGE_PROJECTION_SUMMON   = 17653,
-    SPELL_MANA_BURN                 = 17630,
-    SPELL_SILENCE                   = 12528,
+    SPELL_IMAGE_PROJECTION          = 17651,                // 影像projection 法术 ID
+    SPELL_IMAGE_PROJECTION_HEAL     = 17652,                // 影像projection治疗 法术 ID
+    SPELL_IMAGE_PROJECTION_SUMMON   = 17653,                // 影像projection召唤 法术 ID
+    SPELL_MANA_BURN                 = 17630,                // 法力burn 法术 ID
+    SPELL_SILENCE                   = 12528,                // 沉默 法术 ID
 };
 
+// 随从/NPC AI：tutor（spectral_tutor）
 struct npc_spectral_tutorAI : public ScriptedAI
 {
     npc_spectral_tutorAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiManaBurnTimer;
-    uint32 m_uiSilenceTimer;
-    uint32 m_uiProjectionTimer;
-    uint32 m_uiProjEndTimer;
+    uint32 m_uiManaBurnTimer;                               // ManaBurn 技能计时器
+    uint32 m_uiSilenceTimer;                                // Silence 技能计时器
+    uint32 m_uiProjectionTimer;                             // Projection 技能计时器
+    uint32 m_uiProjEndTimer;                                // ProjEnd 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiProjEndTimer    = 0;
@@ -57,6 +62,7 @@ struct npc_spectral_tutorAI : public ScriptedAI
         m_uiProjectionTimer = urand(12000, 13000);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_uiProjEndTimer)
@@ -65,6 +71,7 @@ struct npc_spectral_tutorAI : public ScriptedAI
         ScriptedAI::EnterEvadeMode();
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -112,15 +119,17 @@ struct npc_spectral_tutorAI : public ScriptedAI
         else
             m_uiProjectionTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_spectral_tutor
 UnitAI* GetAI_npc_spectral_tutor(Creature* pCreature)
 {
     return new npc_spectral_tutorAI(pCreature);
 }
 
+// 注册并载入脚本模块：scholomance
 void AddSC_scholomance()
 {
     Script* pNewScript = new Script;

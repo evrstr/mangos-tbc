@@ -21,10 +21,16 @@ SDComment: Timers may need update.
 SDCategory: Tempest Keep, The Mechanar
 EndScriptData */
 
+// 计算者帕萨雷恩（能源舰最终首领）
+/* 遭遇战概述：
+ * 计算者帕萨雷恩是凯尔萨斯的重要谋士，战斗中施放统御意志心控玩家，低血量狂暴并召唤多只虚空灵力微粒。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "mechanar.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = 20041,
@@ -59,6 +65,7 @@ enum
 
 static const uint32 aWraithSummonSpells[4] = {SPELL_SUMMON_NETHER_WRAITH_1/*, SPELL_SUMMON_NETHER_WRAITH_2*/, SPELL_SUMMON_NETHER_WRAITH_3, SPELL_SUMMON_NETHER_WRAITH_4};
 
+// boss_pathaleon_the_calculatorAI 逻辑实现
 struct boss_pathaleon_the_calculatorAI : public CombatAI
 {
     boss_pathaleon_the_calculatorAI(Creature* creature) : CombatAI(creature, 0), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -71,11 +78,13 @@ struct boss_pathaleon_the_calculatorAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -86,6 +95,7 @@ struct boss_pathaleon_the_calculatorAI : public CombatAI
             m_instance->SetData(TYPE_PATHALEON, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         m_creature->RemoveGuardians();
@@ -94,12 +104,14 @@ struct boss_pathaleon_the_calculatorAI : public CombatAI
             m_instance->SetData(TYPE_PATHALEON, FAIL);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->SetInCombatWithZone();
         summoned->AI()->AttackClosestEnemy();
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -118,10 +130,12 @@ struct boss_pathaleon_the_calculatorAI : public CombatAI
     }
 };
 
+// mob_nether_wraithAI 逻辑实现
 struct mob_nether_wraithAI : public ScriptedAI
 {
     mob_nether_wraithAI(Creature* creature) : ScriptedAI(creature) {}
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         m_creature->CastSpell(nullptr, SPELL_DETONATION, TRIGGERED_OLD_TRIGGERED);
@@ -129,8 +143,10 @@ struct mob_nether_wraithAI : public ScriptedAI
 };
 
 // 35284 - Summon Nether Wraiths
+// SummonNetherWraiths 法术脚本
 struct SummonNetherWraiths : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         uint8 maxWraith = 3;
@@ -140,8 +156,10 @@ struct SummonNetherWraiths : public SpellScript
 };
 
 // 36022 - Arcane Torrent
+// ArcaneTorrentPathaleon 法术脚本
 struct ArcaneTorrentPathaleon : public SpellScript
 {
+    // 触发施法回调
     void OnCast(Spell* spell) const override
     {
         Unit* caster = spell->GetCaster();
@@ -153,6 +171,7 @@ struct ArcaneTorrentPathaleon : public SpellScript
     }
 };
 
+// 注册 boss_pathaleon_the_calculator 脚本
 void AddSC_boss_pathaleon_the_calculator()
 {
     Script* pNewScript = new Script;

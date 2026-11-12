@@ -21,6 +21,10 @@ SDComment: Quest support: 9283, 9528, Injured Draenei cosmetic only
 SDCategory: Azuremyst Isle
 EndScriptData */
 
+/**
+ * 秘蓝岛 (Azuremyst Isle) 德莱尼起始任务与 NPC 脚本
+ */
+
 /* ContentData
 npc_draenei_survivor
 npc_magwin
@@ -33,23 +37,25 @@ EndContentData */
 ## npc_draenei_survivor
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_HEAL1           = -1001216,
-    SAY_HEAL2           = -1001217,
-    SAY_HEAL3           = -1001218,
-    SAY_HEAL4           = -1001219,
-    SAY_HEAL5           = -1001220,
-    SAY_HEAL6           = -1001221,
-    SAY_HELP1           = -1001222,
-    SAY_HELP2           = -1001223,
-    SAY_HELP3           = -1001224,
-    SAY_HELP4           = -1001225,
+    SAY_HEAL1           = -1001216,                         // 剧情台词/喊话文本 ID
+    SAY_HEAL2           = -1001217,                         // 剧情台词/喊话文本 ID
+    SAY_HEAL3           = -1001218,                         // 剧情台词/喊话文本 ID
+    SAY_HEAL4           = -1001219,                         // 剧情台词/喊话文本 ID
+    SAY_HEAL5           = -1001220,                         // 剧情台词/喊话文本 ID
+    SAY_HEAL6           = -1001221,                         // 剧情台词/喊话文本 ID
+    SAY_HELP1           = -1001222,                         // 剧情台词/喊话文本 ID
+    SAY_HELP2           = -1001223,                         // 剧情台词/喊话文本 ID
+    SAY_HELP3           = -1001224,                         // 剧情台词/喊话文本 ID
+    SAY_HELP4           = -1001225,                         // 剧情台词/喊话文本 ID
 
-    SPELL_IRRIDATION    = 35046,
+    SPELL_IRRIDATION    = 35046,                            // 技能法术 ID
     SPELL_STUNNED       = 28630
 };
 
+// npc_draenei_survivorAI NPC 脚本 AI
 struct npc_draenei_survivorAI : public ScriptedAI
 {
     npc_draenei_survivorAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -62,7 +68,7 @@ struct npc_draenei_survivorAI : public ScriptedAI
 
     bool m_bCanSayHelp;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_casterGuid.Clear();
 
@@ -84,7 +90,7 @@ struct npc_draenei_survivorAI : public ScriptedAI
         if (m_bCanSayHelp && pWho->GetTypeId() == TYPEID_PLAYER && pWho->CanAssist(m_creature) &&
                 m_creature->IsWithinDistInMap(pWho, 25.0f))
         {
-            // Random switch between 4 texts
+            // Random switch between 4 texts (说明)
             switch (urand(0, 3))
             {
                 case 0: DoScriptText(SAY_HELP1, m_creature, pWho); break;
@@ -98,7 +104,7 @@ struct npc_draenei_survivorAI : public ScriptedAI
         }
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override    // 被法术命中回调处理
     {
         if (pSpell->Id == 28880)
         {
@@ -113,7 +119,7 @@ struct npc_draenei_survivorAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_uiSayThanksTimer)
         {
@@ -134,7 +140,7 @@ struct npc_draenei_survivorAI : public ScriptedAI
                         case 3: DoScriptText(SAY_HEAL4, m_creature, pPlayer); break;
                         case 4: DoScriptText(SAY_HEAL5, m_creature, pPlayer); break;
                         case 5: DoScriptText(SAY_HEAL6, m_creature, pPlayer); break;
-                        case 6: break; // say nothing
+                        case 6: break; // say nothing (说明)
                     }
 
                     pPlayer->TalkedToCreature(m_creature->GetEntry(), m_creature->GetObjectGuid());
@@ -170,7 +176,7 @@ struct npc_draenei_survivorAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_draenei_survivor(Creature* pCreature)
+UnitAI* GetAI_npc_draenei_survivor(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_draenei_survivorAI(pCreature);
 }
@@ -179,26 +185,28 @@ UnitAI* GetAI_npc_draenei_survivor(Creature* pCreature)
 ## npc_magwin
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_START               = -1000111,
-    SAY_AGGRO               = -1000112,
-    SAY_PROGRESS            = -1000113,
-    SAY_END1                = -1000114,
-    SAY_END2                = -1000115,
-    EMOTE_HUG               = -1000116,
-    SAY_DAUGHTER            = -1000184,
+    SAY_START               = -1000111,                     // 剧情台词/喊话文本 ID
+    SAY_AGGRO               = -1000112,                     // 剧情台词/喊话文本 ID
+    SAY_PROGRESS            = -1000113,                     // 剧情台词/喊话文本 ID
+    SAY_END1                = -1000114,                     // 剧情台词/喊话文本 ID
+    SAY_END2                = -1000115,                     // 剧情台词/喊话文本 ID
+    EMOTE_HUG               = -1000116,                     // 剧情台词/喊话文本 ID
+    SAY_DAUGHTER            = -1000184,                     // 剧情台词/喊话文本 ID
 
-    NPC_COWLEN              = 17311,
+    NPC_COWLEN              = 17311,                        // NPC 条目 ID
 
     QUEST_A_CRY_FOR_HELP    = 9528
 };
 
+// npc_magwinAI NPC 脚本 AI
 struct npc_magwinAI : public npc_escortAI
 {
     npc_magwinAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
             m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
@@ -210,7 +218,7 @@ struct npc_magwinAI : public npc_escortAI
             DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -265,7 +273,7 @@ struct npc_magwinAI : public npc_escortAI
     }
 };
 
-bool QuestAccept_npc_magwin(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_magwin(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_A_CRY_FOR_HELP)
         if (npc_magwinAI* ai = dynamic_cast<npc_magwinAI*>(pCreature->AI()))
@@ -274,13 +282,14 @@ bool QuestAccept_npc_magwin(Player* pPlayer, Creature* pCreature, const Quest* p
     return true;
 }
 
+// 常量与事件枚举
 enum
 {
-    NPC_OWLKIN                          = 16518,
-    NPC_OWLKIN_INOC                     = 16534,
+    NPC_OWLKIN                          = 16518,            // NPC 条目 ID
+    NPC_OWLKIN_INOC                     = 16534,            // NPC 条目 ID
 };
 
-// 29528 - Inoculate Nestlewood Owlkin
+// 29528 - Inoculate Nestlewood Owlkin (法术 29528 - Inoculate Nestlewood Owlkin)
 struct InoculateNestlewoodOwlkin : public SpellScript, public AuraScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -303,12 +312,12 @@ struct InoculateNestlewoodOwlkin : public SpellScript, public AuraScript
             if (Player* caster = static_cast<Player*>(aura->GetCaster()))
                 caster->KilledMonsterCredit(NPC_OWLKIN_INOC);
 
-        // set despawn timer, since we want to remove creature after a short time
+        // set despawn timer, since we want to remove creature after a short time (说明)
         target->ForcedDespawn(15000);
     }
 };
 
-void AddSC_azuremyst_isle()
+void AddSC_azuremyst_isle() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_draenei_survivor";

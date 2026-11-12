@@ -2,72 +2,75 @@
 * This program is free software licensed under GPL version 2
 * Please see the included DOCS/LICENSE.TXT for more information */
 
-#ifndef DEF_STRATHOLME_H
+// 斯坦索姆（Stratholme）全局定义头文件
+
+#ifndef DEF_STRATHOLME_H                                    // 防止头文件重复包含
 #define DEF_STRATHOLME_H
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    MAX_ENCOUNTER               = 11,
-    MAX_SILVERHAND              = 5,
-    MAX_ZIGGURATS               = 3,
+    MAX_ENCOUNTER               = 11,                       // encounter 标识 ID
+    MAX_SILVERHAND              = 5,                        // silverhand 标识 ID
+    MAX_ZIGGURATS               = 3,                        // ziggurats 标识 ID
 
-    TYPE_BARON_RUN              = 0,
-    TYPE_BARONESS               = 1,
+    TYPE_BARON_RUN              = 0,                        // 男爵run 遭遇战进度数据标识 ID
+    TYPE_BARONESS               = 1,                        // 男爵夫人 遭遇战进度数据标识 ID
     TYPE_NERUB                  = TYPE_BARONESS + 1,        // Assert that these three TYPEs are in correct order.
     TYPE_PALLID                 = TYPE_BARONESS + 2,
-    TYPE_RAMSTEIN               = 4,
-    TYPE_BARON                  = 5,
-    TYPE_BARTHILAS_RUN          = 6,
-    TYPE_AURIUS                 = 7,
-    TYPE_BLACK_GUARDS           = 8,
-    TYPE_POSTMASTER             = 9,
-    TYPE_TRUE_MASTERS           = 10,
+    TYPE_RAMSTEIN               = 4,                        // ramstein 遭遇战进度数据标识 ID
+    TYPE_BARON                  = 5,                        // 男爵 遭遇战进度数据标识 ID
+    TYPE_BARTHILAS_RUN          = 6,                        // barthilasrun 遭遇战进度数据标识 ID
+    TYPE_AURIUS                 = 7,                        // aurius 遭遇战进度数据标识 ID
+    TYPE_BLACK_GUARDS           = 8,                        // blackguards 遭遇战进度数据标识 ID
+    TYPE_POSTMASTER             = 9,                        // postmaster 遭遇战进度数据标识 ID
+    TYPE_TRUE_MASTERS           = 10,                       // truemasters 遭遇战进度数据标识 ID
 
-    NPC_TIMMY_THE_CRUEL         = 10808,
-    NPC_BARTHILAS               = 10435,
-    NPC_BARONESS_ANASTARI       = 10436,
-    NPC_NERUBENKAN              = 10437,
-    NPC_MALEKI_THE_PALLID       = 10438,
-    NPC_RAMSTEIN                = 10439,
-    NPC_BARON                   = 10440,
-    NPC_BALNAZZAR               = 10813,
+    NPC_TIMMY_THE_CRUEL         = 10808,                    // timmythecruel Entry ID
+    NPC_BARTHILAS               = 10435,                    // barthilas Entry ID
+    NPC_BARONESS_ANASTARI       = 10436,                    // 男爵夫人安娜丝塔丽 Entry ID
+    NPC_NERUBENKAN              = 10437,                    // nerubenkan Entry ID
+    NPC_MALEKI_THE_PALLID       = 10438,                    // 玛勒基thepallid Entry ID
+    NPC_RAMSTEIN                = 10439,                    // ramstein Entry ID
+    NPC_BARON                   = 10440,                    // 男爵 Entry ID
+    NPC_BALNAZZAR               = 10813,                    // 巴纳扎尔 Entry ID
     NPC_CRYSTAL                 = 10415,                    // Three ziggurat crystals
     NPC_THUZADIN_ACOLYTE        = 10399,                    // Acolytes in ziggurats
-    NPC_ABOM_BILE               = 10416,
-    NPC_ABOM_VENOM              = 10417,
+    NPC_ABOM_BILE               = 10416,                    // abombile Entry ID
+    NPC_ABOM_VENOM              = 10417,                    // abomvenom Entry ID
     NPC_MINDLESS_UNDEAD         = 11030,                    // Zombies summoned after Ramstein
     NPC_BLACK_GUARD             = 10394,                    // Zombies summoned after Ramstein
-    NPC_YSIDA                   = 16031,
+    NPC_YSIDA                   = 16031,                    // ysida Entry ID
     // NPC_YSIDA_TRIGGER        = 16100,
     NPC_CRIMSON_INITIATE        = 10420,                    // A couple of them related to spawn Timmy
-    NPC_CRIMSON_GALLANT         = 10424,
-    NPC_CRIMSON_GUARDSMAN       = 10418,
-    NPC_CRIMSON_CONJURER        = 10419,
-    NPC_CRIMSON_MONK            = 11043,
-    NPC_CRIMSON_SORCERER        = 10422,
-    NPC_CRIMSON_BATTLE_MAGE     = 10425,
-    NPC_AURIUS                  = 10917,
-    NPC_UNDEAD_POSTMAN          = 11142,
-    NPC_SKELETAL_GUARDIAN       = 10390,
-    NPC_SKELETAL_BERSERKER      = 10391,
+    NPC_CRIMSON_GALLANT         = 10424,                    // crimsongallant Entry ID
+    NPC_CRIMSON_GUARDSMAN       = 10418,                    // crimsonguardsman Entry ID
+    NPC_CRIMSON_CONJURER        = 10419,                    // crimsonconjurer Entry ID
+    NPC_CRIMSON_MONK            = 11043,                    // crimsonmonk Entry ID
+    NPC_CRIMSON_SORCERER        = 10422,                    // crimson巫师 Entry ID
+    NPC_CRIMSON_BATTLE_MAGE     = 10425,                    // crimsonbattle法师 Entry ID
+    NPC_AURIUS                  = 10917,                    // aurius Entry ID
+    NPC_UNDEAD_POSTMAN          = 11142,                    // undeadpostman Entry ID
+    NPC_SKELETAL_GUARDIAN       = 10390,                    // skeletalguardian Entry ID
+    NPC_SKELETAL_BERSERKER      = 10391,                    // skeletalberserker Entry ID
     NPC_GREGOR_THE_JUSTICIAR    = 17910,                    // related to quest "True Masters of the Light"
-    NPC_CATHELA_THE_SEEKER      = 17911,
-    NPC_NEMAS_THE_ARBITER       = 17912,
-    NPC_AELMAR_THE_VANQUISHER   = 17913,
-    NPC_VICAR_HYERONIMUS        = 17914,
-    NPC_PALADIN_QUEST_CREDIT    = 17915,
-    NPC_PLAGUED_RAT             = 10441,
-    NPC_PLAGUED_INSECT          = 10461,
-    NPC_PLAGUED_MAGGOT          = 10536,
+    NPC_CATHELA_THE_SEEKER      = 17911,                    // cathelatheseeker Entry ID
+    NPC_NEMAS_THE_ARBITER       = 17912,                    // nemasthearbiter Entry ID
+    NPC_AELMAR_THE_VANQUISHER   = 17913,                    // aelmarthevanquisher Entry ID
+    NPC_VICAR_HYERONIMUS        = 17914,                    // vicarhyeronimus Entry ID
+    NPC_PALADIN_QUEST_CREDIT    = 17915,                    // 圣骑士任务credit Entry ID
+    NPC_PLAGUED_RAT             = 10441,                    // 疫病rat Entry ID
+    NPC_PLAGUED_INSECT          = 10461,                    // 疫病insect Entry ID
+    NPC_PLAGUED_MAGGOT          = 10536,                    // 疫病蛆虫 Entry ID
 
-    GO_SERVICE_ENTRANCE         = 175368,
-    GO_GAUNTLET_GATE1           = 175357,
+    GO_SERVICE_ENTRANCE         = 175368,                   // serviceentrance 游戏对象 Entry ID
+    GO_GAUNTLET_GATE1           = 175357,                   // gauntletgate1 游戏对象 Entry ID
     GO_PORT_SLAUGHTER_GATE      = 175358,                   // Port used at the undead event
-    GO_ZIGGURAT_DOOR_1          = 175380,                   // Baroness
+    GO_ZIGGURAT_DOOR_1          = 175380,                   // Baroness (男爵夫人)
     GO_ZIGGURAT_DOOR_2          = 175379,                   // Nerub'enkan
-    GO_ZIGGURAT_DOOR_3          = 175381,                   // Maleki
+    GO_ZIGGURAT_DOOR_3          = 175381,                   // Maleki (玛勒基)
     GO_ZIGGURAT_DOOR_4          = 175405,                   // Ramstein
-    GO_ZIGGURAT_DOOR_5          = 175796,                   // Baron
+    GO_ZIGGURAT_DOOR_5          = 175796,                   // Baron (男爵)
     GO_PORT_GAUNTLET            = 175374,                   // Port from gauntlet to slaughter
     GO_PORT_SLAUGHTER           = 175373,                   // Port at slaughter
     GO_PORT_ELDERS              = 175377,                   // Port at elders square
@@ -75,50 +78,50 @@ enum
     GO_PORT_TRAP_GATE_1         = 175351,                   // Portcullis used in the gate traps (rats trap)
     GO_PORT_TRAP_GATE_2         = 175350,                   // Scarlet side
     GO_PORT_TRAP_GATE_3         = 175355,                   // Undead side
-    GO_PORT_TRAP_GATE_4         = 175354,
+    GO_PORT_TRAP_GATE_4         = 175354,                   // porttrap门禁4 游戏对象 Entry ID
 
-    FACTION_VICTIM              = 42,
+    FACTION_VICTIM              = 42,                       // victim 阵营 ID
 
-    QUEST_DEAD_MAN_PLEA         = 8945,
-    QUEST_MEDALLION_FAITH       = 5122,
+    QUEST_DEAD_MAN_PLEA         = 8945,                     // deadmanplea 任务 ID
+    QUEST_MEDALLION_FAITH       = 5122,                     // medallionfaith 任务 ID
 
     SPELL_BARON_ULTIMATUM       = 27861,                    // Aura for player during the run (visual icon)
     SPELL_BARON_SOUL_DRAIN      = 27640,                    // Used by the Baron to kill Ysida
     SPELL_YSIDA_FREED           = 27773,                    // Argent Dawn extra-reputation reward on successful Baron run
-    SPELL_SUMMON_POSTMASTER     = 24627,
+    SPELL_SUMMON_POSTMASTER     = 24627,                    // 召唤postmaster 法术 ID
     SPELL_SUICIDE               = 7,                        // Used by crystals
 
-    SAY_ANNOUNCE_ZIGGURAT_1     = -1329004,
-    SAY_ANNOUNCE_ZIGGURAT_2     = -1329005,
-    SAY_ANNOUNCE_ZIGGURAT_3     = -1329006,
-    SAY_ANNOUNCE_RIVENDARE      = -1329007,
+    SAY_ANNOUNCE_ZIGGURAT_1     = -1329004,                 // announceziggurat1 台词广播 ID
+    SAY_ANNOUNCE_ZIGGURAT_2     = -1329005,                 // announceziggurat2 台词广播 ID
+    SAY_ANNOUNCE_ZIGGURAT_3     = -1329006,                 // announceziggurat3 台词广播 ID
+    SAY_ANNOUNCE_RIVENDARE      = -1329007,                 // announcerivendare 台词广播 ID
 
-    SAY_WARN_BARON              = -1329008,
-    SAY_ANNOUNCE_RUN_START      = -1329009,
-    SAY_ANNOUNCE_RUN_10_MIN     = -1329010,
-    SAY_ANNOUNCE_RUN_5_MIN      = -1329011,
-    SAY_YSIDA_RUN_5_MIN         = -1329019,
-    SAY_ANNOUNCE_RUN_FAIL       = -1329012,
-    SAY_YSIDA_RUN_FAIL          = -1329020,
-    SAY_ANNOUNCE_RAMSTEIN       = -1329013,
-    SAY_UNDEAD_DEFEAT           = -1329014,
-    SAY_EPILOGUE                = -1329015,
+    SAY_WARN_BARON              = -1329008,                 // warn男爵 台词广播 ID
+    SAY_ANNOUNCE_RUN_START      = -1329009,                 // announcerun开始 台词广播 ID
+    SAY_ANNOUNCE_RUN_10_MIN     = -1329010,                 // announcerun10min 台词广播 ID
+    SAY_ANNOUNCE_RUN_5_MIN      = -1329011,                 // announcerun5min 台词广播 ID
+    SAY_YSIDA_RUN_5_MIN         = -1329019,                 // ysidarun5min 台词广播 ID
+    SAY_ANNOUNCE_RUN_FAIL       = -1329012,                 // announcerunfail 台词广播 ID
+    SAY_YSIDA_RUN_FAIL          = -1329020,                 // ysidarunfail 台词广播 ID
+    SAY_ANNOUNCE_RAMSTEIN       = -1329013,                 // announceramstein 台词广播 ID
+    SAY_UNDEAD_DEFEAT           = -1329014,                 // undeaddefeat 台词广播 ID
+    SAY_EPILOGUE                = -1329015,                 // epilogue 台词广播 ID
 
-    SAY_AURIUS_AGGRO            = -1329021,
-    SAY_AURIUS_DEATH            = -1329022,
+    SAY_AURIUS_AGGRO            = -1329021,                 // aurius开战 台词广播 ID
+    SAY_AURIUS_DEATH            = -1329022,                 // aurius死亡 台词广播 ID
 
     // Used in the Scarlet Bastion defense events
-    YELL_BASTION_BARRICADE      = -1329023,
-    YELL_BASTION_STAIRS         = -1329024,
-    YELL_BASTION_ENTRANCE       = -1329025,
-    YELL_BASTION_HALL_LIGHTS    = -1329026,
-    YELL_BASTION_INNER_1        = -1329027,
-    YELL_BASTION_INNER_2        = -1329028,
+    YELL_BASTION_BARRICADE      = -1329023,                 // bastionbarricade 大喊台词广播 ID
+    YELL_BASTION_STAIRS         = -1329024,                 // bastionstairs 大喊台词广播 ID
+    YELL_BASTION_ENTRANCE       = -1329025,                 // bastionentrance 大喊台词广播 ID
+    YELL_BASTION_HALL_LIGHTS    = -1329026,                 // bastion大厅lights 大喊台词广播 ID
+    YELL_BASTION_INNER_1        = -1329027,                 // bastioninner1 大喊台词广播 ID
+    YELL_BASTION_INNER_2        = -1329028,                 // bastioninner2 大喊台词广播 ID
 
     // Jarien and Sothos
-    SPELL_SUMMON_WINNER_BOX     = 27645,
-    NPC_JARIEN                  = 16101,
-    NPC_SOTHOS                  = 16102,
+    SPELL_SUMMON_WINNER_BOX     = 27645,                    // 召唤winnerbox 法术 ID
+    NPC_JARIEN                  = 16101,                    // jarien Entry ID
+    NPC_SOTHOS                  = 16102,                    // sothos Entry ID
 };
 
 static const uint32 gates[] =
@@ -147,17 +150,17 @@ static const Position stratholmeLocation[] =
 // Scarlet Bastion defense events
 enum
 {
-    BARRICADE           = 0,
-    STAIRS              = 1,
-    TIMMY               = 2,
-    ENTRANCE            = 3,
-    HALL_OF_LIGHTS      = 4,
-    INNER_BASTION_1     = 5,
-    INNER_BASTION_2     = 6,
-    CRIMSON_THRONE      = 7,
-    FIRST_BARRICADES    = 7,
+    BARRICADE           = 0,                                // 标识 ID
+    STAIRS              = 1,                                // 标识 ID
+    TIMMY               = 2,                                // 标识 ID
+    ENTRANCE            = 3,                                // 标识 ID
+    HALL_OF_LIGHTS      = 4,                                // oflights 标识 ID
+    INNER_BASTION_1     = 5,                                // bastion1 标识 ID
+    INNER_BASTION_2     = 6,                                // bastion2 标识 ID
+    CRIMSON_THRONE      = 7,                                // throne 标识 ID
+    FIRST_BARRICADES    = 7,                                // barricades 标识 ID
 
-    MAX_DEFENSE_POINTS  = 8
+    MAX_DEFENSE_POINTS  = 8                                 // defensepoints 标识 ID
 };
 
 static const int ScarletEventYells[] =
@@ -217,37 +220,48 @@ static const Position gateTrap[] =                    // Positions of the two Ga
 
 struct ZigguratStore
 {
-    ObjectGuid m_doorGuid;
-    ObjectGuid m_crystalGuid;
+    ObjectGuid m_doorGuid;                                  // door 实体 GUID
+    ObjectGuid m_crystalGuid;                               // crystal 实体 GUID
     GuidList m_zigguratAcolyteGuid;
 };
 
+// 副本进度与状态机管理类：标识 ID（instance_stratholme）
 class instance_stratholme : public ScriptedInstance
 {
     public:
         instance_stratholme(Map* map);
         ~instance_stratholme() {}
 
+        // 初始化副本数据结构
         void Initialize() override;
 
+        // 玩家进入副本区域回调
         void OnPlayerEnter(Player* player) override;
 
+        // 副本内生物创建加载回调
         void OnCreatureCreate(Creature* creature) override;
+        // 副本内游戏对象创建加载回调
         void OnObjectCreate(GameObject* go) override;
 
+        // 更新遭遇战或自定义数据状态
         void SetData(uint32 type, uint32 data) override;
+        // 获取遭遇战或自定义数据状态
         uint32 GetData(uint32 type) const override;
 
+        // 序列化副本进度数据
         const char* Save() const override { return m_strInstData.c_str(); }
+        // 反序列化加载副本进度数据
         void Load(const char* chrIn) override;
 
         bool CheckConditionCriteriaMeet(Player const* player, uint32 instanceConditionId, WorldObject const* conditionSource, uint32 conditionSourceType) const override;
 
         void OnCreatureEnterCombat(Creature* creature) override;
         void OnCreatureEvade(Creature* creature) override;
+        // 副本内生物死亡回调
         void OnCreatureDeath(Creature* creature) override;
         void OnCreatureRespawn(Creature* creature) override;
 
+        // 副本全局状态周期性轮询更新
         void Update(const uint32 diff) override;
 
     protected:
@@ -265,8 +279,8 @@ class instance_stratholme : public ScriptedInstance
         void DoSpawnPlaguedCritters(uint8 gate, Player* player);
         uint32 m_gateTrapTimers[2][3];
 
-        uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string m_strInstData;
+        uint32 m_auiEncounter[MAX_ENCOUNTER];               // 各遭遇战状态记录数组
+        std::string m_strInstData;                          // 序列化持久化保存的进度字符串
 
         uint32 m_baronRunTimer;
         uint32 m_barthilasRunTimer;
@@ -289,10 +303,10 @@ class instance_stratholme : public ScriptedInstance
 
         GuidList m_crimsonDefendersLowGuids[MAX_DEFENSE_POINTS];
         GuidList m_crystalGUIDs;
-        GuidSet m_abominationGUIDs;
+        GuidSet m_abominationGUIDs;                         // abominationGUIDs GUID 集合
         GuidList m_acolyteGUIDs;
         GuidList m_undeadGUIDs;
         GuidList m_guardGUIDs;
 };
 
-#endif
+#endif                                                      // 结束头文件防重复包含宏

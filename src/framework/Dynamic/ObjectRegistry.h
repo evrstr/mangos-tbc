@@ -27,6 +27,7 @@
 #include <map>
 
 /** ObjectRegistry holds all registry item of the same type
+ * ObjectRegistry 保存同类型的所有已注册对象
  */
 template<class T, class Key = std::string>
 class ObjectRegistry
@@ -34,14 +35,14 @@ class ObjectRegistry
     public:
         typedef std::map<Key, T*> RegistryMapType;
 
-        /// Returns a registry item
+        /// Returns a registry item | 返回指定键对应的注册项
         const T* GetRegistryItem(Key key) const
         {
             typename RegistryMapType::const_iterator iter = i_registeredObjects.find(key);
             return (iter == i_registeredObjects.end() ? nullptr : iter->second);
         }
 
-        /// Inserts a registry item
+        /// Inserts a registry item | 插入一个注册项
         bool InsertItem(T* obj, Key key, bool replace = false)
         {
             typename RegistryMapType::iterator iter = i_registeredObjects.find(key);
@@ -57,7 +58,7 @@ class ObjectRegistry
             return true;
         }
 
-        /// Removes a registry item
+        /// Removes a registry item | 移除指定键的注册项
         void RemoveItem(Key key, bool delete_object = true)
         {
             typename RegistryMapType::iterator iter = i_registeredObjects.find(key);
@@ -69,13 +70,13 @@ class ObjectRegistry
             }
         }
 
-        /// Returns true if registry contains an item
+        /// Returns true if registry contains an item | 若注册表包含指定键则返回 true
         bool HasItem(Key key) const
         {
             return (i_registeredObjects.find(key) != i_registeredObjects.end());
         }
 
-        /// Inefficiently return a vector of registered items
+        /// Inefficiently return a vector of registered items | 返回已注册项键列表（效率较低）
         unsigned int GetRegisteredItems(std::vector<Key>& l) const
         {
             unsigned int sz = l.size();
@@ -85,7 +86,7 @@ class ObjectRegistry
             return i_registeredObjects.size();
         }
 
-        /// Return the map of registered items
+        /// Return the map of registered items | 返回已注册项的映射表常量引用
         RegistryMapType const& GetRegisteredItems() const
         {
             return i_registeredObjects;
@@ -95,7 +96,7 @@ class ObjectRegistry
         RegistryMapType i_registeredObjects;
         friend class MaNGOS::OperatorNew<ObjectRegistry<T, Key> >;
 
-        // protected for friend use since it should be a singleton
+        // protected for friend use since it should be a singleton | 作为单例使用，构造函数仅向友元开放
         ObjectRegistry() {}
         ~ObjectRegistry()
         {

@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 
+/// 单位条件评估变量类型枚举（对应数据库 unit_condition 表中的条件维度）
 enum class UnitCondition
 {
     NONE                                     = 0,
@@ -115,6 +116,7 @@ enum class UnitCondition
     MAX
 };
 
+/// 单位条件组合标志（默认按 AND 组合，设置 UNIT_CONDITION_FLAG_OR 时按 OR 组合）
 enum UnitConditionFlags
 {
     UNIT_CONDITION_FLAG_OR = 0x1,
@@ -122,6 +124,7 @@ enum UnitConditionFlags
 
 class Unit;
 
+/// 单条 unit_condition 配置记录（最多包含 8 个子条件）
 struct UnitConditionEntry
 {
     int32 Id;
@@ -131,13 +134,17 @@ struct UnitConditionEntry
     int32 Value[8];
 };
 
+/// 单位条件管理器：加载并评估针对单个单位与目标的组合条件
 class UnitConditionMgr
 {
     public:
+        /// 从世界数据库加载 unit_condition 表定义
         std::shared_ptr<std::map<int32, UnitConditionEntry>> Load();
 
+        /// 判断 source 与 target 是否满足指定 ID 的单位条件
         bool Meets(Unit const* source, Unit const* target, int32 Id);
 
+        /// 检查指定 ID 的单位条件是否存在
         bool Exists(int32 Id);
 
         std::shared_ptr<std::map<int32, UnitConditionEntry>> Get() { return m_unitConditions; }

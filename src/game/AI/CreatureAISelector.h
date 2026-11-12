@@ -26,10 +26,11 @@ class Unit;
 class Creature;
 class MovementGenerator;
 
+// 生物 AI 与默认移动生成器工厂选择器
 namespace FactorySelector
 {
-    UnitAI* selectAI(Creature*);
-    UnitAI* GetSpecificAI(Unit* unit, std::string const& ainame);
-    MovementGenerator* selectMovementGenerator(Creature*);
+    UnitAI* selectAI(Creature*);                                        // 为指定生物选择最合适的 AI 实例
+    UnitAI* GetSpecificAI(Unit* unit, std::string const& ainame);       // 根据指定 AI 名称为单位创建特定 AI
+    MovementGenerator* selectMovementGenerator(Creature*);              // 为指定生物选择默认移动生成器
 }
 #endif

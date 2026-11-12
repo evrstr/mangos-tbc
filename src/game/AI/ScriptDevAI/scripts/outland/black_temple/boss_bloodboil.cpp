@@ -21,11 +21,19 @@ SDComment:
 SDCategory: Black Temple
 EndScriptData */
 
+// 古尔图格·血沸（黑暗神殿五号首领）
+/* 遭遇战概述：
+ * 古尔图格·血沸是受邪能之血彻底腐化的邪兽人军阀；
+ * 阶段一：向距离最远的 5 名玩家叠加血沸光环，同时给主坦克叠加酸性创伤；
+ * 阶段二（邪能狂暴）：随机凝视一名玩家并与其单挑，获得护甲提升和体型增大，被凝视者需全力自保。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // Speech'n'Sound
@@ -76,6 +84,7 @@ enum
     MAX_BLOODBOILS              = 5,
 };
 
+// GurtoggActions 相关枚举
 enum GurtoggActions
 {
     GURTOGG_ACTION_CHANGE_PHASE,
@@ -89,6 +98,7 @@ enum GurtoggActions
     GURTOGG_ACTION_MAX,
 };
 
+// boss_gurtogg_bloodboilAI 逻辑实现
 struct boss_gurtogg_bloodboilAI : public CombatAI
 {
     boss_gurtogg_bloodboilAI(Creature* creature) : CombatAI(creature, GURTOGG_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -113,6 +123,7 @@ struct boss_gurtogg_bloodboilAI : public CombatAI
     bool m_phase1;
     ObjectGuid m_felRageTarget;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -153,12 +164,14 @@ struct boss_gurtogg_bloodboilAI : public CombatAI
         }
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_BLOODBOIL, FAIL);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
@@ -170,6 +183,7 @@ struct boss_gurtogg_bloodboilAI : public CombatAI
             m_instance->SetData(TYPE_BLOODBOIL, IN_PROGRESS);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -178,6 +192,7 @@ struct boss_gurtogg_bloodboilAI : public CombatAI
         DoScriptText(SAY_DEATH, m_creature);
     }
     
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->AI()->SetReactState(REACT_PASSIVE);
@@ -238,6 +253,7 @@ struct boss_gurtogg_bloodboilAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -308,14 +324,17 @@ struct boss_gurtogg_bloodboilAI : public CombatAI
     }
 };
 
+// FelRage3 光环脚本
 struct FelRage3 : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         aura->GetTarget()->ModifyAuraState(AURA_STATE_HYPOTHERMIA, apply);
     }
 };
 
+// 注册 boss_gurtogg_bloodboil 脚本
 void AddSC_boss_gurtogg_bloodboil()
 {
     Script* pNewScript = new Script;

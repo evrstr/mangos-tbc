@@ -58,6 +58,7 @@
 #include "Entities/Transports.h"
 #include "AI/EventAI/CreatureEventAI.h"
 
+/// 全局法术效果处理函数分发表（按 SpellEffects 枚举索引映射对应的 Spell 成员函数）
 pEffect SpellEffects[MAX_SPELL_EFFECTS] =
 {
     &Spell::EffectNULL,                                     //  0
@@ -216,21 +217,25 @@ pEffect SpellEffects[MAX_SPELL_EFFECTS] =
     &Spell::EffectCreateTamedPet,                           //153 SPELL_EFFECT_CREATE_PET               misc value is creature entry
 };
 
+/// 空效果处理器（仅作标记或通知客户端，无需服务端逻辑）
 void Spell::EffectEmpty(SpellEffectIndex /*eff_idx*/)
 {
     // NOT NEED ANY IMPLEMENTATION CODE, EFFECT POSISBLE USED AS MARKER OR CLIENT INFORM
 }
 
+/// 无效/占位效果处理器（输出调试日志）
 void Spell::EffectNULL(SpellEffectIndex /*eff_idx*/)
 {
     DEBUG_LOG("WORLD: Spell Effect DUMMY");
 }
 
+/// 已废弃或以其他方式实现的效果处理器
 void Spell::EffectUnused(SpellEffectIndex /*eff_idx*/)
 {
     // NOT USED BY ANY SPELL OR USELESS OR IMPLEMENTED IN DIFFERENT WAY IN MANGOS
 }
 
+/// 即死效果（SPELL_EFFECT_INSTAKILL）：发送即死战斗日志并对目标造成等于其当前生命的伤害
 void Spell::EffectInstaKill(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !unitTarget->IsAlive())
@@ -250,12 +255,13 @@ void Spell::EffectInstaKill(SpellEffectIndex /*eff_idx*/)
     Unit::DealDamage(m_caster, unitTarget, unitTarget->GetHealth(), nullptr, INSTAKILL, SPELL_SCHOOL_MASK_NORMAL, m_spellInfo, false);
 }
 
+/// 环境伤害效果（SPELL_EFFECT_ENVIRONMENTAL_DMG）：计算吸收与抗性减免后造成火焰环境伤害
 void Spell::EffectEnvironmentalDMG(SpellEffectIndex eff_idx)
 {
     uint32 absorb = 0;
     int32 resist = 0;
 
-    // Note: this hack with damage replace required until GO casting not implemented
+    // Note: this hack with damage replace required until GO casting not implemented (注：在游戏对象施法完善前，暂以此方式直接以基础数值结算环境伤害)
     // environment damage spells already have around enemies targeting but this not help in case nonexistent GO casting support
     // currently each enemy selected explicitly and self cast damage, we prevent apply self casted spell bonuses/etc
     damage = m_spellInfo->CalculateSimpleValue(eff_idx);
@@ -267,6 +273,7 @@ void Spell::EffectEnvironmentalDMG(SpellEffectIndex eff_idx)
         static_cast<Player*>(m_caster)->EnvironmentalDamage(DAMAGE_FIRE, damage);
 }
 
+/// 法术学派直接伤害效果（SPELL_EFFECT_SCHOOL_DAMAGE）：处理通用特例（流星分摊、百分比扣血等）及各职业技能伤害公式
 void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
 {
     if (unitTarget && unitTarget->IsAlive())
@@ -295,7 +302,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                             if (ihit->effectHitMask & (1 << eff_idx))
                                 ++count;
 
-                        damage /= count;                    // divide to all targets
+                        damage /= count;                    // divide to all targets (流星类法术伤害由所有命中目标平分)
                         break;
                     }
                     // percent from health with min
@@ -390,11 +397,11 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                 // Incinerate Rank 1 & 2
                 if ((m_spellInfo->SpellFamilyFlags & uint64(0x00004000000000)) && m_spellInfo->SpellIconID == 2128)
                 {
-                    // Incinerate does more dmg (dmg*0.25) if the target is Immolated.
+                    // Incinerate does more dmg (dmg*0.25) if the target is Immolated. (若目标带有献祭效果，烧尽额外造成 25% 伤害)
                     if (unitTarget->HasAuraState(AURA_STATE_CONFLAGRATE))
                         damage += int32(damage * 0.25);
                 }
-                // Conflagrate - consumes Immolate
+                // Conflagrate - consumes Immolate (燃烧：消耗施法者自身的献祭光环)
                 else if (m_spellInfo->TargetAuraState == AURA_STATE_CONFLAGRATE)
                 {
                     // for caster applied auras only
@@ -421,7 +428,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                 // Ferocious Bite
                 if ((m_spellInfo->SpellFamilyFlags & uint64(0x000800000)) && m_spellInfo->SpellVisual == 6587)
                 {
-                    // converts each extra point of energy into additional damage
+                    // converts each extra point of energy into additional damage (凶猛撕咬：消耗剩余能量并转化为额外伤害)
                     damage += int32(m_caster->GetPower(POWER_ENERGY) * m_spellInfo->DmgMultiplier[eff_idx]);
                     m_caster->SetPower(POWER_ENERGY, 0);
                     // scaled AP bonus
@@ -442,7 +449,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                 // Envenom
                 if (m_caster->GetTypeId() == TYPEID_PLAYER && (m_spellInfo->SpellFamilyFlags & uint64(0x800000000)))
                 {
-                    // consume from stack dozes not more that have combo-points
+                    // consume from stack dozes not more that have combo-points (毒伤：按连击点数消耗目标身上自身施加的致命毒药层数)
                     if (uint32 combo = m_caster->GetComboPoints())
                     {
                         Aura* poison = nullptr;
@@ -498,7 +505,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                 {
                     bool found = false;
 
-                    // check dazed affect
+                    // check dazed affect (稳固射击：检测目标是否处于眩晕/减速状态以附加额外伤害)
                     Unit::AuraList const& decSpeedList = unitTarget->GetAurasByType(SPELL_AURA_MOD_DECREASE_SPEED);
                     for (Unit::AuraList::const_iterator iter = decSpeedList.begin(); iter != decSpeedList.end(); ++iter)
                     {
@@ -522,7 +529,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                 // Judgement of Vengeance
                 if ((m_spellInfo->SpellFamilyFlags & uint64(0x800000000)) && m_spellInfo->SpellIconID == 2292)
                 {
-                    // Get stack of Holy Vengeance on the target added by caster
+                    // Get stack of Holy Vengeance on the target added by caster (复仇圣印审判：按目标身上神圣复仇层数倍率结算伤害)
                     uint32 stacks = 0;
                     Unit::AuraList const& auras = unitTarget->GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
                     for (auto aura : auras)
@@ -548,6 +555,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
     }
 }
 
+/// 占位/自定义触发效果处理器（SPELL_EFFECT_DUMMY）：按职业家族与法术 ID 分发物品、副本首领、任务与职业特殊逻辑，末尾尝试启动 DB 脚本
 void Spell::EffectDummy(SpellEffectIndex eff_idx)
 {
     // selection by spell family
@@ -1431,7 +1439,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     m_caster->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
-                    // 5 different spells used depending on mounted speed and if mount can fly or not
+                    // 5 different spells used depending on mounted speed and if mount can fly or not (根据当前坐骑飞行/地面速度匹配对应等级驯鹿变身法术)
                     if (flyspeed >= 4.1f)
                         // Flying Reindeer
                         m_caster->CastSpell(m_caster, 44827, TRIGGERED_OLD_TRIGGERED); // 310% flying Reindeer
@@ -2807,7 +2815,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
         }
     }
 
-    // pet auras
+    // pet auras (若该 Dummy 法术在 spell_pet_auras 中配置了宠物光环，为施法者附加对应光环)
     if (PetAura const* petSpell = sSpellMgr.GetPetAura(m_spellInfo->Id))
     {
         m_caster->AddPetAura(petSpell);
@@ -2817,7 +2825,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
     if (!unitTarget && !gameObjTarget)
         return;
 
-    // Previous effect might have started script
+    // Previous effect might have started script (若前置效果未启动脚本，尝试按目标类型触发 spell_scripts)
     if (!ScriptMgr::CanSpellEffectStartDBScript(m_spellInfo, eff_idx))
         return;
 
@@ -2831,6 +2839,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
         m_trueCaster->GetMap()->ScriptsStart(SCRIPT_TYPE_SPELL, m_spellInfo->Id, m_trueCaster, gameObjTarget);
 }
 
+/// 带数值触发子法术效果（SPELL_EFFECT_TRIGGER_SPELL_WITH_VALUE）：以当前计算出的 damage 作为子法术基础点数施放
 void Spell::EffectTriggerSpellWithValue(SpellEffectIndex eff_idx)
 {
     uint32 triggered_spell_id = m_spellInfo->EffectTriggerSpell[eff_idx];
@@ -2857,6 +2866,7 @@ void Spell::EffectTriggerSpellWithValue(SpellEffectIndex eff_idx)
     m_caster->CastCustomSpell(unitTarget, triggered_spell_id, &bp, &bp, &bp, TRIGGERED_OLD_TRIGGERED, m_CastItem, nullptr, m_originalCasterGUID, m_spellInfo);
 }
 
+/// 召唤仪式触发效果（SPELL_EFFECT_TRIGGER_RITUAL_OF_SUMMONING）：结束当前法术并直接施放目标召唤法术
 void Spell::EffectTriggerRitualOfSummoning(SpellEffectIndex eff_idx)
 {
     uint32 triggered_spell_id = m_spellInfo->EffectTriggerSpell[eff_idx];
@@ -2873,6 +2883,7 @@ void Spell::EffectTriggerRitualOfSummoning(SpellEffectIndex eff_idx)
     m_caster->CastSpell(unitTarget, spellInfo, TRIGGERED_NONE);
 }
 
+/// 强制目标施法效果（SPELL_EFFECT_FORCE_CAST / WITH_VALUE）：令命中目标强制施放指定法术（可选传递自定义数值与目标坐标）
 void Spell::EffectForceCast(SpellEffectIndex effIndex)
 {
     if (!unitTarget)
@@ -2925,6 +2936,7 @@ void Spell::EffectForceCast(SpellEffectIndex effIndex)
         unitTarget->CastSpell(targets, spellInfo, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, ObjectGuid(), m_spellInfo);
 }
 
+/// 触发子法术效果（SPELL_EFFECT_TRIGGER_SPELL）：校验主副手武器条件并封装目标或落点后由施法者触发施放
 void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
 {
     uint32 triggered_spell_id = m_spellInfo->EffectTriggerSpell[effIndex];
@@ -3010,6 +3022,7 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
     caster->CastSpell(targets, spellInfo, TRIGGERED_OLD_TRIGGERED, m_CastItem, nullptr, m_originalCasterGUID, m_spellInfo);
 }
 
+/// 触发弹道法术效果（SPELL_EFFECT_TRIGGER_MISSILE）：向目标或目标坐标发射触发的子法术弹道，或回退触发 DB 脚本
 void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
 {
     uint32 triggered_spell_id = m_spellInfo->EffectTriggerSpell[effect_idx];
@@ -3048,6 +3061,7 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
     m_caster->CastSpell(targets, spellInfo, TRIGGERED_OLD_TRIGGERED, m_CastItem, nullptr, m_originalCasterGUID, m_spellInfo);
 }
 
+/// 传送单位效果（SPELL_EFFECT_TELEPORT_UNITS）：支持同地图近距传送与跨地图传送（含副本死亡自动复活检测）
 void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || unitTarget->IsTaxiFlying())
@@ -3095,6 +3109,7 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
     }
 }
 
+/// 施加光环效果（SPELL_EFFECT_APPLY_AURA）：校验死亡状态与生物免疫玩家增益标志后创建 Aura 并加入光环持有者
 void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -3119,6 +3134,7 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }
 
+/// 遗忘专精法术效果（SPELL_EFFECT_UNLEARN_SPECIALIZATION）：从玩家法术书中移除指定专精衍生法术
 void Spell::EffectUnlearnSpecialization(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -3133,6 +3149,7 @@ void Spell::EffectUnlearnSpecialization(SpellEffectIndex eff_idx)
         DEBUG_LOG("Spell: %s has unlearned spell %u at %s", _player->GetGuidStr().c_str(), spellToUnlearn, caster->GetGuidStr().c_str());
 }
 
+/// 能量吸取效果（SPELL_EFFECT_POWER_DRAIN）：扣除目标法力/能量（受韧性减免）并按倍率返还施法者
 void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
 {
     if (m_spellInfo->EffectMiscValue[eff_idx] < 0 || m_spellInfo->EffectMiscValue[eff_idx] >= MAX_POWERS)
@@ -3148,7 +3165,7 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
 
     uint32 curPower = unitTarget->GetPower(powerType);
 
-    // add spell damage bonus
+    // add spell damage bonus (计算法术强度加成与韧性对吸取效果的减免)
     damage = m_caster->SpellDamageBonusDone(unitTarget, m_spellSchoolMask, m_spellInfo, eff_idx, uint32(damage), SPELL_DIRECT_DAMAGE);
     damage = unitTarget->SpellDamageBonusTaken(m_caster, m_spellSchoolMask, m_spellInfo, eff_idx, uint32(damage), SPELL_DIRECT_DAMAGE);
 
@@ -3181,6 +3198,7 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
         m_caster->EnergizeBySpell(m_caster, m_spellInfo, gain, powerType, false);
 }
 
+/// 发送脚本事件效果（SPELL_EFFECT_SEND_EVENT）：触发副本/地图脚本事件
 void Spell::EffectSendEvent(SpellEffectIndex effectIndex)
 {
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell ScriptStart %u for spellid %u in EffectSendEvent ", m_spellInfo->EffectMiscValue[effectIndex], m_spellInfo->Id);
@@ -3188,6 +3206,7 @@ void Spell::EffectSendEvent(SpellEffectIndex effectIndex)
     StartEvents_Event(m_trueCaster->GetMap(), m_spellInfo->EffectMiscValue[effectIndex], m_trueCaster, m_eventTarget, true);
 }
 
+/// 能量燃烧效果（SPELL_EFFECT_POWER_BURN）：吸取目标指定能量（如法力燃烧）并按倍率转化为法术伤害
 void Spell::EffectPowerBurn(SpellEffectIndex eff_idx)
 {
     if (m_spellInfo->EffectMiscValue[eff_idx] < 0 || m_spellInfo->EffectMiscValue[eff_idx] >= MAX_POWERS)
@@ -3220,6 +3239,7 @@ void Spell::EffectPowerBurn(SpellEffectIndex eff_idx)
     m_damagePerEffect[eff_idx] = CalculateSpellEffectDamage(unitTarget, new_damage, m_damageDoneMultiplier[eff_idx], eff_idx);
 }
 
+/// 直接治疗效果（SPELL_EFFECT_HEAL）：处理纳鲁之瓶、迅捷治愈吞噬 HoT、炼金石与十字军附魔衰减后应用治疗加成
 void Spell::EffectHeal(SpellEffectIndex eff_idx)
 {
     if (unitTarget && unitTarget->IsAlive() && damage >= 0)
@@ -3231,7 +3251,7 @@ void Spell::EffectHeal(SpellEffectIndex eff_idx)
 
         int32 addhealth = damage;
 
-        // Vessel of the Naaru (Vial of the Sunwell trinket)
+        // Vessel of the Naaru (Vial of the Sunwell trinket) (纳鲁之瓶饰品：叠加神圣能量全部转化为额外治疗)
         if (m_spellInfo->Id == 45064)
         {
             // Amount of heal - depends from stacked Holy Energy
@@ -3245,7 +3265,7 @@ void Spell::EffectHeal(SpellEffectIndex eff_idx)
 
             addhealth += damageAmount;
         }
-        // Swiftmend - consumes Regrowth or Rejuvenation
+        // Swiftmend - consumes Regrowth or Rejuvenation (迅捷治愈：寻找最短剩余时间的回春或愈合 HoT 并吞噬结算剩余总治疗)
         else if (m_spellInfo->TargetAuraState == AURA_STATE_SWIFTMEND && unitTarget->HasAuraState(AURA_STATE_SWIFTMEND))
         {
             Unit::AuraList const& RejorRegr = unitTarget->GetAurasByType(SPELL_AURA_PERIODIC_HEAL);
@@ -3325,6 +3345,7 @@ void Spell::EffectHeal(SpellEffectIndex eff_idx)
     }
 }
 
+/// 百分比治疗效果（SPELL_EFFECT_HEAL_PCT）：按目标最大生命百分比计算并应用治疗加成
 void Spell::EffectHealPct(SpellEffectIndex eff_idx)
 {
     if (unitTarget && unitTarget->IsAlive() && damage >= 0)
@@ -3343,6 +3364,7 @@ void Spell::EffectHealPct(SpellEffectIndex eff_idx)
     }
 }
 
+/// 修复机械单位生命效果（SPELL_EFFECT_HEAL_MECHANICAL）：对机械类目标执行治疗
 void Spell::EffectHealMechanical(SpellEffectIndex eff_idx)
 {
     // Mechanic creature type should be correctly checked by targetCreatureType field
@@ -3360,6 +3382,7 @@ void Spell::EffectHealMechanical(SpellEffectIndex eff_idx)
     }
 }
 
+/// 生命吸取效果（SPELL_EFFECT_HEALTH_LEECH）：对目标造成法术伤害并按倍率治疗施法者
 void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsAlive())
@@ -3390,6 +3413,7 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     }
 }
 
+/// 制造物品辅助逻辑：处理战场奖章邮件补发、专业暴击多产、背包空间检查、制造者署名与技能熟练度提升
 bool Spell::DoCreateItem(SpellEffectIndex /*eff_idx*/, uint32 itemtype, bool reportError)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -3433,7 +3457,7 @@ bool Spell::DoCreateItem(SpellEffectIndex /*eff_idx*/, uint32 itemtype, bool rep
     if (num_to_add > pProto->Stackable)
         num_to_add = pProto->Stackable;
 
-    // init items_count to 1, since 1 item will be created regardless of specialization
+    // init items_count to 1, since 1 item will be created regardless of specialization (专业专精暴击制造额外物品概率判定)
     int items_count = 1;
     // the chance to create additional items
     float additionalCreateChance = 0.0f;
@@ -3460,7 +3484,7 @@ bool Spell::DoCreateItem(SpellEffectIndex /*eff_idx*/, uint32 itemtype, bool rep
         if (msg == EQUIP_ERR_INVENTORY_FULL || msg == EQUIP_ERR_CANT_CARRY_MORE_OF_THIS)
             num_to_add -= no_space;
 
-        // for battleground marks send by mail if not add all expected
+        // for battleground marks send by mail if not add all expected (背包满时战场荣誉奖章通过邮件补发)
         if (no_space > 0 && bgType)
         {
             if (BattleGround * bg = sBattleGroundMgr.GetBattleGroundTemplate(BattleGroundTypeId(bgType)))
@@ -3503,12 +3527,14 @@ bool Spell::DoCreateItem(SpellEffectIndex /*eff_idx*/, uint32 itemtype, bool rep
     return true;
 }
 
+/// 制造物品效果（SPELL_EFFECT_CREATE_ITEM）：调用 DoCreateItem 并记录施法日志
 void Spell::EffectCreateItem(SpellEffectIndex eff_idx)
 {
     if (DoCreateItem(eff_idx, m_spellInfo->EffectItemType[eff_idx], !m_spellInfo->HasAttribute(SPELL_ATTR_DO_NOT_LOG)))
         m_spellLog.AddLog(uint32(SPELL_EFFECT_CREATE_ITEM), m_spellInfo->EffectItemType[eff_idx]);
 }
 
+/// 持久地面区域光环效果（SPELL_EFFECT_PERSISTENT_AREA_AURA）：在目标点创建 DynamicObject 并绑定引导对象
 void Spell::EffectPersistentAA(SpellEffectIndex eff_idx)
 {
     Unit* caster = GetAffectiveCaster();
@@ -3543,6 +3569,7 @@ void Spell::EffectPersistentAA(SpellEffectIndex eff_idx)
     }
 }
 
+/// 能量回复效果（SPELL_EFFECT_ENERGIZE）：按等级衰减、炼金石加成恢复能量，并处理疯狂炼金师药水随机触发合剂/药剂
 void Spell::EffectEnergize(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsAlive())
@@ -3608,7 +3635,7 @@ void Spell::EffectEnergize(SpellEffectIndex eff_idx)
                 elixir_mask |= mask;
         }
 
-        // get available elixir mask any not active type from battle/guardian (and flask if no any)
+        // get available elixir mask any not active type from battle/guardian (and flask if no any) (疯狂炼金师药水：随机给予一种尚未激活的战斗/守护药剂效果)
         elixir_mask = (elixir_mask & ELIXIR_FLASK_MASK) ^ ELIXIR_FLASK_MASK;
 
         // get all available elixirs by mask and spell level
@@ -3638,6 +3665,7 @@ void Spell::EffectEnergize(SpellEffectIndex eff_idx)
     }
 }
 
+/// 百分比能量回复效果（SPELL_EFFECT_ENERGIZE_PCT）：按目标最大能量值的百分比恢复能量
 void Spell::EffectEnergisePct(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsAlive())
@@ -3656,6 +3684,7 @@ void Spell::EffectEnergisePct(SpellEffectIndex eff_idx)
     m_caster->EnergizeBySpell(unitTarget, m_spellInfo, gain, power);
 }
 
+/// 发送战利品窗口辅助函数：根据目标（宝箱/陷阱/门/按钮/物品）执行交互并向玩家推送掉落列表
 void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
 {
     switch (guid.GetHigh())
@@ -3735,6 +3764,7 @@ void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
     }
 }
 
+/// 开锁/开启物品或宝箱效果（SPELL_EFFECT_OPEN_LOCK）：提升采集/开锁技能熟练度、解除锁定并发送战利品
 void Spell::EffectOpenLock(SpellEffectIndex eff_idx)
 {
     if (!m_caster || !m_caster->IsPlayer())
@@ -3809,6 +3839,7 @@ void Spell::EffectOpenLock(SpellEffectIndex eff_idx)
     }
 }
 
+/// 物品转化效果（SPELL_EFFECT_SUMMON_CHANGE_ITEM）：将当前施法消耗物品转换为指定新物品并通知任务更新
 void Spell::EffectSummonChangeItem(SpellEffectIndex eff_idx)
 {
     if (!m_caster->IsPlayer())
@@ -3832,7 +3863,7 @@ void Spell::EffectSummonChangeItem(SpellEffectIndex eff_idx)
 
     if (m_CastItem)
         m_CastItem->SetUsedInSpell(false);
-    // prevent crash at access and unexpected charges counting with item update queue corrupt
+    // prevent crash at access and unexpected charges counting with item update queue corrupt (提前解绑 m_CastItem 防止物品转换后野指针或错误扣减次数)
     ClearCastItem();
 
     uint32 curItemCount = player->GetItemCount(newitemid, true);
@@ -3846,6 +3877,7 @@ void Spell::EffectSummonChangeItem(SpellEffectIndex eff_idx)
     }
 }
 
+/// 武器/护甲熟练度授予效果（SPELL_EFFECT_PROFICIENCY）：为玩家解锁武器或护甲穿戴熟练度并同步客户端
 void Spell::EffectProficiency(SpellEffectIndex /*eff_idx*/)
 {
     if (!m_caster->IsPlayer())
@@ -3866,6 +3898,7 @@ void Spell::EffectProficiency(SpellEffectIndex /*eff_idx*/)
     }
 }
 
+/// 区域光环效果（SPELL_EFFECT_APPLY_AREA_AURA_*）：为区域内符合条件的单位创建并附加区域光环
 void Spell::EffectApplyAreaAura(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsAlive())
@@ -3875,6 +3908,7 @@ void Spell::EffectApplyAreaAura(SpellEffectIndex eff_idx)
     m_spellAuraHolder->AddAura(aura, eff_idx);
 }
 
+/// 通用召唤效果（SPELL_EFFECT_SUMMON）：依据 SummonProperties 分发野怪、守护者、图腾、小宠物、战宠或控制单位，处理等级、散开位置与进战标志
 void Spell::EffectSummonType(SpellEffectIndex eff_idx)
 {
     uint32 prop_id = m_spellInfo->EffectMiscValueB[eff_idx];
@@ -3885,7 +3919,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
         return;
     }
 
-    // Get casting object
+    // Get casting object (解析实际施法对象与负责任的单位施法者)
     WorldObject* realCaster = GetCastingObject();
     if (!realCaster)
     {
@@ -3975,7 +4009,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
     CreatureSummonPositions summonPositions;
     summonPositions.resize(amount, CreaturePosition());
 
-    // Set middle position
+    // Set middle position (计算首个及多个召唤物在目标半径内的随机落点坐标)
     if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
         m_targets.getDestination(summonPositions[0].x, summonPositions[0].y, summonPositions[0].z);
     else
@@ -4005,6 +4039,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
     }
 
     bool summonResult = false;
+        // 根据 SummonProperties 分组与称谓分发具体召唤实现（野怪/守护者/图腾/小宠物/战宠/控制体）
     switch (summon_prop->Group)
     {
         // faction handled later on, or loaded from template
@@ -4093,6 +4128,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
         if (summon_prop->FactionId)
             itr->creature->setFaction(summon_prop->FactionId);
 
+                // 若尚未加入地图，完成地图添加、AI 初始化并触发 JustSummoned 回调
         if (!itr->processed)
         {
             m_trueCaster->GetMap()->Add(creature);
@@ -4143,6 +4179,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
     }
 }
 
+/// 召唤常规战斗宠物（SUMMON_PET）：优先从数据库加载已存宠物，否则新建并初始化属性、技能与控制栏
 bool Spell::DoSummonPet(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx)
 {
     MANGOS_ASSERT(!list.empty() && prop);
@@ -4277,6 +4314,7 @@ bool Spell::DoSummonPet(CreatureSummonPositions& list, SummonPropertiesEntry con
     return true;
 }
 
+/// 学习法术效果（SPELL_EFFECT_LEARN_SPELL）：教导玩家或宠物学会指定法术
 void Spell::EffectLearnSpell(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -4299,6 +4337,7 @@ void Spell::EffectLearnSpell(SpellEffectIndex eff_idx)
         DEBUG_LOG("Spell: %s has learned spell %u from %s", player->GetGuidStr().c_str(), spellToLearn, caster->GetGuidStr().c_str());
 }
 
+/// 驱散效果（SPELL_EFFECT_DISPEL）：按驱散类型掩码收集可驱散光环并执行驱散结算
 void Spell::EffectDispel(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -4322,6 +4361,7 @@ void Spell::EffectDispel(SpellEffectIndex eff_idx)
     EvaluateResultLists(successList, failList);
 }
 
+/// 按机制驱散效果（SPELL_EFFECT_DISPEL_MECHANIC）：收集具有指定控制机制的光环并执行驱散结算
 void Spell::EffectDispelMechanic(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -4342,6 +4382,7 @@ void Spell::EffectDispelMechanic(SpellEffectIndex eff_idx)
     EvaluateResultLists(successList, failList);
 }
 
+/// 执行驱散列表结算：按效果数量随机抽取光环层数，结合抗驱散天赋/光环概率拆分为成功与失败列表
 void Spell::ProcessDispelList(std::list <std::pair<SpellAuraHolder*, uint32> >& dispelList, std::list<std::pair<SpellAuraHolder*, uint32> >& successList, std::list <uint32>& failList)
 {
     // Ok if exist some buffs for dispel try dispel it
@@ -4351,7 +4392,7 @@ void Spell::ProcessDispelList(std::list <std::pair<SpellAuraHolder*, uint32> >& 
         if (!damage)
             damage = 1;
 
-        // Dispel N = damage buffs (or while exist buffs for dispel)
+        // Dispel N = damage buffs (or while exist buffs for dispel) (按驱散上限随机抽取待驱散光环，并结合抗驱散天赋判定成败)
         for (int32 count = 0; count < damage && !dispelList.empty(); ++count)
         {
             // Random select buff for dispel
@@ -4399,9 +4440,10 @@ void Spell::ProcessDispelList(std::list <std::pair<SpellAuraHolder*, uint32> >& 
     }
 }
 
+/// 下发驱散成功/失败战斗日志数据包并真正移除被驱散光环（含吞噬魔法回血特例）
 void Spell::EvaluateResultLists(std::list<std::pair<SpellAuraHolder*, uint32> >& successList, std::list <uint32>& failList)
 {
-    // Send success log and really remove auras
+    // Send success log and really remove auras (发送 SMSG_SPELLDISPELLOG 日志并正式移除成功驱散的光环)
     if (!successList.empty())
     {
         int32 count = successList.size();
@@ -4455,18 +4497,21 @@ void Spell::EvaluateResultLists(std::list<std::pair<SpellAuraHolder*, uint32> >&
     }
 }
 
+/// 双持武器效果（SPELL_EFFECT_DUAL_WIELD）：解锁单位双持能力
 void Spell::EffectDualWield(SpellEffectIndex /*eff_idx*/)
 {
     if (unitTarget)
         unitTarget->SetCanDualWield(true);
 }
 
+/// 拉扯效果占位（SPELL_EFFECT_PULL）
 void Spell::EffectPull(SpellEffectIndex /*eff_idx*/)
 {
     // TODO: create a proper pull towards distract spell center for distract
     DEBUG_LOG("WORLD: Spell Effect DUMMY");
 }
 
+/// 扰乱效果（SPELL_EFFECT_DISTRACT）：打断脱战生物移动并使其朝向施法坐标停留
 void Spell::EffectDistract(SpellEffectIndex /*eff_idx*/)
 {
     // Check for possible target
@@ -4488,6 +4533,7 @@ void Spell::EffectDistract(SpellEffectIndex /*eff_idx*/)
     unitTarget->SetOrientation(orientation);
 }
 
+/// 偷窃效果（SPELL_EFFECT_PICKPOCKET）：为目标敌对生物生成或刷新偷窃战利品并展示给盗贼玩家
 void Spell::EffectPickPocket(SpellEffectIndex /*eff_idx*/)
 {
     if (!m_caster->IsPlayer())
@@ -4534,6 +4580,7 @@ void Spell::EffectPickPocket(SpellEffectIndex /*eff_idx*/)
     loot->ShowContentTo(playerCaster);
 }
 
+/// 鹰眼术/心灵视界远距视野效果（SPELL_EFFECT_ADD_FARSIGHT）：创建视野动态对象并切换玩家镜头
 void Spell::EffectAddFarsight(SpellEffectIndex eff_idx)
 {
     if (!m_caster->IsPlayer())
@@ -4555,6 +4602,7 @@ void Spell::EffectAddFarsight(SpellEffectIndex eff_idx)
     static_cast<Player*>(m_caster)->GetCamera().SetView(dynObj);
 }
 
+/// 召唤野外/友方随从单位辅助函数
 bool Spell::DoSummonWild(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level)
 {
     uint32 creature_entry = m_spellInfo->EffectMiscValue[effIdx];
@@ -4593,6 +4641,7 @@ bool Spell::DoSummonWild(CreatureSummonPositions& list, SummonPropertiesEntry co
     return true;
 }
 
+/// 召唤守护者宠物（GUARDIAN_PET）辅助函数：重复施放先解散旧守护者，初始化新守护者属性与法术列表
 bool Spell::DoSummonGuardian(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level)
 {
     MANGOS_ASSERT(!list.empty() && prop);
@@ -4691,6 +4740,7 @@ bool Spell::DoSummonGuardian(CreatureSummonPositions& list, SummonPropertiesEntr
 }
 
 
+/// 传送目标并使其背对/面向施法者（SPELL_EFFECT_TELEPORT_UNITS_FACE_CASTER）
 void Spell::EffectTeleUnitsFaceCaster(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || unitTarget->IsTaxiFlying())
@@ -4705,6 +4755,7 @@ void Spell::EffectTeleUnitsFaceCaster(SpellEffectIndex /*eff_idx*/)
     unitTarget->NearTeleportTo(x, y, z, -m_caster->GetOrientation(), unitTarget == m_caster);
 }
 
+/// 学习技能阶段效果（SPELL_EFFECT_LEARN_SKILL）：设置玩家指定专业/技能的阶段上限（初级/中级/高级/大师）
 void Spell::EffectLearnSkill(SpellEffectIndex eff_idx)
 {
     if (unitTarget->GetTypeId() != TYPEID_PLAYER)
@@ -4723,6 +4774,7 @@ void Spell::EffectLearnSkill(SpellEffectIndex eff_idx)
         DEBUG_LOG("Spell: %s teaches %s skill %u (to step %u)", caster->GetGuidStr().c_str(), target->GetGuidStr().c_str(), skillid, step);
 }
 
+/// 增加荣誉点数效果（SPELL_EFFECT_ADD_HONOR）
 void Spell::EffectAddHonor(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -4734,12 +4786,14 @@ void Spell::EffectAddHonor(SpellEffectIndex /*eff_idx*/)
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "SpellEffect::AddHonor (spell_id %u) rewards %u honor points (non scale) for player: %u", m_spellInfo->Id, damage, ((Player*)unitTarget)->GetGUIDLow());
 }
 
+/// 出生动画结束效果（SPELL_EFFECT_SPAWN）：移除生物出生保护标志
 void Spell::EffectSpawn(SpellEffectIndex /*eff_idx*/)
 {
     // Previously used by 15750 26262 34115 - noting for posterity
     m_caster->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
 }
 
+/// 商业技能效果占位（SPELL_EFFECT_TRADE_SKILL）
 void Spell::EffectTradeSkill(SpellEffectIndex /*eff_idx*/)
 {
     if (unitTarget->GetTypeId() != TYPEID_PLAYER)
@@ -4749,6 +4803,7 @@ void Spell::EffectTradeSkill(SpellEffectIndex /*eff_idx*/)
     // ((Player*)unitTarget)->SetSkill(skillid,skillval?skillval:1,skillmax+75);
 }
 
+/// 永久附魔物品效果（SPELL_EFFECT_ENCHANT_ITEM）：更新制造熟练度、替换永久附魔槽并记录 GM 交易附魔日志
 void Spell::EffectEnchantItemPerm(SpellEffectIndex eff_idx)
 {
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -4791,6 +4846,7 @@ void Spell::EffectEnchantItemPerm(SpellEffectIndex eff_idx)
     item_owner->ApplyEnchantment(itemTarget, PERM_ENCHANTMENT_SLOT, true);
 }
 
+/// 临时附魔物品效果（SPELL_EFFECT_ENCHANT_ITEM_TEMPORARY）：为目标物品（如磨刀石/毒药/巫师油）施加限时附魔
 void Spell::EffectEnchantItemTmp(SpellEffectIndex eff_idx)
 {
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -4842,6 +4898,7 @@ void Spell::EffectEnchantItemTmp(SpellEffectIndex eff_idx)
     item_owner->ApplyEnchantment(itemTarget, TEMP_ENCHANTMENT_SLOT, true);
 }
 
+/// 驯服野兽效果（SPELL_EFFECT_TAMECREATURE）：将野生生物转化为猎人宠物，继承等级血量并保存至数据库
 void Spell::EffectTameCreature(SpellEffectIndex /*eff_idx*/)
 {
     // Caster must be player, checked in Spell::CheckCast
@@ -4930,6 +4987,7 @@ void Spell::EffectTameCreature(SpellEffectIndex /*eff_idx*/)
     pet->SavePetToDB(PET_SAVE_AS_CURRENT, plr);
 }
 
+/// 召唤宠物效果（SPELL_EFFECT_SUMMON_PET）：区分猎人、术士（清除恶魔牺牲）与其他职业，优先读取数据库或新建召唤宠物
 void Spell::EffectSummonPet(SpellEffectIndex eff_idx)
 {
     uint32 petentry = m_spellInfo->EffectMiscValue[eff_idx];
@@ -5082,6 +5140,7 @@ void Spell::EffectSummonPet(SpellEffectIndex eff_idx)
     m_spellLog.AddLog(uint32(SPELL_EFFECT_SUMMON_PET), NewSummon->GetPackGUID());
 }
 
+/// 学习宠物技能效果（SPELL_EFFECT_LEARN_PET_SPELL）：扣除宠物训练点数并教会宠物新技能
 void Spell::EffectLearnPetSpell(SpellEffectIndex eff_idx)
 {
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -5109,6 +5168,7 @@ void Spell::EffectLearnPetSpell(SpellEffectIndex eff_idx)
         DEBUG_LOG("Spell: %s has learned spell %u from %s", pet->GetGuidStr().c_str(), learn_spellproto->Id, caster->GetGuidStr().c_str());
 }
 
+/// 嘲讽效果（SPELL_EFFECT_TAUNT）：将目标仇恨提升至最高并强制切换当前攻击目标为施法者（含 2.4.3 被动宠物免受 AOE 嘲讽规则）
 void Spell::EffectTaunt(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -5125,7 +5185,7 @@ void Spell::EffectTaunt(SpellEffectIndex eff_idx)
         }
     }
 
-    // Also use this effect to set the taunter's threat to the taunted creature's highest value
+    // Also use this effect to set the taunter's threat to the taunted creature's highest value (将施法者仇恨同步至目标当前最高仇恨并强制切换目标)
     if (unitTarget->CanHaveThreatList())
     {
         float addedThreat = unitTarget->getThreatManager().GetHighestThreat() - unitTarget->getThreatManager().getThreat(m_caster);
@@ -5152,6 +5212,7 @@ void Spell::EffectTaunt(SpellEffectIndex eff_idx)
     }
 }
 
+/// 武器伤害效果（SPELL_EFFECT_WEAPON_DAMAGE / NOSCHOOL / PERCENT / NORMALIZED）：合并多效果武器伤害计算、盗贼伏击/毁伤加成与武器百分比缩放
 void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -5159,7 +5220,7 @@ void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
     if (!unitTarget->IsAlive())
         return;
 
-    // multiple weapon dmg effect workaround
+    // multiple weapon dmg effect workaround (若法术含多个武器伤害类效果，统一推迟到最后一个效果时合并结算)
     // execute only the last weapon damage
     // and handle all effects at once
     for (int j = 0; j < MAX_EFFECT_INDEX; ++j)
@@ -5307,6 +5368,7 @@ void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
     m_damagePerEffect[eff_idx] = CalculateSpellEffectDamage(unitTarget, bonus, m_damageDoneMultiplier[eff_idx], eff_idx);
 }
 
+/// 增加/减少仇恨值效果（SPELL_EFFECT_THREAT）
 void Spell::EffectThreat(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !unitTarget->IsAlive() || !m_caster->IsAlive())
@@ -5318,6 +5380,7 @@ void Spell::EffectThreat(SpellEffectIndex /*eff_idx*/)
     unitTarget->AddThreat(m_caster, float(damage), false, GetSpellSchoolMask(m_spellInfo), m_spellInfo);
 }
 
+/// 按施法者最大生命值治疗效果（SPELL_EFFECT_HEAL_MAX_HEALTH）
 void Spell::EffectHealMaxHealth(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget)
@@ -5330,6 +5393,7 @@ void Spell::EffectHealMaxHealth(SpellEffectIndex /*eff_idx*/)
     m_healing += heal;
 }
 
+/// 打断施法效果（SPELL_EFFECT_INTERRUPT_CAST）：打断目标正在施放的可打断非近战法术并封锁对应法术学派
 void Spell::EffectInterruptCast(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -5359,6 +5423,7 @@ void Spell::EffectInterruptCast(SpellEffectIndex eff_idx)
         m_spellLog.AddLog(uint32(SPELL_EFFECT_INTERRUPT_CAST), unitTarget->GetPackGUID(), interruptedSpellId);
 }
 
+/// 召唤野外无主游戏对象效果（SPELL_EFFECT_SUMMON_OBJECT_WILD）：在目标点或施法者附近生成游戏对象及其关联陷阱
 void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
 {
     uint32 gameobject_id = m_spellInfo->EffectMiscValue[eff_idx];
@@ -5412,6 +5477,7 @@ void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
     }
 }
 
+/// 脚本效果处理器（SPELL_EFFECT_SCRIPT_EFFECT）：按法术 ID 分发击退减仇恨、节日变装、副本首领机制及专业药水触发，末尾回退启动 DB 脚本
 void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 {
     // TODO: we must implement hunter pet summon at login there (spell 6962)
@@ -5464,7 +5530,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 case 37597:                                 // Meat Slap
                 case 40486:                                 // Eject - Bloodboil
                 {
-                    // Knock Away variants and derrivatives with scripted threat reduction component
+                    // Knock Away variants and derrivatives with scripted threat reduction component (各类击退附带按固定比例降低目标仇恨)
                     if (!unitTarget)
                         return;
                     // Default (most of the time) reduction is 50%. TODO: Verify when possible per spell
@@ -5500,7 +5566,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     return;
                 }
-                case 22539:                                 // Shadow Flame (All script effects, not just end ones to
+                case 22539:                                 // Shadow Flame (All script effects, not just end ones to (黑龙暗影烈焰：未穿奥妮克希亚鳞片披风时触发致命暗影烈焰)
                 case 22972:                                 // prevent player from dodging the last triggered spell)
                 case 22975:
                 case 22976:
@@ -6610,7 +6676,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
         }
     }
 
-    // normal DB scripted effect
+    // normal DB scripted effect (未命中硬编码特例时，若允许则启动数据库 spell_scripts 脚本)
     if (!unitTarget && !gameObjTarget)
         return;
 
@@ -6628,6 +6694,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
         m_trueCaster->GetMap()->ScriptsStart(SCRIPT_TYPE_SPELL, m_spellInfo->Id, m_trueCaster, gameObjTarget);
 }
 
+/// 脱战隐遁效果（SPELL_EFFECT_SANCTUARY）：打断指向施法、清除仇恨/脱离战斗（副本首领战中仅清仇恨不停战），潜行消失时额外解除定身
 void Spell::EffectSanctuary(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget)
@@ -6648,6 +6715,7 @@ void Spell::EffectSanctuary(SpellEffectIndex /*eff_idx*/)
         ((Player*)unitTarget)->RemoveSpellsCausingAura(SPELL_AURA_MOD_ROOT);
 }
 
+/// 增加连击点数效果（SPELL_EFFECT_ADD_COMBO_POINTS）
 void Spell::EffectAddComboPoints(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget)
@@ -6662,6 +6730,7 @@ void Spell::EffectAddComboPoints(SpellEffectIndex /*eff_idx*/)
     m_caster->AddComboPoints(unitTarget, damage);
 }
 
+/// 发起决斗效果（SPELL_EFFECT_DUEL）：校验区域许可与屏蔽列表，生成决斗旗帜并向双方发送决斗请求
 void Spell::EffectDuel(SpellEffectIndex eff_idx)
 {
     if (!m_caster || !unitTarget || m_caster->GetTypeId() != TYPEID_PLAYER || unitTarget->GetTypeId() != TYPEID_PLAYER)
@@ -6747,6 +6816,7 @@ void Spell::EffectDuel(SpellEffectIndex eff_idx)
     m_spellLog.AddLog(uint32(SPELL_EFFECT_DUEL), target->GetPackGUID());
 }
 
+/// 卡死自救效果（SPELL_EFFECT_STUCK）：鬼魂状态回墓地，存活优先用炉石，否则传回副本入口或附近脱困
 void Spell::EffectStuck(SpellEffectIndex /*eff_idx*/)
 {
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -6793,6 +6863,7 @@ void Spell::EffectStuck(SpellEffectIndex /*eff_idx*/)
     }
 }
 
+/// 召唤玩家效果（SPELL_EFFECT_SUMMON_PLAYER）：记录召唤坐标并向目标玩家发送拉人确认弹窗
 void Spell::EffectSummonPlayer(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -6814,6 +6885,7 @@ void Spell::EffectSummonPlayer(SpellEffectIndex /*eff_idx*/)
     static_cast<Player*>(unitTarget)->GetSession()->SendPacket(data);
 }
 
+/// 激活游戏对象效果（SPELL_EFFECT_ACTIVATE_OBJECT）：执行开关门、锁定/解锁、自定义动画、重置、更换 ArtKit 及召唤首领等对象动作
 void Spell::EffectActivateObject(SpellEffectIndex effIdx)
 {
     if (!gameObjTarget)
@@ -6831,7 +6903,7 @@ void Spell::EffectActivateObject(SpellEffectIndex effIdx)
         case GameObjectActions::ANIMATE_CUSTOM_3:
             gameObjTarget->SendGameObjectCustomAnim(gameObjTarget->GetObjectGuid(), uint32(action) - uint32(GameObjectActions::ANIMATE_CUSTOM_0));
             break;
-        case GameObjectActions::DISTURB: // What's the difference with Open?
+        case GameObjectActions::DISTURB: // What's the difference with Open? (扰动/开启游戏对象)
         case GameObjectActions::OPEN:
             switch (m_spellInfo->Id)
             {
@@ -6985,6 +7057,7 @@ void Spell::EffectActivateObject(SpellEffectIndex effIdx)
     }
 }
 
+/// 召唤图腾辅助函数：替换同槽位旧图腾，初始化图腾属性/生命并发送 SMSG_TOTEM_CREATED
 bool Spell::DoSummonTotem(CreatureSummonPositions& list, SpellEffectIndex eff_idx, uint8 slot_dbc)
 {
     // DBC store slots starting from 1, with no slot 0 value)
@@ -7071,6 +7144,7 @@ bool Spell::DoSummonTotem(CreatureSummonPositions& list, SpellEffectIndex eff_id
     return false;
 }
 
+/// 召唤并控制/附身单位辅助函数（DoSummonPossessed）
 bool Spell::DoSummonPossessed(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 /*level*/)
 {
     MANGOS_ASSERT(!list.empty() && prop);
@@ -7088,6 +7162,7 @@ bool Spell::DoSummonPossessed(CreatureSummonPositions& list, SummonPropertiesEnt
     return true;
 }
 
+/// 为目标玩家手持主手武器施加临时附魔（SPELL_EFFECT_ENCHANT_HELD_ITEM，核心用于萨满风怒/火舌图腾武器附魔）
 void Spell::EffectEnchantHeldItem(SpellEffectIndex eff_idx)
 {
     // this is only item spell effect applied to main-hand weapon of target player (players in area)
@@ -7141,6 +7216,7 @@ void Spell::EffectEnchantHeldItem(SpellEffectIndex eff_idx)
     }
 }
 
+/// 分解装备效果（SPELL_EFFECT_DISENCHANT）：提升附魔技能并生成分解战利品窗口
 void Spell::EffectDisEnchant(SpellEffectIndex /*eff_idx*/)
 {
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -7169,6 +7245,7 @@ void Spell::EffectDisEnchant(SpellEffectIndex /*eff_idx*/)
     // item will be removed at disenchanting end
 }
 
+/// 醉酒效果（SPELL_EFFECT_INEBRIATE）：增加玩家醉酒度
 void Spell::EffectInebriate(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
@@ -7184,6 +7261,7 @@ void Spell::EffectInebriate(SpellEffectIndex /*eff_idx*/)
     player->SetDrunkValue(currentDrunk, m_CastItem ? m_CastItem->GetEntry() : 0);
 }
 
+/// 喂养宠物效果（SPELL_EFFECT_FEED_PET）：根据食物等级计算收益，消耗食物并触发快乐度恢复法术
 void Spell::EffectFeedPet(SpellEffectIndex eff_idx)
 {
     if (!m_caster->IsPlayer())
@@ -7217,6 +7295,7 @@ void Spell::EffectFeedPet(SpellEffectIndex eff_idx)
     m_caster->CastCustomSpell(nullptr, m_spellInfo->EffectTriggerSpell[eff_idx], &benefit, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
 }
 
+/// 解散宠物效果（SPELL_EFFECT_DISMISS_PET）：发送解散日志并将存活宠物收回兽栏/解散
 void Spell::EffectDismissPet(SpellEffectIndex /*eff_idx*/)
 {
     if (!m_caster->IsPlayer())
@@ -7235,6 +7314,7 @@ void Spell::EffectDismissPet(SpellEffectIndex /*eff_idx*/)
     pet->Unsummon(PET_SAVE_NOT_IN_SLOT, m_caster);
 }
 
+/// 召唤槽位游戏对象效果（SPELL_EFFECT_SUMMON_OBJECT_SLOT1~4）：替换同槽位旧对象并在目标点生成新对象
 void Spell::EffectSummonObject(SpellEffectIndex eff_idx)
 {
     uint32 go_id = m_spellInfo->EffectMiscValue[eff_idx];
@@ -7315,6 +7395,7 @@ void Spell::EffectSummonObject(SpellEffectIndex eff_idx)
         m_spellLog.AddLog(m_spellInfo->Effect[eff_idx], linkedGO->GetPackGUID());
 }
 
+/// 复活玩家效果（SPELL_EFFECT_RESURRECT / RESURRECT_NEW）：支持同地图直接发起复活请求及跨地图尸体通过主世界线程投递复活请求
 void Spell::EffectResurrect(SpellEffectIndex eff_idx)
 {
     if (!unitTarget && !corpseTarget)
@@ -7386,6 +7467,7 @@ void Spell::EffectResurrect(SpellEffectIndex eff_idx)
     }
 }
 
+/// 增加额外攻击次数效果（SPELL_EFFECT_ADD_EXTRA_ATTACKS）：累加额外攻击次数（上限 5 次）并记录施法日志
 void Spell::EffectAddExtraAttacks(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !unitTarget->IsAlive())
@@ -7398,16 +7480,19 @@ void Spell::EffectAddExtraAttacks(SpellEffectIndex /*eff_idx*/)
     m_spellLog.AddLog(uint32(SPELL_EFFECT_ADD_EXTRA_ATTACKS), unitTarget->GetPackGUID(), damage);
 }
 
+/// 授予招架能力效果（SPELL_EFFECT_PARRY）
 void Spell::EffectParry(SpellEffectIndex /*eff_idx*/)
 {
     m_caster->SetCanParry(true);
 }
 
+/// 授予格挡能力效果（SPELL_EFFECT_BLOCK）
 void Spell::EffectBlock(SpellEffectIndex /*eff_idx*/)
 {
     m_caster->SetCanBlock(true);
 }
 
+/// 向前跳跃/闪烁传送效果（SPELL_EFFECT_LEAP）
 void Spell::EffectLeapForward(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget)
@@ -7421,6 +7506,7 @@ void Spell::EffectLeapForward(SpellEffectIndex /*eff_idx*/)
     unitTarget->NearTeleportTo(x, y, z, orientation, unitTarget == m_caster);
 }
 
+/// 向后跳跃效果（SPELL_EFFECT_LEAP_BACK，如猎人逃脱）：相对目标向后击退弹跳
 void Spell::EffectLeapBack(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || unitTarget->IsTaxiFlying())
@@ -7429,6 +7515,7 @@ void Spell::EffectLeapBack(SpellEffectIndex eff_idx)
     m_caster->KnockBackFrom(unitTarget, float(m_spellInfo->EffectMiscValue[eff_idx]) / 10, float(damage) / 10);
 }
 
+/// 声望变化效果（SPELL_EFFECT_REPUTATION）：计算声望加成后修改玩家指定阵营声望
 void Spell::EffectReputation(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -7449,6 +7536,7 @@ void Spell::EffectReputation(SpellEffectIndex eff_idx)
     player->GetReputationMgr().ModifyReputation(factionEntry, rep_change);
 }
 
+/// 完成任务条件效果（SPELL_EFFECT_QUEST_COMPLETE）
 void Spell::EffectQuestComplete(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -7458,6 +7546,7 @@ void Spell::EffectQuestComplete(SpellEffectIndex eff_idx)
     static_cast<Player*>(unitTarget)->AreaExploredOrEventHappens(quest_id);
 }
 
+/// 自我复活效果（SPELL_EFFECT_SELF_RESURRECT，如灵魂石/复生）：恢复指定血量与法力/能量并原地复活
 void Spell::EffectSelfResurrect(SpellEffectIndex eff_idx)
 {
     if (!m_caster->IsPlayer())
@@ -7491,6 +7580,7 @@ void Spell::EffectSelfResurrect(SpellEffectIndex eff_idx)
     player->SpawnCorpseBones();
 }
 
+/// 剥皮效果（SPELL_EFFECT_SKINNING）：生成生物剥皮战利品、提升剥皮技能并清除可剥皮标志
 void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget->IsCreature())
@@ -7530,6 +7620,7 @@ void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
     creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
 }
 
+/// 冲锋目标效果（SPELL_EFFECT_CHARGE）：停止非玩家目标移动，发起冲锋路径并在敌对时开启自动攻击
 void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !m_caster)
@@ -7552,6 +7643,7 @@ void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
         m_caster->Attack(unitTarget, !m_spellInfo->HasAttribute(SPELL_ATTR_USES_RANGED_SLOT));
 }
 
+/// 定点冲锋效果（SPELL_EFFECT_CHARGE_DEST）：向目标坐标发起高速冲锋移动
 void Spell::EffectChargeDest(SpellEffectIndex /*eff_idx*/)
 {
     if ((m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION) == 0)
@@ -7568,6 +7660,7 @@ void Spell::EffectChargeDest(SpellEffectIndex /*eff_idx*/)
 }
 
 
+/// 召唤非战斗观赏小宠物（MINI_PET）辅助函数：重复施放同一宠物时收回，否则生成并设为双方免疫
 bool Spell::DoSummonCritter(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 /*level*/)
 {
     MANGOS_ASSERT(!list.empty() && prop);
@@ -7648,6 +7741,7 @@ bool Spell::DoSummonCritter(CreatureSummonPositions& list, SummonPropertiesEntry
     return true;
 }
 
+/// 击退效果（SPELL_EFFECT_KNOCK_BACK）：非定身目标向远离施法者方向击飞
 void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -7659,6 +7753,7 @@ void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
     unitTarget->KnockBackFrom(m_caster, float(m_spellInfo->EffectMiscValue[eff_idx]) / 10, float(damage) / 10);
 }
 
+/// 触发飞行路线效果（SPELL_EFFECT_SEND_TAXI）：令玩家激活并乘上指定飞行路径
 void Spell::EffectSendTaxi(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -7667,6 +7762,7 @@ void Spell::EffectSendTaxi(SpellEffectIndex eff_idx)
     static_cast<Player*>(unitTarget)->ActivateTaxiPathTo(m_spellInfo->EffectMiscValue[eff_idx], m_spellInfo->Id);
 }
 
+/// 拉近效果（SPELL_EFFECT_PULL_TOWARDS / PULL_TOWARDS_DEST）：按抛物线重力公式将目标拉向施法者或目标点
 void Spell::EffectPullTowards(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -7699,6 +7795,7 @@ void Spell::EffectPullTowards(SpellEffectIndex eff_idx)
     unitTarget->KnockBackWithAngle(angle, speedXY, speedZ);
 }
 
+/// 复活已死亡宠物效果（SPELL_EFFECT_SUMMON_DEAD_PET）：若未召唤则从数据库载入，否则将宠物尸体传送至身边并按百分比血量复活
 void Spell::EffectSummonDeadPet(SpellEffectIndex /*eff_idx*/)
 {
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -7734,6 +7831,7 @@ void Spell::EffectSummonDeadPet(SpellEffectIndex /*eff_idx*/)
     pet->SavePetToDB(PET_SAVE_AS_CURRENT, _player);
 }
 
+/// 摧毁所有图腾效果（SPELL_EFFECT_DESTROY_ALL_TOTEMS，如萨满图腾召唤回收）：收回全部图腾并按比例返还法力消耗
 void Spell::EffectDestroyAllTotems(SpellEffectIndex /*eff_idx*/)
 {
     int32 mana = 0;
@@ -7758,6 +7856,7 @@ void Spell::EffectDestroyAllTotems(SpellEffectIndex /*eff_idx*/)
         m_caster->CastCustomSpell(nullptr, 39104, &mana, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
 }
 
+/// 装备耐久度固定损耗效果（SPELL_EFFECT_DURABILITY_DAMAGE）
 void Spell::EffectDurabilityDamage(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -7781,6 +7880,7 @@ void Spell::EffectDurabilityDamage(SpellEffectIndex eff_idx)
         static_cast<Player*>(unitTarget)->DurabilityPointsLoss(item, damage);
 }
 
+/// 装备耐久度百分比损耗效果（SPELL_EFFECT_DURABILITY_DAMAGE_PCT）
 void Spell::EffectDurabilityDamagePCT(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -7807,6 +7907,7 @@ void Spell::EffectDurabilityDamagePCT(SpellEffectIndex eff_idx)
         static_cast<Player*>(unitTarget)->DurabilityLoss(item, double(damage) / 100.0f);
 }
 
+/// 按百分比调整仇恨值效果（SPELL_EFFECT_MODIFY_THREAT_PERCENT）
 void Spell::EffectModifyThreatPercent(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget)
@@ -7815,6 +7916,7 @@ void Spell::EffectModifyThreatPercent(SpellEffectIndex /*eff_idx*/)
     unitTarget->getThreatManager().modifyThreatPercent(m_caster, damage);
 }
 
+/// 生成传送门/召唤仪式/钓鱼浮标等游戏对象效果（SPELL_EFFECT_TRANS_DOOR）：处理钓鱼水面与视线校验、咬钩时机及仪式对象绑定
 void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
 {
     uint32 name_id = m_spellInfo->EffectMiscValue[eff_idx];
@@ -7843,7 +7945,7 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
         float max_dis = GetSpellMaxRange(sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex));
         float dis = rand_norm_f() * (max_dis - min_dis) + min_dis;
 
-        // special code for fishing bobber (TARGET_LOCATION_CASTER_FISHING_SPOT), should not try to avoid objects
+        // special code for fishing bobber (TARGET_LOCATION_CASTER_FISHING_SPOT), should not try to avoid objects (钓鱼浮标专用：在扇形角度随机落点并校验水域与视线)
         // nor try to find ground level, but randomly vary in angle
         if (goinfo->type == GAMEOBJECT_TYPE_FISHINGNODE)
         {
@@ -7975,6 +8077,7 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
     }
 }
 
+/// 选矿效果（SPELL_EFFECT_PROSPECTING）：消耗矿石样本生成珠宝加工选矿战利品
 void Spell::EffectProspecting(SpellEffectIndex /*eff_idx*/)
 {
     if (!m_caster->IsPlayer() || !itemTarget)
@@ -7997,11 +8100,13 @@ void Spell::EffectProspecting(SpellEffectIndex /*eff_idx*/)
     loot->ShowContentTo(p_caster);
 }
 
+/// 技能效果占位（SPELL_EFFECT_SKILL）
 void Spell::EffectSkill(SpellEffectIndex /*eff_idx*/)
 {
     DEBUG_LOG("WORLD: SkillEFFECT");
 }
 
+/// 战场灵魂医者群体复活效果（SPELL_EFFECT_SPIRIT_HEAL）：满血复活带复活等待光环的玩家并自动召出猎人/术士宠物
 void Spell::EffectSpiritHeal(SpellEffectIndex /*eff_idx*/)
 {
     // TODO player can't see the heal-animation - he should respawn some ticks later
@@ -8039,6 +8144,7 @@ void Spell::EffectSpiritHeal(SpellEffectIndex /*eff_idx*/)
 }
 
 // remove insignia spell effect
+/// 移除玩家徽记效果（SPELL_EFFECT_SKIN_PLAYER_CORPSE）：战死玩家在线时直接掠夺徽记，否则将尸体转为可拾取骨堆生成徽记战利品
 void Spell::EffectSkinPlayerCorpse(SpellEffectIndex /*eff_idx*/)
 {
     DEBUG_LOG("Effect: SkinPlayerCorpse");
@@ -8084,6 +8190,7 @@ void Spell::EffectSkinPlayerCorpse(SpellEffectIndex /*eff_idx*/)
     static_cast<Player*>(target)->RemovedInsignia(static_cast<Player*>(m_caster));
 }
 
+/// 窃取有益增益效果（SPELL_EFFECT_STEAL_BENEFICIAL_BUFF，如法师法术偷取）：筛选非被动且可偷取的正面魔法并转移到自身
 void Spell::EffectStealBeneficialBuff(SpellEffectIndex eff_idx)
 {
     DEBUG_LOG("Effect: StealBeneficialBuff");
@@ -8142,6 +8249,7 @@ void Spell::EffectStealBeneficialBuff(SpellEffectIndex eff_idx)
     }
 }
 
+/// 队伍共享击杀计数奖励效果（SPELL_EFFECT_KILL_CREDIT_GROUP）
 void Spell::EffectKillCreditGroup(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -8150,6 +8258,7 @@ void Spell::EffectKillCreditGroup(SpellEffectIndex eff_idx)
     static_cast<Player*>(unitTarget)->RewardPlayerAndGroupAtEventCredit(m_spellInfo->EffectMiscValue[eff_idx], unitTarget);
 }
 
+/// 强制任务失败效果（SPELL_EFFECT_QUEST_FAIL）
 void Spell::EffectQuestFail(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -8158,6 +8267,7 @@ void Spell::EffectQuestFail(SpellEffectIndex eff_idx)
     static_cast<Player*>(unitTarget)->FailQuest(m_spellInfo->EffectMiscValue[eff_idx]);
 }
 
+/// 播放直达音效效果（SPELL_EFFECT_PLAY_SOUND）
 void Spell::EffectPlaySound(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -8173,6 +8283,7 @@ void Spell::EffectPlaySound(SpellEffectIndex eff_idx)
     unitTarget->PlayDirectSound(soundId, PlayPacketParameters(PlayPacketSettings::TARGET, static_cast<Player*>(unitTarget)));
 }
 
+/// 播放背景音乐效果（SPELL_EFFECT_PLAY_MUSIC）
 void Spell::EffectPlayMusic(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -8188,6 +8299,7 @@ void Spell::EffectPlayMusic(SpellEffectIndex eff_idx)
     m_caster->PlayMusic(soundId, PlayPacketParameters(PlayPacketSettings::TARGET, static_cast<Player*>(unitTarget)));
 }
 
+/// 绑定炉石点效果（SPELL_EFFECT_BIND）：保存当前位置与区域为玩家绑定点并同步客户端
 void Spell::EffectBind(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !unitTarget->IsPlayer())
@@ -8224,6 +8336,7 @@ void Spell::EffectBind(SpellEffectIndex /*eff_idx*/)
     player->SendDirectMessage(data);
 }
 
+/// 重定向仇恨效果（SPELL_EFFECT_REDIRECT_THREAT，如猎人误导）：将施法者产生的所有仇恨转移给目标单位
 void Spell::EffectRedirectThreat(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget)
@@ -8232,6 +8345,7 @@ void Spell::EffectRedirectThreat(SpellEffectIndex /*eff_idx*/)
     m_caster->getHostileRefManager().SetThreatRedirection(unitTarget->GetObjectGuid());
 }
 
+/// 从指定坐标击退效果（SPELL_EFFECT_KNOCKBACK_FROM_POSITION）：计算远离目标点或施法者的方向将目标击飞
 void Spell::EffectKnockBackFromPosition(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
@@ -8249,6 +8363,7 @@ void Spell::EffectKnockBackFromPosition(SpellEffectIndex eff_idx)
     unitTarget->KnockBackWithAngle(angle, horizontalSpeed, verticalSpeed);
 }
 
+/// 召唤战友招募好友效果（SPELL_EFFECT_SUMMON_RAF_FRIEND）
 void Spell::EffectSummonRafFriend(SpellEffectIndex eff_idx)
 {
     if (!m_caster->IsPlayer())
@@ -8269,6 +8384,7 @@ void Spell::EffectSummonRafFriend(SpellEffectIndex eff_idx)
             m_caster->CastSpell(rafFriend, spellInfo, TRIGGERED_OLD_TRIGGERED | TRIGGERED_INSTANT_CAST);
 }
 
+/// 直接创建指定模板的已驯服猎人宠物效果（SPELL_EFFECT_CREATE_PET）
 void Spell::EffectCreateTamedPet(SpellEffectIndex eff_idx)
 {
     if (!unitTarget || unitTarget->getClass() != CLASS_HUNTER)
@@ -8351,6 +8467,7 @@ void Spell::EffectCreateTamedPet(SpellEffectIndex eff_idx)
     }
 }
 
+/// 传送回最近墓地效果（SPELL_EFFECT_TELEPORT_GRAVEYARD，限战场中使用）
 void Spell::EffectTeleportGraveyard(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || !unitTarget->IsPlayer() || !unitTarget->GetMap()->IsBattleGround())

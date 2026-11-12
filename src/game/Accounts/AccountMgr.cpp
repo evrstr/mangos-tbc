@@ -36,19 +36,21 @@ AccountMgr::AccountMgr()
 AccountMgr::~AccountMgr()
 {}
 
+/// 创建账号（使用数据库默认资料片等级）
 AccountOpResult AccountMgr::CreateAccount(std::string username, std::string password) const
 {
     if (utf8length(username) > MAX_ACCOUNT_STR)
-        return AOR_NAME_TOO_LONG;                           // username's too long
+        return AOR_NAME_TOO_LONG;                           // username's too long (用户名过长)
 
     normalizeString(username);
     normalizeString(password);
 
     if (GetId(username))
     {
-        return AOR_NAME_ALREADY_EXIST;                       // username does already exist
+        return AOR_NAME_ALREADY_EXIST;                       // username does already exist (用户名已存在)
     }
 
+    // 计算 SRP6 盐值(s)与验证器(v)
     SRP6 srp;
 
     srp.CalculateVerifier(CalculateShaPassHash(username, password));
@@ -65,24 +67,26 @@ AccountOpResult AccountMgr::CreateAccount(std::string username, std::string pass
     OPENSSL_free((void*)v_hex);
 
     if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
+        return AOR_DB_INTERNAL_ERROR;                       // unexpected error (数据库写入失败)
+    // 为新账号补充所有服务器分区的 realmcharacters 初始记录
     LoginDatabase.Execute(
         "INSERT INTO realmcharacters (realmid, acctid, numchars) SELECT realmlist.id, account.id, 0 FROM realmlist,account LEFT JOIN realmcharacters ON acctid=account.id WHERE acctid IS NULL");
 
-    return AOR_OK;                                          // everything's fine
+    return AOR_OK;                                          // everything's fine (创建成功)
 }
 
+/// 创建账号并显式指定资料片版本
 AccountOpResult AccountMgr::CreateAccount(std::string username, std::string password, uint32 expansion) const
 {
     if (utf8length(username) > MAX_ACCOUNT_STR)
-        return AOR_NAME_TOO_LONG;                           // username's too long
+        return AOR_NAME_TOO_LONG;                           // username's too long (用户名过长)
 
     normalizeString(username);
     normalizeString(password);
 
     if (GetId(username))
     {
-        return AOR_NAME_ALREADY_EXIST;                       // username does already exist
+        return AOR_NAME_ALREADY_EXIST;                       // username does already exist (用户名已存在)
     }
 
     SRP6 srp;
@@ -102,19 +106,20 @@ AccountOpResult AccountMgr::CreateAccount(std::string username, std::string pass
     OPENSSL_free((void*)v_hex);
 
     if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
+        return AOR_DB_INTERNAL_ERROR;                       // unexpected error (数据库写入失败)
     LoginDatabase.Execute("INSERT INTO realmcharacters (realmid, acctid, numchars) SELECT realmlist.id, account.id, 0 FROM realmlist,account LEFT JOIN realmcharacters ON acctid=account.id WHERE acctid IS NULL");
 
-    return AOR_OK;                                          // everything's fine
+    return AOR_OK;                                          // everything's fine (创建成功)
 }
 
+/// 删除账号：先踢出并删除其下全部角色，再清理登录库账号记录
 AccountOpResult AccountMgr::DeleteAccount(uint32 accid) const
 {
     auto queryResult = LoginDatabase.PQuery("SELECT 1 FROM account WHERE id='%u'", accid);
     if (!queryResult)
-        return AOR_NAME_NOT_EXIST;                          // account doesn't exist
+        return AOR_NAME_NOT_EXIST;                          // account doesn't exist (账号不存在)
 
-    // existing characters list
+    // existing characters list (查询并删除该账号下的现有角色)
     queryResult = CharacterDatabase.PQuery("SELECT guid FROM characters WHERE account='%u'", accid);
     if (queryResult)
     {
@@ -124,14 +129,14 @@ AccountOpResult AccountMgr::DeleteAccount(uint32 accid) const
             uint32 guidlo = fields[0].GetUInt32();
             ObjectGuid guid = ObjectGuid(HIGHGUID_PLAYER, guidlo);
 
-            // kick if player currently
+            // kick if player currently (若角色当前在线则先踢出游戏)
             ObjectAccessor::KickPlayer(guid);
-            Player::DeleteFromDB(guid, accid, false);       // no need to update realm characters
+            Player::DeleteFromDB(guid, accid, false);       // no need to update realm characters (即将删除整条账号记录，无需更新角色计数表)
         }
         while (queryResult->NextRow());
     }
 
-    // table realm specific but common for all characters of account for realm
+    // table realm specific but common for all characters of account for realm (清理该账号在当前角色库的新手教程记录)
     CharacterDatabase.PExecute("DELETE FROM character_tutorial WHERE account = '%u'", accid);
 
     LoginDatabase.BeginTransaction();
@@ -143,16 +148,17 @@ AccountOpResult AccountMgr::DeleteAccount(uint32 accid) const
     LoginDatabase.CommitTransaction();
 
     if (!res)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error;
+        return AOR_DB_INTERNAL_ERROR;                       // unexpected error; (事务执行失败)
 
     return AOR_OK;
 }
 
+/// 修改用户名及新密码对应的 SRP6 验证信息
 AccountOpResult AccountMgr::ChangeUsername(uint32 accid, std::string new_uname, std::string new_passwd) const
 {
     auto queryResult = LoginDatabase.PQuery("SELECT 1 FROM account WHERE id='%u'", accid);
     if (!queryResult)
-        return AOR_NAME_NOT_EXIST;                          // account doesn't exist
+        return AOR_NAME_NOT_EXIST;                          // account doesn't exist (账号不存在)
 
     if (utf8length(new_uname) > MAX_ACCOUNT_STR)
         return AOR_NAME_TOO_LONG;
@@ -181,17 +187,18 @@ AccountOpResult AccountMgr::ChangeUsername(uint32 accid, std::string new_uname, 
     OPENSSL_free((void*)v_hex);
 
     if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
+        return AOR_DB_INTERNAL_ERROR;                       // unexpected error (数据库更新失败)
 
     return AOR_OK;
 }
 
+/// 修改账号密码并更新 SRP6 盐值与验证器
 AccountOpResult AccountMgr::ChangePassword(uint32 accid, std::string new_passwd) const
 {
     std::string username;
 
     if (!GetName(accid, username))
-        return AOR_NAME_NOT_EXIST;                          // account doesn't exist
+        return AOR_NAME_NOT_EXIST;                          // account doesn't exist (账号不存在)
 
     if (utf8length(new_passwd) > MAX_ACCOUNT_STR)
         return AOR_PASS_TOO_LONG;
@@ -213,13 +220,14 @@ AccountOpResult AccountMgr::ChangePassword(uint32 accid, std::string new_passwd)
     OPENSSL_free((void*)s_hex);
     OPENSSL_free((void*)v_hex);
 
-    // also reset s and v to force update at next realmd login
+    // also reset s and v to force update at next realmd login (同步重置 s 和 v 以在下次 realmd 登录时生效)
     if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
+        return AOR_DB_INTERNAL_ERROR;                       // unexpected error (数据库更新失败)
 
     return AOR_OK;
 }
 
+/// 根据用户名查询账号 ID，不存在返回 0
 uint32 AccountMgr::GetId(std::string username) const
 {
     LoginDatabase.escape_string(username);
@@ -230,6 +238,7 @@ uint32 AccountMgr::GetId(std::string username) const
     return id;
 }
 
+/// 查询账号的 GM 安全权限等级，未找到默认返回普通玩家权限 SEC_PLAYER
 AccountTypes AccountMgr::GetSecurity(uint32 acc_id)
 {
     auto queryResult = LoginDatabase.PQuery("SELECT gmlevel FROM account WHERE id = '%u'", acc_id);
@@ -242,6 +251,7 @@ AccountTypes AccountMgr::GetSecurity(uint32 acc_id)
     return SEC_PLAYER;
 }
 
+/// 根据账号 ID 查询用户名
 bool AccountMgr::GetName(uint32 acc_id, std::string& name) const
 {
     auto queryResult = LoginDatabase.PQuery("SELECT username FROM account WHERE id = '%u'", acc_id);
@@ -254,9 +264,10 @@ bool AccountMgr::GetName(uint32 acc_id, std::string& name) const
     return false;
 }
 
+/// 查询该账号在当前角色库下的角色总数
 uint32 AccountMgr::GetCharactersCount(uint32 acc_id) const
 {
-    // check character count
+    // check character count (统计角色表中的记录数)
     auto queryResult = CharacterDatabase.PQuery("SELECT COUNT(guid) FROM characters WHERE account = '%u'", acc_id);
     if (queryResult)
     {
@@ -267,6 +278,7 @@ uint32 AccountMgr::GetCharactersCount(uint32 acc_id) const
     return 0;
 }
 
+/// 使用数据库中的盐值 s 与验证器 v 校验输入密码
 bool AccountMgr::CheckPassword(uint32 accid, std::string passwd) const
 {
     std::string username;
@@ -294,6 +306,7 @@ bool AccountMgr::CheckPassword(uint32 accid, std::string passwd) const
     return false;
 }
 
+/// 规范化账号名或密码字符串：转为大写（仅转换拉丁字符）并检查最大长度
 bool AccountMgr::normalizeString(std::string& utf8str)
 {
     std::wstring wstr_buf;
@@ -308,6 +321,7 @@ bool AccountMgr::normalizeString(std::string& utf8str)
     return WStrToUtf8(wstr_buf, utf8str);
 }
 
+/// 计算 "用户名:密码" 的 SHA1 摘要并编码为十六进制字符串
 std::string AccountMgr::CalculateShaPassHash(std::string& name, std::string& password) const
 {
     Sha1Hash sha;
@@ -323,6 +337,7 @@ std::string AccountMgr::CalculateShaPassHash(std::string& name, std::string& pas
     return encoded;
 }
 
+/// 查询账号标志位（flags）
 uint32 AccountMgr::GetFlags(uint32 acc_id) const
 {
     std::unique_ptr<QueryResult> result(LoginDatabase.PQuery("SELECT flags FROM account WHERE id = '%u'", acc_id));

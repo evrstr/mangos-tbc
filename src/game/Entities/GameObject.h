@@ -35,21 +35,21 @@
 #pragma pack(push,1)
 #endif
 
-// from `gameobject_template`
+// from `gameobject_template` (游戏物体模板数据，对应数据库 gameobject_template 表)
 struct GameObjectInfo
 {
-    uint32  id;
-    uint32  type;
-    uint32  displayId;
-    char*   name;
-    char*   IconName;
-    char*   OpeningText;
-    char*   ClosingText;
-    uint32  faction;
-    uint32  flags;
-    uint32  ExtraFlags;
-    float   size;
-    union                                                   // different GO types have different data field
+    uint32  id;                                             // 模板 ID
+    uint32  type;                                           // 游戏物体类型（GameobjectTypes）
+    uint32  displayId;                                      // 客户端显示模型 ID
+    char*   name;                                           // 物体名称
+    char*   IconName;                                       // 鼠标悬停交互图标名称
+    char*   OpeningText;                                    // 开启/交互提示文本
+    char*   ClosingText;                                    // 关闭提示文本
+    uint32  faction;                                        // 所属阵营模板 ID
+    uint32  flags;                                          // 物体交互标志位
+    uint32  ExtraFlags;                                     // 服务端扩展标志位
+    float   size;                                           // 模型缩放比例
+    union                                                   // different GO types have different data field (不同类型游戏物体共享的 24 个 data 字段联合体)
     {
         //0 GAMEOBJECT_TYPE_DOOR
         struct
@@ -642,17 +642,17 @@ struct GameObjectLocale
     std::vector<std::string> ClosingText;
 };
 
-// client side GO show states
+// client side GO show states (客户端显示的游戏物体状态)
 enum GOState
 {
-    GO_STATE_ACTIVE             = 0,                        // show in world as used and not reset (closed door open)
-    GO_STATE_READY              = 1,                        // show in world as ready (closed door close)
-    GO_STATE_ACTIVE_ALTERNATIVE = 2                         // show in world as used in alt way and not reset (closed door open by cannon fire)
+    GO_STATE_ACTIVE             = 0,                        // show in world as used and not reset (closed door open) (激活/开启状态)
+    GO_STATE_READY              = 1,                        // show in world as ready (closed door close) (就绪/关闭状态)
+    GO_STATE_ACTIVE_ALTERNATIVE = 2                         // show in world as used in alt way and not reset (closed door open by cannon fire) (替代激活状态，如被火炮击毁打开)
 };
 
 #define MAX_GO_STATE              3
 
-// from `gameobject`
+// from `gameobject` (地图静态游戏物体刷怪数据，对应数据库 gameobject 表)
 struct GameObjectData
 {
     uint32 id;                                              // entry in gamobject_template
@@ -687,6 +687,7 @@ struct GameObjectTemplateAddon
     std::array<uint32, 4> artKits = {};
 };
 
+// 游戏物体可执行脚本动作枚举（对应客户端事件与 DBScript 动作）
 enum class GameObjectActions : uint32
 {
     // Name from client executable    // Comments
@@ -716,41 +717,45 @@ enum class GameObjectActions : uint32
     SET_TAP_LIST,                     // Set Tap List
 };
 
+// 游戏物体服务端内部生命周期/拾取状态机
 // For containers:  [GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY        -> ...
 // For bobber:      GO_NOT_READY  ->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED-><deleted>
 // For door(closed):[GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY(close) -> ...
 // For door(open):  [GO_NOT_READY]->GO_READY (open) ->GO_ACTIVATED (close)->GO_JUST_DEACTIVATED->GO_READY(open)  -> ...
 enum LootState
 {
-    GO_NOT_READY = 0,
-    GO_READY,                                               // can be ready but despawned, and then not possible activate until spawn
-    GO_ACTIVATED,
-    GO_JUST_DEACTIVATED
+    GO_NOT_READY = 0,                                       // 尚未就绪（或已触发待销毁）
+    GO_READY,                                               // can be ready but despawned, and then not possible activate until spawn (就绪可交互状态)
+    GO_ACTIVATED,                                           // 已激活/开启中
+    GO_JUST_DEACTIVATED                                     // 刚被停用，等待重置或进入冷却
 };
 
+// 占领点（PvP 争夺旗帜/据点）归属与进度状态
 enum CapturePointState
 {
-    CAPTURE_STATE_NEUTRAL = 0,
-    CAPTURE_STATE_PROGRESS_ALLIANCE,
-    CAPTURE_STATE_PROGRESS_HORDE,
-    CAPTURE_STATE_CONTEST_ALLIANCE,
-    CAPTURE_STATE_CONTEST_HORDE,
-    CAPTURE_STATE_WIN_ALLIANCE,
-    CAPTURE_STATE_WIN_HORDE
+    CAPTURE_STATE_NEUTRAL = 0,                              // 中立状态
+    CAPTURE_STATE_PROGRESS_ALLIANCE,                        // 联盟推进中
+    CAPTURE_STATE_PROGRESS_HORDE,                           // 部落推进中
+    CAPTURE_STATE_CONTEST_ALLIANCE,                         // 联盟争夺中
+    CAPTURE_STATE_CONTEST_HORDE,                            // 部落争夺中
+    CAPTURE_STATE_WIN_ALLIANCE,                             // 联盟完全占领
+    CAPTURE_STATE_WIN_HORDE                                 // 部落完全占领
 };
 
+// 占领点进度滑块关键阈值
 enum CapturePointSliderValue
 {
-    CAPTURE_SLIDER_ALLIANCE         = 100,                  // full alliance
-    CAPTURE_SLIDER_HORDE            = 0,                    // full horde
-    CAPTURE_SLIDER_MIDDLE           = 50                    // middle
+    CAPTURE_SLIDER_ALLIANCE         = 100,                  // full alliance (联盟满值)
+    CAPTURE_SLIDER_HORDE            = 0,                    // full horde (部落满值)
+    CAPTURE_SLIDER_MIDDLE           = 50                    // middle (中立中点)
 };
 
+// 游戏物体服务端扩展标志位
 enum GameobjectExtraFlags
 {
-    GAMEOBJECT_EXTRA_FLAG_CUSTOM_ANIM_ON_USE = 0x00000001,    // GO that plays custom animation on usage
-    GAMEOBJECT_EXTRA_FLAG_DYNGUID            = 0x00000002,    // Temporary - Uses new dynguid system
-    GAMEOBJECT_EXTRA_FLAG_ACTIVE             = 0x00001000,    // Always active
+    GAMEOBJECT_EXTRA_FLAG_CUSTOM_ANIM_ON_USE = 0x00000001,    // GO that plays custom animation on usage (使用时播放自定义动画)
+    GAMEOBJECT_EXTRA_FLAG_DYNGUID            = 0x00000002,    // Temporary - Uses new dynguid system (使用动态 GUID 系统)
+    GAMEOBJECT_EXTRA_FLAG_ACTIVE             = 0x00001000,    // Always active (永久活跃对象)
 };
 
 class Unit;
@@ -760,6 +765,7 @@ struct TransportAnimation;
 class Item;
 class GameObjectGroup;
 
+// 三维旋转四元数结构（用于游戏物体朝向与静态模型碰撞变换）
 struct QuaternionData
 {
     float x, y, z, w;
@@ -777,9 +783,11 @@ struct QuaternionData
 
 #define GO_ANIMPROGRESS_DEFAULT 100                         // in 3.x 0xFF
 
+// 游戏物体实体类（门、宝箱、陷阱、矿点、草药、钓鱼浮标、召唤仪式、占领点及交通工具等）
 class GameObject : public WorldObject
 {
     public:
+        // 生命周期、数据库读写、拥有者/召唤者与刷新计时
         explicit GameObject();
         ~GameObject();
 
@@ -872,6 +880,7 @@ class GameObject : public WorldObject
         void SetFaction(uint32 faction) { SetUInt32Value(GAMEOBJECT_FACTION, faction); }
         uint32 GetLevel() const override { return GetUInt32Value(GAMEOBJECT_LEVEL); }
 
+        // 交互使用、状态机控制、拾取归属、门/按钮与占领点逻辑
         bool CanUseNow(Player const* player) const;
 
         void Use(Unit* user, SpellEntry const* spellInfo = nullptr);
@@ -994,70 +1003,71 @@ class GameObject : public WorldObject
         uint32 ShouldPerformObjectUpdate(uint32 const diff) override;
 
     protected:
-        uint32      m_spellId;
-        time_t      m_respawnTime;                          // (secs) time of next respawn (or despawn if GO have owner()),
-        uint32      m_respawnDelay;                         // (secs) if 0 then current GO state no dependent from timer
-        bool        m_respawnOverriden;
-        bool        m_respawnOverrideOnce;
-        bool        m_forcedDespawn;
-        LootState   m_lootState;
-        bool        m_spawnedByDefault;
-        time_t      m_cooldownTime;                         // used as internal reaction delay time store (not state change reaction).
-        // For traps/goober this: spell casting cooldown, for doors/buttons: reset time.
+        uint32      m_spellId;                              // 召唤该游戏物体的法术 ID
+        time_t      m_respawnTime;                          // (secs) time of next respawn (or despawn if GO have owner()), (下次重生或消失时间戳)
+        uint32      m_respawnDelay;                         // (secs) if 0 then current GO state no dependent from timer (重生间隔秒数，0 表示不依赖计时器)
+        bool        m_respawnOverriden;                     // 是否覆盖默认重生时间
+        bool        m_respawnOverrideOnce;                  // 重生时间覆盖是否仅生效一次
+        bool        m_forcedDespawn;                        // 是否标记为强制消失
+        LootState   m_lootState;                            // 当前服务端交互/拾取状态
+        bool        m_spawnedByDefault;                     // 是否为默认随地图刷新的静态物体
+        time_t      m_cooldownTime;                         // used as internal reaction delay time store (not state change reaction). (内部触发冷却时间戳)
+        // For traps/goober this: spell casting cooldown, for doors/buttons: reset time. (陷阱/交互物为施法冷却，门/按钮为自动复位时间)
 
-        uint32      m_captureTimer;                         // (msecs) timer used for capture points
-        float       m_captureSlider;                        // capture point slider value in range of [0..100]
-        CapturePointState m_captureState;
+        uint32      m_captureTimer;                         // (msecs) timer used for capture points (占领点周期计算计时器)
+        float       m_captureSlider;                        // capture point slider value in range of [0..100] (占领进度条值 0~100)
+        CapturePointState m_captureState;                   // 当前占领点状态
 
-        GuidSet m_SkillupSet;                               // players that already have skill-up at GO use
+        GuidSet m_SkillupSet;                               // players that already have skill-up at GO use (已通过该物体提升过专业技能的玩家集合)
 
-        uint32 m_useTimes;                                  // amount uses/charges triggered
+        uint32 m_useTimes;                                  // amount uses/charges triggered (已使用/触发次数)
 
-        // collected only for GAMEOBJECT_TYPE_SUMMONING_RITUAL
-        ObjectGuid m_firstUser;                             // first GO user, in most used cases owner, but in some cases no, for example non-summoned multi-use GAMEOBJECT_TYPE_SUMMONING_RITUAL
-        GuidSet m_UniqueUsers;                              // all players who use item, some items activated after specific amount unique uses
+        // collected only for GAMEOBJECT_TYPE_SUMMONING_RITUAL (仅用于召唤仪式类型)
+        ObjectGuid m_firstUser;                             // first GO user, in most used cases owner, but in some cases no, for example non-summoned multi-use GAMEOBJECT_TYPE_SUMMONING_RITUAL (首位点击仪式的玩家 GUID)
+        GuidSet m_UniqueUsers;                              // all players who use item, some items activated after specific amount unique uses (参与仪式的去重玩家集合)
 
-        GameObjectInfo const* m_goInfo;
-        GameObjectDisplayInfoEntry const* m_displayInfo;
+        GameObjectInfo const* m_goInfo;                     // 游戏物体模板指针
+        GameObjectDisplayInfoEntry const* m_displayInfo;    // 客户端模型显示 DBC 记录指针
 
-        Position m_stationaryPosition;
+        Position m_stationaryPosition;                      // 静止基准坐标
 
-        // Loot System
-        ObjectGuid m_lootRecipientGuid;                     // player who will have rights for looting if m_lootGroupRecipient==0 or group disbanded
-        uint32 m_lootGroupRecipientId;                      // group who will have rights for looting if set and exist
+        // Loot System (拾取归属权信息)
+        ObjectGuid m_lootRecipientGuid;                     // player who will have rights for looting if m_lootGroupRecipient==0 or group disbanded (拥有拾取权的玩家 GUID)
+        uint32 m_lootGroupRecipientId;                      // group who will have rights for looting if set and exist (拥有拾取权的队伍 ID)
 
-        // Used for trap type
+        // Used for trap type (陷阱重新布防计时器)
         time_t m_rearmTimer;                                // timer to rearm the trap once disarmed
 
-        // Used for chest type
-        bool m_isInUse;                                     // only one player at time are allowed to open chest
-        time_t m_reStockTimer;                              // timer to refill the chest
-        TimePoint m_despawnTimer;                           // timer to despawn the chest if something changed in it
+        // Used for chest type (宝箱互斥开启、补货与自动消失计时器)
+        bool m_isInUse;                                     // only one player at time are allowed to open chest (同一时间仅允许一名玩家开启宝箱)
+        time_t m_reStockTimer;                              // timer to refill the chest (宝箱补货时间戳)
+        TimePoint m_despawnTimer;                           // timer to despawn the chest if something changed in it (宝箱变更后消失时间点)
 
         void TriggerSummoningRitual();
         void TriggerDelayedAction();
 
-        uint32 m_delayedActionTimer;                        // used for delayed GO actions
+        uint32 m_delayedActionTimer;                        // used for delayed GO actions (延迟动作计时器)
 
-        ObjectGuid m_actionTarget;                          // used for setting target of Summoning rituals
+        ObjectGuid m_actionTarget;                          // used for setting target of Summoning rituals (召唤仪式目标 GUID)
 
-        ObjectGuid m_linkedTrap;
+        ObjectGuid m_linkedTrap;                            // 关联触发的陷阱 GUID
 
-        std::unique_ptr<GameObjectAI> m_AI;
+        std::unique_ptr<GameObjectAI> m_AI;                 // 游戏物体 AI 实例
 
-        ObjectGuid m_spawnerGuid;
+        ObjectGuid m_spawnerGuid;                           // 触发生成的脚本发起者 GUID
 
-        GameObjectGroup* m_goGroup;
+        GameObjectGroup* m_goGroup;                         // 所属游戏物体编组
 
     private:
         void SwitchDoorOrButton(bool activate, bool alternative = false);
         void TickCapturePoint();
-        void UpdateModel();                                 // updates model in case displayId were changed
-        void UpdateCollisionState() const;                  // updates state in Map's dynamic collision tree
+        void UpdateModel();                                 // updates model in case displayId were changed (displayId 变更时刷新动态碰撞模型)
+        void UpdateCollisionState() const;                  // updates state in Map's dynamic collision tree (更新地图动态碰撞树激活状态)
 
-        GridReference<GameObject> m_gridRef;
+        GridReference<GameObject> m_gridRef;                // 地图网格链表引用
 };
 
+// 游戏物体延迟强制消失异步事件
 class ForcedDespawnDelayGameObjectEvent : public BasicEvent
 {
     public:

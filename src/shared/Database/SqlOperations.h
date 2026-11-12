@@ -27,23 +27,26 @@
 #include <mutex>
 #include <memory>
 
-/// ---- BASE ---
+/// ---- BASE --- | 基础抽象操作类
 
 class Database;
 class SqlConnection;
 class SqlDelayThread;
 class SqlStmtParameters;
 
+// 异步 SQL 操作抽象基类 | Abstract base class for queued async SQL operations
 class SqlOperation
 {
     public:
         virtual void OnRemove() { delete this; }
+        // 在指定数据库连接上执行该操作 | Execute this operation on the given SqlConnection
         virtual bool Execute(SqlConnection* conn) = 0;
         virtual ~SqlOperation() {}
 };
 
-/// ---- ASYNC STATEMENTS / TRANSACTIONS ----
+/// ---- ASYNC STATEMENTS / TRANSACTIONS ---- | 异步语句与事务操作
 
+// 异步普通文本 SQL 请求 | Plain SQL string execution operation
 class SqlPlainRequest : public SqlOperation
 {
     private:
@@ -54,6 +57,7 @@ class SqlPlainRequest : public SqlOperation
         bool Execute(SqlConnection* conn) override;
 };
 
+// 异步事务操作，按序在同一事务中执行多条子操作，失败则回滚 | Transaction operation executing queued statements atomically with rollback on failure
 class SqlTransaction : public SqlOperation
 {
     private:
@@ -63,11 +67,13 @@ class SqlTransaction : public SqlOperation
         SqlTransaction() {}
         ~SqlTransaction();
 
+        // 向事务队列追加一条子 SQL 操作 | Append a child SQL operation to this transaction
         void DelayExecute(SqlOperation* sql) { m_queue.push_back(sql); }
 
         bool Execute(SqlConnection* conn) override;
 };
 
+// 异步预处理语句执行请求 | Prepared statement execution operation
 class SqlPreparedRequest : public SqlOperation
 {
     public:
@@ -81,13 +87,14 @@ class SqlPreparedRequest : public SqlOperation
         SqlStmtParameters* m_param;
 };
 
-/// ---- ASYNC QUERIES ----
+/// ---- ASYNC QUERIES ---- | 异步查询与回调机制
 
-class SqlQuery;                                             /// contains a single async query
-class QueryResult;                                          /// the result of one
-class SqlQueryHolder;                                       /// groups several async quries
-class SqlQueryHolderEx;                                     /// points to a holder, added to the delay thread
+class SqlQuery;                                             /// contains a single async query | 单条异步查询操作
+class QueryResult;                                          /// the result of one | 单条查询结果
+class SqlQueryHolder;                                       /// groups several async quries | 批量异步查询持有器
+class SqlQueryHolderEx;                                     /// points to a holder, added to the delay thread | 关联持有器并提交至延迟线程的执行器
 
+// 线程安全的异步查询结果回调队列，由主线程定期排空执行 | Thread-safe queue of completed query callbacks processed on the main thread
 class SqlResultQueue
 {
     private:
@@ -95,10 +102,13 @@ class SqlResultQueue
         std::queue<std::unique_ptr<MaNGOS::IQueryCallback>> m_queue;
 
     public:
+        // 执行队列中所有待处理的查询回调 | Invoke all pending query callbacks in queue
         void Update();
+        // 将已填入结果的回调对象加入队列 | Enqueue a completed query callback
         void Add(MaNGOS::IQueryCallback*);
 };
 
+// 单条异步查询操作，执行后将结果写入回调并推入结果队列 | Single async query operation that populates callback and pushes it to SqlResultQueue
 class SqlQuery : public SqlOperation
 {
     private:
@@ -116,6 +126,7 @@ class SqlQuery : public SqlOperation
         bool Execute(SqlConnection* conn) override;
 };
 
+// 批量异步查询持有器，用于在单次异步任务中打包多条查询并在回调中统一读取结果 | Container grouping multiple queries for atomic async batch execution and callback retrieval
 class SqlQueryHolder
 {
         friend class SqlQueryHolderEx;
@@ -133,6 +144,7 @@ class SqlQueryHolder
         bool Execute(MaNGOS::IQueryCallback* callback, SqlDelayThread* thread, SqlResultQueue* queue);
 };
 
+// 负责在延迟线程中依次执行 SqlQueryHolder 内所有查询并同步回调 | Delay-thread operation executing all queries in a SqlQueryHolder and notifying callback
 class SqlQueryHolderEx : public SqlOperation
 {
     private:

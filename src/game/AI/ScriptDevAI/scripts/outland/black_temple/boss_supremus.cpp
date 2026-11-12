@@ -21,11 +21,20 @@ SDComment:
 SDCategory: Black Temple
 EndScriptData */
 
+// 苏普雷姆斯（黑暗神殿二号首领）
+/* 遭遇战概述：
+ * 苏普雷姆斯是黑暗神殿二号首领，巨大的深渊魔火巨像；
+ * 战斗分为两个阶段轮换：
+ * 阶段一（坦克阶段）：施放仇恨打击与熔岩之击（地面火线）；
+ * 阶段二（凝视风筝阶段）：随机凝视一名玩家进行缓慢追击，并在场上激活多座喷发火焰的火山。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     EMOTE_NEW_TARGET                = -1564010,
@@ -75,6 +84,7 @@ const float RANGE_MOLTEN_PUNCH      = 40.0; // Not sure why this is here?
  * const float SPEED_CHASE             = 0.9f;
  */
 
+// SupremusActions // order based on priority 相关枚举
 enum SupremusActions // order based on priority
 {
     SUPREMUS_ACTION_PHASE_SWITCH,
@@ -87,6 +97,7 @@ enum SupremusActions // order based on priority
     SUPREMUS_ACTION_DELAY,
 };
 
+// boss_supremusAI 逻辑实现
 struct boss_supremusAI : public CombatAI
 {
     boss_supremusAI(Creature* creature) : CombatAI(creature, SUPREMUS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -114,6 +125,7 @@ struct boss_supremusAI : public CombatAI
     bool m_bTankPhase;
     GuidList m_lSummonedGUIDs;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -150,18 +162,21 @@ struct boss_supremusAI : public CombatAI
         }
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SUPREMUS, NOT_STARTED);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SUPREMUS, IN_PROGRESS);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -174,6 +189,7 @@ struct boss_supremusAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -201,12 +217,14 @@ struct boss_supremusAI : public CombatAI
         }
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A && !m_bTankPhase)
             ResetTimer(SUPREMUS_ACTION_SWITCH_TARGET, 1000);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -280,8 +298,10 @@ struct boss_supremusAI : public CombatAI
 };
 
 // 41951 - Random Target
+// SupremusRandomTarget 光环脚本
 struct SupremusRandomTarget : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         Unit* caster = aura->GetCaster();
@@ -299,8 +319,10 @@ struct SupremusRandomTarget : public AuraScript
 };
 
 // 41925 - Hateful Strike Primer
+// SupremusHatefulStrikePrimer 法术脚本
 struct SupremusHatefulStrikePrimer : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -333,6 +355,7 @@ struct SupremusHatefulStrikePrimer : public SpellScript
     }
 };
 
+// 注册 boss_supremus 脚本
 void AddSC_boss_supremus()
 {
     Script* pNewScript = new Script;

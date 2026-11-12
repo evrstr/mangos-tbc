@@ -3,8 +3,14 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_STEAM_VAULT_H
+
+// 蒸汽地窟副本数据头文件
+/* 遭遇战概述：
+ * 定义蒸汽地窟首领与水闸门禁枚举。
+ */
 #define DEF_STEAM_VAULT_H
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER                   = 3,
@@ -23,19 +29,26 @@ enum
     GO_ACCESS_PANEL_MEK             = 184126,
 };
 
+// instance_steam_vault 副本数据管理类
 class instance_steam_vault : public ScriptedInstance
 {
     public:
         instance_steam_vault(Map* pMap);
 
+        // 初始化副本数据与状态
         void Initialize() override;
 
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* pCreature) override;
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* pGo) override;
 
+        // 副本生物死亡处理
         void OnCreatureDeath(Creature* pCreature) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 uiType, uint32 uiData) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 uiType) const override;
 
         const char* Save() const override { return m_strInstData.c_str(); }

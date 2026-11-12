@@ -21,6 +21,11 @@ SDComment: Timers may need small adjustments; Elementals summon needs further re
 SDCategory: Coilfang Resevoir, The Steamvault
 EndScriptData */
 
+// 水术师瑟丝比娅（蒸汽地窟一号首领）
+/* 遭遇战概述：
+ * 水术师瑟丝比娅携两只元素仆从，施放暴风雪、水之结界与肺部充水。
+ */
+
 /* ContentData
 boss_hydromancer_thespia
 mob_coilfang_waterelemental
@@ -30,6 +35,7 @@ EndContentData */
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "steam_vault.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_SUMMON                  = -1545000, // has no bct, but has sound - keeping it as script text
@@ -47,6 +53,7 @@ enum
     SPELL_SUMMON_ELEMENTALS     = 31476,            // not sure where to use this
 };
 
+// boss_thespiaAI 逻辑实现
 struct boss_thespiaAI : public CombatAI
 {
     boss_thespiaAI(Creature* creature) : CombatAI(creature, 0),
@@ -58,12 +65,14 @@ struct boss_thespiaAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_bIsRegularMode;
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_HYDROMANCER_THESPIA, FAIL);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEAD, m_creature);
@@ -72,6 +81,7 @@ struct boss_thespiaAI : public CombatAI
             m_instance->SetData(TYPE_HYDROMANCER_THESPIA, DONE);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 2))
@@ -85,6 +95,7 @@ struct boss_thespiaAI : public CombatAI
             m_instance->SetData(TYPE_HYDROMANCER_THESPIA, IN_PROGRESS);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         if (spellInfo->Id == SPELL_LIGHTNING_CLOUD)
@@ -93,6 +104,7 @@ struct boss_thespiaAI : public CombatAI
     }
 };
 
+// 注册 boss_hydromancer_thespia 脚本
 void AddSC_boss_hydromancer_thespia()
 {
     Script* pNewScript = new Script;

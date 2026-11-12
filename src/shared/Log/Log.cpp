@@ -110,26 +110,26 @@ void Log::SetColor(bool stdout_stream, Color color)
 
     static WORD WinColorFG[Color_count] =
     {
-        0,                                                  // BLACK
-        FOREGROUND_RED,                                     // RED
-        FOREGROUND_GREEN,                                   // GREEN
-        FOREGROUND_RED | FOREGROUND_GREEN,                  // BROWN
-        FOREGROUND_BLUE,                                    // BLUE
-        FOREGROUND_RED |                    FOREGROUND_BLUE,// MAGENTA
-        FOREGROUND_GREEN | FOREGROUND_BLUE,                 // CYAN
-        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE,// WHITE
-        // YELLOW
+        0,                                                  // BLACK | 黑色
+        FOREGROUND_RED,                                     // RED | 红色
+        FOREGROUND_GREEN,                                   // GREEN | 绿色
+        FOREGROUND_RED | FOREGROUND_GREEN,                  // BROWN | 棕色
+        FOREGROUND_BLUE,                                    // BLUE | 蓝色
+        FOREGROUND_RED |                    FOREGROUND_BLUE,// MAGENTA | 品红
+        FOREGROUND_GREEN | FOREGROUND_BLUE,                 // CYAN | 青色
+        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE,// WHITE | 灰白
+        // YELLOW | 高亮黄
         FOREGROUND_RED | FOREGROUND_GREEN |                   FOREGROUND_INTENSITY,
-        // RED_BOLD
+        // RED_BOLD | 高亮红
         FOREGROUND_RED |                                      FOREGROUND_INTENSITY,
-        // GREEN_BOLD
+        // GREEN_BOLD | 高亮绿
         FOREGROUND_GREEN |                   FOREGROUND_INTENSITY,
-        FOREGROUND_BLUE | FOREGROUND_INTENSITY,             // BLUE_BOLD
-        // MAGENTA_BOLD
+        FOREGROUND_BLUE | FOREGROUND_INTENSITY,             // BLUE_BOLD | 高亮蓝
+        // MAGENTA_BOLD | 高亮品红
         FOREGROUND_RED |                    FOREGROUND_BLUE | FOREGROUND_INTENSITY,
-        // CYAN_BOLD
+        // CYAN_BOLD | 高亮青
         FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY,
-        // WHITE_BOLD
+        // WHITE_BOLD | 高亮白
         FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY
     };
 
@@ -159,21 +159,21 @@ void Log::SetColor(bool stdout_stream, Color color)
 
     static uint8 UnixColorFG[Color_count] =
     {
-        FG_BLACK,                                           // BLACK
-        FG_RED,                                             // RED
-        FG_GREEN,                                           // GREEN
-        FG_BROWN,                                           // BROWN
-        FG_BLUE,                                            // BLUE
-        FG_MAGENTA,                                         // MAGENTA
-        FG_CYAN,                                            // CYAN
-        FG_WHITE,                                           // WHITE
-        FG_YELLOW,                                          // YELLOW
-        FG_RED,                                             // LRED
-        FG_GREEN,                                           // LGREEN
-        FG_BLUE,                                            // LBLUE
-        FG_MAGENTA,                                         // LMAGENTA
-        FG_CYAN,                                            // LCYAN
-        FG_WHITE                                            // LWHITE
+        FG_BLACK,                                           // BLACK | 黑色
+        FG_RED,                                             // RED | 红色
+        FG_GREEN,                                           // GREEN | 绿色
+        FG_BROWN,                                           // BROWN | 棕色
+        FG_BLUE,                                            // BLUE | 蓝色
+        FG_MAGENTA,                                         // MAGENTA | 品红
+        FG_CYAN,                                            // CYAN | 青色
+        FG_WHITE,                                           // WHITE | 灰白
+        FG_YELLOW,                                          // YELLOW | 黄色
+        FG_RED,                                             // LRED | 亮红
+        FG_GREEN,                                           // LGREEN | 亮绿
+        FG_BLUE,                                            // LBLUE | 亮蓝
+        FG_MAGENTA,                                         // LMAGENTA | 亮品红
+        FG_CYAN,                                            // LCYAN | 亮青
+        FG_WHITE                                            // LWHITE | 亮白
     };
 
     fprintf((stdout_stream ? stdout : stderr), "\x1b[%d%sm", UnixColorFG[color], (color >= YELLOW && color < Color_count ? ";1" : ""));
@@ -220,7 +220,7 @@ void Log::SetLogFileLevel(char* level)
 
 void Log::Initialize()
 {
-    /// Common log files data
+    /// Common log files data | 读取公共日志目录及时间戳前缀
     m_logsDir = sConfig.GetStringDefault("LogsDir");
     if (!m_logsDir.empty())
     {
@@ -230,7 +230,7 @@ void Log::Initialize()
 
     m_logsTimestamp = "_" + GetTimestampStr();
 
-    /// Open specific log files
+    /// Open specific log files | 按配置打开各类专用日志文件
     char const* logFileMode = sConfig.GetBoolDefault("LogAppend", false) ? "a" : "w";
     logfile = openLogFile("LogFile", "LogTimestamp", logFileMode);
 
@@ -239,7 +239,7 @@ void Log::Initialize()
         gmLogfile = openLogFile("GMLogFile", "GmLogTimestamp", "a");
     else
     {
-        // GM log settings for per account case
+        // GM log settings for per account case | 按账号分文件记录 GM 命令时的文件名模板预处理
         m_gmlog_filename_format = sConfig.GetStringDefault("GMLogFile");
         if (!m_gmlog_filename_format.empty())
         {
@@ -274,7 +274,7 @@ void Log::Initialize()
     scriptErrLogFile = openLogFile("SD2ErrorLogFile", nullptr, "a");
     customLogFile = openLogFile("CustomLogFile", nullptr, "a");
 
-    // Main log file settings
+    // Main log file settings | 初始化主日志级别、颜色与过滤掩码
     m_includeTime  = sConfig.GetBoolDefault("LogTime", false);
     m_logLevel     = LogLevel(sConfig.GetIntDefault("LogLevel", 0));
     m_logFileLevel = LogLevel(sConfig.GetIntDefault("LogFileLevel", 0));
@@ -286,7 +286,7 @@ void Log::Initialize()
             if (sConfig.GetBoolDefault(logFilterData[i].configName, logFilterData[i].defaultState))
                 m_logFilter |= (1 << i);
 
-    // Char log settings
+    // Char log settings | 角色转储日志开关
     m_charLog_Dump = sConfig.GetBoolDefault("CharLogDump", false);
 }
 
@@ -322,12 +322,12 @@ void Log::outTimestamp(FILE* file)
 {
     time_t t = time(nullptr);
     tm* aTm = localtime(&t);
-    //       YYYY   year
-    //       MM     month (2 digits 01-12)
-    //       DD     day (2 digits 01-31)
-    //       HH     hour (2 digits 00-23)
-    //       MM     minutes (2 digits 00-59)
-    //       SS     seconds (2 digits 00-59)
+    //       YYYY   year | 年
+    //       MM     month (2 digits 01-12) | 月（两位 01-12）
+    //       DD     day (2 digits 01-31) | 日（两位 01-31）
+    //       HH     hour (2 digits 00-23) | 时（两位 00-23）
+    //       MM     minutes (2 digits 00-59) | 分（两位 00-59）
+    //       SS     seconds (2 digits 00-59) | 秒（两位 00-59）
     fprintf(file, "%-4d-%02d-%02d %02d:%02d:%02d ", aTm->tm_year + 1900, aTm->tm_mon + 1, aTm->tm_mday, aTm->tm_hour, aTm->tm_min, aTm->tm_sec);
 }
 
@@ -335,12 +335,12 @@ void Log::outTime() const
 {
     time_t t = time(nullptr);
     tm* aTm = localtime(&t);
-    //       YYYY   year
-    //       MM     month (2 digits 01-12)
-    //       DD     day (2 digits 01-31)
-    //       HH     hour (2 digits 00-23)
-    //       MM     minutes (2 digits 00-59)
-    //       SS     seconds (2 digits 00-59)
+    //       YYYY   year | 年
+    //       MM     month (2 digits 01-12) | 月
+    //       DD     day (2 digits 01-31) | 日
+    //       HH     hour (2 digits 00-23) | 时
+    //       MM     minutes (2 digits 00-59) | 分
+    //       SS     seconds (2 digits 00-59) | 秒
     printf("%02d:%02d:%02d ", aTm->tm_hour, aTm->tm_min, aTm->tm_sec);
 }
 
@@ -348,12 +348,12 @@ std::string Log::GetTimestampStr()
 {
     time_t t = time(nullptr);
     tm* aTm = localtime(&t);
-    //       YYYY   year
-    //       MM     month (2 digits 01-12)
-    //       DD     day (2 digits 01-31)
-    //       HH     hour (2 digits 00-23)
-    //       MM     minutes (2 digits 00-59)
-    //       SS     seconds (2 digits 00-59)
+    //       YYYY   year | 年
+    //       MM     month (2 digits 01-12) | 月
+    //       DD     day (2 digits 01-31) | 日
+    //       HH     hour (2 digits 00-23) | 时
+    //       MM     minutes (2 digits 00-59) | 分
+    //       SS     seconds (2 digits 00-59) | 秒
     char buf[20];
     int snRes = snprintf(buf, 20, "%04d-%02d-%02d_%02d-%02d-%02d", aTm->tm_year + 1900, aTm->tm_mon + 1, aTm->tm_mday, aTm->tm_hour, aTm->tm_min, aTm->tm_sec);
     if (snRes < 0 || snRes >= sizeof(buf))
@@ -1121,11 +1121,11 @@ void Log::traceLog()
     fflush(stdout);
 }
 
-// has to be in a locked enviroment on linux
+// has to be in a locked enviroment on linux | Linux 下 stacktrace 并非异步信号安全，必须在加锁环境中调用
 std::string Log::GetTraceLog()
 {
     std::lock_guard<std::mutex> guard(m_traceLogMtx);
     std::stringstream ss;
-    ss << boost::stacktrace::stacktrace(); // warning - not async-safe - hence the locking
+    ss << boost::stacktrace::stacktrace(); // warning - not async-safe - hence the locking | 警告：非异步信号安全操作，因此必须加锁保护
     return ss.str();
 }

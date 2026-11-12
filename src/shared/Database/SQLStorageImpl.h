@@ -23,20 +23,23 @@
 #include "Log/Log.h"
 #include "DBCFileLoader.h"
 
+// 通用标量类型转换（S 源类型 -> D 目标类型） | Generic scalar conversion (S source-type -> D destination-type)
 template<class DerivedLoader, class StorageClass>
-template<class S, class D>                                  // S source-type, D destination-type
+template<class S, class D>                                  // S source-type, D destination-type | S 为源类型，D 为目标类型
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::convert(uint32 /*field_pos*/, S src, D& dst)
 {
     dst = D(src);
 }
 
+// 标量转布尔值 | Convert scalar value to bool
 template<class DerivedLoader, class StorageClass>
-template<class S>                                           // S source-type
+template<class S>                                           // S source-type | S 为源类型
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::convert_to_bool(uint32 /*field_pos*/, S src, bool& dst)
 {
     dst = (src != 0);
 }
 
+// 复制 C 字符串到新分配的内存 | Duplicate C-string into newly allocated buffer
 template<class DerivedLoader, class StorageClass>
 
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::convert_str_to_str(uint32 /*field_pos*/, char const* src, char*& dst)
@@ -54,34 +57,39 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::convert_str_to_str(uint3
     }
 }
 
+// 非字符串类型转空字符串占位 | Convert non-string source value to empty string placeholder
 template<class DerivedLoader, class StorageClass>
-template<class S>                                           // S source-type
+template<class S>                                           // S source-type | S 为源类型
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::convert_to_str(uint32 /*field_pos*/, S /*src*/, char*& dst)
 {
     dst = new char[1];
     *dst = 0;
 }
 
+// 字符串转目标数值类型（默认清零） | Convert string to destination numeric type (default 0)
 template<class DerivedLoader, class StorageClass>
-template<class D>                                           // D destination-type
+template<class D>                                           // D destination-type | D 为目标类型
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::convert_from_str(uint32 /*field_pos*/, char const* /*src*/, D& dst)
 {
     dst = 0;
 }
 
+// 字符串转布尔值（默认 false） | Convert string to bool (default false)
 template<class DerivedLoader, class StorageClass>
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::convert_str_to_bool(uint32 /*field_pos*/, char const* /*src*/, bool& dst)
 {
     dst = false;
 }
 
+// 默认填充目标数值字段 | Default-fill destination numeric field
 template<class DerivedLoader, class StorageClass>
-template<class S, class D>                                  // S source-type, D destination-type
+template<class S, class D>                                  // S source-type, D destination-type | S 为源类型，D 为目标类型
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::default_fill(uint32 /*field_pos*/, S src, D& dst)
 {
     dst = D(src);
 }
 
+// 默认填充空字符串字段 | Default-fill destination string field with empty string
 template<class DerivedLoader, class StorageClass>
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::default_fill_to_str(uint32 /*field_pos*/, char const* /*src*/, char*& dst)
 {
@@ -89,8 +97,9 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::default_fill_to_str(uint
     *dst = 0;
 }
 
+// 将非字符串源字段按目标格式转换并写入记录缓冲区（ARM 平台使用临时变量避免未对齐访问） | Store non-string source value into record buffer according to destination format (ARM uses temporaries for alignment safety)
 template<class DerivedLoader, class StorageClass>
-template<class V>                                           // V value-type
+template<class V>                                           // V value-type | V 为值类型
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::storeValue(V value, StorageClass& store, char* p, uint32 x, uint32& offset)
 {
 #if defined(__arm__)
@@ -205,6 +214,7 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::storeValue(V value, Stor
     }
 }
 
+// 将字符串源字段按目标格式转换并写入记录缓冲区 | Store string source value into record buffer according to destination format
 template<class DerivedLoader, class StorageClass>
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::storeValue(char const* value, StorageClass& store, char* p, uint32 x, uint32& offset)
 {
@@ -302,6 +312,7 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::storeValue(char const* v
     }
 }
 
+// 从 WorldDatabase 查询整张表并按源/目标格式填充到存储容器 | Query entire table from WorldDatabase and populate storage container per src/dst formats
 template<class DerivedLoader, class StorageClass>
 void SQLStorageLoaderBase<DerivedLoader, StorageClass>::Load(StorageClass& store, bool error_at_empty /*= true*/)
 {
@@ -311,7 +322,7 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::Load(StorageClass& store
     {
         sLog.outError("Error loading %s table (not exist?)\n", store.GetTableName());
         Log::WaitBeforeContinueIfNeed();
-        exit(1);                                            // Stop server at loading non exited table or not accessable table
+        exit(1);                                            // Stop server at loading non exited table or not accessable table | 表不存在或无法访问时终止服务器启动
     }
 
     uint32 maxRecordId = (*queryResult)[0].GetUInt32() + 1;
@@ -343,10 +354,10 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::Load(StorageClass& store
         recordCount = 0;
         sLog.outError("Error in %s table, probably sql file format was updated (there should be %d fields in sql).\n", store.GetTableName(), store.GetSrcFieldCount());
         Log::WaitBeforeContinueIfNeed();
-        exit(1);                                            // Stop server at loading broken or non-compatible table.
+        exit(1);                                            // Stop server at loading broken or non-compatible table. | 表结构字段数不匹配时终止服务器
     }
 
-    // get struct size
+    // get struct size | 根据目标格式计算单条记录结构体大小
     uint32 offset = 0;
     for (uint32 x = 0; x < store.GetDstFieldCount(); ++x)
     {
@@ -382,7 +393,7 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::Load(StorageClass& store
         }
     }
 
-    // Prepare data storage and lookup storage
+    // Prepare data storage and lookup storage | 准备数据缓冲区与索引容器
     store.prepareToLoad(maxRecordId, recordCount, recordsize);
 
     BarGoLink bar(recordCount);
@@ -394,15 +405,15 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::Load(StorageClass& store
         char* record = store.createRecord(fields[0].GetUInt32());
         offset = 0;
 
-        // dependend on dest-size
-        // iterate two indexes: x over dest, y over source
-        //                      y++ If and only If x != FT_NA*
-        //                      x++ If and only If a value is stored
+        // dependend on dest-size | 双指针遍历目标格式 x 与源列 y（根据目标大小推进）
+        // iterate two indexes: x over dest, y over source | x 遍历目标字段，y 遍历源列
+        //                      y++ If and only If x != FT_NA* | 仅当目标字段不是 FT_NA* 默认填充时才递增 y
+        //                      x++ If and only If a value is stored | 仅当向目标写入了值时才递增 x
         for (uint32 x = 0, y = 0; x < store.GetDstFieldCount();)
         {
             switch (store.GetDstFormat(x))
             {
-                // For default fill continue and do not increase y
+                // For default fill continue and do not increase y | 目标为默认值填充占位符时写入默认值且不递增 y
                 case FT_NA:         storeValue((uint32)0, store, record, x, offset);         ++x; continue;
                 case FT_NA_BYTE:    storeValue((char)0, store, record, x, offset);           ++x; continue;
                 case FT_NA_FLOAT:   storeValue((float)0.0f, store, record, x, offset);       ++x; continue;
@@ -411,7 +422,7 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::Load(StorageClass& store
                     break;
             }
 
-            // It is required that the input has at least as many columns set as the output requires
+            // It is required that the input has at least as many columns set as the output requires | 源列数必须满足目标所需列数
             if (y >= store.GetSrcFieldCount())
                 assert(false && "SQL storage has too few columns!");
 
@@ -426,7 +437,7 @@ void SQLStorageLoaderBase<DerivedLoader, StorageClass>::Load(StorageClass& store
                 case FT_NA:
                 case FT_NA_BYTE:
                 case FT_NA_FLOAT:
-                    // Do Not increase x
+                    // Do Not increase x | 源列被忽略时不递增 x
                     break;
                 case FT_IND:
                 case FT_SORT:

@@ -36,7 +36,7 @@
 #include <vector>
 #include <string>
 
-/// RASocket constructor
+/// RASocket constructor | RASocket 构造函数：读取 RA 安全与权限限制配置
 RASocket::RASocket(boost::asio::io_context& context) :
     MaNGOS::AsyncSocket<RASocket>(context), m_secure(sConfig.GetBoolDefault("RA.Secure", true)),
     m_authLevel(AuthLevel::None), m_accountLevel(AccountTypes::SEC_PLAYER), m_accountId(0)
@@ -50,18 +50,18 @@ RASocket::RASocket(boost::asio::io_context& context) :
         m_restricted = sConfig.GetBoolDefault("RA.Restricted", true);
 }
 
-/// RASocket destructor
+/// RASocket destructor | RASocket 析构函数：记录连接关闭日志
 RASocket::~RASocket()
 {
     sLog.outRALog("Connection was closed.");
 }
 
-/// Accept an incoming connection
+/// Accept an incoming connection | 接受新连接回调：记录来访地址并发送公告与用户名提示
 bool RASocket::OnOpen()
 {
     sLog.outRALog("Incoming connection from %s.", GetRemoteAddress().c_str());
 
-    ///- print Motd
+    ///- print Motd | 输出每日公告（Motd）并提示输入用户名
     Send(sWorld.GetMotd());
     Send("\r\n");
     Send(sObjectMgr.GetMangosStringForDbcLocale(LANG_RA_USER));
@@ -69,7 +69,7 @@ bool RASocket::OnOpen()
     return true;
 }
 
-/// Read data from the network
+/// Read data from the network | 从网络套接字异步按行读取并处理输入数据
 bool RASocket::ProcessIncomingData()
 {
     DEBUG_LOG("RASocket::ProcessIncomingData");
@@ -108,18 +108,19 @@ bool RASocket::ProcessIncomingData()
     return true;
 }
 
+/// 处理整行输入状态机（用户名校验 -> 密码校验 -> 已认证命令执行）
 bool RASocket::HandleInput()
 {
     auto const minLevel = static_cast<AccountTypes>(sConfig.GetIntDefault("RA.MinLevel", AccountTypes::SEC_ADMINISTRATOR));
 
     switch (m_authLevel)
     {
-        // If the input is '<username>'
+        // If the input is '<username>' | 当处于未认证状态时，输入内容视为用户名
         case AuthLevel::None:
         {
             m_accountId = sAccountMgr.GetId(m_input);
 
-            ///- If the user is not found, deny access
+            ///- If the user is not found, deny access | 若未找到该账号则拒绝访问
             if (!m_accountId)
             {
                 Send("-No such user.\r\n");
@@ -135,7 +136,7 @@ bool RASocket::HandleInput()
 
             m_accountLevel = sAccountMgr.GetSecurity(m_accountId);
 
-            ///- if gmlevel is too low, deny access
+            ///- if gmlevel is too low, deny access | 若账号 GM 权限等级低于配置要求则拒绝访问
             if (m_accountLevel < minLevel)
             {
                 Send("-Not enough privileges.\r\n");
@@ -149,7 +150,7 @@ bool RASocket::HandleInput()
                 break;
             }
 
-            ///- allow by remotely connected admin use console level commands dependent from config setting
+            ///- allow by remotely connected admin use console level commands dependent from config setting | 根据配置决定是否允许远程管理员账号提升至控制台级命令权限
             if (m_accountLevel >= SEC_ADMINISTRATOR && !m_restricted)
                 m_accountLevel = SEC_CONSOLE;
 
@@ -157,10 +158,10 @@ bool RASocket::HandleInput()
             Send(sObjectMgr.GetMangosStringForDbcLocale(LANG_RA_PASS));
             break;
         }
-        // If the input is '<password>' (and the user already gave his username)
+        // If the input is '<password>' (and the user already gave his username) | 当已输入用户名时，本次输入视为密码
         case AuthLevel::HaveUsername:
         {
-            // login+pass ok
+            // login+pass ok | 账号与密码校验通过
             if (sAccountMgr.CheckPassword(m_accountId, m_input))
             {
                 m_authLevel = AuthLevel::Authenticated;
@@ -171,7 +172,7 @@ bool RASocket::HandleInput()
             }
             else
             {
-                ///- Else deny access
+                ///- Else deny access | 否则密码错误，拒绝登录
                 Send("-Wrong pass.\r\n");
                 sLog.outRALog("User account %u has failed to log in.", m_accountId);
 
@@ -183,7 +184,7 @@ bool RASocket::HandleInput()
             }
             break;
         }
-        // If user is logged, parse and execute the command
+        // If user is logged, parse and execute the command | 若用户已登录，则解析并投递控制台命令到世界线程执行
         case AuthLevel::Authenticated:
         {
             if (m_input.length())
@@ -213,6 +214,7 @@ bool RASocket::HandleInput()
     return true;
 }
 
+/// 异步发送字符串消息到远程管理客户端
 void RASocket::Send(const std::string& message)
 {
     std::shared_ptr<std::string> textMessage = std::make_shared<std::string>(message);

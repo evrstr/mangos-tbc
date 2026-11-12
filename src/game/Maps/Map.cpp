@@ -51,20 +51,21 @@
 
 #include <time.h>
 
+// 地图析构函数：强制卸载全部网格、释放持久化状态关联、卸载寻路实例与地形引用，并销毁地图内运输载具
 Map::~Map()
 {
     UnloadAll(true);
 
     if (m_persistentState)
-        m_persistentState->SetUsedByMapState(nullptr);         // field pointer can be deleted after this
+        m_persistentState->SetUsedByMapState(nullptr);         // field pointer can be deleted after this (解除引用后持久化状态可能被自动释放)
 
     delete i_data;
     i_data = nullptr;
 
-    // unload instance specific navigation data
+    // unload instance specific navigation data (卸载当前地图实例专用的 MMap 寻路数据)
     MMAP::MMapFactory::createOrGetMMapManager()->unloadMapInstance(m_TerrainData->GetMapId(), GetInstanceId());
 
-    // release reference count
+    // release reference count (释放对共享 TerrainInfo 的引用计数)
     if (m_TerrainData->Release())
         sTerrainMgr.UnloadTerrain(m_TerrainData->GetMapId());
 
@@ -104,9 +105,11 @@ tm Map::GetCurrentTime_tm() const
     return m_curTimeTm;
 }
 
+// 根据 GUID 查找地图上的跨图运输载具或普通电梯/船只游戏对象
 GenericTransport* Map::GetTransport(ObjectGuid guid)
 {
     // elevators also cause the client to send MOVEFLAG_ONTRANSPORT - just unmount if the guid can be found in the transport list
+    // 电梯也会使客户端上报 MOVEFLAG_ONTRANSPORT；只要在载具列表或游戏对象中找到对应 GUID 即返回
     for (auto& transport : m_transports)
     {
         if (transport->GetObjectGuid() == guid)
@@ -209,6 +212,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
     m_weatherSystem = new WeatherSystem(this);
 }
 
+// 初始化地图：配置局部 GUID 分配器、可见距离、地形引用、持久化状态、墓地、刷怪管理器、MMap、全局活跃实体及运输载具
 void Map::Initialize(std::mutex* mmapMutex, bool loadInstanceData /*= true*/)
 {
     m_CreatureGuids.Set(sObjectMgr.GetFirstTemporaryCreatureLowGuid());
@@ -224,10 +228,10 @@ void Map::Initialize(std::mutex* mmapMutex, bool loadInstanceData /*= true*/)
         }
     }
 
-    // lets initialize visibility distance for map
+    // lets initialize visibility distance for map (初始化地图视野距离)
     InitVisibilityDistance();
 
-    // add reference for TerrainData object
+    // add reference for TerrainData object (增加共享地形数据对象的引用计数)
     m_TerrainData->AddRef();
 
     CreateInstanceData(loadInstanceData);
@@ -292,7 +296,7 @@ void Map::VisiblityDistanceChanged(WorldObject* obj, float oldVisibility, Visibi
     AddUpdateMovementObject(obj);
 }
 
-// Template specialization of utility methods
+// Template specialization of utility methods (按对象类型向 NGrid 中添加或移除对象的模板特化)
 template<class T>
 void Map::AddToGrid(T* obj, NGridType* grid, Cell const& cell)
 {
@@ -392,6 +396,7 @@ void Map::DeleteFromWorld(Player* pl)
     delete pl;
 }
 
+// 确保指定 Grid 坐标对应的 NGrid 对象已创建并链接到当前地图，同时按需加载地形与 VMap
 void Map::EnsureGridCreated(const GridPair& p)
 {
     if (!getNGrid(p.x_coord, p.y_coord))
@@ -413,6 +418,7 @@ void Map::EnsureGridCreated(const GridPair& p)
     }
 }
 
+// 在玩家或活跃对象进入 Cell 时确保所在网格已加载并切换为 ACTIVE 状态，若传入玩家则将其放入网格
 void Map::EnsureGridLoadedAtEnter(const Cell& cell, Player* player)
 {
     NGridType* grid;
@@ -440,6 +446,7 @@ void Map::EnsureGridLoadedAtEnter(const Cell& cell, Player* player)
         AddToGrid(player, grid, cell);
 }
 
+// 确保 Cell 所属的 NGrid 对象及其数据库静态刷怪与可复活尸体已加载进内存
 bool Map::EnsureGridLoaded(const Cell& cell)
 {
     EnsureGridCreated(GridPair(cell.GridX(), cell.GridY()));
@@ -453,11 +460,12 @@ bool Map::EnsureGridLoaded(const Cell& cell)
         // possible scenario:
         // active object A(loaded with loader.LoadN call and added to the  map)
         // summons some active object B, while B added to map grid loading called again and so on..
+        // 必须在真正加载前先标记为已加载，以防止活跃对象 A 添加时召唤活跃对象 B 从而引发无限递归加载同一网格
         setGridObjectDataLoaded(true, cell.GridX(), cell.GridY());
         ObjectGridLoader loader(*grid, this, cell);
         loader.LoadN();
 
-        // Add resurrectable corpses to world object list in grid
+        // Add resurrectable corpses to world object list in grid (将可复活尸体注册到网格世界对象列表)
         sObjectAccessor.AddCorpsesToGrid(GridPair(cell.GridX(), cell.GridY()), (*grid)(cell.CellX(), cell.CellY()), this);
         return true;
     }
@@ -509,6 +517,7 @@ void Map::CreatePlayerOnClient(Player* player)
     updateData.SendData(*player->GetSession(), true);
 }
 
+// 将玩家添加到地图：建立引用、加载所在网格、下发周边与自身创建封包并通知副本脚本
 bool Map::Add(Player* player)
 {
     player->GetMapRef().link(this, player);
@@ -540,6 +549,7 @@ bool Map::Add(Player* player)
     return true;
 }
 
+// 将非玩家世界对象（生物、游戏对象、动态对象、尸体）添加到地图所属网格及可见性追踪集合
 template<class T>
 void Map::Add(T* obj)
 {
@@ -765,6 +775,7 @@ void Map::VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::Obje
     }
 }
 
+// 地图主更新循环：更新时间、动态树、异步消息、刷怪、载具、玩家会话与玩家、周边 Cell 对象、脚本、客户端同步与网格状态机
 void Map::Update(const uint32& t_diff)
 {
     m_clientUpdateTimer += t_diff;
@@ -807,6 +818,7 @@ void Map::Update(const uint32& t_diff)
 
     // the player iterator is stored in the map object
     // to make sure calls to Map::Remove don't invalidate it
+    // 玩家遍历迭代器保存在 Map 成员 m_mapRefIter 中，防止期间调用 Map::Remove 导致迭代器失效
     {
 #ifdef BUILD_METRICS
         uint32 updatedSessions = 0;
@@ -1121,7 +1133,7 @@ void Map::Update(const uint32& t_diff)
     if (i_data)
         i_data->Update(t_diff);
 
-    // Send world objects and item update field changes
+    // Send world objects and item update field changes (达到客户端同步周期时打包发送对象创建/属性/视野/移除更新)
     if (IsUpdateObjectTick())
     {
         SendObjectUpdates();
@@ -1132,6 +1144,7 @@ void Map::Update(const uint32& t_diff)
 
     // Don't unload grids if it's battleground, since we may have manually added GOs,creatures, those doesn't load from DB at grid re-load !
     // This isn't really bother us, since as soon as we have instanced BG-s, the whole map unloads as the BG gets ended
+    // 战场/竞技场不自动卸载网格，因为其中可能包含手动/脚本添加的对象（重载网格不会从数据库恢复），战局结束时整图卸载即可
     if (!IsBattleGroundOrArena())
     {
         for (GridRefManager<NGridType>::iterator i = GridRefManager<NGridType>::begin(); i != GridRefManager<NGridType>::end();)
@@ -1165,6 +1178,7 @@ uint64 Map::PerformObjectUpdate(uint32 t_diff, WorldObjectUnSet& objToUpdate)
     return count;
 }
 
+// 从地图移除玩家（可选择是否彻底删除），清理同步队列、视野及网格引用
 void Map::Remove(Player* player, bool remove)
 {
     if (i_data)
@@ -1230,6 +1244,7 @@ void Map::Remove(Player* player, bool remove)
         DeleteFromWorld(player);
 }
 
+// 从地图移除非玩家对象，清理活跃状态/视野同步队列并在 remove 为 true 时保存重生时间及释放内存
 template<class T>
 void Map::Remove(T* obj, bool remove)
 {
@@ -1433,6 +1448,7 @@ bool Map::CreatureRespawnRelocation(Creature* c)
     return false;
 }
 
+// 卸载指定网格：停止对象 AI、清理待删列表、将越界生物移回出生网格、卸载网格对象与地形引用
 bool Map::UnloadGrid(const uint32& x, const uint32& y, bool pForce)
 {
     NGridType* grid = getNGrid(x, y);
@@ -1587,6 +1603,7 @@ const char* Map::GetMapName() const
     return i_mapEntry ? i_mapEntry->name[sWorld.GetDefaultDbcLocale()] : "UNNAMEDMAP\x0";
 }
 
+// 刷新对象在周边可见玩家客户端上的可见性状态（出现/消失）
 void Map::UpdateObjectVisibility(WorldObject* obj, Cell cell, const CellPair& cellpair)
 {
     cell.SetNoCreate();
@@ -2041,14 +2058,14 @@ template void Map::Remove(Creature*, bool);
 template void Map::Remove(GameObject*, bool);
 template void Map::Remove(DynamicObject*, bool);
 
-/* ******* World Maps ******* */
+/* ******* World Maps ******* */ // (世界大地图实现)
 
 WorldPersistentState* WorldMap::GetPersistanceState() const
 {
     return (WorldPersistentState*)Map::GetPersistentState();
 }
 
-/* ******* Dungeon Instance Maps ******* */
+/* ******* Dungeon Instance Maps ******* */ // (地下城/团队副本实例地图实现)
 
 DungeonMap::DungeonMap(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
     : Map(id, expiry, InstanceId, SpawnMode),
@@ -2073,6 +2090,7 @@ void DungeonMap::InitVisibilityDistance()
 
 /*
     Do map specific checks and add the player to the map if successful.
+    执行副本准入与进度绑定校验，通过后将玩家加入副本地图。
 */
 bool DungeonMap::Add(Player* player)
 {
@@ -2215,6 +2233,7 @@ void DungeonMap::Remove(Player* player, bool remove)
 
 /*
     Returns true if there are no players in the instance
+    触发副本重置流程（全员通知/全局强制/延迟卸载），若当前副本内无玩家则返回 true
 */
 bool DungeonMap::Reset(InstanceResetMethod method)
 {
@@ -2254,6 +2273,7 @@ bool DungeonMap::Reset(InstanceResetMethod method)
     return m_mapRefManager.isEmpty();
 }
 
+// 为当前副本内所有玩家及对应队长建立永久进度绑定（首领击杀后触发）
 void DungeonMap::PermBindAllPlayers(Player* player)
 {
     Group* group = nullptr;
@@ -2334,7 +2354,7 @@ DungeonPersistentState* DungeonMap::GetPersistanceState() const
 }
 
 
-/* ******* Battleground Instance Maps ******* */
+/* ******* Battleground Instance Maps ******* */ // (战场/竞技场实例地图实现)
 
 BattleGroundMap::BattleGroundMap(uint32 id, time_t expiry, uint32 InstanceId, uint8 spawnMode)
     : Map(id, expiry, InstanceId, spawnMode)
@@ -2443,7 +2463,7 @@ bool Map::CanEnter(Player* player)
     return true;
 }
 
-/// Put scripts in the execution queue
+/// Put scripts in the execution queue (启动数据库脚本：立即执行 0 延迟步骤，其余步骤入队等待调度)
 bool Map::ScriptsStart(ScriptMapType scriptType, uint32 id, Object* source, Object* target, ScriptExecutionParam execParams /*=SCRIPT_EXEC_PARAM_UNIQUE_BY_SOURCE_TARGET*/)
 {
     MANGOS_ASSERT(source);
@@ -2522,7 +2542,7 @@ void Map::ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* sou
         sa.HandleScriptStep();
 }
 
-/// Process queued scripts
+/// Process queued scripts (按时间顺序执行所有到期的延迟脚本步骤，出错或中止时清理同脚本后续步骤)
 void Map::ScriptsProcess()
 {
     if (m_scriptSchedule.empty())
@@ -2559,6 +2579,7 @@ void Map::ScriptsProcess()
 
 /**
  * Function return player that in world at CURRENT map
+ * 返回当前地图中处于世界内的玩家对象
  *
  * Note: This is function preferred if you sure that need player only placed at specific map
  *       This is not true for some spell cast targeting and most packet handlers
@@ -2683,6 +2704,7 @@ WorldObject* Map::GetWorldObject(ObjectGuid guid)
     return nullptr;
 }
 
+// 分频更新新建、移动及超视距对象的玩家视野，并定期执行潜行单位侦测
 void Map::UpdateVisibility(UpdateDataMapType& update_players)
 {
     // newly created npcs are done every tick
@@ -2738,6 +2760,7 @@ void Map::UpdateVisibility(UpdateDataMapType& update_players)
     }
 }
 
+// 汇总本帧属性变更、可见性新增创建块、光环包及超出视野移除包并批量发送给各玩家客户端
 void Map::SendObjectUpdates()
 {
     UpdateDataMapType update_players;
@@ -3064,6 +3087,7 @@ void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/) const
 
 /**
  * Function to check if a point is in line of sight from an other point
+ * 检查两点之间在静态 VMap 与动态游戏对象模型中是否均无视线遮挡
  */
 bool Map::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float destY, float destZ, bool ignoreM2Model) const
 {
@@ -3074,6 +3098,7 @@ bool Map::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float
 /**
  * get the hit position and return true if we hit something (in this case the dest position will hold the hit-position)
  * otherwise the result pos will be the dest pos
+ * 依次检测静态与动态碰撞体，若射线命中障碍物则返回 true 并输出修正后的碰撞坐标
  */
 bool Map::GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, float modifyDist) const
 {
@@ -3155,6 +3180,7 @@ bool Map::GetHeightInRange(float x, float y, float& z, float maxSearchDist /*= 4
     return true;
 }
 
+// 综合静态地形/VMap 高度与动态游戏对象碰撞树计算精确地面/台面高度
 float Map::GetHeight(float x, float y, float z, bool swim) const
 {
     float staticHeight = m_TerrainData->GetHeightStatic(x, y, z, true, (swim ? DEFAULT_WATER_SEARCH : DEFAULT_HEIGHT_SEARCH));
@@ -3290,6 +3316,7 @@ bool Map::GetReachableRandomPointOnGround(float& x, float& y, float& z, float ra
 }
 
 // Get random point by handling different situation depending of if the unit is flying/swimming/walking
+// 根据单位当前处于飞行、游泳或地面行走状态，生成对应可达的随机目标点
 bool Map::GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, float radius, bool randomRange/* = true*/) const
 {
     float i_x = x;
@@ -3402,6 +3429,7 @@ void Map::RemoveFromSpawnCount(const ObjectGuid& guid)
 
 /**
  * Function to set the zone dynamic info
+ * 向刚切换区域或子区域的玩家下发该区域当前的动态音乐、天气及光照覆盖数据包
  */
 void Map::SendZoneDynamicInfo(Player* player, bool zoneUpdated, bool areaUpdated) const
 {

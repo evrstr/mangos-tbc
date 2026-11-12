@@ -21,12 +21,18 @@ SDComment: Timers may need improvemets.
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
+// 不稳定的海度斯（毒蛇神殿一号首领）
+/* 遭遇战概述：
+ * 不稳定的海度斯是水元素公爵，战斗核心为毒水与冰霜两相交替（通过跨越水池边缘净化光线转换）。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
 // Note: As of March 21 2007 Hydross should not crush tanks
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                   = 20231,
@@ -70,6 +76,7 @@ static const uint32 aMarkCorruption[MAX_HYDROSS_MARKS] = {38219, 38220, 38221, 3
 static const uint32 purifiedSpawns[] = { 38198, 38199, 38200, 38201 };
 static const uint32 corruptedSpawns[] = { 38188, 38189, 38190, 38191 };
 
+// HydrossActions 相关枚举
 enum HydrossActions
 {
     HYDROSS_SWITCH,
@@ -78,6 +85,7 @@ enum HydrossActions
     HYDROSS_SPAWN_ELEMENTAL
 };
 
+// boss_hydross_the_unstableAI 逻辑实现
 struct boss_hydross_the_unstableAI : public CombatAI
 {
     boss_hydross_the_unstableAI(Creature* creature) : CombatAI(creature, HYDROSS_ACTION_MAX),
@@ -94,6 +102,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
     bool m_corruptedForm;
     bool m_triggerSwitch;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -108,6 +117,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
         m_creature->SetSpellList(SPELL_LIST_CLEAN_INITIAL);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
@@ -116,6 +126,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
             m_instance->SetData(TYPE_HYDROSS_EVENT, IN_PROGRESS);
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* /*victim*/) override
     {
         if (m_corruptedForm)
@@ -124,6 +135,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
             DoBroadcastText(urand(0, 1) ? SAY_CLEAN_SLAY1 : SAY_CLEAN_SLAY2, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(m_corruptedForm ? SAY_CORRUPT_DEATH : SAY_CLEAN_DEATH, m_creature);
@@ -132,6 +144,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
             m_instance->SetData(TYPE_HYDROSS_EVENT, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -185,6 +198,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
         ResetTimer(HYDROSS_SPAWN_ELEMENTAL, 20000);
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 miscValue) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -246,6 +260,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         if (action == HYDROSS_SWITCH) // done here so that it does not overlap with casting or smth else
@@ -262,6 +277,7 @@ struct boss_hydross_the_unstableAI : public CombatAI
     }
 };
 
+// npc_spawn_of_hydrossAI 逻辑实现
 struct npc_spawn_of_hydrossAI : public CombatAI
 {
     npc_spawn_of_hydrossAI(Creature* creature) : CombatAI(creature, 0)
@@ -277,8 +293,10 @@ struct npc_spawn_of_hydrossAI : public CombatAI
 };
 
 // 37935 - Cleansing Field
+// CleansingField 光环脚本
 struct CleansingField : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (aura->GetTarget()->GetEntry() == NPC_HYDROSS_THE_UNSTABLE && aura->GetTarget()->AI())
@@ -286,6 +304,7 @@ struct CleansingField : public AuraScript
     }
 };
 
+// 注册 boss_hydross_the_unstable 脚本
 void AddSC_boss_hydross_the_unstable()
 {
     Script* pNewScript = new Script;

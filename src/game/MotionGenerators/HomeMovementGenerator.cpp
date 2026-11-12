@@ -23,6 +23,7 @@
 #include "Movement/MoveSplineInit.h"
 #include "Movement/MoveSpline.h"
 
+/// 初始化返巢状态：临时提升为活跃对象、标记 EVADE_HOME 并启动返巢路径
 void HomeMovementGenerator<Creature>::Initialize(Creature& owner)
 {
     wasActive = owner.isActiveObject();
@@ -37,18 +38,20 @@ void HomeMovementGenerator<Creature>::Reset(Creature&)
 {
 }
 
+/// 确定返巢目标位置（底层默认移动重置点 > 战斗起点 > 出生坐标）并构建移动样条
 void HomeMovementGenerator<Creature>::_setTargetLocation(Creature& owner)
 {
     if (owner.hasUnitState(UNIT_STAT_NOT_MOVE))
         return;
 
     Position pos;
-    // at apply we can select more nice return points base at current movegen
+    // at apply we can select more nice return points base at current movegen (优先向栈内当前默认移动生成器查询合适的复位坐标)
     if (owner.GetMotionMaster()->empty() || !owner.GetMotionMaster()->top()->GetResetPosition(owner, pos))
         owner.GetCombatStartPosition(pos);
 
     if (pos.IsEmpty())
         owner.GetRespawnCoord(pos.x, pos.y, pos.z, &pos.o);
+    // 野外距离过远（超过 150 码）直接强制消失并在 5 秒后原地重生，避免长距离穿图奔跑
     if (owner.GetDistance(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), DIST_CALC_NONE, owner.GetTransport()) > 150.f * 150.f)
     {
         if (!owner.IsInWorld() || !owner.GetMap()->IsDungeon())
@@ -64,13 +67,14 @@ void HomeMovementGenerator<Creature>::_setTargetLocation(Creature& owner)
     PathFinder path(&owner);
 
     Position curPos = owner.GetPosition(owner.GetTransport());
-    // source and target pos must be local coords
+    // source and target pos must be local coords (起止坐标均使用载具局部坐标系，非载具时即世界坐标)
     path.calculate(G3D::Vector3(curPos.GetPositionX(), curPos.GetPositionY(), curPos.GetPositionZ()), G3D::Vector3(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ()), true);
 
     Movement::MoveSplineInit init(owner);
     init.MovebyPath(path.getPath());
     init.SetWalk(!runHome);
     init.SetFacing(pos.GetPositionO());
+    // 若寻路失败或走捷径，提高速度使生物快速复位
     if (path.getPathType() & (PATHFIND_NOPATH | PATHFIND_SHORTCUT))
         init.SetVelocity(400.f);
     init.Launch();
@@ -85,6 +89,7 @@ bool HomeMovementGenerator<Creature>::Update(Creature& owner, const uint32& /*ti
     return !arrived;
 }
 
+/// 返巢结束清理：清除脱战状态、恢复阵营/附加光环、通知召唤者并还原 ActiveObject 状态
 void HomeMovementGenerator<Creature>::Finalize(Creature& owner)
 {
     owner.GetCombatManager().SetEvadeState(EVADE_NONE);

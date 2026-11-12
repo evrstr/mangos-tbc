@@ -21,36 +21,39 @@ SDComment: Phase 1 summoning timers and/or aura stacking are to be improved once
 SDCategory: Naxxramas
 EndScriptData */
 
+// 克尔苏加德（Kel'Thuzad）大巫妖最终首领战 AI（一阶段尸骨军团、二阶段本体暗影裂隙/冰霜冲击、三阶段冰冠卫士）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_SUMMON_MINIONS                  = 12999,         // start of phase 1
+    SAY_SUMMON_MINIONS                  = 12999,         // start of phase 1 (开始of阶段1)
 
-    SAY_AGGRO1                          = 12995,
-    SAY_AGGRO2                          = 12996,
-    SAY_AGGRO3                          = 12997,
+    SAY_AGGRO1                          = 12995,            // aggro1 台词广播 ID
+    SAY_AGGRO2                          = 12996,            // aggro2 台词广播 ID
+    SAY_AGGRO3                          = 12997,            // aggro3 台词广播 ID
 
-    SAY_SLAY1                           = 13021,
-    SAY_SLAY2                           = 13022,
+    SAY_SLAY1                           = 13021,            // slay1 台词广播 ID
+    SAY_SLAY2                           = 13022,            // slay2 台词广播 ID
 
-    SAY_DEATH                           = 13019,
+    SAY_DEATH                           = 13019,            // 死亡 台词广播 ID
 
-    SAY_CHAIN1                          = 13017,
-    SAY_CHAIN2                          = 13018,
-    SAY_FROST_BLAST                     = 13020,
+    SAY_CHAIN1                          = 13017,            // chain1 台词广播 ID
+    SAY_CHAIN2                          = 13018,            // chain2 台词广播 ID
+    SAY_FROST_BLAST                     = 13020,            // 冰霜冲击 台词广播 ID
 
-    SAY_SPECIAL1_MANA_DET               = 13492,
+    SAY_SPECIAL1_MANA_DET               = 13492,            // special1法力det 台词广播 ID
 
-    SAY_REQUEST_AID                     = 12998,         // Start of phase 3
+    SAY_REQUEST_AID                     = 12998,         // Start of phase 3 (开始of阶段3)
     SAY_ANSWER_REQUEST                  = 12994,         // Lich King answer
 
-    // Phase 1 spells
-    SPELL_SUMMON_TYPE_A                 = 28421,            // Summon 1 Soldier of the Frozen Waste
-    SPELL_SUMMON_TYPE_B                 = 28422,            // Summon 1 Unstoppable Abomination
-    SPELL_SUMMON_TYPE_C                 = 28423,            // Summon 1 Soul Weaver
+    // Phase 1 spells (第 1 阶段)
+    SPELL_SUMMON_TYPE_A                 = 28421,            // Summon 1 Soldier of the Frozen Waste (召唤 Soldier of the Frozen Waste)
+    SPELL_SUMMON_TYPE_B                 = 28422,            // Summon 1 Unstoppable Abomination (召唤 Unstoppable Abomination)
+    SPELL_SUMMON_TYPE_C                 = 28423,            // Summon 1 Soul Weaver (召唤 Soul Weaver)
 
     SPELL_CHANNEL_VISUAL_EFFECT         = 29422,            // Handle the application of summoning auras
 
@@ -79,20 +82,20 @@ enum
 
     NPC_WORLD_TRIGGER                   = 15384,            // Handle the summoning of the NPCs in each alcove
 
-    // Phase 2 spells
-    SPELL_FROST_BOLT                    = 28478,
-    SPELL_FROST_BOLT_NOVA               = 28479,
+    // Phase 2 spells (第 2 阶段)
+    SPELL_FROST_BOLT                    = 28478,            // 冰霜箭 法术 ID
+    SPELL_FROST_BOLT_NOVA               = 28479,            // 冰霜箭新星 法术 ID
 
-    SPELL_CHAINS_OF_KELTHUZAD           = 28408,
-    SPELL_CHAINS_OF_KELTHUZAD_SCALE     = 28409,
-    SPELL_CHAINS_OF_KELTHUZAD_TARGET    = 28410,
+    SPELL_CHAINS_OF_KELTHUZAD           = 28408,            // 锁链of克尔苏加德 法术 ID
+    SPELL_CHAINS_OF_KELTHUZAD_SCALE     = 28409,            // 锁链of克尔苏加德scale 法术 ID
+    SPELL_CHAINS_OF_KELTHUZAD_TARGET    = 28410,            // 锁链of克尔苏加德目标 法术 ID
 
-    SPELL_MANA_DETONATION               = 27819,
-    SPELL_SHADOW_FISSURE                = 27810,
-    SPELL_FROST_BLAST                   = 27808,            // Frost Blast: stun spell
-    SPELL_FROST_BLAST_DAMAGE            = 29879,            // Frost Blast: damage spell
+    SPELL_MANA_DETONATION               = 27819,            // 法力detonation 法术 ID
+    SPELL_SHADOW_FISSURE                = 27810,            // 暗影fissure 法术 ID
+    SPELL_FROST_BLAST                   = 27808,            // Frost Blast: stun spell (冰霜冲击击晕法术)
+    SPELL_FROST_BLAST_DAMAGE            = 29879,            // Frost Blast: damage spell (冰霜冲击伤害法术)
 
-    SPELL_SUMMON_TYPE_D                 = 28454,            // Summon 1 Guardian of Icecrown
+    SPELL_SUMMON_TYPE_D                 = 28454,            // Summon 1 Guardian of Icecrown (召唤 Guardian of Icecrown)
     SPELL_SUMMON_PERIODIC_D             = 28453,            // One Guardian of Icecrown summoned every 10 secs
     SPELL_GUARDIAN_INIT                 = 29898,            // Cast at start of phase 3 by Kel'Thuzad (start of phase 2 in sniffs but this way we avoid running a timer needlessly)
 
@@ -135,12 +138,14 @@ static const std::map<uint32, std::vector<uint32>> summoningSpells {
         {NPC_SOLDIER_FROZEN,   {SPELL_SUMMON_PERIODIC_A_1, SPELL_SUMMON_PERIODIC_A_2, SPELL_SUMMON_PERIODIC_A_3, SPELL_SUMMON_PERIODIC_A_4, SPELL_SUMMON_PERIODIC_A_5}}
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Phase
 {
     PHASE_NORMAL,
     PHASE_GUARDIANS,
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KelThuzadActions
 {
     KELTHUZAD_PHASE_GUARDIANS,
@@ -149,6 +154,7 @@ enum KelThuzadActions
     KELTHUZAD_STOP_GUARDIAN_SPAWNS,
 };
 
+// 首领战 AI：标识 ID（kelthuzad）
 struct boss_kelthuzadAI : public BossAI
 {
     boss_kelthuzadAI(Creature* creature) : BossAI(creature, KELTHUZAD_ACTIONS_MAX), m_instance(dynamic_cast<instance_naxxramas*>(creature->GetInstanceData()))
@@ -169,6 +175,7 @@ struct boss_kelthuzadAI : public BossAI
 
     std::map<ObjectGuid, GuidVector> m_introMobsList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
@@ -180,6 +187,7 @@ struct boss_kelthuzadAI : public BossAI
         SetMeleeEnabled(false);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         DespawnIntroCreatures();
@@ -197,12 +205,12 @@ struct boss_kelthuzadAI : public BossAI
 
     void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
     {
-        // Phase 1 start
+        // Phase 1 start (第 1 阶段)
         if (spellInfo->Id == SPELL_CHANNEL_VISUAL)
         {
             DoBroadcastText(SAY_SUMMON_MINIONS, m_creature);
         }
-        // Phase 1 periodic update every 1 second (everything in phase 1 is handled here rather than in UpdateAI())
+        // Phase 1 periodic update every 1 second (everything in phase 1 is handled here rather than in UpdateAI()) (第 1 阶段)
         else if (spellInfo->Id == SPELL_CHANNEL_VISUAL_EFFECT)
         {
             ++m_summonTicks;
@@ -317,7 +325,7 @@ struct boss_kelthuzadAI : public BossAI
         m_introMobsList.clear();
     }
 
-    // Summon three type of adds in each of the surrounding alcoves
+    // Summon three type of adds in each of the surrounding alcoves (召唤 three type of adds in each of the surrounding alcoves)
     bool SummonIntroCreatures(uint32 entry, uint8 count)
     {
         if (!m_instance)
@@ -377,6 +385,7 @@ struct boss_kelthuzadAI : public BossAI
         m_creature->RemoveAurasDueToSpell(SPELL_SUMMON_PERIODIC_D);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -451,10 +460,11 @@ struct boss_kelthuzadAI : public BossAI
 #   npc_icecrown_guardian
 ########################*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum {
-    SPELL_GUARDIAN_PASSIVE      = 29897,
-    SPELL_GUARDIAN_SHACKLE      = 29899,
-    SPELL_BLOOD_TAP             = 28470,
+    SPELL_GUARDIAN_PASSIVE      = 29897,                    // guardianpassive 法术 ID
+    SPELL_GUARDIAN_SHACKLE      = 29899,                    // guardianshackle 法术 ID
+    SPELL_BLOOD_TAP             = 28470,                    // 鲜血tap 法术 ID
 };
 
 // This NPC handles the spell sync between the player that is web wrapped (with a DoT) and the related Web Wrap NPC
@@ -467,9 +477,10 @@ struct npc_icecrown_guardianAI : public ScriptedAI
 
     instance_naxxramas* m_instance;
 
-    ObjectGuid m_victimGuid;
+    ObjectGuid m_victimGuid;                                // victim 实体 GUID
     uint32 m_checkCurrentVictimTimer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_victimGuid.Clear();
@@ -478,11 +489,13 @@ struct npc_icecrown_guardianAI : public ScriptedAI
         DoCastSpellIfCan(nullptr, SPELL_GUARDIAN_PASSIVE, CAST_AURA_NOT_PRESENT);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         m_creature->ForcedDespawn();
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         m_creature->RemoveAurasDueToSpell(SPELL_BLOOD_TAP);
@@ -495,6 +508,7 @@ struct npc_icecrown_guardianAI : public ScriptedAI
         DoCastSpellIfCan(m_creature->GetVictim(), SPELL_BLOOD_TAP);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -517,14 +531,14 @@ struct npc_icecrown_guardianAI : public ScriptedAI
         else
             m_checkCurrentVictimTimer -= diff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
-// 28415 - Summon Type A Trigger
-// 28416 - Summon Type B Trigger
-// 28417 - Summon Type C Trigger
-// 28455 - Summon Type D Trigger
+// 28415 - Summon Type A Trigger (28415 - 召唤 遭遇战类型 A 触发)
+// 28416 - Summon Type B Trigger (28416 - 召唤 遭遇战类型 B 触发)
+// 28417 - Summon Type C Trigger (28417 - 召唤 遭遇战类型 C 触发)
+// 28455 - Summon Type D Trigger (28455 - 召唤 遭遇战类型 D 触发)
 struct TriggerKTAdd : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /* effIdx */) const override
@@ -547,7 +561,7 @@ struct TriggerKTAdd : public SpellScript
     }
 };
 
-// 28408 - Chains of Kel'Thuzad
+// 28408 - Chains of Kel'Thuzad (28408 - 锁链 of Kel'Thuzad)
 struct ChainsKelThuzad : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /* effIdx */) const override
@@ -588,7 +602,7 @@ struct ChainsKelThuzad : public SpellScript
     }
 };
 
-// 27808 - Frost Blast
+// 27808 - Frost Blast (27808 - 冰霜 冲击)
 struct FrostBlast : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& /* data */) const override
@@ -613,12 +627,12 @@ struct GuardianPeriodic : public AuraScript
         if (Unit* target = aura->GetTarget())
         {
             if (target->HasAuraType(SPELL_AURA_MOD_STUN))   // Shackle Undead applies SPELL_AURA_MOD_STUN, so we cover all ranks of the spell this way
-                data.spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(SPELL_GUARDIAN_SHACKLE); // Summon Ice Block
+                data.spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(SPELL_GUARDIAN_SHACKLE); // Summon Ice Block (召唤 Ice Block)
         }
     }
 };
 
-// 27819 - Detonate Mana
+// 27819 - Detonate Mana (27819 - Detonate 法力)
 struct DetonateManaKelThuzad : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
@@ -632,6 +646,7 @@ struct DetonateManaKelThuzad : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_kelthuzad
 void AddSC_boss_kelthuzad()
 {
     Script* newScript = new Script;

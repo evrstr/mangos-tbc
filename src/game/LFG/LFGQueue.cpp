@@ -19,6 +19,7 @@
 #include "LFG/LFGQueue.h"
 #include "World/World.h"
 
+/// LFG 队列工作线程主循环（每 500ms 消费一次异步队列消息）
 void LFGQueue::Update()
 {
     TimePoint previously = sWorld.GetCurrentClockTime();
@@ -222,6 +223,7 @@ void LFGQueue::SetLfmData(ObjectGuid leaderGuid, uint16 entry, uint16 type)
     }
 }
 
+/// 尝试将单人/求组方自动匹配加入已开启 autoFill 的招募队伍
 void LFGQueue::TryJoin(ObjectGuid playerGuid, bool initial)
 {
     auto itr = m_queuedPlayers.find(playerGuid);
@@ -258,6 +260,7 @@ void LFGQueue::TryJoin(ObjectGuid playerGuid, bool initial)
     }
 }
 
+/// 尝试为开启 autoFill 的招募队伍匹配正在 autoJoin 的求组玩家
 void LFGQueue::TryFill(ObjectGuid leaderGuid, bool initial)
 {
     auto itr = m_queuedPlayers.find(leaderGuid);
@@ -295,6 +298,7 @@ void LFGQueue::TryFill(ObjectGuid leaderGuid, bool initial)
     }
 }
 
+/// 将求组玩家挂起为待确认成员并向世界线程投递匹配邀请包
 bool LFGQueue::AddMember(LFGPlayerQueueInfo& info, LFGPlayerQueueInfo& playerInfo, uint32 entry)
 {
     const bool create = info.members.empty();
@@ -333,6 +337,7 @@ bool LFGQueue::AddMember(LFGPlayerQueueInfo& info, LFGPlayerQueueInfo& playerInf
     return true;
 }
 
+/// 处理玩家确认入队：回到世界线程创建或加入 Group，若满员则移出队列
 void LFGQueue::HandlePendingJoin(ObjectGuid playerGuid)
 {
     auto itr = m_queuedPlayers.find(playerGuid);
@@ -557,6 +562,7 @@ void LFGQueue::SendLFGUpdateLFM(ObjectGuid playerGuid) const
     });
 }
 
+/// 根据阵营与副本过滤条件构造 MSG_LOOKING_FOR_GROUP 查询结果（单包上限 50 条）并回传世界线程发送
 void LFGQueue::SendLFGListQueryResponse(ObjectGuid playerGuid, Team playerTeam, LfgType type, uint32 entry) const
 {
     WorldPacket response(MSG_LOOKING_FOR_GROUP);
@@ -644,6 +650,7 @@ void LFGQueue::GroupUpdate(ObjectGuid playerGuid, ObjectGuid leaderGuid, bool co
     GroupUpdateUI(leaderGuid, completed);
 }
 
+/// 同步队伍的集合石排队状态（SMSG_LFG_UPDATE_QUEUED / SMSG_MEETINGSTONE_SETQUEUE）
 bool LFGQueue::GroupUpdateQueueStatus(ObjectGuid /*playerGuid*/, ObjectGuid leaderGuid)
 {
     bool lfm = false;

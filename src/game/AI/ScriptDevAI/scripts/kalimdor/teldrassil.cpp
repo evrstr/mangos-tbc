@@ -21,6 +21,10 @@ SDComment: Quest support: 938
 SDCategory: Teldrassil
 EndScriptData */
 
+/**
+ * 泰达希尔 (Teldrassil) 暗夜精灵起始区任务脚本
+ */
+
 /* ContentData
 npc_mist
 EndContentData */
@@ -32,20 +36,22 @@ EndContentData */
 # npc_mist
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_AT_HOME             = -1000323,
-    EMOTE_AT_HOME           = -1000324,
-    QUEST_MIST              = 938,
-    NPC_ARYNIA              = 3519,
+    SAY_AT_HOME             = -1000323,                     // 剧情台词/喊话文本 ID
+    EMOTE_AT_HOME           = -1000324,                     // 剧情台词/喊话文本 ID
+    QUEST_MIST              = 938,                          // 任务 ID
+    NPC_ARYNIA              = 3519,                         // NPC 条目 ID
     FACTION_DARNASSUS       = 79
 };
 
+// npc_mistAI NPC 脚本 AI
 struct npc_mistAI : public FollowerAI
 {
     npc_mistAI(Creature* pCreature) : FollowerAI(pCreature) { Reset(); }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
     void MoveInLineOfSight(Unit* pWho) override
     {
@@ -71,11 +77,11 @@ struct npc_mistAI : public FollowerAI
                 pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_MIST, m_creature);
         }
 
-        // The follow is over (and for later development, run off to the woods before really end)
+        // The follow is over (and for later development, run off to the woods before really end) (说明)
         SetFollowComplete();
     }
 
-    // call not needed here, no known abilities
+    // call not needed here, no known abilities (说明)
     /*void UpdateFollowerAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -85,12 +91,12 @@ struct npc_mistAI : public FollowerAI
     }*/
 };
 
-UnitAI* GetAI_npc_mist(Creature* pCreature)
+UnitAI* GetAI_npc_mist(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_mistAI(pCreature);
 }
 
-bool QuestAccept_npc_mist(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_mist(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_MIST)
     {
@@ -101,7 +107,7 @@ bool QuestAccept_npc_mist(Player* pPlayer, Creature* pCreature, const Quest* pQu
     return true;
 }
 
-void AddSC_teldrassil()
+void AddSC_teldrassil() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_mist";

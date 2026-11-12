@@ -32,6 +32,7 @@
 
 INSTANTIATE_SINGLETON_1(Config);
 
+/// 将配置键名（点号转下划线并加前缀）映射为对应环境变量并读取其值
 std::optional<std::string> EnvVarForIniKey(std::string const&, std::string const&);
 
 bool Config::SetSource(const std::string& file, const std::string& envVarPrefix)
@@ -62,6 +63,7 @@ bool Config::Reload()
         if (!line.length())
             continue;
 
+        // 跳过 '#' 注释行与 '[' 节标题行
         if (line[0] == '#' || line[0] == '[')
             continue;
 
@@ -69,6 +71,7 @@ bool Config::Reload()
         if (equals == std::string::npos)
             return false;
 
+        // 键名转为小写存入映射；若存在对应环境变量则优先使用环境变量覆盖
         auto const trimmedEntry = boost::algorithm::trim_copy(line.substr(0, equals));
         auto const entry = boost::algorithm::to_lower_copy(trimmedEntry);
         auto value = boost::algorithm::trim_copy_if(boost::algorithm::trim_copy(line.substr(equals + 1)), boost::algorithm::is_any_of("\""));

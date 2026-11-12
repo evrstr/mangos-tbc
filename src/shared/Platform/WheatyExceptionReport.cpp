@@ -47,6 +47,7 @@ inline LPTSTR ErrorMessage(DWORD dw)
 
 //
 // Declare the static variables of the WheatyExceptionReport class and force their initialization before any other static in the program
+// | 声明 WheatyExceptionReport 静态成员，并借助 #pragma init_seg(lib) 使其早于普通全局对象完成初始化
 //
 #pragma warning(push)
 #pragma warning(disable: 4073) // C4073: initializers put in library initialization area
@@ -70,9 +71,9 @@ WheatyExceptionReport g_WheatyExceptionReport;
 
 //============================== Class Methods =============================
 
-WheatyExceptionReport::WheatyExceptionReport()             // Constructor
+WheatyExceptionReport::WheatyExceptionReport()             // Constructor | 构造函数：注册未处理异常过滤器与 CRT 非法参数回调
 {
-    // Install the unhandled exception filter function
+    // Install the unhandled exception filter function | 安装顶层未处理异常过滤函数
     m_previousFilter = SetUnhandledExceptionFilter(WheatyUnhandledExceptionFilter);
     m_previousCrtHandler = _set_invalid_parameter_handler(WheatyCrtHandler);
     m_hProcess = GetCurrentProcess();
@@ -106,7 +107,7 @@ LONG WINAPI WheatyExceptionReport::WheatyUnhandledExceptionFilter(
 PEXCEPTION_POINTERS pExceptionInfo)
 {
     std::unique_lock<std::mutex> guard(alreadyCrashedLock);
-    // Handle only 1 exception in the whole process lifetime
+    // Handle only 1 exception in the whole process lifetime | 整个进程生命周期内仅捕获处理第一次崩溃异常
     if (alreadyCrashed)
         return EXCEPTION_EXECUTE_HANDLER;
 
@@ -451,19 +452,20 @@ void WheatyExceptionReport::printTracesForAllThreads(bool bWriteVariables)
   DWORD dwOwnerPID = GetCurrentProcessId();
   DWORD dwCurrentTID = GetCurrentThreadId();
   m_hProcess = GetCurrentProcess();
-  // Take a snapshot of all running threads
+  // Take a snapshot of all running threads | 创建当前所有运行线程的系统快照
   HANDLE hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
   if (hThreadSnap == INVALID_HANDLE_VALUE)
     return;
 
-  // Fill in the size of the structure before using it.
+  // Fill in the size of the structure before using it. | 使用前先填充结构体大小字段
   te32.dwSize = sizeof(THREADENTRY32);
 
   // Retrieve information about the first thread,
   // and exit if unsuccessful
+  // | 读取快照中的第一个线程信息，失败则清理句柄并退出
   if (!Thread32First(hThreadSnap, &te32))
   {
-    CloseHandle(hThreadSnap);    // Must clean up the
+    CloseHandle(hThreadSnap);    // Must clean up the | 必须关闭快照句柄防止泄露
                                    //   snapshot object!
     return;
   }
@@ -471,6 +473,7 @@ void WheatyExceptionReport::printTracesForAllThreads(bool bWriteVariables)
   // Now walk the thread list of the system,
   // and display information about each thread
   // associated with the specified process
+  // | 遍历系统线程列表，输出属于当前进程的其他线程的调用栈
   do
   {
     if (te32.th32OwnerProcessID == dwOwnerPID && te32.th32ThreadID != dwCurrentTID)
@@ -494,6 +497,7 @@ void WheatyExceptionReport::printTracesForAllThreads(bool bWriteVariables)
 //===========================================================================
 // Open the report file, and write the desired information to it.  Called by
 // WheatyUnhandledExceptionFilter
+// | 生成崩溃报告详情并写入报告文件（由 WheatyUnhandledExceptionFilter 调用）
 //===========================================================================
 void WheatyExceptionReport::GenerateExceptionReport(
 PEXCEPTION_POINTERS pExceptionInfo)
@@ -503,14 +507,14 @@ PEXCEPTION_POINTERS pExceptionInfo)
         SYSTEMTIME systime;
         GetLocalTime(&systime);
 
-        // Start out with a banner
+        // Start out with a banner | 输出版本与崩溃时间头信息
         Log(_T("Revision: %s\r\n"), REVISION_ID);
         Log(_T("Build: %s\r\n"), REVISION_DATE);
         Log(_T("Crash date %02u:%02u:%02u. Time %02u:%02u \r\n"), systime.wDay, systime.wMonth, systime.wYear, systime.wHour, systime.wMinute);
         PEXCEPTION_RECORD pExceptionRecord = pExceptionInfo->ExceptionRecord;
 
         PrintSystemInfo();
-        // First print information about the type of fault
+        // First print information about the type of fault | 首先输出异常码及描述信息
         Log(_T("\r\n//=====================================================\r\n"));
         Log(_T("Exception code: %08X %s\r\n"),
             pExceptionRecord->ExceptionCode,
@@ -521,7 +525,7 @@ PEXCEPTION_POINTERS pExceptionInfo)
             Log(_T("Assertion message: %s\r\n"), pExceptionRecord->ExceptionInformation[0]);
         }
 
-        // Now print information about where the fault occurred
+        // Now print information about where the fault occurred | 解析并输出异常发生所在的模块、节索引与偏移量
         TCHAR szFaultingModule[MAX_PATH];
         DWORD section;
         DWORD_PTR offset;
@@ -575,7 +579,7 @@ PEXCEPTION_POINTERS pExceptionInfo)
 
         SymSetOptions(SYMOPT_DEFERRED_LOADS);
 
-        // Initialize DbgHelp
+        // Initialize DbgHelp | 初始化 DbgHelp 符号引擎并尝试解析未捕获的 C++ 异常类型
         if (!SymInitialize(GetCurrentProcess(), nullptr, TRUE))
         {
             Log(_T("\n\rCRITICAL ERROR.\n\r Couldn't initialize the symbol handler for process.\n\rError [%s].\n\r\n\r"),
@@ -689,6 +693,7 @@ PEXCEPTION_POINTERS pExceptionInfo)
 //======================================================================
 // Given an exception code, returns a pointer to a static string with a
 // description of the exception
+// | 根据 Windows 异常代码返回对应的异常名称字符串
 //======================================================================
 LPCTSTR WheatyExceptionReport::GetExceptionString(DWORD dwCode)
 {
@@ -739,6 +744,7 @@ LPCTSTR WheatyExceptionReport::GetExceptionString(DWORD dwCode)
 //
 // Note: the szModule paramater buffer is an output buffer of length specified
 // by the len parameter (in characters!)
+// | 根据线性地址定位所属 PE 模块、节序号与节内偏移量
 //=============================================================================
 BOOL WheatyExceptionReport::GetLogicalAddress(
 PVOID addr, PTSTR szModule, DWORD len, DWORD& section, DWORD_PTR& offset)
@@ -804,6 +810,7 @@ struct CSymbolInfoPackage : public SYMBOL_INFO_PACKAGE
 
 //============================================================
 // Walks the stack, and writes the results to the report file
+// | 遍历调用栈并将函数符号、源码行号及可选局部变量写入崩溃报告
 //============================================================
 void WheatyExceptionReport::WriteStackDetails(
 PCONTEXT pContext,
@@ -923,7 +930,7 @@ bool bWriteVariables, HANDLE pThreadHandle)                                     
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// The function invoked by SymEnumSymbols
+// The function invoked by SymEnumSymbols | SymEnumSymbols 枚举符号时的回调函数
 //////////////////////////////////////////////////////////////////////////////
 
 BOOL CALLBACK
@@ -950,6 +957,7 @@ PVOID         UserContext)
 // Given a SYMBOL_INFO representing a particular variable, displays its
 // contents.  If it's a user defined type, display the members and their
 // values.
+// | 格式化输出单个变量符号（含自定义结构体成员递归展开）
 //////////////////////////////////////////////////////////////////////////////
 bool WheatyExceptionReport::FormatSymbolValue(
 PSYMBOL_INFO pSym,
@@ -1021,6 +1029,7 @@ STACKFRAME64 * sf)
 // If it's a user defined type (UDT), recurse through its members until we're
 // at fundamental types.  When he hit fundamental types, return
 // bHandled = false, so that FormatSymbolValue() will format them.
+// | 递归展开用户自定义类型（UDT）/指针/数组成员直至基础类型
 //////////////////////////////////////////////////////////////////////////////
 void WheatyExceptionReport::DumpTypeIndex(
 DWORD64 modBase,
@@ -1481,6 +1490,7 @@ DWORD_PTR WheatyExceptionReport::DereferenceUnsafePointer(DWORD_PTR address)
 //============================================================================
 // Helper function that writes to the report file, and allows the user to use
 // printf style formating
+// | 崩溃报告文件格式化输出辅助函数
 //============================================================================
 int __cdecl WheatyExceptionReport::Log(const TCHAR * format, ...)
 {

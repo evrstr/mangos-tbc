@@ -21,6 +21,7 @@
 
 #include <boost/filesystem.hpp>
 
+/// 统一文件系统命名空间别名（封装 boost::filesystem）
 namespace MaNGOS
 {
     namespace Filesystem = boost::filesystem;

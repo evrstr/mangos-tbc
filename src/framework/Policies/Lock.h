@@ -21,6 +21,7 @@
 
 #include <mutex>
 
+/// 尝试加锁；若获取锁失败则立即返回 retval，成功则由 lock_guard 接管锁生命周期
 #define GUARD_RETURN(mutex, retval) if (!mutex.try_lock())    \
                                         return retval;        \
                                     std::lock_guard<decltype(mutex)> guard(mutex, std::adopt_lock)

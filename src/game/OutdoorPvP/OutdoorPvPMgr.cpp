@@ -49,7 +49,7 @@ OutdoorPvPMgr::~OutdoorPvPMgr()
         ++counter;                                                  \
     }
 /**
-   Function which loads all outdoor pvp scripts
+   Function which loads all outdoor pvp scripts (根据世界配置加载并初始化所有启用的野外 PvP 战区脚本)
  */
 void OutdoorPvPMgr::InitOutdoorPvP()
 {
@@ -66,6 +66,7 @@ void OutdoorPvPMgr::InitOutdoorPvP()
     sLog.outString();
 }
 
+// 根据主区域 Zone ID 获取对应的野外 PvP 脚本实例
 OutdoorPvP* OutdoorPvPMgr::GetScript(uint32 zoneId)
 {
     switch (zoneId)
@@ -87,6 +88,7 @@ OutdoorPvP* OutdoorPvPMgr::GetScript(uint32 zoneId)
     }
 }
 
+// 根据受区域增益影响的副本 Zone ID 获取对应的野外 PvP 脚本实例
 OutdoorPvP* OutdoorPvPMgr::GetScriptOfAffectedZone(uint32 zoneId)
 {
     switch (zoneId)
@@ -119,6 +121,7 @@ OutdoorPvP* OutdoorPvPMgr::GetScriptOfAffectedZone(uint32 zoneId)
 
 /**
    Function that handles the players which enters a specific zone
+   (处理玩家进入主战区或关联副本区域的事件分发)
 
    @param   player to be handled in the event
    @param   zone id used for the current outdoor pvp script
@@ -133,6 +136,7 @@ void OutdoorPvPMgr::HandlePlayerEnterZone(Player* player, uint32 zoneId)
 
 /**
    Function that handles the player who leaves a specific zone
+   (处理玩家离开主战区或关联副本区域的事件分发)
 
    @param   player to be handled in the event
    @param   zone id used for the current outdoor pvp script
@@ -140,12 +144,14 @@ void OutdoorPvPMgr::HandlePlayerEnterZone(Player* player, uint32 zoneId)
 void OutdoorPvPMgr::HandlePlayerLeaveZone(Player* player, uint32 zoneId)
 {
     // teleport: called once from Player::CleanupsBeforeDelete, once from Player::UpdateZone
+    // (传送时可能先后由 CleanupsBeforeDelete 与 UpdateZone 触发，内部通过 map 擦除防重)
     if (OutdoorPvP* script = GetScript(zoneId))
         script->HandlePlayerLeaveZone(player, true);
     else if (OutdoorPvP* affectedScript = GetScriptOfAffectedZone(zoneId))
         affectedScript->HandlePlayerLeaveZone(player, false);
 }
 
+// 周期性驱动各野外 PvP 战区脚本的定时更新逻辑
 void OutdoorPvPMgr::Update(uint32 diff)
 {
     m_updateTimer.Update(diff);

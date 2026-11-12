@@ -20,7 +20,7 @@
 #include "Spells/SpellAuras.h"
 #include "Spells/SpellMgr.h"
 
-// 1130 - Hunter's Mark
+// 1130 - Hunter's Mark (猎人印记：强化印记将部分远程攻强转为近战攻强，并在每次受击时叠加印记层数上限至 4 倍)
 struct HuntersMark : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
@@ -31,9 +31,9 @@ struct HuntersMark : public AuraScript
             if (data.aura)
             {
                 if (Aura* otherAura = data.aura->GetHolder()->m_auras[EFFECT_INDEX_1])
-                    auraValue = otherAura->GetAmount(); // fetch ranged aura AP
+                    auraValue = otherAura->GetAmount(); // fetch ranged aura AP (读取效果 1 的远程攻强加成)
             }
-            else if (data.caster) // or newly calculate it
+            else if (data.caster) // or newly calculate it (或实时重算效果 1 数值)
                 auraValue = data.caster->CalculateSpellEffectValue(data.target, data.spellProto, EFFECT_INDEX_1, nullptr, true, false);
 
             if (Unit* caster = data.caster)
@@ -59,7 +59,7 @@ struct HuntersMark : public AuraScript
 
     SpellAuraProcResult OnProc(Aura* aura, ProcExecutionData& /*procData*/) const override
     {
-        if (aura->GetEffIndex() != EFFECT_INDEX_0) // increases debuff strength on every hit up to 4th
+        if (aura->GetEffIndex() != EFFECT_INDEX_0) // increases debuff strength on every hit up to 4th (每次命中递增印记攻强，最高叠至基础值的 4 倍)
         {
             int32 basevalue = aura->GetBasePoints();
             aura->GetModifier()->m_amount += basevalue / 10;
@@ -70,7 +70,7 @@ struct HuntersMark : public AuraScript
     }
 };
 
-// 1515 - Tame Beast
+// 1515 - Tame Beast (驯服野兽：目标等级不可高于猎人，施加时附加 1000 初始威胁值)
 struct TameBeast : public SpellScript, public AuraScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -86,18 +86,18 @@ struct TameBeast : public SpellScript, public AuraScript
     void OnApply(Aura* aura, bool apply) const override
     {
         if (aura->GetEffIndex() == EFFECT_INDEX_0 && apply)
-            if (Unit* caster = aura->GetCaster()) // Wotlk - sniff - adds 1000 threat
+            if (Unit* caster = aura->GetCaster()) // Wotlk - sniff - adds 1000 threat (施加时附加 1000 仇恨)
                 aura->GetTarget()->AddThreat(caster, 1000.0f, false, GetSpellSchoolMask(aura->GetSpellProto()), aura->GetSpellProto());
     }
 };
 
-// 34026 - Kill Command
+// 34026 - Kill Command (杀戮命令：清除猎人暴击状态并让宠物对当前目标发动撕咬伤害，T5 2件套触发弱点利用)
 struct KillCommand : public SpellScript
 {
     void OnHit(Spell* spell, SpellMissInfo /*missInfo*/) const override
     {
-        if (spell->GetCaster()->HasAura(37483)) // Improved Kill Command - Item set bonus
-            spell->GetCaster()->CastSpell(nullptr, 37482, TRIGGERED_OLD_TRIGGERED);// Exploited Weakness
+        if (spell->GetCaster()->HasAura(37483)) // Improved Kill Command - Item set bonus (套装强化杀戮命令)
+            spell->GetCaster()->CastSpell(nullptr, 37482, TRIGGERED_OLD_TRIGGERED);// Exploited Weakness (弱点利用)
     }
 
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -105,10 +105,10 @@ struct KillCommand : public SpellScript
         if (effIdx != EFFECT_INDEX_1 || !spell->GetUnitTarget() || spell->GetCaster()->getClass() != CLASS_HUNTER)
             return;
 
-        // clear hunter crit aura state
+        // clear hunter crit aura state (消耗猎人暴击光环状态)
         spell->GetCaster()->ModifyAuraState(AURA_STATE_HUNTER_CRIT_STRIKE, false);
 
-        // additional damage from pet to pet target
+        // additional damage from pet to pet target (由宠物对当前攻击目标施放杀戮命令伤害技能)
         Pet* pet = static_cast<Pet*>(spell->GetUnitTarget()); // guaranteed by spell targeting
         if (!pet->GetVictim())
             return;
@@ -125,7 +125,7 @@ struct KillCommand : public SpellScript
     }
 };
 
-// 34477 - Misdirection
+// 34477 - Misdirection (误导：目标已存在误导触发光环或处于骑乘状态时禁止施放)
 struct Misdirection : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool/* strict*/) const override
@@ -144,7 +144,7 @@ struct Misdirection : public SpellScript
     }
 };
 
-// 34501 - Expose Weakness
+// 34501 - Expose Weakness (破甲虚弱：根据施法者敏捷属性百分比提高攻强加成)
 struct ExposeWeakness : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
@@ -156,7 +156,7 @@ struct ExposeWeakness : public AuraScript
     }
 };
 
-// 34701 - Random Aggro
+// 34701 - Random Aggro (毒蛇陷阱毒蛇随机索敌脚本)
 struct RandomAggroSnakeTrap : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -178,7 +178,7 @@ struct RandomAggroSnakeTrap : public SpellScript
     }
 };
 
-// 19572, 19573 - Improved Mend Pet
+// 19572, 19573 - Improved Mend Pet (强化治疗宠物：按天赋几率触发驱散宠物身上的减益效果)
 struct ImprovedMendPet : public AuraScript
 {
     SpellAuraProcResult OnProc(Aura* aura, ProcExecutionData& procData) const override
@@ -194,7 +194,7 @@ struct ImprovedMendPet : public AuraScript
 
 // TODO: some evidence tbc pet growl scales with hunter AP
 
-// 19678 - Tame Adult Plainstrider
+// 19678 - Tame Adult Plainstrider (驯兽棒任务光环：应用时跟随玩家，过期未完成则强制消失)
 struct TamingPetRodAura : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -220,6 +220,7 @@ struct TamingPetRodAura : public AuraScript
     }
 };
 
+// 注册猎人职业法术脚本
 void LoadHunterScripts()
 {
     RegisterSpellScript<HuntersMark>("spell_hunters_mark");

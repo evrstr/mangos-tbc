@@ -54,6 +54,7 @@
 
 extern pEffect SpellEffects[MAX_SPELL_EFFECTS];
 
+// 优先按法力百分比排序的单位包装器（用于智慧圣印/法力潮汐等目标筛选）
 class PrioritizeManaUnitWraper
 {
     public:
@@ -79,6 +80,7 @@ struct PrioritizeMana
 
 typedef std::priority_queue<PrioritizeManaUnitWraper, std::vector<PrioritizeManaUnitWraper>, PrioritizeMana> PrioritizeManaUnitQueue;
 
+// 优先按生命百分比排序的单位包装器（用于治疗链/紧急治疗等目标筛选）
 class PrioritizeHealthUnitWraper
 {
     public:
@@ -103,6 +105,7 @@ struct PrioritizeHealth
 
 typedef std::priority_queue<PrioritizeHealthUnitWraper, std::vector<PrioritizeHealthUnitWraper>, PrioritizeHealth> PrioritizeHealthUnitQueue;
 
+// 判断法术是否为任务专用驯服类法术（效果0为威胁值、效果1为Dummy光环）
 bool IsQuestTameSpell(uint32 spellId)
 {
     SpellEntry const* spellproto = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -113,15 +116,16 @@ bool IsQuestTameSpell(uint32 spellId)
            && spellproto->Effect[EFFECT_INDEX_1] == SPELL_EFFECT_APPLY_AURA && spellproto->EffectApplyAuraName[EFFECT_INDEX_1] == SPELL_AURA_DUMMY;
 }
 
-// SpellCastTargets class
+// SpellCastTargets class（施法目标容器类实现）
 // **********************
 
+// 构造函数：初始化所有目标指针、掩码与地图 ID
 SpellCastTargets::SpellCastTargets()
 {
     m_unitTarget = nullptr;
     m_itemTarget = nullptr;
     m_GOTarget   = nullptr;
-	m_CorpseTarget = nullptr;
+    m_CorpseTarget = nullptr;
 
     m_itemTargetEntry  = 0;
 
@@ -131,10 +135,12 @@ SpellCastTargets::SpellCastTargets()
     m_mapId = UINT32_MAX;
 }
 
+// 析构函数
 SpellCastTargets::~SpellCastTargets()
 {
 }
 
+// 设置显式单位目标并同步记录其位置与 TARGET_FLAG_UNIT 掩码
 void SpellCastTargets::setUnitTarget(Unit* target)
 {
     if (!target)
@@ -146,6 +152,7 @@ void SpellCastTargets::setUnitTarget(Unit* target)
     m_targetMask |= TARGET_FLAG_UNIT;
 }
 
+// 设置法术目标落点坐标并标记 TARGET_FLAG_DEST_LOCATION
 void SpellCastTargets::setDestination(float x, float y, float z)
 {
     m_destPos.x = x;
@@ -154,12 +161,14 @@ void SpellCastTargets::setDestination(float x, float y, float z)
     m_targetMask |= TARGET_FLAG_DEST_LOCATION;
 }
 
+// 使用 Position 结构设置法术目标落点坐标
 void SpellCastTargets::setDestination(Position position)
 {
     m_destPos = position;
     m_targetMask |= TARGET_FLAG_DEST_LOCATION;
 }
 
+// 设置法术源点坐标并标记 TARGET_FLAG_SOURCE_LOCATION
 void SpellCastTargets::setSource(float x, float y, float z)
 {
     m_srcPos.x = x;
@@ -168,6 +177,7 @@ void SpellCastTargets::setSource(float x, float y, float z)
     m_targetMask |= TARGET_FLAG_SOURCE_LOCATION;
 }
 
+// 设置游戏对象目标及其 GUID
 void SpellCastTargets::setGOTarget(GameObject* target)
 {
     m_GOTarget = target;
@@ -175,6 +185,7 @@ void SpellCastTargets::setGOTarget(GameObject* target)
     //    m_targetMask |= TARGET_FLAG_GAMEOBJECT;
 }
 
+// 设置物品目标及其 GUID/条目 ID 并标记 TARGET_FLAG_ITEM
 void SpellCastTargets::setItemTarget(Item* item)
 {
     if (!item)
@@ -186,12 +197,14 @@ void SpellCastTargets::setItemTarget(Item* item)
     m_targetMask |= TARGET_FLAG_ITEM;
 }
 
+// 清除物品对象指针但保留 GUID 与条目信息（防止物品销毁后访问悬垂指针）
 void SpellCastTargets::clearItemPointer()
 {
     // keep the other information so its clear how the spell was targeted
     m_itemTarget = nullptr;
 }
 
+// 设置交易栏附魔目标物品并立即刷新指针
 void SpellCastTargets::setTradeItemTarget(Player* caster)
 {
     m_itemTargetGUID = ObjectGuid(uint64(TRADE_SLOT_NONTRADED));
@@ -201,12 +214,14 @@ void SpellCastTargets::setTradeItemTarget(Player* caster)
     Update(caster);
 }
 
+// 设置尸体目标及其 GUID
 void SpellCastTargets::setCorpseTarget(Corpse* corpse)
 {
     m_CorpseTarget = corpse;
     m_CorpseTargetGUID = corpse->GetObjectGuid();
 }
 
+// 根据保存的 GUID 重新解析并刷新单位、游戏对象、尸体及物品运行时指针
 void SpellCastTargets::Update(WorldObject* caster)
 {
     m_GOTarget   = m_GOTargetGUID ? caster->GetMap()->GetGameObject(m_GOTargetGUID) : nullptr;
@@ -234,6 +249,7 @@ void SpellCastTargets::Update(WorldObject* caster)
     }
 }
 
+// 从客户端 CMSG_CAST_SPELL 等数据包反序列化施法目标信息并校验坐标
 void SpellCastTargets::read(ByteBuffer& data, Unit* caster)
 {
     data >> m_targetMask;
@@ -275,6 +291,7 @@ void SpellCastTargets::read(ByteBuffer& data, Unit* caster)
     Update(caster);
 }
 
+// 将施法目标序列化写入服务端下发数据包
 void SpellCastTargets::write(ByteBuffer& data) const
 {
     data << uint32(m_targetMask);
@@ -319,9 +336,10 @@ void SpellCastTargets::write(ByteBuffer& data) const
         data << m_strTarget;
 }
 
-// SpellLog class
+// SpellLog class（法术执行日志数据包构建器实现）
 // **************
 
+// 初始化 SMSG_SPELLLOGEXECUTE 数据包头与效果计数占位符
 void SpellLog::Initialize()
 {
     m_spellLogData.Initialize(SMSG_SPELLLOGEXECUTE);
@@ -333,6 +351,7 @@ void SpellLog::Initialize()
     m_spellLogDataEffectsCounter = 0;
 }
 
+// 回填上一个法术效果记录的目标数量
 void SpellLog::FinalizePrevious()
 {
     if (m_currentEffect < uint32(MAX_SPELL_EFFECTS))
@@ -343,6 +362,7 @@ void SpellLog::FinalizePrevious()
     }
 }
 
+// 切换当前记录的效果类型；若与上一条相同则累加目标数，否则开启新效果段
 void SpellLog::SetCurrentEffect(uint32 effect)
 {
     // check if its same effect so we don't have to put header
@@ -361,6 +381,7 @@ void SpellLog::SetCurrentEffect(uint32 effect)
     m_spellLogDataTargetsCounter = 1;
 }
 
+// 将收集完毕的法术效果日志发送给施法者及周围可见玩家并重置缓冲区
 void SpellLog::SendToSet()
 {
     if (!m_spellLogDataEffectsCounter)
@@ -377,9 +398,10 @@ void SpellLog::SendToSet()
     Initialize();
 }
 
-// Spell class
+// Spell class（法术核心执行类实现）
 // ***********
 
+// 构造函数：初始化法术原型、施法者、学派、触发标志、基础点数、脚本实例及日志系统
 Spell::Spell(WorldObject* caster, SpellEntry const* info, uint32 triggeredFlags, ObjectGuid originalCasterGUID, SpellEntry const* triggeredBy) :
     m_partialApplicationMask(0), m_spellScript(SpellScriptMgr::GetSpellScript(info->Id)), m_auraScript(SpellScriptMgr::GetAuraScript(info->Id)),
     m_effectSkipMask(0),
@@ -405,7 +427,7 @@ Spell::Spell(WorldObject* caster, SpellEntry const* info, uint32 triggeredFlags,
 
     m_spellSchoolMask = GetSpellSchoolMask(info);           // Can be override for some spell (wand shoot for example)
 
-    // wand case
+    // wand case（魔杖射击沿用装备魔杖对应的法术学派）
     if (m_attackType == RANGED_ATTACK && m_caster)
         if (!!(m_caster->getClassMask() & CLASSMASK_WAND_USERS) && m_caster->GetTypeId() == TYPEID_PLAYER)
             m_spellSchoolMask = m_caster->GetRangedDamageSchoolMask();
@@ -439,7 +461,7 @@ Spell::Spell(WorldObject* caster, SpellEntry const* info, uint32 triggeredFlags,
     m_triggeredByAuraSpell  = nullptr;
     m_spellAuraHolder = nullptr;
 
-    // Auto Shot & Shoot (wand)
+    // Auto Shot & Shoot (wand)（自动射击与魔杖射击标记为自动重复施法）
     m_autoRepeat = IsAutoRepeatRangedSpell(m_spellInfo);
 
     m_powerCost = 0;                                        // setup to correct value in Spell::prepare, don't must be used before.
@@ -503,12 +525,14 @@ Spell::Spell(WorldObject* caster, SpellEntry const* info, uint32 triggeredFlags,
     OnInit();
 }
 
+// 析构函数：释放非触发法术对施法物品的占用标记
 Spell::~Spell()
 {
     if (!m_IsTriggeredSpell && m_CastItem)
         m_CastItem->SetUsedInSpell(false);
 }
 
+// 使用指定网格搜索器在法术最大射程内查找尸体目标
 template<typename T>
 WorldObject* Spell::FindCorpseUsing()
 {
@@ -529,6 +553,7 @@ WorldObject* Spell::FindCorpseUsing()
     return result;
 }
 
+// 为法术的所有非空效果填充目标列表（区分单位、尸体、物品、游戏对象与坐标落点）
 void Spell::FillTargetMap()
 {
     // TODO: ADD the correct target FILLS!!!!!!
@@ -719,6 +744,7 @@ void Spell::FillTargetMap()
     }
 }
 
+// 校验并过滤单效果收集到的单位目标，触发 PvP 标记并将合格目标加入 m_UniqueTargetInfo
 bool Spell::FillUnitTargets(TempTargetingData& targetingData, SpellTargetingData& data, uint32 i)
 {
     auto& targetMask = data.targetMask[i];
@@ -782,6 +808,7 @@ bool Spell::FillUnitTargets(TempTargetingData& targetingData, SpellTargetingData
     return true;
 }
 
+// 初始化触发系统标记与负面效果掩码（避免纯友方效果目标触发负面 Proc）
 void Spell::prepareDataForTriggerSystem()
 {
     //==========================================================================================
@@ -804,6 +831,7 @@ void Spell::prepareDataForTriggerSystem()
             m_negativeEffectMask |= (1 << i);
 }
 
+// 根据伤害类型、武器类型及正负面属性生成攻击方与受击方的 Proc 事件掩码
 void Spell::PrepareMasksForProcSystem(uint8 effectMask, uint32& procAttacker, uint32& procVictim, WorldObject* caster, WorldObject* target)
 {
     // Get data for type of attack and fill base info for trigger
@@ -883,6 +911,7 @@ void Spell::PrepareMasksForProcSystem(uint8 effectMask, uint32& procAttacker, ui
         procVictim = 0;
 }
 
+// 清空所有已收集的单位、游戏对象及物品目标列表并重置延迟计时
 void Spell::CleanupTargetList()
 {
     m_UniqueTargetInfo.clear();
@@ -891,6 +920,7 @@ void Spell::CleanupTargetList()
     m_delayMoment = 0;
 }
 
+// 将单位目标加入去重列表：计算免疫、命中/反射结果、弹道飞行延迟、法术反射及控制递减
 void Spell::AddUnitTarget(Unit* target, uint8 effectMask, CheckException exception)
 {
     if (m_trueCaster != target)
@@ -929,7 +959,7 @@ void Spell::AddUnitTarget(Unit* target, uint8 effectMask, CheckException excepti
 
     // This is new target calculate data for him
 
-    // Get spell hit result on target
+    // Get spell hit result on target（计算法术对该目标的命中、抵抗、闪避、反射与心跳抵抗）
     TargetInfo targetInfo;
     targetInfo.targetGUID = targetGUID;                         // Store target GUID
     targetInfo.effectHitMask = exception != CheckException::EXCEPTION_MAGNET ? notImmunedMask : effectMask; // Store not immuned effects
@@ -996,7 +1026,7 @@ void Spell::AddUnitTarget(Unit* target, uint8 effectMask, CheckException excepti
     else
         targetInfo.timeDelay = uint64(0);
 
-    // If target reflect spell back to caster
+    // If target reflect spell back to caster（处理目标法术反射回原施法者的逻辑）
     if (targetInfo.missCondition == SPELL_MISS_REFLECT)
     {
         // Objects vs units case: traps and similar
@@ -1034,7 +1064,7 @@ void Spell::AddUnitTarget(Unit* target, uint8 effectMask, CheckException excepti
     else
         targetInfo.reflectResult = SPELL_MISS_NONE;
 
-    // only check DR for units and unit owned GOs
+    // only check DR for units and unit owned GOs（仅对单位及单位拥有的召唤物应用控制递减 DR）
     if (Unit* realCaster = GetAffectiveCasterOrOwner())
     {
         bool isReflected = targetInfo.missCondition == SPELL_MISS_REFLECT && targetInfo.reflectResult == SPELL_MISS_NONE;
@@ -1061,6 +1091,7 @@ void Spell::AddUnitTarget(Unit* target, uint8 effectMask, CheckException excepti
     m_UniqueTargetInfo.push_back(targetInfo);
 }
 
+// 将游戏对象目标加入去重列表并计算弹道飞行延迟
 void Spell::AddGOTarget(GameObject* target, uint8 effectMask)
 {
     m_targets.m_targetMask |= TARGET_FLAG_GAMEOBJECT; // all spells with GO target must have this flag TODO: do this based on target type
@@ -1107,6 +1138,7 @@ void Spell::AddGOTarget(GameObject* target, uint8 effectMask)
     m_UniqueGOTargetInfo.push_back(targetInfo);
 }
 
+// 将尸体目标加入去重列表并合并效果掩码
 void Spell::AddCorpseTarget(Corpse* target, uint8 effectMask)
 {
     m_targets.m_targetMask |= m_spellInfo->Targets;
@@ -1128,6 +1160,7 @@ void Spell::AddCorpseTarget(Corpse* target, uint8 effectMask)
     m_uniqueCorpseTargetInfo.push_back(info);
 }
 
+// 将物品目标加入去重列表并合并效果掩码
 void Spell::AddItemTarget(Item* item, uint8 effectMask)
 {
     // Lookup target in already in list
@@ -1148,6 +1181,7 @@ void Spell::AddItemTarget(Item* item, uint8 effectMask)
     m_UniqueItemInfo.push_back(target);
 }
 
+// 记录无特定实体目标但需要按目标点（Dest）位置延迟或即时执行的效果
 void Spell::AddDestExecution(SpellEffectIndex effIndex)
 {
     if (m_destTargetInfo.effectMask == 0)
@@ -1179,6 +1213,7 @@ void Spell::AddDestExecution(SpellEffectIndex effIndex)
     m_destTargetInfo.effectMask |= effectMask;
 }
 
+// 对单个单位目标执行结算：应用效果、暴击/护甲/抗性/吸收、造成伤害或治疗、触发 Proc 与 AI 通知
 void Spell::DoAllEffectOnTarget(TargetInfo* target)
 {
     if (target->processed || target->effectMask == 0)       // Check target
@@ -1249,7 +1284,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     }
 
     // All calculated do it!
-    // Do healing and triggers
+    // Do healing and triggers（结算治疗暴击、威胁协助与治疗触发事件）
     if (m_healing && affectiveCaster) // does not support GO casts atm
     {
         uint32 addhealth = m_healing;
@@ -1273,7 +1308,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         if (m_canTrigger && missInfo != SPELL_MISS_REFLECT)
             Unit::ProcDamageAndSpell(ProcSystemArguments(affectiveCaster, unitTarget, affectiveCaster ? procAttacker : uint32(PROC_FLAG_NONE), procVictim, procEx, addhealth, 0, m_attackType, m_spellInfo, this, gain, true));
     }
-    // Do damage and triggers
+    // Do damage and triggers（结算伤害暴击、护甲减免、吸收/格挡/抵抗、伤害触发事件）
     else if (m_damage)
     {
         // Fill base damage struct (unitTarget - is real spell target)
@@ -1382,6 +1417,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     }
 }
 
+// 在目标命中时执行飞行后二次免疫/隐身/PVP校验、控制递减递增、光环容器创建与效果分发
 void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, TargetInfo* target, bool isReflected)
 {
     if (!unit)
@@ -1476,7 +1512,7 @@ void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, TargetInfo* target, 
     if (affectiveCaster && affectiveCaster != unit && m_caster)
         Unit::CasterHitTargetWithSpell(affectiveCaster, unit, m_spellInfo, m_IsTriggeredSpell);
 
-    // now apply all created auras
+    // now apply all created auras（应用递减后持续时间、心跳抵抗并正式挂载光环容器）
     if (m_spellAuraHolder)
     {
         // normally shouldn't happen
@@ -1524,6 +1560,7 @@ void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, TargetInfo* target, 
     }
 }
 
+// 执行无实体目标或纯坐标落点（Dest）类法术效果并触发相应 Proc
 void Spell::DoAllTargetlessEffects(bool dest)
 {
     uint32 procAttacker;
@@ -1576,6 +1613,7 @@ void Spell::DoAllTargetlessEffects(bool dest)
     }
 }
 
+// 对单个游戏对象目标执行全部法术效果并更新任务施法进度
 void Spell::DoAllEffectOnTarget(GOTargetInfo* target)
 {
     if (target->processed)                                  // Check target
@@ -1605,6 +1643,7 @@ void Spell::DoAllEffectOnTarget(GOTargetInfo* target)
     }
 }
 
+// 对单个物品目标执行全部法术效果（附魔、开锁、分解等）
 void Spell::DoAllEffectOnTarget(ItemTargetInfo* target)
 {
     uint32 effectMask = target->effectMask;
@@ -1618,6 +1657,7 @@ void Spell::DoAllEffectOnTarget(ItemTargetInfo* target)
     OnHit(SPELL_MISS_NONE);
 }
 
+// 对单个尸体目标执行全部法术效果（剥皮、复活等）
 void Spell::DoAllEffectOnTarget(CorpseTargetInfo* target)
 {
     uint32 effectMask = target->effectMask;
@@ -1632,6 +1672,7 @@ void Spell::DoAllEffectOnTarget(CorpseTargetInfo* target)
     ExecuteEffects(nullptr, nullptr, nullptr, effectMask);
 }
 
+// 在出手瞬间预先计算即时伤害/治疗效果与暴击结果（供飞行法术带出数值并维持延迟结算一致）
 void Spell::HandleImmediateEffectExecution(TargetInfo* target)
 {
     if (target->effectMask == 0)
@@ -1677,11 +1718,13 @@ void Spell::HandleImmediateEffectExecution(TargetInfo* target)
         target->isCrit = m_guaranteedCrit ? true : Unit::RollSpellCritOutcome(affectiveCaster, unit, m_spellSchoolMask, m_spellInfo);
 }
 
+// 判断当前法术是否受控制技能递减（DR）机制影响
 bool Spell::CanSpellDiminish() const
 {
     return m_caster && m_caster->IsPlayerControlled() || IsCreatureDRSpell(m_spellInfo);
 }
 
+// 初始化链式跳跃效果的伤害/治疗递减倍率掩码
 void Spell::InitializeDamageMultipliers()
 {
     for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -1700,6 +1743,7 @@ void Spell::InitializeDamageMultipliers()
     }
 }
 
+// 检查引导类法术的光环目标列表中是否仍存在有效的存活/允许目标
 bool Spell::IsAliveUnitPresentInTargetList()
 {
     // Not need check return true
@@ -1733,6 +1777,7 @@ bool Spell::IsAliveUnitPresentInTargetList()
     return channelAuraMask == 0;
 }
 
+// 校验目标的生死状态是否满足当前法术要求（存活、仅限死亡目标或允许死亡目标）
 bool Spell::IsValidDeadOrAliveTarget(Unit const* target) const
 {
     if (target->IsAlive())
@@ -1781,6 +1826,7 @@ class ChainHealingFullHealth
         }
 };
 
+// 检测是否存在磁力吸收目标（如根基图腾），若存在则将法术目标重定向至该图腾
 bool Spell::CheckAndAddMagnetTarget(Unit* target, SpellEffectIndex effIndex, bool targetB, TempTargetingData& data)
 {
     if (Unit* magnetTarget = m_caster->SelectMagnetTarget(target, this))
@@ -1795,6 +1841,7 @@ bool Spell::CheckAndAddMagnetTarget(Unit* target, SpellEffectIndex effIndex, boo
     return false;
 }
 
+// 根据隐式目标枚举类型（TARGET_*）收集对应单位、游戏对象、物品或坐标目标
 void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targetB, TempTargetingData& targetingData)
 {
     TempTargetData& data = targetingData.data[effIndex];
@@ -3009,6 +3056,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             tempUnitList.remove(m_caster);
 }
 
+// 查询数据库 spell_script_target 表并搜索满足距离与类型条件的脚本指定目标
 SpellCastResult Spell::CheckScriptTargeting(SpellEffectIndex effIndex, uint32 chainTargets, float radius, uint32 targetMode, UnitList& tempUnitList, GameObjectList& tempGOList)
 {
     SQLMultiStorage::SQLMSIteratorBounds<SpellTargetEntry> bounds = sSpellScriptTargetStorage.getBounds<SpellTargetEntry>(m_spellInfo->Id);
@@ -3233,6 +3281,7 @@ SpellCastResult Spell::CheckScriptTargeting(SpellEffectIndex effIndex, uint32 ch
     return SPELL_CAST_OK;
 }
 
+// 用 spell_script_target 配置过滤已收集的单位列表，保留匹配的条目或 GUID 目标
 void Spell::CheckSpellScriptTargets(SQLMultiStorage::SQLMSIteratorBounds<SpellTargetEntry>& bounds, UnitList& tempTargetUnitMap, UnitList& targetUnitMap, SpellEffectIndex effIndex)
 {
     for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
@@ -3291,6 +3340,7 @@ void Spell::CheckSpellScriptTargets(SQLMultiStorage::SQLMSIteratorBounds<SpellTa
     }
 }
 
+// 施法前严格校验；若为光环触发失败则清理对应引导光环时间
 SpellCastResult Spell::PreCastCheck(Aura* triggeredByAura /*= nullptr*/)
 {
     SpellCastResult result = CheckCast(true);
@@ -3307,6 +3357,7 @@ SpellCastResult Spell::PreCastCheck(Aura* triggeredByAura /*= nullptr*/)
     return SPELL_CAST_OK;
 }
 
+// 法术入口：绑定目标与异步 SpellEvent 事件，校验并发施法与前置条件后进入 Prepare 阶段
 SpellCastResult Spell::SpellStart(SpellCastTargets const* targets, Aura* triggeredByAura)
 {
     if (!m_trueCaster)
@@ -3345,6 +3396,7 @@ SpellCastResult Spell::SpellStart(SpellCastTargets const* targets, Aura* trigger
     return SPELL_CAST_OK;
 }
 
+// 施法准备阶段：计算施法时间、打断动作类光环、注册 GCD/当前施法槽、发送读条包并处理瞬发
 void Spell::Prepare()
 {
     m_spellState = SPELL_STATE_CASTING;
@@ -3417,6 +3469,7 @@ void Spell::Prepare()
     // will not show cast bar but will show effects at casting time etc
 }
 
+// 中断并取消当前法术：回滚修饰器充能、清理引导光环与召唤物、通知客户端失败并结束状态
 void Spell::cancel()
 {
     if (m_spellState == SPELL_STATE_FINISHED)
@@ -3476,6 +3529,7 @@ void Spell::cancel()
     }
 }
 
+// 正式出手施法：刷新指针、再次校验、填充目标、扣除消耗、发送 SMSG_SPELL_GO 并转入飞行或即时结算
 SpellCastResult Spell::cast(bool skipCheck)
 {
     SetExecutedCurrently(true);
@@ -3602,7 +3656,7 @@ SpellCastResult Spell::cast(bool skipCheck)
             if (Pet* pet = unitCaster->GetPet())
                 pet->Unsummon(PET_SAVE_NOT_IN_SLOT, unitCaster);
 
-    // CAST SPELL
+    // CAST SPELL（进入不可回退的出手阶段：记录冷却、扣除资源材料弹药并发送 SMSG_SPELL_GO）
     SendSpellCooldown();
     if (m_notifyAI && m_caster && m_caster->AI())
         m_caster->AI()->OnSpellCooldownAdded(m_spellInfo);
@@ -3628,7 +3682,7 @@ SpellCastResult Spell::cast(bool skipCheck)
     if (!procTarget)
         procTarget = m_caster;
 
-    // Okay, everything is prepared. Now we need to distinguish between immediate and evented delayed spells
+    // Okay, everything is prepared. Now we need to distinguish between immediate and evented delayed spells（区分弹道飞行延迟法术与即时结算法术）
     if (IsDelayedSpell())
     {
         // For channels, delay starts at channel end
@@ -3692,6 +3746,7 @@ SpellCastResult Spell::cast(bool skipCheck)
     return SPELL_CAST_OK;
 }
 
+// 立即结算非飞行法术的所有目标效果并结束施法（引导法术则保持至引导结束）
 void Spell::handle_immediate()
 {
     // AOE caps implementation - only works for non-travelling spells
@@ -3713,6 +3768,7 @@ void Spell::handle_immediate()
         finish();                                       // successfully finish spell cast (not last in case autorepeat or channel spell)
 }
 
+// 按弹道时间偏移逐批结算延迟命中目标与法术反射返回，全部结算完后返回 0
 uint64 Spell::handle_delayed(uint64 t_offset)
 {
     SpellModRAII spellModController(this, m_trueCaster->GetSpellModOwner(), true);
@@ -3776,6 +3832,7 @@ uint64 Spell::handle_delayed(uint64 t_offset)
     return next_time;
 }
 
+// 施法出手瞬间的核心处理：重置平砍、计算仇恨、执行无目标/物品效果、处理自身目标及启动引导
 void Spell::_handle_immediate_phase()
 {
     m_spellState = SPELL_STATE_LANDING;
@@ -3892,6 +3949,7 @@ void Spell::_handle_immediate_phase()
     }
 }
 
+// 收尾阶段：将汇总的法术执行日志发送给周围客户端
 void Spell::_handle_finish_phase()
 {
     // spell log
@@ -3899,6 +3957,7 @@ void Spell::_handle_finish_phase()
         m_spellLog.SendToSet();
 }
 
+// 处理 TBC AOE 伤害上限机制（当总伤害超过阈值时按目标数量均摊伤害）
 void Spell::ProcessAOECaps()
 {
     if (!m_spellInfo->HasAttribute(SPELL_ATTR_SS_AOE_CAP))
@@ -3928,6 +3987,7 @@ void Spell::ProcessAOECaps()
     }
 }
 
+// 关联触发本次施法的物品并标记为物品施法
 void Spell::SetCastItem(Item* item)
 {
     m_CastItem = item;
@@ -3935,6 +3995,7 @@ void Spell::SetCastItem(Item* item)
         m_itemCastSpell = true;
 }
 
+// 为施法者添加法术或物品冷却时间（跳过被动法术与仅引导触发）
 void Spell::SendSpellCooldown()
 {
     // (SPELL_ATTR_DISABLED_WHILE_ACTIVE) have infinity cooldown, (SPELL_ATTR_PASSIVE) passive cooldown at triggering
@@ -3944,6 +4005,7 @@ void Spell::SendSpellCooldown()
     m_trueCaster->AddCooldown(*m_spellInfo, m_CastItem ? m_CastItem->GetProto() : nullptr, m_spellInfo->HasAttribute(SPELL_ATTR_COOLDOWN_ON_EVENT));
 }
 
+// 驱动读条倒计时、移动/转向/距离/控制打断检测以及引导持续时间结束流转
 void Spell::update(uint32 difftime)
 {
     if (!m_updated)
@@ -4153,6 +4215,7 @@ void Spell::update(uint32 difftime)
     }
 }
 
+// 结束法术生命周期：返还生命吸取治疗、清理连击点、施放收尾触发法术并更新副本战斗记录
 void Spell::finish(bool ok)
 {
     if (!m_trueCaster)
@@ -4241,6 +4304,7 @@ void Spell::finish(bool ok)
     }
 }
 
+// 向玩家或宠物控制者发送施法结果（支持脚本覆写结果参数）
 void Spell::SendCastResult(SpellCastResult result) const
 {
     if (m_triggeredByAuraSpell) // should not report these
@@ -4272,6 +4336,7 @@ void Spell::SendCastResult(SpellCastResult result) const
     SendCastResult(recipient, m_spellInfo, m_cast_count, result, m_petCast, param1, param2);
 }
 
+// 构造并发送 SMSG_CAST_RESULT 或 SMSG_PET_CAST_FAILED 数据包（附带区域/技能/材料等失败原因参数）
 void Spell::SendCastResult(Player const* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result, bool isPetCastResult /*=false*/, uint32 param1 /*=0*/, uint32 param2 /*=0*/)
 {
     if (result == SPELL_CAST_OK)
@@ -4352,6 +4417,7 @@ void Spell::SendCastResult(Player const* caster, SpellEntry const* spellInfo, ui
     caster->GetSession()->SendPacket(data);
 }
 
+// 发送 SMSG_SPELL_START 通知周围客户端开始读条动画与目标信息
 void Spell::SendSpellStart() const
 {
     if (!IsNeedSendToClient())
@@ -4389,6 +4455,7 @@ void Spell::SendSpellStart() const
     m_trueCaster->SendMessageToSet(data, true);
 }
 
+// 发送 SMSG_SPELL_GO 通知周围客户端法术出手、弹药视觉及命中/未命中列表
 void Spell::SendSpellGo()
 {
     // not send invisible spell casting
@@ -4437,6 +4504,7 @@ void Spell::SendSpellGo()
     m_trueCaster->SendMessageToSet(data, true);
 }
 
+// 写入远程武器或投掷物弹药显示 ID 与栏位类型到施法数据包
 void Spell::WriteAmmoToPacket(WorldPacket& data) const
 {
     uint32 ammoInventoryType = 0;
@@ -4519,6 +4587,7 @@ void Spell::WriteAmmoToPacket(WorldPacket& data) const
     data << uint32(ammoInventoryType);
 }
 
+// 将最终命中与未命中目标列表写入 SMSG_SPELL_GO，并更新引导存活校验掩码
 void Spell::WriteSpellGoTargets(WorldPacket& data)
 {
     size_t count_pos = data.wpos();
@@ -4598,6 +4667,7 @@ void Spell::WriteSpellGoTargets(WorldPacket& data)
         m_needAliveTargetMask = 0;
 }
 
+// 向周围广播 SMSG_SPELL_FAILURE 与 SMSG_SPELL_FAILED_OTHER 通知施法被打断
 void Spell::SendInterrupted(SpellCastResult result) const
 {
     WorldPacket data(SMSG_SPELL_FAILURE, (8 + 4 + 1));
@@ -4612,6 +4682,7 @@ void Spell::SendInterrupted(SpellCastResult result) const
     m_trueCaster->SendMessageToSet(data, true);
 }
 
+// 发送 MSG_CHANNEL_UPDATE 更新引导剩余时间；时间为 0 时清理引导光环与状态
 void Spell::SendChannelUpdate(uint32 time, uint32 lastTick) const
 {
     if (time == 0)
@@ -4664,6 +4735,7 @@ void Spell::SendChannelUpdate(uint32 time, uint32 lastTick) const
     m_caster->SendMessageToSet(data, true);
 }
 
+// 发送 MSG_CHANNEL_START（含链式引导目标包）并设置单位当前引导法术与状态
 void Spell::SendChannelStart(uint32 duration)
 {
     WorldObject* target = nullptr;
@@ -4781,6 +4853,7 @@ void Spell::SendChannelStart(uint32 duration)
         m_caster->AI()->OnChannelStateChange(this, true, target);
 }
 
+// 消耗施法物品的使用次数并在次数耗尽时销毁消耗品
 void Spell::TakeCastItem()
 {
     if (!m_CastItem || !m_trueCaster->IsPlayer())
@@ -4846,6 +4919,7 @@ void Spell::TakeCastItem()
     }
 }
 
+// 扣除法术消耗的生命或能量，并在消耗法力时触发 5 秒回蓝抑制计时
 void Spell::TakePower()
 {
     if (m_CastItem || m_triggeredByAuraSpell || !m_caster || m_spellInfo->HasAttribute(SPELL_ATTR_EX6_DO_NOT_CONSUME_RESOURCES))
@@ -4873,6 +4947,7 @@ void Spell::TakePower()
         m_caster->SetLastManaUse();
 }
 
+// 扣除远程攻击消耗的箭矢、子弹或投掷武器耐久/数量
 void Spell::TakeAmmo() const
 {
     if (m_attackType == RANGED_ATTACK && m_caster->IsPlayer())
@@ -4904,6 +4979,7 @@ void Spell::TakeAmmo() const
 }
 
 
+// 扣除法术所需施法材料（处理物品既作施法媒介又作材料及免消耗天赋情况）
 void Spell::TakeReagents()
 {
     if (!m_trueCaster->IsPlayer() || m_spellInfo->HasAttribute(SPELL_ATTR_EX6_DO_NOT_CONSUME_RESOURCES))
@@ -4954,6 +5030,7 @@ void Spell::TakeReagents()
     }
 }
 
+// 根据 spell_threat 配置为命中目标或辅助目标产生额外威胁值
 void Spell::HandleThreatSpells()
 {
     if (m_UniqueTargetInfo.empty())
@@ -5024,6 +5101,7 @@ void Spell::HandleThreatSpells()
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell %u added an additional %f threat for %s " SIZEFMTD " target(s)", m_spellInfo->Id, threat, positive ? "assisting" : "harming", m_UniqueTargetInfo.size());
 }
 
+// 按掩码依次执行各效果索引并更新链式效果递减倍率
 void Spell::ExecuteEffects(Unit* unitTarget, Item* itemTarget, GameObject* GOTarget, uint32 effectMask)
 {
     Unit* affectiveCaster = GetAffectiveCaster();
@@ -5046,6 +5124,7 @@ void Spell::ExecuteEffects(Unit* unitTarget, Item* itemTarget, GameObject* GOTar
     }
 }
 
+// 校验独立触发率、计算效果基础点数、触发 OnEffectExecute 钩子并分派至 SpellEffects 处理器
 void Spell::HandleEffect(Unit* pUnitTarget, Item* pItemTarget, GameObject* pGOTarget, SpellEffectIndex i, float DamageMultiplier)
 {
     if (m_effectTriggerChance[i] != -1)
@@ -5093,6 +5172,7 @@ void Spell::HandleEffect(Unit* pUnitTarget, Item* pItemTarget, GameObject* pGOTa
     }
 }
 
+// 按法术 ID 添加当前法术成功结束后联动施放的触发法术
 void Spell::AddTriggeredSpell(uint32 spellId)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -5106,6 +5186,7 @@ void Spell::AddTriggeredSpell(uint32 spellId)
     m_TriggerSpells.push_back(spellInfo);
 }
 
+// 按法术 ID 添加命中目标前先行施加的预施放法术（如虚弱灵魂、自律等）
 void Spell::AddPrecastSpell(uint32 spellId)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
@@ -5119,6 +5200,7 @@ void Spell::AddPrecastSpell(uint32 spellId)
     m_preCastSpells.push_back(spellInfo);
 }
 
+// 对原始目标集施放全部已注册的收尾触发法术
 void Spell::CastTriggerSpells()
 {
     for (SpellInfoList::const_iterator si = m_TriggerSpells.begin(); si != m_TriggerSpells.end(); ++si)
@@ -5128,12 +5210,14 @@ void Spell::CastTriggerSpells()
     }
 }
 
+// 对指定命中目标施放全部已注册的预施放法术
 void Spell::CastPreCastSpells(Unit* target)
 {
     for (SpellInfoList::const_iterator si = m_preCastSpells.begin(); si != m_preCastSpells.end(); ++si)
         m_caster->CastSpell(target, (*si), TRIGGERED_OLD_TRIGGERED, m_CastItem);
 }
 
+// 获取指定效果已填充的首个命中单位，若无则回退到主显式目标
 Unit* Spell::GetPrefilledUnitTargetOrUnitTarget(SpellEffectIndex effIndex) const
 {
     for (const auto& itr : m_UniqueTargetInfo)
@@ -5143,6 +5227,7 @@ Unit* Spell::GetPrefilledUnitTargetOrUnitTarget(SpellEffectIndex effIndex) const
     return m_targets.getUnitTarget();
 }
 
+// 全面检查施法合法性：冷却、GCD、姿态、室内外、状态、视线距离、目标合法性、物品与能量等
 SpellCastResult Spell::CheckCast(bool strict)
 {
     // check cooldowns to prevent cheating (ignore passive spells, that client side visual only)
@@ -6520,6 +6605,7 @@ SpellCastResult Spell::CheckCast(bool strict)
     return OnCheckCast(strict);
 }
 
+// 检查施法者当前是否被眩晕、沉默、缴械/平心、恐惧、迷惑或魅惑限制施法
 SpellCastResult Spell::CheckCasterAuras(uint32& param1) const
 {
     if (m_ignoreCasterAuraState)
@@ -6617,6 +6703,7 @@ SpellCastResult Spell::CheckCasterAuras(uint32& param1) const
     return SPELL_CAST_OK;
 }
 
+// 检查施法者身上指定类型的控制光环是否全部可被当前法术解除
 bool Spell::CheckSpellCancelsAuraEffect(AuraType auraType, uint32& param1) const
 {
     Unit* unitCaster = (m_trueCaster->IsGameObject() ? nullptr : m_caster);
@@ -6644,6 +6731,7 @@ bool Spell::CheckSpellCancelsAuraEffect(AuraType auraType, uint32& param1) const
     return true;
 }
 
+// 检查当前法术是否可解除施法者身上的魅惑/控制效果
 bool Spell::CheckSpellCancelsCharm(uint32& param1) const
 {
     return CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_CHARM, param1) &&
@@ -6651,33 +6739,39 @@ bool Spell::CheckSpellCancelsCharm(uint32& param1) const
         CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_POSSESS, param1);
 }
 
+// 检查当前法术是否可解除施法者身上的眩晕效果
 bool Spell::CheckSpellCancelsStun(uint32& param1) const
 {
     return CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_STUN, param1);
 }
 
+// 检查当前法术是否可解除施法者身上的沉默效果
 bool Spell::CheckSpellCancelsSilence(uint32& param1) const
 {
     return CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_SILENCE, param1) &&
         CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_PACIFY_SILENCE, param1);
 }
 
+// 检查当前法术是否可解除施法者身上的平心/禁用动作效果
 bool Spell::CheckSpellCancelsPacify(uint32& param1) const
 {
     return CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_PACIFY, param1) &&
         CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_PACIFY_SILENCE, param1);
 }
 
+// 检查当前法术是否可解除施法者身上的恐惧效果
 bool Spell::CheckSpellCancelsFear(uint32& param1) const
 {
     return CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_FEAR, param1);
 }
 
+// 检查当前法术是否可解除施法者身上的迷惑效果
 bool Spell::CheckSpellCancelsConfuse(uint32& param1) const
 {
     return CheckSpellCancelsAuraEffect(SPELL_AURA_MOD_CONFUSE, param1);
 }
 
+// 计算法术最小/最大有效距离（含近战接触半径、移动宽容度及远程/天赋距离修饰）
 std::pair<float, float> Spell::GetMinMaxRange(bool strict)
 {
     float minRange = 0.0f, maxRange = 0.0f, rangeMod = 0.0f;
@@ -6737,6 +6831,7 @@ std::pair<float, float> Spell::GetMinMaxRange(bool strict)
     return { minRange, maxRange };
 }
 
+// 校验施法者与单位/游戏对象/地面目标之间的距离、朝向与视线（LOS）
 SpellCastResult Spell::CheckRange(bool strict)
 {
     // Don't check for instant cast spells
@@ -6802,6 +6897,7 @@ SpellCastResult Spell::CheckRange(bool strict)
     return SPELL_CAST_OK;
 }
 
+// 按物理或法术伤害类别叠加施法者伤害加成与目标易伤/减伤修饰
 int32 Spell::CalculateSpellEffectDamage(Unit* unitTarget, int32 damage, float damageDoneMod, SpellEffectIndex effectIndex)
 {
     // damage bonus (per damage class)
@@ -6833,6 +6929,7 @@ int32 Spell::CalculateSpellEffectDamage(Unit* unitTarget, int32 damage, float da
     return damage;
 }
 
+// 计算法术最终资源消耗（含基础值、百分比、学派减免、等级缩放及 SpellMod 修正）
 uint32 Spell::CalculatePowerCost(SpellEntry const* spellInfo, Unit* caster, Spell* spell, Item* castItem, bool finalUse)
 {
     // item cast not used power
@@ -6903,6 +7000,7 @@ uint32 Spell::CalculatePowerCost(SpellEntry const* spellInfo, Unit* caster, Spel
     return powerCost;
 }
 
+// 校验施法者当前生命或能量值是否足以支付法术消耗
 SpellCastResult Spell::CheckPower(bool strict)
 {
     // item or GO cast does not use power
@@ -6934,6 +7032,7 @@ SpellCastResult Spell::CheckPower(bool strict)
     return SPELL_CAST_OK;
 }
 
+// 判断是否豁免物品与材料需求（免消耗标志、仅引导或机器人辅助施法）
 bool Spell::IgnoreItemRequirements() const
 {
     if (m_channelOnly || m_ignoreCosts)
@@ -6966,6 +7065,7 @@ bool Spell::IgnoreItemRequirements() const
     return false;
 }
 
+// 校验施法所需背包材料、图腾、武器类型、附魔目标与贸易栏/物品目标合法性
 SpellCastResult Spell::CheckItems()
 {
     if (!m_trueCaster->IsPlayer())
@@ -7354,6 +7454,7 @@ SpellCastResult Spell::CheckItems()
     return SPELL_CAST_OK;
 }
 
+// 非引导法术受击退条处理：检查防退条抗性并按衰减阶梯延长剩余读条时间
 void Spell::Delayed()
 {
     if (!m_trueCaster->IsPlayer())
@@ -7392,6 +7493,7 @@ void Spell::Delayed()
     m_caster->SendMessageToSet(data, true);
 }
 
+// 引导法术受击缩条处理：缩短剩余引导时间并同步缩减目标光环与地面动态对象持续时间
 void Spell::DelayedChannel()
 {
     if (!m_trueCaster->IsPlayer() || getState() != SPELL_STATE_CHANNELING)
@@ -7438,6 +7540,7 @@ void Spell::DelayedChannel()
     }
 }
 
+// 根据 m_originalCasterGUID 重新解析真实施法者单位指针（支持游戏对象拥有者回溯）
 void Spell::UpdateOriginalCasterPointer()
 {
     if (m_originalCasterGUID == m_trueCaster->GetObjectGuid() && m_trueCaster->IsUnit())
@@ -7454,6 +7557,7 @@ void Spell::UpdateOriginalCasterPointer()
     }
 }
 
+// 在延迟回调或每帧更新前刷新原施法者及所有目标指针
 void Spell::UpdatePointers()
 {
     UpdateOriginalCasterPointer();
@@ -7461,6 +7565,7 @@ void Spell::UpdatePointers()
     m_targets.Update(m_trueCaster);
 }
 
+// 检查目标生物类型掩码（野兽、亡灵、恶魔等）是否符合法术要求
 bool Spell::CheckTargetCreatureType(Unit* target, SpellEntry const* spellInfo)
 {
     uint32 spellCreatureTargetMask = spellInfo->TargetCreatureType;
@@ -7478,6 +7583,7 @@ bool Spell::CheckTargetCreatureType(Unit* target, SpellEntry const* spellInfo)
     return true;
 }
 
+// 返回当前法术应占用的 Unit 施法槽位类型（近战、自动重复、引导或通用）
 CurrentSpellTypes Spell::GetCurrentContainer() const
 {
     if (IsNextMeleeSwingSpell(m_spellInfo))
@@ -7489,6 +7595,7 @@ CurrentSpellTypes Spell::GetCurrentContainer() const
     return (CURRENT_GENERIC_SPELL);
 }
 
+// 校验单个候选单位目标是否有效（生物类型、可选中、GM、Tapped、视线、生死及等级限制）
 bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, bool neutralFlagFill, CheckException exception) const
 {
     // Check targets for creature type mask and remove not appropriate (skip explicit self target case, maybe need other explicit targets)
@@ -7616,8 +7723,8 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, bool n
                     return false;
 
             if (target != m_trueCaster)
-				if (info.filter == TARGET_HELPFUL)
-					return false;
+                if (info.filter == TARGET_HELPFUL)
+                    return false;
         }
     }
 
@@ -7657,6 +7764,7 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, bool n
     return OnCheckTarget(target, eff);
 }
 
+// 判断本次施法是否需要向客户端发送 SMSG_SPELL_START / SMSG_SPELL_GO 数据包
 bool Spell::IsNeedSendToClient() const
 {
     if (m_channelOnly)
@@ -7666,11 +7774,13 @@ bool Spell::IsNeedSendToClient() const
            m_spellInfo->speed > 0.0f || (!m_triggeredByAuraSpell && !m_IsTriggeredSpell);
 }
 
+// 判断触发法术是否带有可忽略的冗余客户端消耗/读条数据
 bool Spell::IsTriggeredSpellWithRedundantCastTime() const
 {
     return m_IsTriggeredSpell && (m_spellInfo->manaCost || m_spellInfo->ManaCostPercentage);
 }
 
+// 检查指定效果索引是否已收集到至少一个命中单位、游戏对象或物品目标
 bool Spell::HaveTargetsForEffect(SpellEffectIndex effect) const
 {
     for (const auto& itr : m_UniqueTargetInfo)
@@ -7688,6 +7798,7 @@ bool Spell::HaveTargetsForEffect(SpellEffectIndex effect) const
     return false;
 }
 
+// SpellEvent 构造：使用带安全删除检查的 unique_trackable_ptr 托管 Spell 生命周期
 SpellEvent::SpellEvent(Spell* spell) : BasicEvent()
 {
     m_Spell.reset(spell, [](Spell* toDelete)
@@ -7704,12 +7815,14 @@ SpellEvent::SpellEvent(Spell* spell) : BasicEvent()
     });
 }
 
+// SpellEvent 析构：若法术尚未结束则强制取消
 SpellEvent::~SpellEvent()
 {
     if (m_Spell->getState() != SPELL_STATE_FINISHED)
         m_Spell->cancel();
 }
 
+// SpellEvent 调度执行：驱动 Spell::update、引导维持与弹道延迟分段结算，结束时自动释放
 bool SpellEvent::Execute(uint64 e_time, uint32 p_time)
 {
     // update spell if it is not finished
@@ -7796,6 +7909,7 @@ bool SpellEvent::Execute(uint64 e_time, uint32 p_time)
     return false;                                           // event not complete
 }
 
+// SpellEvent 中止回调：施法者销毁或清理事件队列时取消未完成法术
 void SpellEvent::Abort(uint64 /*e_time*/)
 {
     // oops, the spell we try to do is aborted
@@ -7803,11 +7917,13 @@ void SpellEvent::Abort(uint64 /*e_time*/)
         m_Spell->cancel();
 }
 
+// 检查关联 Spell 是否已可安全销毁
 bool SpellEvent::IsDeletable() const
 {
     return m_Spell->IsDeletable();
 }
 
+// 校验开锁/采矿/草药/拆陷阱所需的钥匙物品或专业技能等级
 SpellCastResult Spell::CanOpenLock(SpellEffectIndex effIndex, uint32 lockId, SkillType& skillId, int32& reqSkillValue, int32& skillValue)
 {
     if (!lockId)                                            // possible case for GO and maybe for items.
@@ -7881,12 +7997,14 @@ SpellCastResult Spell::CanOpenLock(SpellEffectIndex effIndex, uint32 lockId, Ski
  * @param spellTargets         Additional rules for target selection base at hostile/friendly state to original spell caster
  * @param originalCaster       If provided set alternative original caster, if =nullptr then used Spell::GetAffectiveObject() return
  */
+// 利用 SpellNotifierCreatureAndPlayer 网格访问器按中心与形状收集区域内的单位目标
 void Spell::FillAreaTargets(UnitList& targetUnitMap, float radius, float cone, SpellNotifyPushType pushType, SpellTargets spellTargets, WorldObject* originalCaster /*=nullptr*/)
 {
     MaNGOS::SpellNotifierCreatureAndPlayer notifier(*this, targetUnitMap, radius, cone, pushType, spellTargets, originalCaster);
     Cell::VisitAllObjects(notifier.GetCenterX(), notifier.GetCenterY(), m_trueCaster->GetMap(), notifier, radius);
 }
 
+// 收集指定成员所在小队或团队内满足半径与协助条件的成员（可选包含宠物与施法者自身）
 void Spell::FillRaidOrPartyTargets(UnitList& targetUnitMap, Unit* member, float radius, bool raid, bool withPets, bool withcaster) const
 {
     Player* pMember = member->GetBeneficiaryPlayer();
@@ -7931,6 +8049,7 @@ void Spell::FillRaidOrPartyTargets(UnitList& targetUnitMap, Unit* member, float 
     }
 }
 
+// 获取真实效果源对象（显式施法者、游戏对象或动态对象）
 WorldObject* Spell::GetAffectiveCasterObject() const
 {
     if (!m_originalCasterGUID)
@@ -7943,11 +8062,13 @@ WorldObject* Spell::GetAffectiveCasterObject() const
     return m_originalCaster;
 }
 
+// 获取有效单位施法者，若真实施法者为游戏对象则返回其拥有者
 Unit* Spell::GetAffectiveCasterOrOwner() const
 {
     return m_trueCaster->IsUnit() ? m_caster : static_cast<GameObject*>(m_trueCaster)->GetOwner();
 }
 
+// 获取用于视线/距离/网格搜索的施法对象（优先返回游戏对象或动态对象）
 WorldObject* Spell::GetCastingObject() const
 {
     if (m_trueCaster->IsGameObject())
@@ -7960,6 +8081,7 @@ WorldObject* Spell::GetCastingObject() const
     return m_trueCaster;
 }
 
+// 获取法术弹道飞行速度（支持父法术速度覆写；游戏对象与引导法术速度为 0）
 float Spell::GetSpellSpeed() const
 {
     if (m_trueCaster->IsGameObject()) // 4 spells in all of wotlk and doesnt seem like GO casting supports travelling delay from sniffs
@@ -7973,17 +8095,20 @@ float Spell::GetSpellSpeed() const
     return m_spellInfo->speed;
 }
 
+// 判断法术是否为需要按弹道速度延迟命中的非引导法术
 bool Spell::IsDelayedSpell() const
 {
     return GetSpellSpeed() > 0.0f && !IsChanneledSpell(m_spellInfo);
 }
 
+// 重置当前目标的累计伤害与治疗统计值
 void Spell::ResetEffectDamageAndHeal()
 {
     m_damage = 0;
     m_healing = 0;
 }
 
+// 判断命中效果掩码是否满足光环触发器的目标触发条件
 bool Spell::CanExecuteTriggersOnHit(uint8 effMask, SpellEntry const* triggeredByAura, bool auraTarget) const
 {
     bool onlyOnTarget = (triggeredByAura && triggeredByAura->HasAttribute(SPELL_ATTR_EX4_CLASS_TRIGGER_ONLY_ON_TARGET));
@@ -7995,6 +8120,7 @@ bool Spell::CanExecuteTriggersOnHit(uint8 effMask, SpellEntry const* triggeredBy
     return false;
 }
 
+// 处理施法者身上 SPELL_AURA_ADD_TARGET_TRIGGER 光环对每个命中目标的额外法术触发
 void Spell::ProcSpellAuraTriggers()
 {
     if (!m_caster)
@@ -8033,6 +8159,7 @@ void Spell::ProcSpellAuraTriggers()
     }
 }
 
+// 根据骑术等级与当前所在区域自动选择并施放对应的飞行或地面坐骑法术（如德鲁伊飞行形态/节日坐骑）
 void Spell::SelectMountByAreaAndSkill(Unit* target, SpellEntry const* parentSpell, uint32 spellId75, uint32 spellId150, uint32 spellId225, uint32 spellId300, uint32 spellIdSpecial)
 {
     if (!target || !target->IsPlayer())
@@ -8095,21 +8222,25 @@ void Spell::SelectMountByAreaAndSkill(Unit* target, SpellEntry const* parentSpel
         target->CastSpell(target, spellId75, TRIGGERED_NONE, nullptr, nullptr, ObjectGuid(), parentSpell);
 }
 
+// 判断法术当前是否可被战斗打断技能（脚踢/法术反制等）打断
 bool Spell::IsInterruptible() const
 {
     return (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_COMBAT) && m_spellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE && CanBeInterrupted();
 }
 
+// 记录本次施法已触发过的光环，防止同一施法重复触发
 void Spell::RegisterAuraProc(Aura* aura)
 {
     m_procOnceHolder.insert(aura);
 }
 
+// 查询指定光环在本次施法中是否已经触发过
 bool Spell::IsAuraProcced(Aura* aura)
 {
     return m_procOnceHolder.find(aura) != m_procOnceHolder.end();
 }
 
+// 清理施法物品指针并同步清空目标结构中的物品指针
 void Spell::ClearCastItem()
 {
     if (m_CastItem == m_targets.getItemTarget())
@@ -8118,6 +8249,7 @@ void Spell::ClearCastItem()
     m_CastItem = nullptr;
 }
 
+// 计算法术效果的作用半径、链式跳跃次数及移动 AOE 宽容增量，并调用脚本半径覆写钩子
 void Spell::GetSpellRangeAndRadius(SpellEffectIndex effIndex, float& radius, bool targetB, uint32& EffectChainTarget)
 {
     if (m_spellInfo->EffectRadiusIndex[effIndex])
@@ -8231,6 +8363,7 @@ void Spell::GetSpellRangeAndRadius(SpellEffectIndex effIndex, float& radius, boo
     OnRadiusCalculate(effIndex, targetB, radius);
 }
 
+// 获取锥形法术的扇面夹角弧度（默认 60 度）
 float Spell::GetCone()
 {
     if (SpellCone const* coneData = sSpellCones.LookupEntry<SpellCone>(sSpellMgr.GetFirstSpellInChain(m_spellInfo->Id)))
@@ -8239,6 +8372,7 @@ float Spell::GetCone()
     return M_PI_F / 3.f; // 60 degrees is default
 }
 
+// 触发法术反射双方（反射者与原施法者）的反射事件 Proc
 void Spell::ProcReflectProcs(TargetInfo& targetInfo)
 {
     if (!m_caster)
@@ -8255,6 +8389,7 @@ void Spell::ProcReflectProcs(TargetInfo& targetInfo)
         Unit::ProcDamageAndSpell(ProcSystemArguments(m_caster, m_caster, PROC_FLAG_NONE, PROC_FLAG_TAKE_HARMFUL_SPELL, PROC_EX_REFLECT, 1, 0, BASE_ATTACK, m_spellInfo));
 }
 
+// 按目标过滤策略（随机、最近、最远、最高/低血量、链式跳跃、优先低蓝/低血）裁剪目标列表
 void Spell::FilterTargetMap(UnitList& filterUnitList, SpellTargetFilterScheme scheme, uint32 chainTargetCount)
 {
     switch (scheme)
@@ -8451,6 +8586,7 @@ void Spell::FilterTargetMap(UnitList& filterUnitList, SpellTargetFilterScheme sc
     }
 }
 
+// 当效果无隐式目标类型时，依据法术 Targets 标志位从 m_targets 回填目标
 void Spell::FillFromTargetFlags(TempTargetingData& targetingData, SpellEffectIndex effIdx)
 {
     if (m_spellInfo->Targets & (TARGET_FLAG_UNIT_ALLY | TARGET_FLAG_UNIT | TARGET_FLAG_UNIT_ENEMY))
@@ -8487,6 +8623,7 @@ void Spell::FillFromTargetFlags(TempTargetingData& targetingData, SpellEffectInd
     }
 }
 
+// 判断效果是否已实现独立的伤害/治疗倍率计算（避免重复乘以 DamageMultiplier）
 bool Spell::IsEffectWithImplementedMultiplier(uint32 effectId) const
 {
     // TODO: extend this for all effects that do damage and healing
@@ -8508,6 +8645,7 @@ bool Spell::IsEffectWithImplementedMultiplier(uint32 effectId) const
     }
 }
 
+// 因施法失败或校验不通过而立即终止施法并通知客户端
 void Spell::StopCast(SpellCastResult castResult)
 {
     SendCastResult(castResult);
@@ -8517,29 +8655,34 @@ void Spell::StopCast(SpellCastResult castResult)
     SetExecutedCurrently(false);
 }
 
+// 覆写当前法术弹道飞行速度
 void Spell::SetOverridenSpeed(float newSpeed)
 {
     m_overrideSpeed = true;
     m_overridenSpeed = newSpeed;
 }
 
+// 设置指定效果索引的额外伤害完成倍率
 void Spell::SetDamageDoneModifier(float mod, SpellEffectIndex effIdx)
 {
     m_damageDoneMultiplier[effIdx] = mod;
 }
 
+// 脚本钩子：法术构造初始化完成后调用
 void Spell::OnInit()
 {
     if (SpellScript* script = GetSpellScript())
         script->OnInit(this);
 }
 
+// 脚本钩子：法术通过前置检查并成功开始读条/出手时调用
 void Spell::OnSuccessfulStart()
 {
     if (SpellScript* script = GetSpellScript())
         script->OnSuccessfulStart(this);
 }
 
+// 脚本钩子及特殊法术收尾处理（如消耗 Soul Charge 层数、无目标时移除 Fatal Attraction）
 void Spell::OnSuccessfulFinish()
 {
     switch (m_spellInfo->Id)
@@ -8571,6 +8714,7 @@ void Spell::OnSuccessfulFinish()
     }
 }
 
+// 脚本钩子与特殊法术施法条件检查（限定 NPC Entry、光环前提或飞行状态）
 SpellCastResult Spell::OnCheckCast(bool strict)
 {
     switch (m_spellInfo->Id)
@@ -8659,24 +8803,28 @@ SpellCastResult Spell::OnCheckCast(bool strict)
     return SPELL_CAST_OK;
 }
 
+// 脚本钩子：执行具体 SpellEffect 前调用
 void Spell::OnEffectExecute(SpellEffectIndex effIndex)
 {
     if (SpellScript* script = GetSpellScript())
         script->OnEffectExecute(this, effIndex);
 }
 
+// 脚本钩子：允许脚本动态调整计算后的法术作用半径
 void Spell::OnRadiusCalculate(SpellEffectIndex effIndex, bool targetB, float& radius)
 {
     if (SpellScript* script = GetSpellScript())
         script->OnRadiusCalculate(this, effIndex, targetB, radius);
 }
 
+// 脚本钩子：允许脚本修正法术目标落点（Dest）位置
 void Spell::OnDestTarget() // TODO
 {
     if (SpellScript* script = GetSpellScript())
         script->OnDestTarget(this);
 }
 
+// 脚本钩子与特殊游戏对象目标过滤（如仅命中未激活的游戏对象）
 bool Spell::OnCheckTarget(GameObject* target, SpellEffectIndex eff) const
 {
     switch (m_spellInfo->Id)
@@ -8693,6 +8841,7 @@ bool Spell::OnCheckTarget(GameObject* target, SpellEffectIndex eff) const
     return true;
 }
 
+// 脚本钩子与副本/Boss 特殊单位目标过滤（如奈法利安职业点名、卡拉赞/黑暗神殿/太阳井机制过滤）
 bool Spell::OnCheckTarget(Unit* target, SpellEffectIndex eff) const
 {
     switch (m_spellInfo->Id)
@@ -8806,7 +8955,7 @@ bool Spell::OnCheckTarget(Unit* target, SpellEffectIndex eff) const
                 return false;
             break;
         }
-        case 38782:											// Druid Signal
+        case 38782:                                         // Druid Signal（德鲁伊信号）
             if (target->HasAura(38776) || target->HasAura(39158)) // Don't target druids that have already been summoned by another player
                 return false;
             break;
@@ -8937,47 +9086,55 @@ bool Spell::OnCheckTarget(Unit* target, SpellEffectIndex eff) const
     return true;
 }
 
+// 脚本钩子：法术正式出手（发送 SMSG_SPELL_GO 后）调用
 void Spell::OnCast()
 {
     if (SpellScript* script = GetSpellScript())
         return script->OnCast(this);
 }
 
+// 脚本钩子：伤害/治疗/未命中结算完毕命中目标时调用
 void Spell::OnHit(SpellMissInfo missInfo)
 {
     if (SpellScript* script = GetSpellScript())
         return script->OnHit(this, missInfo);
 }
 
+// 脚本钩子：单目标所有结算与 Proc 触发完成后调用
 void Spell::OnAfterHit()
 {
     if (SpellScript* script = GetSpellScript())
         return script->OnAfterHit(this);
 }
 
+// 脚本钩子：法术召唤游戏对象生成后调用
 void Spell::OnSummon(GameObject* summon)
 {
     if (SpellScript* script = GetSpellScript())
         return script->OnSummon(this, summon);
 }
 
+// 脚本钩子：法术召唤生物生成后调用
 void Spell::OnSummon(Creature* summon)
 {
     if (SpellScript* script = GetSpellScript())
         return script->OnSummon(this, summon);
 }
 
+// 按倍率缩放当前目标总伤害（供 OnHit 脚本使用）
 void Spell::SetTotalTargetValueModifier(float modifier)
 {
     m_damage = float(m_damage) * modifier;
 }
 
+// SpellModRAII 构造：在顶层法术进入前向玩家绑定当前 SpellMod 归属法术
 SpellModRAII::SpellModRAII(Spell* spell, Player* modOwner, bool success, bool onlySave) : m_spell(spell), m_modOwner(modOwner), m_success(success), m_onlySave(onlySave)
 {
     if (m_modOwner && !modOwner->GetSpellModSpell()) // only if first spell in depth
         m_modOwner->SetSpellModSpell(spell);
 }
 
+// SpellModRAII 析构：根据施法是否成功决定正式扣除或回滚已标记的 SpellMod 光环充能
 SpellModRAII::~SpellModRAII()
 {
     if (m_modOwner && m_modOwner->GetSpellModSpell() == m_spell) // only if this spell is toplevel
@@ -8993,6 +9150,7 @@ SpellModRAII::~SpellModRAII()
     }
 }
 
+// 返回指向当前 Spell 实例的弱引用指针（依托 SpellEvent 追踪生命周期）
 MaNGOS::unique_weak_ptr<Spell> Spell::GetWeakPtr() const
 {
     return m_spellEvent->GetSpellWeakPtr();

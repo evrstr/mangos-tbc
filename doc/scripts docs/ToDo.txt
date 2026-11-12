@@ -1,9 +1,16 @@
 = ScriptDev2 TODO Points =
+= ScriptDev2 待办事项 =
 
 == TBC content ==
+== TBC（燃烧的远征）内容 ==
 * Various quests which still require script (examples: 5821, 5943, 10985)
+  （仍有部分任务需要编写脚本，例如：5821、5943、10985）
 * Hyjal Summit - Optimize game event.
+  （海加尔峰 - 优化游戏事件）
 * Black Temple - Teron Gorefiend script improvement (requires core proper mind control support)
+  （黑暗神殿 - 塔隆·血魔脚本改进，需要核心提供完善的精神控制支持）
 
 == Classic content ==
+== Classic（经典旧世）内容 ==
 * Various quests which still require script (examples: 5721)
+  （仍有部分任务需要编写脚本，例如：5721）

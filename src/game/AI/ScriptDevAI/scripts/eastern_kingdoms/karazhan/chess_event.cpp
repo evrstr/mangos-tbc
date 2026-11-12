@@ -21,37 +21,40 @@ SDComment: Chess AI could use some improvements.
 SDCategory: Karazhan
 EndScriptData */
 
+// 麦迪文的象棋遭遇战（Chess Event）逻辑管理（联盟与部落双方棋子 AI 与法力充能）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // texts
-    EMOTE_LIFT_CURSE                = -1532131,
-    EMOTE_CHEAT                     = -1532132,
+    EMOTE_LIFT_CURSE                = -1532131,             // lift诅咒 表情动作 ID
+    EMOTE_CHEAT                     = -1532132,             // cheat 表情动作 ID
 
-    SOUND_ID_GAME_BEGIN             = 10338,
-    SOUND_ID_LOSE_PAWN_PLAYER_1     = 10339,
-    SOUND_ID_LOSE_PAWN_PLAYER_2     = 10340,
-    SOUND_ID_LOSE_PAWN_PLAYER_3     = 10341,
-    SOUND_ID_LOSE_PAWN_MEDIVH_1     = 10342,
-    SOUND_ID_LOSE_PAWN_MEDIVH_2     = 10343,
-    SOUND_ID_LOSE_PAWN_MEDIVH_3     = 10344,
-    SOUND_ID_LOSE_ROOK_PLAYER       = 10345,
-    SOUND_ID_LOSE_ROOK_MEDIVH       = 10346,
-    SOUND_ID_LOSE_BISHOP_PLAYER     = 10347,
-    SOUND_ID_LOSE_BISHOP_MEDIVH     = 10348,
-    SOUND_ID_LOSE_KNIGHT_PLAYER     = 10349,
-    SOUND_ID_LOSE_KNIGHT_MEDIVH     = 10350,
-    SOUND_ID_LOSE_QUEEN_PLAYER      = 10351,
-    SOUND_ID_LOSE_QUEEN_MEDIVH      = 10352,
-    SOUND_ID_CHECK_PLAYER           = 10353,
-    SOUND_ID_CHECK_MEDIVH           = 10354,
-    SOUND_ID_WIN_PLAYER             = 10355,
-    SOUND_ID_WIN_MEDIVH             = 10356,
-    SOUND_ID_CHEAT_1                = 10357,
-    SOUND_ID_CHEAT_2                = 10358,
-    SOUND_ID_CHEAT_3                = 10359,
+    SOUND_ID_GAME_BEGIN             = 10338,                // IDgamebegin 音效 ID
+    SOUND_ID_LOSE_PAWN_PLAYER_1     = 10339,                // IDlosepawnplayer1 音效 ID
+    SOUND_ID_LOSE_PAWN_PLAYER_2     = 10340,                // IDlosepawnplayer2 音效 ID
+    SOUND_ID_LOSE_PAWN_PLAYER_3     = 10341,                // IDlosepawnplayer3 音效 ID
+    SOUND_ID_LOSE_PAWN_MEDIVH_1     = 10342,                // IDlosepawnmedivh1 音效 ID
+    SOUND_ID_LOSE_PAWN_MEDIVH_2     = 10343,                // IDlosepawnmedivh2 音效 ID
+    SOUND_ID_LOSE_PAWN_MEDIVH_3     = 10344,                // IDlosepawnmedivh3 音效 ID
+    SOUND_ID_LOSE_ROOK_PLAYER       = 10345,                // IDloserookplayer 音效 ID
+    SOUND_ID_LOSE_ROOK_MEDIVH       = 10346,                // IDloserookmedivh 音效 ID
+    SOUND_ID_LOSE_BISHOP_PLAYER     = 10347,                // IDlosebishopplayer 音效 ID
+    SOUND_ID_LOSE_BISHOP_MEDIVH     = 10348,                // IDlosebishopmedivh 音效 ID
+    SOUND_ID_LOSE_KNIGHT_PLAYER     = 10349,                // IDlose骑士player 音效 ID
+    SOUND_ID_LOSE_KNIGHT_MEDIVH     = 10350,                // IDlose骑士medivh 音效 ID
+    SOUND_ID_LOSE_QUEEN_PLAYER      = 10351,                // IDlosequeenplayer 音效 ID
+    SOUND_ID_LOSE_QUEEN_MEDIVH      = 10352,                // IDlosequeenmedivh 音效 ID
+    SOUND_ID_CHECK_PLAYER           = 10353,                // IDcheckplayer 音效 ID
+    SOUND_ID_CHECK_MEDIVH           = 10354,                // IDcheckmedivh 音效 ID
+    SOUND_ID_WIN_PLAYER             = 10355,                // IDwinplayer 音效 ID
+    SOUND_ID_WIN_MEDIVH             = 10356,                // IDwinmedivh 音效 ID
+    SOUND_ID_CHEAT_1                = 10357,                // IDcheat1 音效 ID
+    SOUND_ID_CHEAT_2                = 10358,                // IDcheat2 音效 ID
+    SOUND_ID_CHEAT_3                = 10359,                // IDcheat3 音效 ID
 
     // movement spells
     SPELL_MOVE_GENERIC              = 30012,                    // spell which sends the signal to move - handled in core
@@ -75,7 +78,7 @@ enum
     SPELL_IS_SQUARE_USED            = 39400,                    // cast when a chess piece moves to another square
     // SPELL_SQUARED_OCCUPIED       = 39399,                    // triggered by 39400; used to check if the square is occupied (if hits a target); Missing in 2.4.3
 
-    // generic spells
+    // generic spells (通用法术)
     SPELL_IN_GAME                   = 30532,                    // teleport player near the entrance
     SPELL_CONTROL_PIECE             = 30019,                    // control a chess piece
     SPELL_RECENTLY_IN_GAME          = 30529,                    // debuff on player after chess piece uncharm
@@ -94,115 +97,116 @@ enum
     // SPELL_POST_MOVE_FACING       = 38011,                    // not used
 
     // melee action spells
-    SPELL_MELEE_FOOTMAN             = 32227,
-    SPELL_MELEE_WATER_ELEM          = 37142,
-    SPELL_MELEE_CHARGER             = 37143,
-    SPELL_MELEE_CLERIC              = 37147,
-    SPELL_MELEE_CONJURER            = 37149,
-    SPELL_MELEE_KING_LLANE          = 37150,
-    SPELL_MELEE_GRUNT               = 32228,
-    SPELL_MELEE_DAEMON              = 37220,
-    SPELL_MELEE_NECROLYTE           = 37337,
-    SPELL_MELEE_WOLF                = 37339,
-    SPELL_MELEE_WARLOCK             = 37345,
-    SPELL_MELEE_WARCHIEF_BLACKHAND  = 37348,
+    SPELL_MELEE_FOOTMAN             = 32227,                // meleefootman 法术 ID
+    SPELL_MELEE_WATER_ELEM          = 37142,                // meleewaterelem 法术 ID
+    SPELL_MELEE_CHARGER             = 37143,                // meleecharger 法术 ID
+    SPELL_MELEE_CLERIC              = 37147,                // meleecleric 法术 ID
+    SPELL_MELEE_CONJURER            = 37149,                // meleeconjurer 法术 ID
+    SPELL_MELEE_KING_LLANE          = 37150,                // meleekingllane 法术 ID
+    SPELL_MELEE_GRUNT               = 32228,                // melee步兵 法术 ID
+    SPELL_MELEE_DAEMON              = 37220,                // meleedaemon 法术 ID
+    SPELL_MELEE_NECROLYTE           = 37337,                // meleenecrolyte 法术 ID
+    SPELL_MELEE_WOLF                = 37339,                // meleewolf 法术 ID
+    SPELL_MELEE_WARLOCK             = 37345,                // melee术士 法术 ID
+    SPELL_MELEE_WARCHIEF_BLACKHAND  = 37348,                // meleewarchief黑手 法术 ID
 
     // cheat spells
     SPELL_HAND_OF_MEDIVH_HORDE      = 39338,                    // triggers 39339
     SPELL_HAND_OF_MEDIVH_ALLIANCE   = 39342,                    // triggers 39339
     SPELL_FURY_OF_MEDIVH_HORDE      = 39341,                    // triggers 39343
     SPELL_FURY_OF_MEDIVH_ALLIANCE   = 39344,                    // triggers 39345
-    SPELL_FURY_OF_MEDIVH_AURA       = 39383,
+    SPELL_FURY_OF_MEDIVH_AURA       = 39383,                // furyofmedivh光环 法术 ID
     // SPELL_FULL_HEAL_HORDE        = 39334,                    // spells are not confirmed (probably removed after 2.4.3)
     // SPELL_FULL_HEAL_ALLIANCE     = 39335,
 
     // spells used by the chess npcs
     SPELL_HEROISM                   = 37471,                    // human king
-    SPELL_SWEEP                     = 37474,
+    SPELL_SWEEP                     = 37474,                // 横扫 法术 ID
     SPELL_BLOODLUST                 = 37472,                    // orc king
-    SPELL_CLEAVE                    = 37476,
+    SPELL_CLEAVE                    = 37476,                // 顺劈斩 法术 ID
     SPELL_HEROIC_BLOW               = 37406,                    // human pawn
-    SPELL_SHIELD_BLOCK              = 37414,
+    SPELL_SHIELD_BLOCK              = 37414,                // 护盾block 法术 ID
     SPELL_VICIOUS_STRIKE            = 37413,                    // orc pawn
-    SPELL_WEAPON_DEFLECTION         = 37416,
-    SPELL_SMASH                     = 37453,                    // human knight
-    SPELL_STOMP                     = 37498,
-    SPELL_BITE                      = 37454,                    // orc knight
-    SPELL_HOWL                      = 37502,
+    SPELL_WEAPON_DEFLECTION         = 37416,                // weapondeflection 法术 ID
+    SPELL_SMASH                     = 37453,                    // human knight (human骑士)
+    SPELL_STOMP                     = 37498,                // stomp 法术 ID
+    SPELL_BITE                      = 37454,                    // orc knight (orc骑士)
+    SPELL_HOWL                      = 37502,                // howl 法术 ID
     SPELL_ELEMENTAL_BLAST           = 37462,                    // human queen
-    SPELL_RAIN_OF_FIRE              = 37465,
+    SPELL_RAIN_OF_FIRE              = 37465,                // rainof火焰 法术 ID
     SPELL_FIREBALL                  = 37463,                    // orc queen
     // SPELL_POISON_CLOUD           = 37469,
     SPELL_POISON_CLOUD_ACTION       = 37775,                    // triggers 37469 - acts as a target selector spell for orc queen
     SPELL_HEALING                   = 37455,                    // human bishop
-    SPELL_HOLY_LANCE                = 37459,
+    SPELL_HOLY_LANCE                = 37459,                // 神圣lance 法术 ID
     // SPELL_SHADOW_MEND            = 37456,                    // orc bishop
     SPELL_SHADOW_MEND_ACTION        = 37824,                    // triggers 37456 - acts as a target selector spell for orc bishop
-    SPELL_SHADOW_SPEAR              = 37461,
+    SPELL_SHADOW_SPEAR              = 37461,                // 暗影spear 法术 ID
     SPELL_GEYSER                    = 37427,                    // human rook
-    SPELL_WATER_SHIELD              = 37432,
+    SPELL_WATER_SHIELD              = 37432,                // water护盾 法术 ID
     SPELL_HELLFIRE_CHESS            = 37428,                    // orc rook
-    SPELL_FIRE_SHIELD               = 37434,
+    SPELL_FIRE_SHIELD               = 37434,                // 火焰护盾 法术 ID
 
     // spells used to transform side trigger when npc dies
-    SPELL_TRANSFORM_FOOTMAN         = 39350,
-    SPELL_TRANSFORM_CHARGER         = 39352,
-    SPELL_TRANSFORM_CLERIC          = 39353,
-    SPELL_TRANSFORM_WATER_ELEM      = 39354,
-    SPELL_TRANSFORM_CONJURER        = 39355,
-    SPELL_TRANSFORM_KING_LLANE      = 39356,
-    SPELL_TRANSFORM_GRUNT           = 39357,
-    SPELL_TRANSFORM_WOLF            = 39358,
-    SPELL_TRANSFORM_NECROLYTE       = 39359,
-    SPELL_TRANSFORM_DAEMON          = 39360,
-    SPELL_TRANSFORM_WARLOCK         = 39361,
-    SPELL_TRANSFORM_BLACKHAND       = 39362,
+    SPELL_TRANSFORM_FOOTMAN         = 39350,                // 变形footman 法术 ID
+    SPELL_TRANSFORM_CHARGER         = 39352,                // 变形charger 法术 ID
+    SPELL_TRANSFORM_CLERIC          = 39353,                // 变形cleric 法术 ID
+    SPELL_TRANSFORM_WATER_ELEM      = 39354,                // 变形waterelem 法术 ID
+    SPELL_TRANSFORM_CONJURER        = 39355,                // 变形conjurer 法术 ID
+    SPELL_TRANSFORM_KING_LLANE      = 39356,                // 变形kingllane 法术 ID
+    SPELL_TRANSFORM_GRUNT           = 39357,                // 变形步兵 法术 ID
+    SPELL_TRANSFORM_WOLF            = 39358,                // 变形wolf 法术 ID
+    SPELL_TRANSFORM_NECROLYTE       = 39359,                // 变形necrolyte 法术 ID
+    SPELL_TRANSFORM_DAEMON          = 39360,                // 变形daemon 法术 ID
+    SPELL_TRANSFORM_WARLOCK         = 39361,                // 变形术士 法术 ID
+    SPELL_TRANSFORM_BLACKHAND       = 39362,                // 变形黑手 法术 ID
 
     // generic npcs
     // NPC_SQUARE_OUTSIDE_B         = 17316,                    // used to check the interior of the board
     // NPC_SQUARE_OUTSIDE_W         = 17317,                    // not used in our script; keep for reference only
     NPC_FURY_MEDIVH_VISUAL          = 22521,                    // has aura 39383
 
-    // gossip texts
-    GOSSIP_ITEM_ORC_GRUNT           = -3532006,
-    GOSSIP_ITEM_ORC_WOLF            = -3532007,
-    GOSSIP_ITEM_SUMMONED_DEAMON     = -3532008,
-    GOSSIP_ITEM_ORC_WARLOCK         = -3532009,
-    GOSSIP_ITEM_ORC_NECROLYTE       = -3532010,
-    GOSSIP_ITEM_WARCHIEF_BLACKHAND  = -3532011,
-    GOSSIP_ITEM_HUMAN_FOOTMAN       = -3532012,
-    GOSSIP_ITEM_HUMAN_CHARGER       = -3532013,
-    GOSSIP_ITEM_WATER_ELEMENTAL     = -3532014,
-    GOSSIP_ITEM_HUMAN_CONJURER      = -3532015,
-    GOSSIP_ITEM_HUMAN_CLERIC        = -3532016,
-    GOSSIP_ITEM_KING_LLANE          = -3532017,
-    GOSSIP_ITEM_RESET_BOARD         = -3532018,
+    // gossip texts (对话texts)
+    GOSSIP_ITEM_ORC_GRUNT           = -3532006,             // 物品orc步兵 对话菜单选项 ID
+    GOSSIP_ITEM_ORC_WOLF            = -3532007,             // 物品orcwolf 对话菜单选项 ID
+    GOSSIP_ITEM_SUMMONED_DEAMON     = -3532008,             // 物品summoneddeamon 对话菜单选项 ID
+    GOSSIP_ITEM_ORC_WARLOCK         = -3532009,             // 物品orc术士 对话菜单选项 ID
+    GOSSIP_ITEM_ORC_NECROLYTE       = -3532010,             // 物品orcnecrolyte 对话菜单选项 ID
+    GOSSIP_ITEM_WARCHIEF_BLACKHAND  = -3532011,             // 物品warchief黑手 对话菜单选项 ID
+    GOSSIP_ITEM_HUMAN_FOOTMAN       = -3532012,             // 物品humanfootman 对话菜单选项 ID
+    GOSSIP_ITEM_HUMAN_CHARGER       = -3532013,             // 物品humancharger 对话菜单选项 ID
+    GOSSIP_ITEM_WATER_ELEMENTAL     = -3532014,             // 物品water元素 对话菜单选项 ID
+    GOSSIP_ITEM_HUMAN_CONJURER      = -3532015,             // 物品humanconjurer 对话菜单选项 ID
+    GOSSIP_ITEM_HUMAN_CLERIC        = -3532016,             // 物品humancleric 对话菜单选项 ID
+    GOSSIP_ITEM_KING_LLANE          = -3532017,             // 物品kingllane 对话菜单选项 ID
+    GOSSIP_ITEM_RESET_BOARD         = -3532018,             // 物品重置board 对话菜单选项 ID
 
-    // gossip menu
-    GOSSIP_MENU_ID_GRUNT            = 10425,
-    GOSSIP_MENU_ID_WOLF             = 10439,
-    GOSSIP_MENU_ID_WARLOCK          = 10440,
-    GOSSIP_MENU_ID_NECROLYTE        = 10434,
-    GOSSIP_MENU_ID_DEAMON           = 10426,
-    GOSSIP_MENU_ID_BLACKHAND        = 10442,
-    GOSSIP_MENU_ID_FOOTMAN          = 8952,
-    GOSSIP_MENU_ID_CHARGER          = 10414,
-    GOSSIP_MENU_ID_CONJURER         = 10417,
-    GOSSIP_MENU_ID_CLERIC           = 10416,
-    GOSSIP_MENU_ID_ELEMENTAL        = 10413,
-    GOSSIP_MENU_ID_LLANE            = 10418,
-    GOSSIP_MENU_ID_MEDIVH           = 10506,
-    GOSSIP_MENU_ID_MEDIVH_BEATEN    = 10718,
+    // gossip menu (对话menu)
+    GOSSIP_MENU_ID_GRUNT            = 10425,                // menuID步兵 对话菜单选项 ID
+    GOSSIP_MENU_ID_WOLF             = 10439,                // menuIDwolf 对话菜单选项 ID
+    GOSSIP_MENU_ID_WARLOCK          = 10440,                // menuID术士 对话菜单选项 ID
+    GOSSIP_MENU_ID_NECROLYTE        = 10434,                // menuIDnecrolyte 对话菜单选项 ID
+    GOSSIP_MENU_ID_DEAMON           = 10426,                // menuIDdeamon 对话菜单选项 ID
+    GOSSIP_MENU_ID_BLACKHAND        = 10442,                // menuID黑手 对话菜单选项 ID
+    GOSSIP_MENU_ID_FOOTMAN          = 8952,                 // menuIDfootman 对话菜单选项 ID
+    GOSSIP_MENU_ID_CHARGER          = 10414,                // menuIDcharger 对话菜单选项 ID
+    GOSSIP_MENU_ID_CONJURER         = 10417,                // menuIDconjurer 对话菜单选项 ID
+    GOSSIP_MENU_ID_CLERIC           = 10416,                // menuIDcleric 对话菜单选项 ID
+    GOSSIP_MENU_ID_ELEMENTAL        = 10413,                // menuID元素 对话菜单选项 ID
+    GOSSIP_MENU_ID_LLANE            = 10418,                // menuIDllane 对话菜单选项 ID
+    GOSSIP_MENU_ID_MEDIVH           = 10506,                // menuIDmedivh 对话菜单选项 ID
+    GOSSIP_MENU_ID_MEDIVH_BEATEN    = 10718,                // menuIDmedivhbeaten 对话菜单选项 ID
 
     // misc
-    TARGET_TYPE_RANDOM              = 1,
-    TARGET_TYPE_FRIENDLY            = 2,
+    TARGET_TYPE_RANDOM              = 1,                    // 遭遇战类型random 标识 ID
+    TARGET_TYPE_FRIENDLY            = 2,                    // 遭遇战类型friendly 标识 ID
 };
 
 /*######
 ## npc_echo_of_medivh
 ######*/
 
+// 随从/NPC AI：ofmedivh（echo_of_medivh）
 struct npc_echo_of_medivhAI : public ScriptedAI
 {
     npc_echo_of_medivhAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -213,8 +217,9 @@ struct npc_echo_of_medivhAI : public ScriptedAI
 
     instance_karazhan* m_pInstance;
 
-    uint32 m_uiCheatTimer;
+    uint32 m_uiCheatTimer;                                  // Cheat 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiCheatTimer = 90000;
@@ -223,12 +228,14 @@ struct npc_echo_of_medivhAI : public ScriptedAI
     void MoveInLineOfSight(Unit* /*pWho*/) override { }
     void AttackStart(Unit* /*pWho*/) override { }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_FURY_MEDIVH_VISUAL)
             pSummoned->CastSpell(pSummoned, SPELL_FURY_OF_MEDIVH_AURA, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_pInstance || m_pInstance->GetData(TYPE_CHESS) != IN_PROGRESS)
@@ -254,11 +261,13 @@ struct npc_echo_of_medivhAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_echo_of_medivh
 UnitAI* GetAI_npc_echo_of_medivh(Creature* pCreature)
 {
     return new npc_echo_of_medivhAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_echo_of_medivh
 bool GossipHello_npc_echo_of_medivh(Player* pPlayer, Creature* pCreature)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
@@ -297,6 +306,7 @@ bool GossipSelect_npc_echo_of_medivh(Player* pPlayer, Creature* pCreature, uint3
 ## npc_chess_piece_generic
 ######*/
 
+// 随从/NPC AI：piecegeneric（chess_piece_generic）
 struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
 {
     npc_chess_piece_genericAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
@@ -308,15 +318,16 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
 
     instance_karazhan* m_pInstance;
 
-    ObjectGuid m_currentSquareGuid;
+    ObjectGuid m_currentSquareGuid;                         // currentSquare 实体 GUID
 
-    uint32 m_uiMoveTimer;
-    uint32 m_uiMoveCommandTimer;
-    uint32 m_uiSpellCommandTimer;
+    uint32 m_uiMoveTimer;                                   // Move 技能计时器
+    uint32 m_uiMoveCommandTimer;                            // MoveCommand 技能计时器
+    uint32 m_uiSpellCommandTimer;                           // SpellCommand 技能计时器
 
-    bool m_bIsPrimarySpell;
+    bool m_bIsPrimarySpell;                                 // IsPrimarySpell 状态标记
     float m_fCurrentOrientation;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiMoveTimer = 0;
@@ -338,6 +349,7 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
     // no default attacking or evading
     void MoveInLineOfSight(Unit* /*pWho*/) override { }
     void AttackStart(Unit* /*pWho*/) override { }
+    // 进入脱战闪避模式
     void EnterEvadeMode() override { }
     bool CanHandleCharm() const override { return true; }
 
@@ -368,7 +380,7 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
             m_fCurrentOrientation = m_creature->GetOrientation();
             m_uiMoveTimer = 2000;
         }
-        // handle encounter start event
+        // handle encounter start event (handleencounter开始事件)
         else if (eventType == AI_EVENT_CUSTOM_B)
         {
             // reset the variables
@@ -389,6 +401,7 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
             m_fCurrentOrientation = m_creature->GetOrientation();
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
     {
         if (uiMotionType != POINT_MOTION_TYPE || !uiPointId)
@@ -404,6 +417,7 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
             
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         // do a soft reset when the piece is controlled
@@ -516,6 +530,7 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
     virtual uint32 DoCastPrimarySpell() { return 5000; }
     virtual uint32 DoCastSecondarySpell() { return 5000; }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_pInstance || (m_pInstance->GetData(TYPE_CHESS) != IN_PROGRESS && m_pInstance->GetData(TYPE_CHESS) != SPECIAL))
@@ -544,7 +559,7 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
                         //    case NPC_HUMAN_CHARGER:
                         //    case NPC_ORC_WOLF:
                         //        uiMoveSpell = SPELL_MOVE_2;
-                        //        break;
+                        // break; (越狱)
                         //}
                         //DoCastSpellIfCan(m_creature, uiMoveSpell, CAST_TRIGGERED);
 
@@ -638,7 +653,7 @@ struct ChessMoveToSquare : public SpellScript
     }
 };
 
-// 32225 - Karazhan - Chess NPC AI, Take action (melee)
+// 32225 - Karazhan - Chess NPC AI, Take action (melee) (32225 - Karazhan - Chess NPC AI, Take 动作 (melee))
 struct KarazhanChessNpcAiTakeActionMelee : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -686,6 +701,7 @@ struct ChessFaceSquare : public SpellScript
 ## npc_king_llane
 ######*/
 
+// 随从/NPC AI：llane（king_llane）
 struct npc_king_llaneAI : public npc_chess_piece_genericAI
 {
     npc_king_llaneAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature)
@@ -694,7 +710,7 @@ struct npc_king_llaneAI : public npc_chess_piece_genericAI
         Reset();
     }
 
-    bool m_bIsAttacked;
+    bool m_bIsAttacked;                                     // IsAttacked 状态标记
 
     void DamageTaken(Unit* dealer, uint32& damage, DamageEffectType /*damagetype*/, SpellEntry const* /*spellInfo*/) override
     {
@@ -712,6 +728,7 @@ struct npc_king_llaneAI : public npc_chess_piece_genericAI
         m_bIsAttacked = true;
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -750,7 +767,7 @@ struct npc_king_llaneAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_HEROISM);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_HEROISM);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -764,7 +781,7 @@ struct npc_king_llaneAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_SWEEP);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_SWEEP);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -773,11 +790,13 @@ struct npc_king_llaneAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_king_llane
 UnitAI* GetAI_npc_king_llane(Creature* pCreature)
 {
     return new npc_king_llaneAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_king_llane
 bool GossipHello_npc_king_llane(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -797,6 +816,7 @@ bool GossipHello_npc_king_llane(Player* pPlayer, Creature* pCreature)
 ## npc_warchief_blackhand
 ######*/
 
+// 随从/NPC AI：黑手（warchief_blackhand）
 struct npc_warchief_blackhandAI : public npc_chess_piece_genericAI
 {
     npc_warchief_blackhandAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature)
@@ -805,7 +825,7 @@ struct npc_warchief_blackhandAI : public npc_chess_piece_genericAI
         Reset();
     }
 
-    bool m_bIsAttacked;
+    bool m_bIsAttacked;                                     // IsAttacked 状态标记
 
     void DamageTaken(Unit* dealer, uint32& damage, DamageEffectType /*damagetype*/, SpellEntry const* /*spellInfo*/) override
     {
@@ -823,6 +843,7 @@ struct npc_warchief_blackhandAI : public npc_chess_piece_genericAI
         m_bIsAttacked = true;
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -863,7 +884,7 @@ struct npc_warchief_blackhandAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_BLOODLUST);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_BLOODLUST);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -877,7 +898,7 @@ struct npc_warchief_blackhandAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_CLEAVE);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_CLEAVE);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -886,11 +907,13 @@ struct npc_warchief_blackhandAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_warchief_blackhand
 UnitAI* GetAI_npc_warchief_blackhand(Creature* pCreature)
 {
     return new npc_warchief_blackhandAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_warchief_blackhand
 bool GossipHello_npc_warchief_blackhand(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -910,10 +933,12 @@ bool GossipHello_npc_warchief_blackhand(Player* pPlayer, Creature* pCreature)
 ## npc_human_conjurer
 ######*/
 
+// 随从/NPC AI：conjurer（human_conjurer）
 struct npc_human_conjurerAI : public npc_chess_piece_genericAI
 {
     npc_human_conjurerAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -939,7 +964,7 @@ struct npc_human_conjurerAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(pTarget, SPELL_ELEMENTAL_BLAST);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_ELEMENTAL_BLAST);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -953,7 +978,7 @@ struct npc_human_conjurerAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(pTarget, SPELL_RAIN_OF_FIRE);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_RAIN_OF_FIRE);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -962,11 +987,13 @@ struct npc_human_conjurerAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_human_conjurer
 UnitAI* GetAI_npc_human_conjurer(Creature* pCreature)
 {
     return new npc_human_conjurerAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_human_conjurer
 bool GossipHello_npc_human_conjurer(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -986,10 +1013,12 @@ bool GossipHello_npc_human_conjurer(Player* pPlayer, Creature* pCreature)
 ## npc_orc_warlock
 ######*/
 
+// 随从/NPC AI：术士（orc_warlock）
 struct npc_orc_warlockAI : public npc_chess_piece_genericAI
 {
     npc_orc_warlockAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1015,7 +1044,7 @@ struct npc_orc_warlockAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(pTarget, SPELL_FIREBALL);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_FIREBALL);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1029,7 +1058,7 @@ struct npc_orc_warlockAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(pTarget, SPELL_POISON_CLOUD_ACTION);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_POISON_CLOUD_ACTION);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1038,11 +1067,13 @@ struct npc_orc_warlockAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_orc_warlock
 UnitAI* GetAI_npc_orc_warlock(Creature* pCreature)
 {
     return new npc_orc_warlockAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_orc_warlock
 bool GossipHello_npc_orc_warlock(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1062,10 +1093,12 @@ bool GossipHello_npc_orc_warlock(Player* pPlayer, Creature* pCreature)
 ## npc_human_footman
 ######*/
 
+// 随从/NPC AI：footman（human_footman）
 struct npc_human_footmanAI : public npc_chess_piece_genericAI
 {
     npc_human_footmanAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1105,7 +1138,7 @@ struct npc_human_footmanAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_HEROIC_BLOW);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_HEROIC_BLOW);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1119,7 +1152,7 @@ struct npc_human_footmanAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_SHIELD_BLOCK);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_SHIELD_BLOCK);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1128,11 +1161,13 @@ struct npc_human_footmanAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_human_footman
 UnitAI* GetAI_npc_human_footman(Creature* pCreature)
 {
     return new npc_human_footmanAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_human_footman
 bool GossipHello_npc_human_footman(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1152,10 +1187,12 @@ bool GossipHello_npc_human_footman(Player* pPlayer, Creature* pCreature)
 ## npc_orc_grunt
 ######*/
 
+// 随从/NPC AI：步兵（orc_grunt）
 struct npc_orc_gruntAI : public npc_chess_piece_genericAI
 {
     npc_orc_gruntAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1195,7 +1232,7 @@ struct npc_orc_gruntAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_VICIOUS_STRIKE);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_VICIOUS_STRIKE);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1209,7 +1246,7 @@ struct npc_orc_gruntAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_WEAPON_DEFLECTION);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_WEAPON_DEFLECTION);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1218,11 +1255,13 @@ struct npc_orc_gruntAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_orc_grunt
 UnitAI* GetAI_npc_orc_grunt(Creature* pCreature)
 {
     return new npc_orc_gruntAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_orc_grunt
 bool GossipHello_npc_orc_grunt(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1242,10 +1281,12 @@ bool GossipHello_npc_orc_grunt(Player* pPlayer, Creature* pCreature)
 ## npc_water_elemental
 ######*/
 
+// 随从/NPC AI：元素（water_elemental）
 struct npc_water_elementalAI : public npc_chess_piece_genericAI
 {
     npc_water_elementalAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1271,7 +1312,7 @@ struct npc_water_elementalAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_GEYSER);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_GEYSER);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1285,7 +1326,7 @@ struct npc_water_elementalAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_WATER_SHIELD);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_WATER_SHIELD);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1294,11 +1335,13 @@ struct npc_water_elementalAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_water_elemental
 UnitAI* GetAI_npc_water_elemental(Creature* pCreature)
 {
     return new npc_water_elementalAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_water_elemental
 bool GossipHello_npc_water_elemental(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1318,10 +1361,12 @@ bool GossipHello_npc_water_elemental(Player* pPlayer, Creature* pCreature)
 ## npc_summoned_daemon
 ######*/
 
+// 随从/NPC AI：daemon（summoned_daemon）
 struct npc_summoned_daemonAI : public npc_chess_piece_genericAI
 {
     npc_summoned_daemonAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1347,7 +1392,7 @@ struct npc_summoned_daemonAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_HELLFIRE_CHESS);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_HELLFIRE_CHESS);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1361,7 +1406,7 @@ struct npc_summoned_daemonAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_FIRE_SHIELD);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_FIRE_SHIELD);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1370,11 +1415,13 @@ struct npc_summoned_daemonAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_summoned_daemon
 UnitAI* GetAI_npc_summoned_daemon(Creature* pCreature)
 {
     return new npc_summoned_daemonAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_summoned_daemon
 bool GossipHello_npc_summoned_daemon(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1394,10 +1441,12 @@ bool GossipHello_npc_summoned_daemon(Player* pPlayer, Creature* pCreature)
 ## npc_human_charger
 ######*/
 
+// 随从/NPC AI：charger（human_charger）
 struct npc_human_chargerAI : public npc_chess_piece_genericAI
 {
     npc_human_chargerAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1423,7 +1472,7 @@ struct npc_human_chargerAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_SMASH);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_SMASH);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1437,7 +1486,7 @@ struct npc_human_chargerAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_STOMP);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_STOMP);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1446,11 +1495,13 @@ struct npc_human_chargerAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_human_charger
 UnitAI* GetAI_npc_human_charger(Creature* pCreature)
 {
     return new npc_human_chargerAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_human_charger
 bool GossipHello_npc_human_charger(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1470,10 +1521,12 @@ bool GossipHello_npc_human_charger(Player* pPlayer, Creature* pCreature)
 ## npc_orc_wolf
 ######*/
 
+// 随从/NPC AI：wolf（orc_wolf）
 struct npc_orc_wolfAI : public npc_chess_piece_genericAI
 {
     npc_orc_wolfAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1499,7 +1552,7 @@ struct npc_orc_wolfAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_BITE);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_BITE);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1513,7 +1566,7 @@ struct npc_orc_wolfAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_HOWL);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_HOWL);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1522,11 +1575,13 @@ struct npc_orc_wolfAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_orc_wolf
 UnitAI* GetAI_npc_orc_wolf(Creature* pCreature)
 {
     return new npc_orc_wolfAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_orc_wolf
 bool GossipHello_npc_orc_wolf(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1546,10 +1601,12 @@ bool GossipHello_npc_orc_wolf(Player* pPlayer, Creature* pCreature)
 ## npc_human_cleric
 ######*/
 
+// 随从/NPC AI：cleric（human_cleric）
 struct npc_human_clericAI : public npc_chess_piece_genericAI
 {
     npc_human_clericAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1575,7 +1632,7 @@ struct npc_human_clericAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(pTarget, SPELL_HEALING);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_HEALING);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1589,7 +1646,7 @@ struct npc_human_clericAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_HOLY_LANCE);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_HOLY_LANCE);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1598,11 +1655,13 @@ struct npc_human_clericAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_human_cleric
 UnitAI* GetAI_npc_human_cleric(Creature* pCreature)
 {
     return new npc_human_clericAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_human_cleric
 bool GossipHello_npc_human_cleric(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1622,10 +1681,12 @@ bool GossipHello_npc_human_cleric(Player* pPlayer, Creature* pCreature)
 ## npc_orc_necrolyte
 ######*/
 
+// 随从/NPC AI：necrolyte（orc_necrolyte）
 struct npc_orc_necrolyteAI : public npc_chess_piece_genericAI
 {
     npc_orc_necrolyteAI(Creature* pCreature) : npc_chess_piece_genericAI(pCreature) { Reset(); }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         npc_chess_piece_genericAI::JustDied(pKiller);
@@ -1651,7 +1712,7 @@ struct npc_orc_necrolyteAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(pTarget, SPELL_SHADOW_MEND_ACTION);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_SHADOW_MEND_ACTION);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1665,7 +1726,7 @@ struct npc_orc_necrolyteAI : public npc_chess_piece_genericAI
         {
             DoCastSpellIfCan(nullptr, SPELL_SHADOW_SPEAR);
 
-            // reset timer based on spell values
+            // reset timer based on spell values (根据法术属性重置计时器)
             const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_SHADOW_SPEAR);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
@@ -1674,11 +1735,13 @@ struct npc_orc_necrolyteAI : public npc_chess_piece_genericAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_orc_necrolyte
 UnitAI* GetAI_npc_orc_necrolyte(Creature* pCreature)
 {
     return new npc_orc_necrolyteAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_orc_necrolyte
 bool GossipHello_npc_orc_necrolyte(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->HasAura(SPELL_RECENTLY_IN_GAME) || pCreature->HasAura(SPELL_CONTROL_PIECE))
@@ -1694,6 +1757,7 @@ bool GossipHello_npc_orc_necrolyte(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
+// 注册并载入脚本模块：chess_event
 void AddSC_chess_event()
 {
     Script* pNewScript = new Script;

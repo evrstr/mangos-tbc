@@ -23,6 +23,7 @@
 
 //=====================================================
 
+/// 双向关联引用基类（表示从 FROM 指向 TO 的可追踪弱/观测引用）
 template<class TO, class FROM>
 class Reference : public LinkedListElement
 {
@@ -33,13 +34,13 @@ class Reference : public LinkedListElement
 
     protected:
 
-        // Tell our refTo (target) object that we have a link
+        // Tell our refTo (target) object that we have a link | 通知目标对象 (refTo) 新链接已建立
         virtual void targetObjectBuildLink() = 0;
 
-        // Tell our refTo (taget) object, that the link is cut
+        // Tell our refTo (taget) object, that the link is cut | 通知目标对象 (refTo) 链接已断开
         virtual void targetObjectDestroyLink() = 0;
 
-        // Tell our refFrom (source) object, that the link is cut (Target destroyed)
+        // Tell our refFrom (source) object, that the link is cut (Target destroyed) | 通知源对象 (refFrom) 目标已销毁、链接失效
         virtual void sourceObjectDestroyLink() = 0;
 
     public:
@@ -51,10 +52,10 @@ class Reference : public LinkedListElement
 
         virtual ~Reference() {}
 
-        // Create new link
+        // Create new link | 建立从 fromObj 到 toObj 的引用链接
         void link(TO* toObj, FROM* fromObj)
         {
-            assert(fromObj);                                // fromObj MUST not be nullptr
+            assert(fromObj);                                // fromObj MUST not be nullptr | fromObj 绝对不能为空指针
             if (isValid())
                 unlink();
 
@@ -68,6 +69,7 @@ class Reference : public LinkedListElement
 
         // We don't need the reference anymore. Call comes from the refFrom object
         // Tell our refTo object, that the link is cut
+        // 由源对象主动解除引用，通知目标对象断开链接
         void unlink()
         {
             targetObjectDestroyLink();
@@ -78,14 +80,15 @@ class Reference : public LinkedListElement
 
         // Link is invalid due to destruction of referenced target object. Call comes from the refTo object
         // Tell our refFrom object, that the link is cut
-        void invalidate()                                   // the iRefFrom MUST remain!!
+        // 目标对象销毁时调用以使引用失效（必须保留 iRefFrom 供通知源对象使用）
+        void invalidate()                                   // the iRefFrom MUST remain!! | iRefFrom 必须保留！
         {
             sourceObjectDestroyLink();
             delink();
             iRefTo = nullptr;
         }
 
-        bool isValid() const                                // Only check the iRefTo
+        bool isValid() const                                // Only check the iRefTo | 仅检查目标指针 iRefTo 是否有效
         {
             return iRefTo != nullptr;
         }

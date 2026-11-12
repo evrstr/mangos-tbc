@@ -33,136 +33,139 @@ class Unit;
 class Player;
 struct SpellEntry;
 
+/// 数据库脚本命令枚举（resSource/resTarget 为经 Buddy 查找与标志变换后的最终源与目标）
 enum ScriptCommand                                          // resSource, resTarget are the resulting Source/ Target after buddy search is done
 {
-    SCRIPT_COMMAND_TALK                     = 0,            // resSource = WorldObject, resTarget = Unit/none
+    SCRIPT_COMMAND_TALK                     = 0,            // resSource = WorldObject, resTarget = Unit/none (说话/喊话，dataint 为 broadcast_text ID)
     // dataint = text id from broadcast_text table. dataint2-4 optional for random selected texts.
-    SCRIPT_COMMAND_EMOTE                    = 1,            // resSource = Unit, resTarget = Unit/none
+    SCRIPT_COMMAND_EMOTE                    = 1,            // resSource = Unit, resTarget = Unit/none (播放表情动作)
     // datalong1 = emote_id, dataint1-4 optional for random selected emotes
-    SCRIPT_COMMAND_FIELD_SET                = 2,            // source = any, datalong = field_id, datalong2 = value
-    SCRIPT_COMMAND_MOVE_TO                  = 3,            // resSource = Creature, datalong1 = relayId, datalong2 = travel_speed*100, datalong3 = forcedMovement, x/y/z/o
+    SCRIPT_COMMAND_FIELD_SET                = 2,            // source = any, datalong = field_id, datalong2 = value (设置对象 UpdateFields 字段值)
+    SCRIPT_COMMAND_MOVE_TO                  = 3,            // resSource = Creature, datalong1 = relayId, datalong2 = travel_speed*100, datalong3 = forcedMovement, x/y/z/o (移动到目标坐标或瞬移)
     // data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: teleport unit to position
-    SCRIPT_COMMAND_FLAG_SET                 = 4,            // source = any, datalong = field_id, datalong2 = bitmask
-    SCRIPT_COMMAND_FLAG_REMOVE              = 5,            // source = any, datalong = field_id, datalong2 = bitmask
-    SCRIPT_COMMAND_TELEPORT_TO              = 6,            // source or target with Player, datalong2 = map_id, x/y/z
-    SCRIPT_COMMAND_QUEST_EXPLORED           = 7,            // one from source or target must be Player, another GO/Creature, datalong=quest_id, datalong2=distance or 0
-    SCRIPT_COMMAND_KILL_CREDIT              = 8,            // source or target with Player, datalong = creature entry (or 0 for target-entry), datalong2 = bool (0=personal credit, 1=group credit)
-    SCRIPT_COMMAND_RESPAWN_GAMEOBJECT       = 9,            // source = any, datalong=db_guid, datalong2=despawn_delay
-    SCRIPT_COMMAND_TEMP_SPAWN_CREATURE      = 10,           // source = any, datalong=creature entry, datalong2=despawn_delay, datalong3=pathId, text1 - setRun - 1, text2 - faction ID, text3 - modelId
+    SCRIPT_COMMAND_FLAG_SET                 = 4,            // source = any, datalong = field_id, datalong2 = bitmask (设置对象字段位掩码)
+    SCRIPT_COMMAND_FLAG_REMOVE              = 5,            // source = any, datalong = field_id, datalong2 = bitmask (清除对象字段位掩码)
+    SCRIPT_COMMAND_TELEPORT_TO              = 6,            // source or target with Player, datalong2 = map_id, x/y/z (传送玩家至指定地图坐标)
+    SCRIPT_COMMAND_QUEST_EXPLORED           = 7,            // one from source or target must be Player, another GO/Creature, datalong=quest_id, datalong2=distance or 0 (完成任务探索目标)
+    SCRIPT_COMMAND_KILL_CREDIT              = 8,            // source or target with Player, datalong = creature entry (or 0 for target-entry), datalong2 = bool (0=personal credit, 1=group credit) (给予杀怪任务计数)
+    SCRIPT_COMMAND_RESPAWN_GAMEOBJECT       = 9,            // source = any, datalong=db_guid, datalong2=despawn_delay (刷新游戏对象)
+    SCRIPT_COMMAND_TEMP_SPAWN_CREATURE      = 10,           // source = any, datalong=creature entry, datalong2=despawn_delay, datalong3=pathId, text1 - setRun - 1, text2 - faction ID, text3 - modelId (临时召唤生物)
     // data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL = summon active
     // dataint = (bool) setRun; 0 = off (default), 1 = on
-    SCRIPT_COMMAND_OPEN_DOOR                = 11,           // datalong=db_guid (or not provided), datalong2=reset_delay
-    SCRIPT_COMMAND_CLOSE_DOOR               = 12,           // datalong=db_guid (or not provided), datalong2=reset_delay
-    SCRIPT_COMMAND_ACTIVATE_OBJECT          = 13,           // source = unit, target=GO; data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL send gameobject custom anim, datalong = animId
-    SCRIPT_COMMAND_REMOVE_AURA              = 14,           // resSource = Unit, datalong = spell_id
-    SCRIPT_COMMAND_CAST_SPELL               = 15,           // resSource = Unit, cast spell at resTarget = Unit
+    SCRIPT_COMMAND_OPEN_DOOR                = 11,           // datalong=db_guid (or not provided), datalong2=reset_delay (开门)
+    SCRIPT_COMMAND_CLOSE_DOOR               = 12,           // datalong=db_guid (or not provided), datalong2=reset_delay (关门)
+    SCRIPT_COMMAND_ACTIVATE_OBJECT          = 13,           // source = unit, target=GO; data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL send gameobject custom anim, datalong = animId (激活游戏对象或播放自定义动画)
+    SCRIPT_COMMAND_REMOVE_AURA              = 14,           // resSource = Unit, datalong = spell_id (移除光环)
+    SCRIPT_COMMAND_CAST_SPELL               = 15,           // resSource = Unit, cast spell at resTarget = Unit (施放法术)
     // datalong=spellid
     // datalong2=castFlags, enum TriggerCastFlags
     // dataint1-4 optional for random selected spell
-    SCRIPT_COMMAND_PLAY_SOUND               = 16,           // resSource = WorldObject, target=any/player, datalong (sound_id), datalong2 (bitmask: 0/1=target-player, 0/2=with distance dependent, 0/4=map wide, 0/8=zone wide, 0/16=area wide; so 1|2 = 3 is target with distance dependent), 8+16 does not work together
-    SCRIPT_COMMAND_CREATE_ITEM              = 17,           // source or target must be player, datalong = item entry, datalong2 = amount
-    SCRIPT_COMMAND_DESPAWN_SELF             = 18,           // resSource = Creature, datalong = despawn delay
-    SCRIPT_COMMAND_PLAY_MOVIE               = 19,           // target can only be a player, datalog = movie id
-    SCRIPT_COMMAND_MOVEMENT                 = 20,           // resSource = Creature. datalong = MovementType (0:idle, 1:random, 2:waypoint, 3:path, 18:fall), datalong2 = wander-distance/pathId/relayId, datalong3 = timer/passTarget, dataint1 = forcedMovement
+    SCRIPT_COMMAND_PLAY_SOUND               = 16,           // resSource = WorldObject, target=any/player, datalong (sound_id), datalong2 (bitmask: 0/1=target-player, 0/2=with distance dependent, 0/4=map wide, 0/8=zone wide, 0/16=area wide; so 1|2 = 3 is target with distance dependent), 8+16 does not work together (播放音效)
+    SCRIPT_COMMAND_CREATE_ITEM              = 17,           // source or target must be player, datalong = item entry, datalong2 = amount (给予玩家物品)
+    SCRIPT_COMMAND_DESPAWN_SELF             = 18,           // resSource = Creature, datalong = despawn delay (使生物延迟消失)
+    SCRIPT_COMMAND_PLAY_MOVIE               = 19,           // target can only be a player, datalog = movie id (为玩家播放过场动画/电影)
+    SCRIPT_COMMAND_MOVEMENT                 = 20,           // resSource = Creature. datalong = MovementType (0:idle, 1:random, 2:waypoint, 3:path, 18:fall), datalong2 = wander-distance/pathId/relayId, datalong3 = timer/passTarget, dataint1 = forcedMovement (切换生物移动模式)
     // data_flags &  SCRIPT_FLAG_COMMAND_ADDITIONAL = Random-movement around current position
-    SCRIPT_COMMAND_SET_ACTIVEOBJECT         = 21,           // resSource = WorldObject
+    SCRIPT_COMMAND_SET_ACTIVEOBJECT         = 21,           // resSource = WorldObject (设置对象 ActiveObject 常驻加载状态)
     // datalong=bool 0=off, 1=on
-    SCRIPT_COMMAND_SET_FACTION              = 22,           // resSource = Creature
+    SCRIPT_COMMAND_SET_FACTION              = 22,           // resSource = Creature (修改生物阵营)
     // datalong=factionId, datalong2=faction_flags
-    SCRIPT_COMMAND_MORPH_TO_ENTRY_OR_MODEL  = 23,           // resSource = Creature, datalong=creature entry/modelid
+    SCRIPT_COMMAND_MORPH_TO_ENTRY_OR_MODEL  = 23,           // resSource = Creature, datalong=creature entry/modelid (生物变形为指定模板或模型)
     // data_flags &  SCRIPT_FLAG_COMMAND_ADDITIONAL = use datalong value as modelid explicit
-    SCRIPT_COMMAND_MOUNT_TO_ENTRY_OR_MODEL  = 24,           // resSource = Creature, datalong=creature entry/modelid
+    SCRIPT_COMMAND_MOUNT_TO_ENTRY_OR_MODEL  = 24,           // resSource = Creature, datalong=creature entry/modelid (生物骑乘指定坐骑)
     // data_flags &  SCRIPT_FLAG_COMMAND_ADDITIONAL = use datalong value as modelid explicit
-    SCRIPT_COMMAND_SET_RUN                  = 25,           // resSource = Creature
+    SCRIPT_COMMAND_SET_RUN                  = 25,           // resSource = Creature (设置奔跑或行走状态)
     // datalong= bool 0=off, 1=on
-    SCRIPT_COMMAND_ATTACK_START             = 26,           // resSource = Creature, resTarget = Unit
-    SCRIPT_COMMAND_GO_LOCK_STATE            = 27,           // resSource = GameObject
+    SCRIPT_COMMAND_ATTACK_START             = 26,           // resSource = Creature, resTarget = Unit (发起攻击目标)
+    SCRIPT_COMMAND_GO_LOCK_STATE            = 27,           // resSource = GameObject (设置游戏对象锁定/交互状态)
     // datalong= 1=lock, 2=unlock, 4=set not-interactable, 8=set interactable
-    SCRIPT_COMMAND_STAND_STATE              = 28,           // resSource = Creature
+    SCRIPT_COMMAND_STAND_STATE              = 28,           // resSource = Creature (设置站立/坐下/死亡等姿态)
     // datalong = stand state (enum UnitStandStateType)
-    SCRIPT_COMMAND_MODIFY_NPC_FLAGS         = 29,           // resSource = Creature
+    SCRIPT_COMMAND_MODIFY_NPC_FLAGS         = 29,           // resSource = Creature (增删切换 NPC 功能标志)
     // datalong=NPCFlags
     // datalong2:0x00=add, 0x01=remove, 0x02=toggle
-    SCRIPT_COMMAND_SEND_TAXI_PATH           = 30,           // datalong = taxi path id (source or target must be player)
-    SCRIPT_COMMAND_TERMINATE_SCRIPT         = 31,           // datalong = search for npc entry if provided
+    SCRIPT_COMMAND_SEND_TAXI_PATH           = 30,           // datalong = taxi path id (source or target must be player) (使玩家乘骑飞行路线)
+    SCRIPT_COMMAND_TERMINATE_SCRIPT         = 31,           // datalong = search for npc entry if provided (按附近生物/GO存在性决定是否终止后续脚本步骤)
     // datalong2= search distance
     // data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: terminate steps of this script if npc found
     //                                        ELSE: terminate steps of this script if npc not found
     // dataint=diff to change a waittime of current Waypoint Movement
-    SCRIPT_COMMAND_PAUSE_WAYPOINTS          = 32,           // resSource = Creature
+    SCRIPT_COMMAND_PAUSE_WAYPOINTS          = 32,           // resSource = Creature (暂停或恢复航点移动)
     // datalong = 0: unpause waypoint 1: pause waypoint
-    SCRIPT_COMMAND_RESERVED_1               = 33,           // reserved for 3.x and later
-    SCRIPT_COMMAND_TERMINATE_COND           = 34,           // datalong = condition_id, datalong2 = if != 0 then quest_id of quest that will be failed for player's group if the script is terminated
+    SCRIPT_COMMAND_RESERVED_1               = 33,           // reserved for 3.x and later (3.x 及后续版本保留命令)
+    SCRIPT_COMMAND_TERMINATE_COND           = 34,           // datalong = condition_id, datalong2 = if != 0 then quest_id of quest that will be failed for player's group if the script is terminated (按 Condition 条件终止脚本并可选使任务失败)
     // data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL terminate when condition is false ELSE terminate when condition is true
-    SCRIPT_COMMAND_SEND_AI_EVENT            = 35,           // resSource = Creature, resTarget = Unit
+    SCRIPT_COMMAND_SEND_AI_EVENT            = 35,           // resSource = Creature, resTarget = Unit (向目标或半径内生物发送 AI 事件)
     // datalong = AIEventType
     // datalong2 = radius. If radius isn't provided and the target is a creature, then send AIEvent to target
-    SCRIPT_COMMAND_SET_FACING               = 36,           // resSource = Creature, resTarget WorldObject. Turn resSource towards Taget
+    SCRIPT_COMMAND_SET_FACING               = 36,           // resSource = Creature, resTarget WorldObject. Turn resSource towards Taget (设置朝向目标或重置初始朝向)
     // data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL also set TargetGuid of resSource to resTarget. In this case resTarget MUST be Creature/ Player
     // datalong != 0 Reset TargetGuid, Reset orientation
-    SCRIPT_COMMAND_MOVE_DYNAMIC             = 37,           // resSource = Creature, resTarget Worldobject.
+    SCRIPT_COMMAND_MOVE_DYNAMIC             = 37,           // resSource = Creature, resTarget Worldobject. (相对目标动态移动)
     // datalong = 0: Move resSource towards resTarget
     // datalong != 0: Move resSource to a random point between datalong2..datalong around resTarget.
     //      orientation != 0: Obtain a random point around resTarget in direction of orientation
     // data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL Obtain a random point around resTarget in direction of resTarget->GetOrientation + orientation
     // for resTarget == resSource and orientation == 0 this will mean resSource moving forward
-    SCRIPT_COMMAND_SEND_MAIL                = 38,           // resSource WorldObject, can be nullptr, resTarget Player
+    SCRIPT_COMMAND_SEND_MAIL                = 38,           // resSource WorldObject, can be nullptr, resTarget Player (向玩家发送邮件模板)
     // datalong: Send mailTemplateId from resSource (if provided) to player resTarget
     // datalong2: AlternativeSenderEntry. Use as sender-Entry
     // datalong3: Money
     // dataint1: Delay (>= 0) in Seconds
-    SCRIPT_COMMAND_SET_HOVER                  = 39,           // resSource = Creature
+    SCRIPT_COMMAND_SET_HOVER                  = 39,           // resSource = Creature (设置悬浮/飞行动画状态)
     // datalong = bool 0=off, 1=on
     // data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL set/unset byte flag UNIT_BYTE1_FLAG_FLY_ANIM
-    SCRIPT_COMMAND_DESPAWN_GO               = 40,           // resTarget = GameObject, datalong = timer in ms
-    SCRIPT_COMMAND_RESPAWN                  = 41,           // resSource = Creature. Requires SCRIPT_FLAG_BUDDY_IS_DESPAWNED to find dead or despawned targets
-    SCRIPT_COMMAND_SET_EQUIPMENT_SLOTS      = 42,           // resSource = Creature
+    SCRIPT_COMMAND_DESPAWN_GO               = 40,           // resTarget = GameObject, datalong = timer in ms (延迟移除游戏对象)
+    SCRIPT_COMMAND_RESPAWN                  = 41,           // resSource = Creature. Requires SCRIPT_FLAG_BUDDY_IS_DESPAWNED to find dead or despawned targets (复活/重生生物)
+    SCRIPT_COMMAND_SET_EQUIPMENT_SLOTS      = 42,           // resSource = Creature (修改生物主副手/远程武器外观槽位)
     // datalong = resetDefault: bool 0=false, 1=true
     // dataint = main hand slot; dataint2 = off hand slot; dataint3 = ranged slot
-    SCRIPT_COMMAND_RESET_GO                 = 43,           // resTarget = GameObject
-    SCRIPT_COMMAND_UPDATE_TEMPLATE          = 44,           // resSource = Creature
+    SCRIPT_COMMAND_RESET_GO                 = 43,           // resTarget = GameObject (重置游戏对象状态)
+    SCRIPT_COMMAND_UPDATE_TEMPLATE          = 44,           // resSource = Creature (更新生物模板与阵营)
     // datalong = new Creature entry
     // datalong2 = Alliance(0) Horde(1), other values throw error
-    SCRIPT_COMMAND_START_RELAY_SCRIPT       = 45,           // datalong = relayId, datalong2 = random template Id
-    SCRIPT_COMMAND_CAST_CUSTOM_SPELL        = 46,           // resSource = Unit, cast spell at resTarget = Unit
+    SCRIPT_COMMAND_START_RELAY_SCRIPT       = 45,           // datalong = relayId, datalong2 = random template Id (启动中继脚本或随机中继模板)
+    SCRIPT_COMMAND_CAST_CUSTOM_SPELL        = 46,           // resSource = Unit, cast spell at resTarget = Unit (施放自定义基础点数的法术)
     // datalong=spellid
     // datalong2=castFlags, enum TriggerCastFlags
     // dataint1-3 define the &bp value for the spell. At least one field is required.
-    SCRIPT_COMMAND_INTERRUPT_SPELL          = 47,           // datalong = SpellType enum CurrentSpellTypes
-    SCRIPT_COMMAND_MODIFY_UNIT_FLAGS        = 48,           // resSource = Creature
+    SCRIPT_COMMAND_INTERRUPT_SPELL          = 47,           // datalong = SpellType enum CurrentSpellTypes (打断正在施放的法术)
+    SCRIPT_COMMAND_MODIFY_UNIT_FLAGS        = 48,           // resSource = Creature (增删切换 UnitFlags)
     // datalong=UnitFlags
     // datalong2:0x00=add, 0x01=remove, 0x02=toggle
-    SCRIPT_COMMAND_SET_DATA_64              = 49,           // datalong = set data param 1, datalong2 = set data param 2
-    SCRIPT_COMMAND_ZONE_PULSE               = 50,           //
-    SCRIPT_COMMAND_SPAWN_GROUP              = 51,           // dalalong = command
-    SCRIPT_COMMAND_SET_GOSSIP_MENU          = 52,           // datalong = gossip_menu_id
-    SCRIPT_COMMAND_SET_WORLDSTATE           = 53,           // dataint = worldstate id, dataint2 = new value, 
-    SCRIPT_COMMAND_SET_SHEATHE              = 54,           // dataint = worldstate id, dataint2 = new value,
-    SCRIPT_COMMAND_SET_STRING_ID            = 55,           // datalong = string_id id, datalong2 = 0 unapply, 1 apply
+    SCRIPT_COMMAND_SET_DATA_64              = 49,           // datalong = set data param 1, datalong2 = set data param 2 (向 AI 发送 64 位自定义数据)
+    SCRIPT_COMMAND_ZONE_PULSE               = 50,           // (触发区域战斗脉冲，将区域内玩家拉入战斗)
+    SCRIPT_COMMAND_SPAWN_GROUP              = 51,           // dalalong = command (向刷怪编组发送阵型/控制命令)
+    SCRIPT_COMMAND_SET_GOSSIP_MENU          = 52,           // datalong = gossip_menu_id (修改生物对话菜单 ID)
+    SCRIPT_COMMAND_SET_WORLDSTATE           = 53,           // dataint = worldstate id, dataint2 = new value,  (修改世界状态变量值)
+    SCRIPT_COMMAND_SET_SHEATHE              = 54,           // dataint = worldstate id, dataint2 = new value, (设置生物武器拔出/收起状态)
+    SCRIPT_COMMAND_SET_STRING_ID            = 55,           // datalong = string_id id, datalong2 = 0 unapply, 1 apply (为对象添加或移除 StringId 标记)
     // 56 57 used in wotlk
-    SCRIPT_COMMAND_SPAWN_SPAWN_GROUP        = 58,           // datalong = spawn_group_id, datalong2=despawn_delay
+    SCRIPT_COMMAND_SPAWN_SPAWN_GROUP        = 58,           // datalong = spawn_group_id, datalong2=despawn_delay (召唤指定刷怪编组)
 };
 
-#define MAX_TEXT_ID 4                                       // used for SCRIPT_COMMAND_TALK, SCRIPT_COMMAND_EMOTE, SCRIPT_COMMAND_CAST_SPELL, SCRIPT_COMMAND_TERMINATE_SCRIPT
+#define MAX_TEXT_ID 4                                       // used for SCRIPT_COMMAND_TALK, SCRIPT_COMMAND_EMOTE, SCRIPT_COMMAND_CAST_SPELL, SCRIPT_COMMAND_TERMINATE_SCRIPT (最多支持 4 个候选 ID)
 
+/// 脚本数据标志位：控制 Buddy 目标查找方式与 Source/Target 方向变换
 enum ScriptInfoDataFlags
 {
     // default: s/b -> t
-    SCRIPT_FLAG_BUDDY_AS_TARGET             = 0x001,        // s -> b
-    SCRIPT_FLAG_REVERSE_DIRECTION           = 0x002,        // t* -> s* (* result after previous flag is evaluated)
-    SCRIPT_FLAG_SOURCE_TARGETS_SELF         = 0x004,        // s* -> s* (* result after previous flag is evaluated)
-    SCRIPT_FLAG_COMMAND_ADDITIONAL          = 0x008,        // command dependend
-    SCRIPT_FLAG_BUDDY_BY_GUID               = 0x010,        // take the buddy by guid
-    SCRIPT_FLAG_BUDDY_IS_PET                = 0x020,        // buddy is a pet
-    SCRIPT_FLAG_BUDDY_IS_DESPAWNED          = 0x040,        // buddy is dead or despawned
-    SCRIPT_FLAG_BUDDY_BY_POOL               = 0x080,        // buddy should be part of a pool
-    SCRIPT_FLAG_BUDDY_BY_SPAWN_GROUP        = 0x100,        // buddy is from spawn group
-    SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES        = 0x200,        // multisource/multitarget - will execute for each eligible
-    SCRIPT_FLAG_BUDDY_BY_GO                 = 0x400,        // take the buddy by GO (for commands which can target both creature and GO)
-    SCRIPT_FLAG_BUDDY_BY_STRING_ID          = 0x800,        // takes buddy from string id - creature or go
+    SCRIPT_FLAG_BUDDY_AS_TARGET             = 0x001,        // s -> b (以查找到的 Buddy 作为目标)
+    SCRIPT_FLAG_REVERSE_DIRECTION           = 0x002,        // t* -> s* (* result after previous flag is evaluated) (反转源与目标方向)
+    SCRIPT_FLAG_SOURCE_TARGETS_SELF         = 0x004,        // s* -> s* (* result after previous flag is evaluated) (源以自身为目标)
+    SCRIPT_FLAG_COMMAND_ADDITIONAL          = 0x008,        // command dependend (命令附加语义开关)
+    SCRIPT_FLAG_BUDDY_BY_GUID               = 0x010,        // take the buddy by guid (按数据库 GUID 查找 Buddy)
+    SCRIPT_FLAG_BUDDY_IS_PET                = 0x020,        // buddy is a pet (Buddy 为召唤者的宠物/守卫)
+    SCRIPT_FLAG_BUDDY_IS_DESPAWNED          = 0x040,        // buddy is dead or despawned (允许查找已死亡或已消失的 Buddy)
+    SCRIPT_FLAG_BUDDY_BY_POOL               = 0x080,        // buddy should be part of a pool (按刷怪池 ID 查找 Buddy)
+    SCRIPT_FLAG_BUDDY_BY_SPAWN_GROUP        = 0x100,        // buddy is from spawn group (按刷怪编组 ID 查找 Buddy)
+    SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES        = 0x200,        // multisource/multitarget - will execute for each eligible (对所有符合条件的 Buddy 逐一执行)
+    SCRIPT_FLAG_BUDDY_BY_GO                 = 0x400,        // take the buddy by GO (for commands which can target both creature and GO) (强制按游戏对象查找 Buddy)
+    SCRIPT_FLAG_BUDDY_BY_STRING_ID          = 0x800,        // takes buddy from string id - creature or go (按 StringId 查找生物或游戏对象 Buddy)
 };
 #define MAX_SCRIPT_FLAG_VALID               (2 * SCRIPT_FLAG_BUDDY_BY_STRING_ID - 1)
 
+/// 单步数据库脚本指令描述结构，映射到数据库 dbscripts_on_* 表的各列字段
 struct ScriptInfo
 {
     uint32 id;
@@ -603,12 +606,15 @@ struct ScriptInfo
     }
 };
 
+/// 单个可调度执行的脚本动作实例（由 Map 脚本调度队列在指定延迟时刻触发）
 class ScriptAction
 {
     public:
         ScriptAction(ScriptMapType scriptType, Map* _map, ObjectGuid _sourceGuid, ObjectGuid _targetGuid, ObjectGuid _ownerGuid, std::shared_ptr<ScriptInfo> _script);
 
+        /// 执行当前脚本步骤；当且仅当需要终止后续同 ID 脚本步骤时返回 true
         bool HandleScriptStep();                            // return true IF AND ONLY IF the script should be terminated
+        /// 针对已解析的源与目标对象执行具体 DBScript 命令
         bool ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTarget, Object* pSourceOrItem, bool buddyFound);
 
         const char* GetTableName() const { return m_table; }
@@ -617,6 +623,7 @@ class ScriptAction
         ObjectGuid GetTargetGuid() const { return m_targetGuid; }
         ObjectGuid GetOwnerGuid() const { return m_ownerGuid; }
 
+        /// 判断当前动作是否匹配指定的表名、脚本 ID 与参与者 GUID
         bool IsSameScript(const char* table, uint32 id, ObjectGuid sourceGuid, ObjectGuid targetGuid, ObjectGuid ownerGuid) const
         {
             return table == m_table && id == GetId() &&
@@ -627,14 +634,14 @@ class ScriptAction
 
     private:
         ScriptMapType m_scriptType;
-        const char* m_table;                                // of which table the script was started
-        Map* m_map;                                         // Map on which the action will be executed
-        ObjectGuid m_sourceGuid;
-        ObjectGuid m_targetGuid;
-        ObjectGuid m_ownerGuid;                             // owner of source if source is item
-        std::shared_ptr<ScriptInfo> m_script;               // pointer to script data
+        const char* m_table;                                // of which table the script was started (脚本所属数据库表名)
+        Map* m_map;                                         // Map on which the action will be executed (执行该脚本动作的地图)
+        ObjectGuid m_sourceGuid;                            // 原始发起者 GUID
+        ObjectGuid m_targetGuid;                            // 原始目标 GUID
+        ObjectGuid m_ownerGuid;                             // owner of source if source is item (若源为物品，则记录物品持有者 GUID)
+        std::shared_ptr<ScriptInfo> m_script;               // pointer to script data (指向脚本指令数据)
 
-        // Helper functions
+        // Helper functions (内部辅助方法)
         bool GetScriptCommandObject(const ObjectGuid guid, bool includeItem, Object*& resultObject) const;
         std::pair<bool, bool> GetScriptProcessTargets(WorldObject* originalSource, WorldObject* originalTarget, std::vector<WorldObject*>& finalSources, std::vector<WorldObject*>& finalTargets) const;
         bool LogIfNotCreature(WorldObject* pWorldObject) const;
@@ -648,12 +655,13 @@ typedef std::multimap < uint32 /*delay*/, std::shared_ptr<ScriptInfo>> ScriptMap
 typedef std::map < uint32 /*id*/, ScriptMap > ScriptMapMap;
 typedef std::pair<const char*, ScriptMapMap> ScriptMapMapName;
 
+/// 数据库脚本与 StringId 管理器，负责加载、校验与分发各类 DBScript 与随机模板
 class ScriptMgr
 {
         enum RandomTemplates
         {
-            STRING_TEMPLATE = 0,
-            RELAY_TEMPLATE = 1,
+            STRING_TEMPLATE = 0,                            // 随机文本模板
+            RELAY_TEMPLATE = 1,                             // 随机中继脚本模板
             MAX_TYPE // must always be last
         };
 
@@ -661,11 +669,15 @@ class ScriptMgr
         ScriptMgr();
         ~ScriptMgr() {};
 
+        /// 加载或重载指定类型的数据库脚本表
         void LoadScriptMap(ScriptMapType scriptType, bool reload = false);
 
+        /// 加载或重载 string_id 表
         void LoadStringIds(bool reload = false);
 
+        /// 加载 dbscript_string 文本并校验引用完整性
         void LoadDbScriptStrings();
+        /// 加载 dbscript_random_templates 随机模板
         void LoadDbScriptRandomTemplates();
         void CheckRandomStringTemplates(std::set<int32>& ids);
         void CheckRandomRelayTemplates();
@@ -676,13 +688,17 @@ class ScriptMgr
         typedef std::vector<ScriptTemplatePair> ScriptTemplateVector;
         void GetScriptStringTemplate(uint32 id, ScriptTemplateVector& stringTemplate) { stringTemplate = m_scriptTemplates[STRING_TEMPLATE][id]; }
         void GetScriptRelayTemplate(uint32 id, ScriptTemplateVector& stringTemplate) { stringTemplate = m_scriptTemplates[RELAY_TEMPLATE][id]; }
+        /// 按等概率或显式权重从随机模板中抽取一个条目 ID
         int32 GetRandomScriptTemplateId(uint32 id, uint8 templateType);
         int32 GetRandomScriptStringFromTemplate(uint32 id);
         int32 GetRandomRelayDbscriptFromTemplate(uint32 id);
 
+        /// 检查法术效果是否允许触发 DBScript
         static bool CanSpellEffectStartDBScript(SpellEntry const* spellinfo, SpellEffectIndex effIdx);
+        /// 收集所有可能触发脚本的事件 ID
         static void CollectPossibleEventIds(std::set<uint32>& eventIds);
 
+        /// 获取指定脚本类型的只读映射表指针
         std::shared_ptr<ScriptMapMapName> GetScriptMap(ScriptMapType scriptMapType);
 
         bool ExistsStringId(uint32 stringId);
@@ -707,12 +723,12 @@ class ScriptMgr
 
         std::shared_ptr<ScriptMapMapName> m_scriptMaps[SCRIPT_TYPE_MAX];
 
-        // SCRIPT_ID
+        // SCRIPT_ID (StringId 双向索引缓存)
         std::shared_ptr<StringIdMap> m_stringIds;
         std::shared_ptr<StringIdMapByString> m_stringIdsByString;
 };
 
-// Starters for events
+// Starters for events (事件脚本启动入口：分发至实例数据、地图脚本、生物 AI 或 DBScript)
 bool StartEvents_Event(Map* map, uint32 id, Object* source, Object* target, bool isStart = true);
 
 #define sScriptMgr MaNGOS::Singleton<ScriptMgr>::Instance()

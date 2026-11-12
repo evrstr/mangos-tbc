@@ -21,39 +21,44 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 黑女巫法琳娜（Grand Widow Faerlina）蜘蛛区2号首领战 AI（狂暴毒雨、心控信徒献祭沉默）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     SAY_AGGRO_1                 = 12856, // TODO: Check texts
-    SAY_ENRAGE_1                = 12857,
-    SAY_ENRAGE_2                = 12858,
-    SAY_ENRAGE_3                = 12859,
-    SAY_SLAY_1                  = 12854,
-    SAY_SLAY_2                  = 12855,
-    SAY_DEATH                   = 12853,
+    SAY_ENRAGE_1                = 12857,                    // 狂暴1 台词广播 ID
+    SAY_ENRAGE_2                = 12858,                    // 狂暴2 台词广播 ID
+    SAY_ENRAGE_3                = 12859,                    // 狂暴3 台词广播 ID
+    SAY_SLAY_1                  = 12854,                    // 击杀1 台词广播 ID
+    SAY_SLAY_2                  = 12855,                    // 击杀2 台词广播 ID
+    SAY_DEATH                   = 12853,                    // 死亡 台词广播 ID
 
-    EMOTE_BOSS_GENERIC_FRENZY   = 1191,
+    EMOTE_BOSS_GENERIC_FRENZY   = 1191,                     // bossgeneric狂乱 表情动作 ID
 
     // SOUND_RANDOM_AGGRO       = 8955,                     // soundId containing the 4 aggro sounds, we not using this
 
-    SPELL_POISONBOLT_VOLLEY     = 28796,
-    SPELL_ENRAGE                = 28798,
-    SPELL_RAIN_OF_FIRE          = 28794,
+    SPELL_POISONBOLT_VOLLEY     = 28796,                    // poisonbolt箭雨 法术 ID
+    SPELL_ENRAGE                = 28798,                    // 狂暴 法术 ID
+    SPELL_RAIN_OF_FIRE          = 28794,                    // rainof火焰 法术 ID
     SPELL_WIDOWS_EMBRACE        = 28732,                    // Cast onto Faerlina by Mind Controlled adds
     SPELL_WIDOWS_EMBRACE_CD     = 28797,                    // Cast onto herself by Faerlina and handle all the cooldown and enrage debuff
-    SPELL_INSTAKILL_SELF        = 28748,
+    SPELL_INSTAKILL_SELF        = 28748,                    // instakillself 法术 ID
 };
 
 static const float resetZ = 266.0f;                         // Above this altitude, Faerlina is outside her room and should reset (leashing)
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum FaerlinaActions
 {
     FAERLINA_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（faerlina）
 struct boss_faerlinaAI : public BossAI
 {
     boss_faerlinaAI(Creature* creature) : BossAI(creature, FAERLINA_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -84,7 +89,7 @@ struct boss_faerlinaAI : public BossAI
     }
 };
 
-// 28732 - Widow's Embrace
+// 28732 - Widow's Embrace (28732 - 黑女巫's 拥抱)
 struct WidowEmbrace : public SpellScript, public AuraScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -92,7 +97,7 @@ struct WidowEmbrace : public SpellScript, public AuraScript
         if (effIdx == EFFECT_INDEX_1)
         {
             if (Unit* caster = spell->GetCaster())
-                caster->CastSpell(nullptr, SPELL_INSTAKILL_SELF, TRIGGERED_OLD_TRIGGERED);       // Self suicide
+                caster->CastSpell(nullptr, SPELL_INSTAKILL_SELF, TRIGGERED_OLD_TRIGGERED);       // Self suicide (Self自杀)
         }
     }
 
@@ -106,6 +111,7 @@ struct WidowEmbrace : public SpellScript, public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_faerlina
 void AddSC_boss_faerlina()
 {
     Script* newScript = new Script;

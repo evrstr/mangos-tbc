@@ -21,6 +21,8 @@ SDComment: Missing reset function after killing a boss for Ohgan, Thekal.
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 祖尔格拉布（Zul'Gurub）副本状态机与五大祭司献祭状态追踪
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 
@@ -243,6 +245,7 @@ bool AreaTrigger_at_zulgurub(Player* pPlayer, AreaTriggerEntry const* pAt)
     return false;
 }
 
+// 注册并载入脚本模块：instance_zulgurub
 void AddSC_instance_zulgurub()
 {
     Script* pNewScript = new Script;

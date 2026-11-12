@@ -17,9 +17,10 @@
 #include <algorithm>
 #include <functional>
 
+// 构造模块存在性扫描（按模块名哈希判定目标 DLL 是否加载，返回状态是否与 _wanted 预期一致）
 WindowsModuleScan::WindowsModuleScan(const std::string &module, bool wanted, const std::string &comment, uint32 flags)
     : WindowsScan(
-    // builder
+    // builder (构造模块名 HMAC-SHA1 查询请求)
     [this](const Warden *warden, std::vector<std::string> &, ByteBuffer &scan)
     {
         auto const winWarden = reinterpret_cast<const WardenWin *>(warden);
@@ -33,7 +34,7 @@ WindowsModuleScan::WindowsModuleScan(const std::string &module, bool wanted, con
 
         scan.append(hash.GetDigest(), hash.GetLength());
     },
-    // checker
+    // checker (核验模块是否存在，与 _wanted 不符则判定违规)
     [this](const Warden *, ByteBuffer &buff)
     {
         auto const found = buff.read<uint8>() == ModuleFound;
@@ -41,10 +42,11 @@ WindowsModuleScan::WindowsModuleScan(const std::string &module, bool wanted, con
     }, sizeof(uint8) + sizeof(uint32) + Sha1Hash::GetLength(), sizeof(uint8), comment, flags),
     _module(module), _wanted(wanted)
 {
-    // the game depends on uppercase module names being sent
+    // the game depends on uppercase module names being sent (游戏内模块名比对统一要求大写)
     std::transform(_module.begin(), _module.end(), _module.begin(), ::toupper);
 }
 
+// 构造带自定义核验回调的模块扫描
 WindowsModuleScan::WindowsModuleScan(const std::string &module, CheckT checker, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -64,26 +66,27 @@ WindowsModuleScan::WindowsModuleScan(const std::string &module, CheckT checker, 
     checker, sizeof(uint8) + sizeof(uint32) + Sha1Hash::GetLength(), sizeof(uint8), comment, flags),
     _module(module)
 {
-    // the game depends on uppercase module names being sent
+    // the game depends on uppercase module names being sent (统一转为大写模块名)
     std::transform(_module.begin(), _module.end(), _module.begin(), ::toupper);
 }
 
+// 构造主程序绝对地址内存字节比对扫描
 WindowsMemoryScan::WindowsMemoryScan(uint32 offset, const void *expected, size_t length, const std::string &comment, uint32 flags)
     : WindowsScan(
-    // builder
+    // builder (字符串索引 0 表示直接读取主模块基址偏移)
     [this](const Warden *warden, std::vector<std::string> &, ByteBuffer &scan)
     {
         auto const winWarden = reinterpret_cast<const WardenWin *>(warden);
 
         scan << static_cast<uint8>(winWarden->GetModule()->opcodes[READ_MEMORY] ^ winWarden->GetXor())
-             << static_cast<uint8>(0)   // no string associated with this form of the constructor
+             << static_cast<uint8>(0)   // no string associated with this form of the constructor (无关联模块名字符串)
              << this->_offset
              << static_cast<uint8>(this->_expected.size());
     },
-    // checker
+    // checker (读取状态非零或内存内容与预期不一致时返回 true)
     [this](const Warden *, ByteBuffer &buff)
     {
-        // non-zero value indicates failure
+        // non-zero value indicates failure (非 0 表示读取失败)
         if (!!buff.read<uint8>())
             return true;
 
@@ -93,15 +96,16 @@ WindowsMemoryScan::WindowsMemoryScan(uint32 offset, const void *expected, size_t
     }, sizeof(uint8) + sizeof(uint8) + sizeof(uint32) + sizeof(uint8), sizeof(uint8) + length, comment, flags),
     _expected(length), _offset(offset)
 {
-    // must fit within uint8
+    // must fit within uint8 (单次读取长度受单字节限制不超过 255)
     MANGOS_ASSERT(_expected.size() <= 0xFF);
 
     ::memcpy(&_expected[0], expected, _expected.size());
 }
 
+// 构造指定模块相对偏移的内存字节比对扫描
 WindowsMemoryScan::WindowsMemoryScan(const std::string &module, uint32 offset, const void *expected, size_t length, const std::string &comment, uint32 flags)
     : WindowsScan(
-    // builder
+    // builder (将模块名写入字符串表，发送 1-based 字符串索引)
     [this](const Warden *warden, std::vector<std::string> &strings, ByteBuffer &scan)
     {
         MANGOS_ASSERT(strings.size() < 0xFF);
@@ -135,9 +139,11 @@ WindowsMemoryScan::WindowsMemoryScan(const std::string &module, uint32 offset, c
 
     // since this scan uses GetModuleHandle() rather than GetFirstModule()/GetNextModule(), this is case insensitive.
     // but still it seems prudent to be consistent
+    // GetModuleHandle 不区分大小写，但仍统一转为大写保持规范
     std::transform(_module.begin(), _module.end(), _module.begin(), ::toupper);
 }
 
+// 构造带自定义核验回调的绝对地址内存读取扫描
 WindowsMemoryScan::WindowsMemoryScan(uint32 offset, size_t length, CheckT checker, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -155,6 +161,7 @@ WindowsMemoryScan::WindowsMemoryScan(uint32 offset, size_t length, CheckT checke
     MANGOS_ASSERT(_expected.size() <= 0xFF);
 }
 
+// 构造带自定义核验回调的模块偏移内存读取扫描
 WindowsMemoryScan::WindowsMemoryScan(const std::string &module, uint32 offset, size_t length, CheckT checker, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -174,6 +181,7 @@ WindowsMemoryScan::WindowsMemoryScan(const std::string &module, uint32 offset, s
     _expected(length), _offset(offset), _module(module)
     {}
 
+// 构造代码特征码哈希扫描（在指定偏移或可执行映像内搜索特定机器码序列的 HMAC-SHA1）
 WindowsCodeScan::WindowsCodeScan(uint32 offset, const std::vector<uint8> &pattern, bool memImageOnly, bool wanted, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -203,6 +211,7 @@ WindowsCodeScan::WindowsCodeScan(uint32 offset, const std::vector<uint8> &patter
     MANGOS_ASSERT(_pattern.size() <= 0xFF);
 }
 
+// 构造客户端 MPQ/本地文件存在性及 SHA-1 哈希校验扫描
 WindowsFileHashScan::WindowsFileHashScan(const std::string &file, const void *expected, bool wanted, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -222,11 +231,11 @@ WindowsFileHashScan::WindowsFileHashScan(const std::string &file, const void *ex
     {
         auto const success = !buff.read<uint8>();
 
-        // either we wanted it but didn't find it, or didn't want it but did find it
+        // either we wanted it but didn't find it, or didn't want it but did find it (存在状态与预期不一致则违规)
         if (this->_wanted != success)
             return true;
 
-        // if we didn't want it and didn't find it, succeed
+        // if we didn't want it and didn't find it, succeed (不期望存在且确实未找到，直接通过)
         if (!this->_wanted && !success)
             return false;
 
@@ -234,7 +243,7 @@ WindowsFileHashScan::WindowsFileHashScan(const std::string &file, const void *ex
 
         buff.read(hash, sizeof(hash));
 
-        // if a hash was given, check it (some checks may only be interested in existence)
+        // if a hash was given, check it (some checks may only be interested in existence) (若指定了期望哈希则继续比对文件内容)
         return this->_hashMatch && !!memcmp(hash, this->_expected, sizeof(hash));
     }, sizeof(uint8) + sizeof(uint8) + file.length(), sizeof(uint8) + Sha1Hash::GetLength(), comment, flags),
     _file(file), _hashMatch(!!expected), _wanted(wanted)
@@ -243,6 +252,7 @@ WindowsFileHashScan::WindowsFileHashScan(const std::string &file, const void *ex
         ::memcpy(_expected, expected, sizeof(_expected));
 }
 
+// 构造客户端 Lua 全局变量存在性检查扫描
 WindowsLuaScan::WindowsLuaScan(const std::string &lua, bool wanted, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -262,7 +272,7 @@ WindowsLuaScan::WindowsLuaScan(const std::string &lua, bool wanted, const std::s
     {
         auto const found = !buff.read<uint8>();
 
-        // if its found we have to 'read' the string, even if we don't care what it is
+        // if its found we have to 'read' the string, even if we don't care what it is (即使不校验值也必须跳过响应字符串字节，以免污染后续扫描的缓冲区读指针)
         if (found)
         {
             auto const length = buff.read<uint8>();
@@ -274,6 +284,7 @@ WindowsLuaScan::WindowsLuaScan(const std::string &lua, bool wanted, const std::s
     _lua(lua), _wanted(wanted)
     {}
 
+// 构造客户端 Lua 全局变量值精确匹配扫描
 WindowsLuaScan::WindowsLuaScan(const std::string &lua, const std::string &expectedValue, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -309,6 +320,7 @@ WindowsLuaScan::WindowsLuaScan(const std::string &lua, const std::string &expect
     MANGOS_ASSERT(expectedValue.length() <= 0xFF);
 }
 
+// 构造带自定义核验回调的 Lua 变量扫描
 WindowsLuaScan::WindowsLuaScan(const std::string &lua, CheckT checker, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -328,6 +340,7 @@ WindowsLuaScan::WindowsLuaScan(const std::string &lua, CheckT checker, const std
     MANGOS_ASSERT(checker);
 }
 
+// 构造系统 API Hook 校验扫描（检查指定 DLL 导出函数前若干字节是否被 Detour 篡改）
 WindowsHookScan::WindowsHookScan(const std::string &module, const std::string &proc, const void *hash,
     uint32 offset, size_t length, const std::string &comment, uint32 flags)
     : WindowsScan(
@@ -362,6 +375,7 @@ WindowsHookScan::WindowsHookScan(const std::string &module, const std::string &p
     ::memcpy(_hash, hash, sizeof(_hash));
 }
 
+// 构造 Windows 内核驱动存在性扫描
 WindowsDriverScan::WindowsDriverScan(const std::string &name, const std::string &targetPath, bool wanted, const std::string &comment, uint32 flags)
     : WindowsScan(
     // builder
@@ -393,6 +407,7 @@ WindowsDriverScan::WindowsDriverScan(const std::string &name, const std::string 
     _name(name), _targetPath(targetPath), _wanted(wanted)
     {}
 
+// 构造客户端高精度计时器检查扫描
 WindowsTimeScan::WindowsTimeScan(CheckT checker, const std::string &comment, uint32 flags) :
     WindowsScan(
     // builder

@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Tempest Keep, The Eye
 EndScriptData */
 
+// 风暴要塞团队副本数据脚本实现
+/* 遭遇战概述：
+ * 管理风暴要塞大厅通往凯尔萨斯王座的门禁与前置首领击杀要求。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "the_eye.h"
 
@@ -216,6 +221,7 @@ void instance_the_eye::OpenDoors()
 }
 
 
+// 注册 instance_the_eye 脚本
 void AddSC_instance_the_eye()
 {
     Script* pNewScript = new Script;

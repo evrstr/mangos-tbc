@@ -36,9 +36,9 @@ void WorldStateVariableManager::Initialize(uint32 completedEncounterMask)
         if (m_owner->GetDifficulty() != encounter->Difficulty)
             continue;
 
-        if (encounter->CompleteWorldStateID) // use official data whenever available
+        if (encounter->CompleteWorldStateID) // use official data whenever available | 优先使用官方 DBC 定义的完成状态 WorldStateID
             SetVariable(encounter->CompleteWorldStateID, ((1 << encounter->encounterIndex) & completedEncounterMask) != 0);
-        else // phase this out eventually
+        else // phase this out eventually | 回退方案：使用旧式遭遇战 ID 规则（待逐步淘汰）
             SetEncounterVariable(encounter->Id, ((1 << encounter->encounterIndex) & completedEncounterMask) != 0);
     }
 }
@@ -104,7 +104,7 @@ void WorldStateVariableManager::BroadcastVariable(int32 Id) const
     if (!lPlayers.isEmpty())
     {
         WorldStateVariable const* variable = GetVariableData(Id);
-        MANGOS_ASSERT(variable); // if we are broadcasting a variable it must be initialized
+        MANGOS_ASSERT(variable); // if we are broadcasting a variable it must be initialized | 广播变量前必须已完成初始化
         int32 value = variable->value;
         bool queryIds = variable->zoneId || variable->areaId;
         for (const auto& lPlayer : lPlayers)
@@ -112,7 +112,7 @@ void WorldStateVariableManager::BroadcastVariable(int32 Id) const
             if (Player* player = lPlayer.getSource())
             {
                 uint32 zoneId, areaId;
-                if (queryIds) // optimization
+                if (queryIds) // optimization | 仅当变量限定了区域时才查询玩家所在 zone/area
                     player->GetZoneAndAreaId(zoneId, areaId);
                 if ((!variable->zoneId || variable->zoneId == zoneId) &&
                     (!variable->areaId || variable->areaId == areaId))

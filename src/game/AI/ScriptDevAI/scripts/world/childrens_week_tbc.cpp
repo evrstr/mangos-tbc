@@ -20,6 +20,7 @@
 #include "Spells/Scripts/SpellScript.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 
+// 外域儿童周任务触发器 NPC 枚举
 enum TriggerEntries
 {
     NPC_TRIGGER_SPOREGGAR           = 22829,
@@ -81,6 +82,7 @@ enum TriggerEntries
     QUEST_TIME_TO_VISIT_THE_CAVERNS_A           = 10962,
 };
 
+// 儿童周孤儿台词文本 ID 枚举
 enum ChildTextEntries
 {
     SAY_DARK_PORTAL_A_1 = -1015138,
@@ -206,6 +208,7 @@ enum ChildActions
     ACTION_NOW_WHEN_I_GROW_UP,
 };
 
+// 外域儿童周孤儿 AI (ChildTbcAI)：血精灵孤儿与德莱尼孤儿跟随玩家游历外域景点并触发交互台词
 struct ChildTbcAI : public PetAI
 {
     ChildTbcAI(Creature* creature) : PetAI(creature)
@@ -878,6 +881,7 @@ struct OCWAuchindounSummonAdventurer : public SpellScript
     }
 };
 
+// 注册外域儿童周脚本
 void AddSC_childrens_week_tbc()
 {
     Script* pNewScript = new Script;

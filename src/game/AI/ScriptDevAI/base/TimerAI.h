@@ -29,16 +29,18 @@ using namespace std::chrono_literals;
 
 class ChatHandler;
 
+// 计时器有效战斗环境枚举
 enum TimerCombat
 {
-    TIMER_COMBAT_OOC    = 0, // reset on evade
-    TIMER_COMBAT_COMBAT = 1, // reset on evade
-    TIMER_ALWAYS        = 2, // reset on spawn
+    TIMER_COMBAT_OOC    = 0, // reset on evade (非战斗状态计时器，脱战闪避时重置)
+    TIMER_COMBAT_COMBAT = 1, // reset on evade (战斗状态计时器，脱战闪避时重置)
+    TIMER_ALWAYS        = 2, // reset on spawn (始终计时的计时器，仅在生成时重置)
 };
 
 /*
 Timer data class used for execution of TimerAI events
 */
+// 计时器数据结构：存储倒计时状态、初始区间与到期回调函数
 struct Timer
 {
     Timer(uint32 id, std::function<void()> functor, uint32 timerMin, uint32 timerMax, TimerCombat combatSetting, bool disabled = false);
@@ -52,14 +54,15 @@ struct Timer
     bool initialDisabled;
     TimerCombat combatSetting;
 
-    bool UpdateTimer(const uint32 diff, bool combat);
-    void ResetTimer();
+    bool UpdateTimer(const uint32 diff, bool combat); // 递减计时并在到期触发时返回 true
+    void ResetTimer();                          // 重置计时器至初始随机区间
 };
 
 /*
 Not an AI in itself
 Used for adding unified timer support to any AI
 */
+// 统一计时器管理器：为各种 AI 提供可扩展的定时动作与闭包回调支持
 class TimerManager
 {
     public:
@@ -78,35 +81,35 @@ class TimerManager
             AddCustomAction(id, timerMin.count(), timerMax.count(), functor, timerCombat);
         }
 
-        virtual void ResetTimer(uint32 index, uint32 timer);
+        virtual void ResetTimer(uint32 index, uint32 timer); // 重置并启动指定计时器
         virtual void ResetTimer(uint32 index, std::chrono::milliseconds timer)
         {
             ResetTimer(index, timer.count());
         }
-        virtual void DisableTimer(uint32 index);
-        virtual void ReduceTimer(uint32 index, uint32 timer);
+        virtual void DisableTimer(uint32 index);          // 禁用指定计时器
+        virtual void ReduceTimer(uint32 index, uint32 timer);  // 缩短计时器时间至指定上限
         virtual void ReduceTimer(uint32 index, std::chrono::milliseconds timer)
         {
             ReduceTimer(index, timer.count());
         }
-        virtual void DelayTimer(uint32 index, uint32 timer);
+        virtual void DelayTimer(uint32 index, uint32 timer);   // 延迟计时器触发时间
         virtual void DelayTimer(uint32 index, std::chrono::milliseconds timer)
         {
             DelayTimer(index, timer.count());
         }
-        virtual void ResetIfNotStarted(uint32 index, uint32 timer);
+        virtual void ResetIfNotStarted(uint32 index, uint32 timer); // 若计时器尚未启动则进行重置
         virtual void ResetIfNotStarted(uint32 index, std::chrono::milliseconds timer)
         {
             ResetIfNotStarted(index, timer.count());
         }
 
 
-        virtual void UpdateTimers(const uint32 diff);
-        virtual void UpdateTimers(const uint32 diff, bool combat);
-        virtual void ResetAllTimers();
-        virtual void ResetTimersOnEvade();
+        virtual void UpdateTimers(const uint32 diff);    // 更新计时器（非战斗）
+        virtual void UpdateTimers(const uint32 diff, bool combat); // 更新计时器（指定战斗状态）
+        virtual void ResetAllTimers();                  // 重置所有计时器
+        virtual void ResetTimersOnEvade();              // 脱战回位时重置计时器
 
-        virtual void GetAIInformation(ChatHandler& reader);
+        virtual void GetAIInformation(ChatHandler& reader); // 调试输出计时器信息
 
     protected:
         void AddTimer(uint32 id, Timer&& timer);
@@ -114,6 +117,7 @@ class TimerManager
         std::map<uint32, Timer> m_timers; // yes, we are slicing here
 };
 
+// 战斗动作编排管理器：维护战斗技能/事件就绪标志与定时器执行
 class CombatActions : public TimerManager
 {
     public:
@@ -159,7 +163,7 @@ class CombatActions : public TimerManager
             ResetIfNotStarted(index, timer.count());
         }
 
-        void DisableCombatAction(uint32 index);
+        void DisableCombatAction(uint32 index);            // 禁用战斗动作并清除就绪标志
 
         void ResetCombatAction(uint32 index, uint32 timer)
         {
@@ -190,7 +194,7 @@ class CombatActions : public TimerManager
         inline bool GetActionReadyStatus(uint32 index) { return m_actionReadyStatus[index]; }
 
         virtual void UpdateTimers(const uint32 diff, bool combat) override;
-        virtual void ExecuteActions() = 0;
+        virtual void ExecuteActions() = 0;              // 纯虚函数：执行所有就绪的战斗动作
         virtual void ResetAllTimers() override;
         virtual void ResetTimersOnEvade() override;
 

@@ -52,6 +52,7 @@ void BigNumber::SetDword(uint32 val)
 
 void BigNumber::SetQword(uint64 val)
 {
+    // 分高低 32 位写入 OpenSSL BIGNUM
     BN_add_word(_bn, (uint32)(val >> 32));
     BN_lshift(_bn, _bn, 32);
     BN_add_word(_bn, (uint32)(val & 0xFFFFFFFF));
@@ -59,6 +60,7 @@ void BigNumber::SetQword(uint64 val)
 
 void BigNumber::SetBinary(const uint8* bytes, int len)
 {
+    // 输入为小端序字节流，先反转为大端序再交由 BN_bin2bn 解析
     uint8 t[1000];
     for (int i = 0; i < len; ++i)
         t[i] = bytes[len - 1 - i];
@@ -163,11 +165,11 @@ std::vector<uint8> BigNumber::AsByteArray(int minSize, bool reverse) const
 
     std::vector<uint8> byteArray(length);
 
-    // If we need more bytes than length of BigNumber set the rest to 0
+    // If we need more bytes than length of BigNumber set the rest to 0 | 若目标长度大于大数实际字节数，将缓冲区分段清零填充
     if (length > GetNumBytes())
         memset((void*)byteArray.data(), 0, length);
 
-    // Padding should add leading zeroes, not trailing
+    // Padding should add leading zeroes, not trailing | 填充应补在有效字节之前（大端序前导零），而非尾部
     auto const paddingOffset = length - GetNumBytes();
 
     BN_bn2bin(_bn, (unsigned char*)byteArray.data() + paddingOffset);

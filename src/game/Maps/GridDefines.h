@@ -24,7 +24,7 @@
 #include <cmath>
 #include <optional>
 
-// Forward class definitions
+// Forward class definitions (前置类声明)
 class Corpse;
 class Creature;
 class DynamicObject;
@@ -33,6 +33,9 @@ class Pet;
 class Player;
 class Camera;
 
+// 地图网格与单元格尺寸常量及高度/搜索距离阈值定义
+// MAX_HEIGHT：表面地面高度搜索上限；INVALID_HEIGHT / INVALID_HEIGHT_VALUE：无效高度标记（需与 VMAP 常量一致）
+// MAX_FALL_DISTANCE：无限坠落搜索距离；DEFAULT_HEIGHT_SEARCH / DEFAULT_WATER_SEARCH：默认高度与水面检测搜索半径
 #define MAX_NUMBER_OF_GRIDS      64
 
 #define SIZE_OF_GRIDS            533.33333f
@@ -65,6 +68,8 @@ class Camera;
 
 // Creature used instead pet to simplify *::Visit templates (not required duplicate code for Creature->Pet case)
 // Cameras in world list just because linked with Player objects
+// 使用 Creature 代替 Pet 以简化 *::Visit 模板（无需为 Creature->Pet 重复代码）
+// Camera 放在世界对象列表中是因为它与 Player 对象关联
 typedef TYPELIST_4(Player, Creature/*pets*/, Corpse/*resurrectable*/, Camera)           AllWorldObjectTypes;
 typedef TYPELIST_4(GameObject, Creature/*except pets*/, DynamicObject, Corpse/*Bones*/) AllGridObjectTypes;
 typedef TYPELIST_4(Creature, Pet, GameObject, DynamicObject)                            AllMapStoredObjectTypes;
@@ -82,6 +87,7 @@ typedef NGrid<MAX_NUMBER_OF_CELLS, Player, AllWorldObjectTypes, AllGridObjectTyp
 typedef TypeMapContainer<AllGridObjectTypes> GridTypeMapContainer;
 typedef TypeMapContainer<AllWorldObjectTypes> WorldTypeMapContainer;
 
+// 通用二维网格/单元格坐标对模板（上限为 LIMIT）
 template<const unsigned int LIMIT>
 struct CoordPair
 {
@@ -148,6 +154,7 @@ namespace MaNGOS
     inline RET_TYPE Compute(float x, float y, float center_offset, float size)
     {
         // calculate and store temporary values in double format for having same result as same mySQL calculations
+        // 使用 double 精度计算并暂存中间值，以保证结果与 MySQL 计算一致
         double x_offset = (double(x) - center_offset) / size;
         double y_offset = (double(y) - center_offset) / size;
 
@@ -156,16 +163,19 @@ namespace MaNGOS
         return RET_TYPE(x_val, y_val);
     }
 
+    // 根据世界坐标 (x, y) 计算所属 Grid 坐标对
     inline GridPair ComputeGridPair(float x, float y)
     {
         return Compute<GridPair, CENTER_GRID_ID>(x, y, CENTER_GRID_OFFSET, SIZE_OF_GRIDS);
     }
 
+    // 根据世界坐标 (x, y) 计算所属 Cell 坐标对
     inline CellPair ComputeCellPair(float x, float y)
     {
         return Compute<CellPair, CENTER_GRID_CELL_ID>(x, y, CENTER_GRID_CELL_OFFSET, SIZE_OF_GRID_CELL);
     }
 
+    // 将单个坐标值裁剪到合法地图边界内
     inline void NormalizeMapCoord(float& c)
     {
         if (c > MAP_HALFSIZE - 0.5)

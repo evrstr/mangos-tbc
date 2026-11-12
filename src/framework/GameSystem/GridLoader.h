@@ -28,6 +28,9 @@
   loading and unloading but implements as a template pattern that
   delicate its loading and unloading for the actualy loader and unloader.
   GridLoader manages the grid (both local and remote).
+
+  GridLoader 与 Grid 协同工作，负责在对象进入网格时触发加载与卸载流程。
+  它自身不直接执行资源加载，而是通过模板策略委托给具体的 loader/stoper/unloader 实现。
  */
 
 #include "Platform/Define.h"
@@ -44,7 +47,7 @@ class GridLoader
 {
     public:
 
-        /** Loads the grid
+        /** Loads the grid | 加载网格数据
          */
         template<class LOADER>
         void Load(Grid<ACTIVE_OBJECT, WORLD_OBJECT_TYPES, GRID_OBJECT_TYPES>& grid, LOADER& loader)
@@ -52,7 +55,7 @@ class GridLoader
             loader.Load(grid);
         }
 
-        /** Stop the grid
+        /** Stop the grid | 停止网格中的活动对象/逻辑
          */
         template<class STOPER>
         void Stop(Grid<ACTIVE_OBJECT, WORLD_OBJECT_TYPES, GRID_OBJECT_TYPES>& grid, STOPER& stoper)
@@ -60,7 +63,7 @@ class GridLoader
             stoper.Stop(grid);
         }
 
-        /** Unloads the grid
+        /** Unloads the grid | 卸载网格数据
          */
         template<class UNLOADER>
         void Unload(Grid<ACTIVE_OBJECT, WORLD_OBJECT_TYPES, GRID_OBJECT_TYPES>& grid, UNLOADER& unloader)

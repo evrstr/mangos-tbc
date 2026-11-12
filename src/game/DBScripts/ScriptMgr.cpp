@@ -61,8 +61,9 @@ ScriptMgr::ScriptMgr()
 
 // /////////////////////////////////////////////////////////
 //              DB SCRIPTS (loaders of static data)
+//              数据库脚本静态数据加载器
 // /////////////////////////////////////////////////////////
-// returns priority (0 == cannot start script)
+// returns priority (0 == cannot start script) (返回法术效果启动 DBScript 的优先级，0 表示不能启动)
 uint8 GetSpellStartDBScriptPriority(SpellEntry const* spellinfo, SpellEffectIndex effIdx)
 {
     if (spellinfo->Effect[effIdx] == SPELL_EFFECT_SCRIPT_EFFECT)
@@ -84,6 +85,7 @@ uint8 GetSpellStartDBScriptPriority(SpellEntry const* spellinfo, SpellEffectInde
 }
 
 // Priorize: SCRIPT_EFFECT before DUMMY before Non-Existing triggered spell, for same priority the first effect with the priority triggers
+// 按优先级判断指定法术效果索引是否可作为触发 dbscripts_on_spell 的入口（仅最高优先级效果触发）
 bool ScriptMgr::CanSpellEffectStartDBScript(SpellEntry const* spellinfo, SpellEffectIndex effIdx)
 {
     uint8 priority = GetSpellStartDBScriptPriority(spellinfo, effIdx);
@@ -104,6 +106,7 @@ bool ScriptMgr::CanSpellEffectStartDBScript(SpellEntry const* spellinfo, SpellEf
     return true;
 }
 
+/// 从指定 dbscripts_* 表加载并校验所有脚本指令条目
 void ScriptMgr::LoadScripts(ScriptMapType scriptType)
 {
     ScriptMapMapName scripts;
@@ -987,6 +990,7 @@ void ScriptMgr::LoadScripts(ScriptMapType scriptType)
     sLog.outString();
 }
 
+/// 加载指定类型的脚本表并对脚本 ID（任务/法术/GO/事件/中继等）执行引用完整性校验；重载时异步推送至所有地图
 void ScriptMgr::LoadScriptMap(ScriptMapType scriptType, bool reload)
 {
     LoadScripts(scriptType);
@@ -1148,6 +1152,7 @@ void ScriptMgr::LoadScriptMap(ScriptMapType scriptType, bool reload)
     }
 }
 
+/// 加载 string_id 表（ID 与名称双向映射），重载时同步更新所有地图数据容器
 void ScriptMgr::LoadStringIds(bool reload)
 {
     std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT Id, Name FROM string_id"));
@@ -1200,6 +1205,7 @@ void ScriptMgr::LoadStringIds(bool reload)
     }
 }
 
+/// 校验所有脚本类型中 SCRIPT_COMMAND_TALK 引用的广播文本是否存在
 void ScriptMgr::LoadDbScriptStrings()
 {
     CheckScriptTexts(SCRIPT_TYPE_QUEST_END);
@@ -1214,6 +1220,7 @@ void ScriptMgr::LoadDbScriptStrings()
     CheckScriptTexts(SCRIPT_TYPE_RELAY);
 }
 
+/// 加载 dbscript_random_templates 随机模板（按显式概率与等概率分组存储）
 void ScriptMgr::LoadDbScriptRandomTemplates()
 {
     auto queryResult = WorldDatabase.Query("SELECT id, type, target_id, chance FROM dbscript_random_templates");
@@ -1243,6 +1250,7 @@ void ScriptMgr::LoadDbScriptRandomTemplates()
     }
 }
 
+/// 从未使用的广播文本 ID 集合中剔除已被随机文本模板引用的 ID
 void ScriptMgr::CheckRandomStringTemplates(std::set<int32>& ids)
 {
     for (auto& templateData : m_scriptTemplates[STRING_TEMPLATE])
@@ -1251,6 +1259,7 @@ void ScriptMgr::CheckRandomStringTemplates(std::set<int32>& ids)
                 ids.erase(data.first);
 }
 
+/// 校验随机中继模板中引用的 relayId 是否均存在于 dbscripts_on_relay
 void ScriptMgr::CheckRandomRelayTemplates()
 {
     auto relayScripts = GetScriptMap(SCRIPT_TYPE_RELAY);
@@ -1260,6 +1269,7 @@ void ScriptMgr::CheckRandomRelayTemplates()
                 sLog.outErrorDb("Table `dbscript_random_templates` entry (%u) uses nonexistent relay ID (%u).", templateData.first, data.first);
 }
 
+/// 校验指定脚本类型下所有 TALK 指令的文本 ID 及随机文本模板有效性
 void ScriptMgr::CheckScriptTexts(ScriptMapType scriptType)
 {
     ScriptMapMapName const& scripts = *GetScriptMap(scriptType).get();
@@ -1295,6 +1305,7 @@ void ScriptMgr::CheckScriptTexts(ScriptMapType scriptType)
 
 /// Helper function to get Object source or target for Script-Command
 /// returns false iff an error happened
+/// 根据 GUID 解析脚本命令的源或目标对象（支持生物、宠物、玩家、GO、尸体、载具及物品），发生错误返回 false
 bool ScriptAction::GetScriptCommandObject(const ObjectGuid guid, bool includeItem, Object*& resultObject) const
 {
     resultObject = nullptr;
@@ -1347,6 +1358,7 @@ bool ScriptAction::GetScriptCommandObject(const ObjectGuid guid, bool includeIte
 
 /// Select source and target for a script command
 /// Returns false if an error happened
+/// 根据 Buddy 查找方式（GUID/刷怪池/刷怪编组/StringId/模板半径）及方向标志位解析最终源列表与目标列表
 std::pair<bool, bool> ScriptAction::GetScriptProcessTargets(WorldObject* originalSource, WorldObject* originalTarget, std::vector<WorldObject*>& finalSources, std::vector<WorldObject*>& finalTargets) const
 {
     std::vector<WorldObject*> buddies;
@@ -1633,7 +1645,7 @@ std::pair<bool, bool> ScriptAction::GetScriptProcessTargets(WorldObject* origina
     return { true, buddies.size() };
 }
 
-/// Helper to log error information
+/// Helper to log error information (类型校验辅助函数：对象不符合预期类型时记录 DB 错误日志并返回 true)
 bool ScriptAction::LogIfNotCreature(WorldObject* pWorldObject) const
 {
     if (!pWorldObject || pWorldObject->GetTypeId() != TYPEID_UNIT)
@@ -1671,7 +1683,7 @@ bool ScriptAction::LogIfNotPlayer(WorldObject* pWorldObject) const
     return false;
 }
 
-/// Helper to get a player if possible (target preferred)
+/// Helper to get a player if possible (target preferred) (优先从目标、其次从源获取玩家指针，均非玩家则记错并返回 nullptr)
 Player* ScriptAction::GetPlayerTargetOrSourceAndLog(WorldObject* pSource, WorldObject* pTarget) const
 {
     if ((!pTarget || pTarget->GetTypeId() != TYPEID_PLAYER) && (!pSource || pSource->GetTypeId() != TYPEID_PLAYER))
@@ -1691,6 +1703,7 @@ ScriptAction::ScriptAction(ScriptMapType scriptType, Map* _map, ObjectGuid _sour
 
 /// Handle one Script Step
 // Return true if and only if further parts of this script shall be skipped
+// 执行单步脚本动作：解析源/目标及所有 Buddy 组合并逐对执行命令；返回 true 表示需中止后续步骤
 bool ScriptAction::HandleScriptStep()
 {
     std::vector<WorldObject*> sources;
@@ -1754,6 +1767,7 @@ bool ScriptAction::HandleScriptStep()
     return finalResult;
 }
 
+/// 针对单对源/目标执行具体的 DBScript 命令（含 Condition 条件校验）
 bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTarget, Object* pSourceOrItem, bool buddyFound)
 {
     if (m_script->condition_id && !sObjectMgr.IsConditionSatisfied(m_script->condition_id, pTarget, m_map, pSource, CONDITION_FROM_DBSCRIPTS))
@@ -3311,6 +3325,7 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
     return false;
 }
 
+/// 按显式概率或等概率从随机模板中抽取目标 ID
 int32 ScriptMgr::GetRandomScriptTemplateId(uint32 id, uint8 templateType)
 {
     if (m_scriptTemplates[templateType][id].empty())
@@ -3352,6 +3367,7 @@ int32 ScriptMgr::GetRandomRelayDbscriptFromTemplate(uint32 id)
 //              Scripting Library Hooks
 // /////////////////////////////////////////////////////////
 
+/// 收集所有游戏对象模板、法术效果及飞行路线节点可能触发的事件 ID，用于校验 dbscripts_on_event
 void ScriptMgr::CollectPossibleEventIds(std::set<uint32>& eventIds)
 {
     // Load all possible script entries from gameobjects
@@ -3422,7 +3438,7 @@ std::shared_ptr<ScriptMapMapName> ScriptMgr::GetScriptMap(ScriptMapType scriptMa
     return m_scriptMaps[scriptMapType];
 }
 
-// Starters for events
+// Starters for events (触发游戏事件脚本：依次尝试 SD2、战场/野外 PvP 处理器，最后回退到地图 dbscripts_on_event)
 bool StartEvents_Event(Map* map, uint32 id, Object* source, Object* target, bool isStart/*=true*/)
 {
     MANGOS_ASSERT(source);

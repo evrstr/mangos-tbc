@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 塔迪乌斯（Thaddius）构造区4号首领战 AI（斯塔拉格与费尔根电极跳台、极性转换正负电荷增伤站位）
+
 /* ContentData
 boss_thaddius
 boss_stalagg
@@ -31,69 +33,72 @@ EndContentData */
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // Stalagg
-    SAY_STAL_AGGRO                  = 13083,
-    SAY_STAL_SLAY                   = 13085,
-    SAY_STAL_DEATH                  = 13084,
+    // Stalagg (斯塔拉格)
+    SAY_STAL_AGGRO                  = 13083,                // stal开战 台词广播 ID
+    SAY_STAL_SLAY                   = 13085,                // stal击杀 台词广播 ID
+    SAY_STAL_DEATH                  = 13084,                // stal死亡 台词广播 ID
 
     // Feugen
-    SAY_FEUG_AGGRO                  = 13023,
-    SAY_FEUG_SLAY                   = 13025,
-    SAY_FEUG_DEATH                  = 13024,
+    SAY_FEUG_AGGRO                  = 13023,                // feug开战 台词广播 ID
+    SAY_FEUG_SLAY                   = 13025,                // feug击杀 台词广播 ID
+    SAY_FEUG_DEATH                  = 13024,                // feug死亡 台词广播 ID
 
     // Thaddus
-    SAY_AGGRO_1                     = 13086,
-    SAY_AGGRO_2                     = 13087,
-    SAY_AGGRO_3                     = 13088,
-    SAY_SLAY                        = 13096,
-    SAY_ELECT                       = 13090,
-    SAY_DEATH                       = 13089,
-    EMOTE_TESLA_OVERLOAD            = 12178,
+    SAY_AGGRO_1                     = 13086,                // 开战1 台词广播 ID
+    SAY_AGGRO_2                     = 13087,                // 开战2 台词广播 ID
+    SAY_AGGRO_3                     = 13088,                // 开战3 台词广播 ID
+    SAY_SLAY                        = 13096,                // 击杀 台词广播 ID
+    SAY_ELECT                       = 13090,                // elect 台词广播 ID
+    SAY_DEATH                       = 13089,                // 死亡 台词广播 ID
+    EMOTE_TESLA_OVERLOAD            = 12178,                // 特斯拉电极overload 表情动作 ID
 
-    // Thaddius Spells
-    SPELL_THADIUS_SPAWN             = 28160,
-    SPELL_THADIUS_LIGHTNING_VISUAL  = 28136,
-    SPELL_BALL_LIGHTNING            = 28299,
-    SPELL_CHAIN_LIGHTNING           = 28167,
-    SPELL_POLARITY_SHIFT            = 28089,
-    SPELL_POSITIVE_CHARGE           = 28059,
-    SPELL_NEGATIVE_CHARGE           = 28084,
-    SPELL_POSITIVE_CHARGE_BUFF      = 29659,
-    SPELL_NEGATIVE_CHARGE_BUFF      = 29660,
-    SPELL_POSITIVE_CHARGE_DAMAGE    = 28062,
-    SPELL_NEGATIVE_CHARGE_DAMAGE    = 28085,
-    SPELL_BESERK                    = 27680,
+    // Thaddius Spells (塔迪乌斯Spells)
+    SPELL_THADIUS_SPAWN             = 28160,                // thadius生成 法术 ID
+    SPELL_THADIUS_LIGHTNING_VISUAL  = 28136,                // thadius闪电视觉特效 法术 ID
+    SPELL_BALL_LIGHTNING            = 28299,                // ball闪电 法术 ID
+    SPELL_CHAIN_LIGHTNING           = 28167,                // 连环闪电 法术 ID
+    SPELL_POLARITY_SHIFT            = 28089,                // 极性转换 法术 ID
+    SPELL_POSITIVE_CHARGE           = 28059,                // 正电荷冲锋 法术 ID
+    SPELL_NEGATIVE_CHARGE           = 28084,                // 负电荷冲锋 法术 ID
+    SPELL_POSITIVE_CHARGE_BUFF      = 29659,                // 正电荷冲锋增益 法术 ID
+    SPELL_NEGATIVE_CHARGE_BUFF      = 29660,                // 负电荷冲锋增益 法术 ID
+    SPELL_POSITIVE_CHARGE_DAMAGE    = 28062,                // 正电荷冲锋伤害 法术 ID
+    SPELL_NEGATIVE_CHARGE_DAMAGE    = 28085,                // 负电荷冲锋伤害 法术 ID
+    SPELL_BESERK                    = 27680,                // beserk 法术 ID
 
     // Stalagg & Feugen Spells
-    SPELL_WARSTOMP                  = 28125,
-    SPELL_MAGNETIC_PULL_A           = 28338,
-    SPELL_MAGNETIC_PULL_B           = 28339,
-    SPELL_STATIC_FIELD              = 28135,
-    SPELL_POWERSURGE                = 28134,
+    SPELL_WARSTOMP                  = 28125,                // warstomp 法术 ID
+    SPELL_MAGNETIC_PULL_A           = 28338,                // magneticpulla 法术 ID
+    SPELL_MAGNETIC_PULL_B           = 28339,                // magneticpullb 法术 ID
+    SPELL_STATIC_FIELD              = 28135,                // staticfield 法术 ID
+    SPELL_POWERSURGE                = 28134,                // powersurge 法术 ID
 //    SPELL_FEUGEN_INITIALIZE         = 28138,      // usage unknown
 //    SPELL_STALAGG_PASSIVE           = 28139,      // usage unknown
 
-    // Tesla Spells
-    SPELL_FEUGEN_CHAIN              = 28111,
-    SPELL_STALAGG_CHAIN             = 28096,
-    SPELL_FEUGEN_TESLA_PASSIVE      = 28109,
-    SPELL_STALAGG_TESLA_PASSIVE     = 28097,
-    SPELL_SHOCK_OVERLOAD            = 28159,
+    // Tesla Spells (特斯拉电极Spells)
+    SPELL_FEUGEN_CHAIN              = 28111,                // feugen连环 法术 ID
+    SPELL_STALAGG_CHAIN             = 28096,                // 斯塔拉格连环 法术 ID
+    SPELL_FEUGEN_TESLA_PASSIVE      = 28109,                // feugen特斯拉电极passive 法术 ID
+    SPELL_STALAGG_TESLA_PASSIVE     = 28097,                // 斯塔拉格特斯拉电极passive 法术 ID
+    SPELL_SHOCK_OVERLOAD            = 28159,                // 震击overload 法术 ID
 //    SPELL_SHOCK                     = 28099,      // Used in SpellEffects.cpp
-    SPELL_TRIGGER_TESLAS            = 28359
+    SPELL_TRIGGER_TESLAS            = 28359                 // 触发teslas 法术 ID
 };
 
 /************
 ** boss_thaddius
 ************/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ThaddiusActions
 {
     THADDIUS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（thaddius）
 struct boss_thaddiusAI : public BossAI
 {
     boss_thaddiusAI(Creature* creature) : BossAI(creature, THADDIUS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -106,6 +111,7 @@ struct boss_thaddiusAI : public BossAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
@@ -114,6 +120,7 @@ struct boss_thaddiusAI : public BossAI
         DoCastSpellIfCan(nullptr, SPELL_THADIUS_SPAWN, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         BossAI::Aggro(who);
@@ -122,12 +129,14 @@ struct boss_thaddiusAI : public BossAI
         m_creature->SetImmuneToPlayer(false);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         BossAI::JustReachedHome();
         DoCastSpellIfCan(nullptr, SPELL_THADIUS_SPAWN, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         BossAI::Aggro(killer);
@@ -160,6 +169,7 @@ enum ThaddiusAddActions
     THADDIUS_ADD_HOLD,
 };
 
+// 首领战 AI：标识 ID（thaddiusAdds）
 struct boss_thaddiusAddsAI : public BossAI
 {
     boss_thaddiusAddsAI(Creature* creature) : BossAI(creature, THADDIUS_ADD_ACTIONS_MAX), m_instance(dynamic_cast<instance_naxxramas*>(creature->GetInstanceData()))
@@ -194,6 +204,7 @@ struct boss_thaddiusAddsAI : public BossAI
     bool m_isFakingDeath;
     bool m_areBothDead;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
@@ -220,6 +231,7 @@ struct boss_thaddiusAddsAI : public BossAI
         }
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         BossAI::Aggro(who);
@@ -284,6 +296,7 @@ struct boss_thaddiusAddsAI : public BossAI
 ** boss_stalagg
 ************/
 
+// 首领战 AI：标识 ID（stalagg）
 struct boss_stalaggAI : public boss_thaddiusAddsAI
 {
     boss_stalaggAI(Creature* creature) : boss_thaddiusAddsAI(creature)
@@ -307,6 +320,7 @@ struct boss_stalaggAI : public boss_thaddiusAddsAI
 ** boss_feugen
 ************/
 
+// 首领战 AI：标识 ID（feugen）
 struct boss_feugenAI : public boss_thaddiusAddsAI
 {
     boss_feugenAI(Creature* creature) : boss_thaddiusAddsAI(creature)
@@ -317,7 +331,7 @@ struct boss_feugenAI : public boss_thaddiusAddsAI
     }
 };
 
-// 28159 - Shock
+// 28159 - Shock (28159 - 震击)
 struct ShockThaddius : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -343,7 +357,7 @@ struct ShockThaddius : public SpellScript
     }
 };
 
-// 28136 - Thadius Lightning Visual
+// 28136 - Thadius Lightning Visual (28136 - Thadius 闪电 视觉特效)
 struct ThaddiusLightningVisual : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -361,7 +375,7 @@ struct ThaddiusLightningVisual : public SpellScript
 ** Polarity Shift
 ****************/
 
-// 28089 - Polarity Shift
+// 28089 - Polarity Shift (28089 - 极性 转换)
 struct PolarityShift : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx ) const override
@@ -400,8 +414,8 @@ struct PolarityShift : public SpellScript
     }
 };
 
-// 28062 - Positive Charge
-// 28085 - Negative Charge
+// 28062 - Positive Charge (28062 - 正电荷 冲锋)
+// 28085 - Negative Charge (28085 - 负电荷 冲锋)
 struct ThaddiusChargeDamage : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex effIdx) const override
@@ -410,11 +424,11 @@ struct ThaddiusChargeDamage : public SpellScript
         {
             switch (spell->m_spellInfo->Id)
             {
-                case SPELL_POSITIVE_CHARGE_DAMAGE:                // Positive Charge
+                case SPELL_POSITIVE_CHARGE_DAMAGE:                // Positive Charge (正电荷冲锋)
                     if (target->HasAura(SPELL_POSITIVE_CHARGE))   // Only deal damage to targets without Positive Charge
                         return false;
                     break;
-                case SPELL_NEGATIVE_CHARGE_DAMAGE:                // Negative Charge
+                case SPELL_NEGATIVE_CHARGE_DAMAGE:                // Negative Charge (负电荷冲锋)
                     if (target->HasAura(SPELL_NEGATIVE_CHARGE))   // Only deal damage to targets without Negative Charge
                         return false;
                     break;
@@ -426,8 +440,8 @@ struct ThaddiusChargeDamage : public SpellScript
     }
 };
 
-// 28059 - Positive Charge
-// 28084 - Negative Charge
+// 28059 - Positive Charge (28059 - 正电荷 冲锋)
+// 28084 - Negative Charge (28084 - 负电荷 冲锋)
 struct ThaddiusCharge : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -483,8 +497,8 @@ struct MagneticPullThaddius : public SpellScript
     }
 };
 
-// 28096 - Stalagg Chain
-// 28111 - Feugen Chain
+// 28096 - Stalagg Chain (28096 - 斯塔拉格 连环)
+// 28111 - Feugen Chain (28111 - Feugen 连环)
 struct FeugenStalaggChain : public AuraScript
 {
     void OnPeriodicTrigger(Aura* /*aura*/, PeriodicTriggerData& /*data*/) const override
@@ -493,8 +507,8 @@ struct FeugenStalaggChain : public AuraScript
     }
 };
 
-// 28098 - Stalagg Tesla Effect
-// 28110 - Feugen Tesla Effect
+// 28098 - Stalagg Tesla Effect (28098 - 斯塔拉格 特斯拉电极 效果)
+// 28110 - Feugen Tesla Effect (28110 - Feugen 特斯拉电极 效果)
 struct FeugenStalaggTeslaEffect : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -529,7 +543,7 @@ struct FeugenStalaggTeslaEffect : public SpellScript
     }
 };
 
-// 28359 - Trigger Teslas
+// 28359 - Trigger Teslas (28359 - 触发 Teslas)
 struct TriggerTeslas : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -539,11 +553,12 @@ struct TriggerTeslas : public SpellScript
         {
             DoBroadcastText(EMOTE_TESLA_OVERLOAD, unitTarget, unitTarget);
             unitTarget->RemoveAllAuras();
-            unitTarget->CastSpell(nullptr, SPELL_SHOCK_OVERLOAD, TRIGGERED_NONE); // Shock
+            unitTarget->CastSpell(nullptr, SPELL_SHOCK_OVERLOAD, TRIGGERED_NONE); // Shock (震击)
         }
     }
 };
 
+// 注册并载入脚本模块：boss_thaddius
 void AddSC_boss_thaddius()
 {
     Script* newScript = new Script;

@@ -19,9 +19,10 @@
 
 #include "World/WorldState.h"
 
+// 天灾入侵世界事件法术枚举
 enum ScourgeInvasionSpells
 {
-    SPELL_SPIRIT_PARTICLES_PURPLE               = 28126, // Purple Minions Aura.
+    SPELL_SPIRIT_PARTICLES_PURPLE               = 28126, // Purple Minions Aura. (天灾仆从紫色粒子光环)
 
     // GameObject Necropolis
     SPELL_SUMMON_NECROPOLIS_CRITTERS            = 27866, // Spawns NPCs Necropolis Health and Necropolis.
@@ -171,9 +172,10 @@ enum ScourgeInvasionSpells
     */
 };
 
+// 天灾入侵相关 NPC 编号枚举
 enum ScourgeInvasionNPC
 {
-    // Mouth of Kel'Thuzad
+    // Mouth of Kel'Thuzad (克尔苏加德之口)
     NPC_MOUTH_OF_KELTHUZAD                              = 16995,
 
     // Visible NPCs
@@ -248,6 +250,7 @@ enum ScourgeInvasionNPC
     NPC_WILLIAM_MONTAGUE                                = 4549
 };
 
+// 天灾入侵物品与游戏对象枚举
 enum ScourgeInvasionMisc
 {
     ITEM_NECROTIC_RUNE                                  = 22484,
@@ -284,6 +287,7 @@ enum ScourgeInvasionMisc
     CITY_ATTACK_TIMER_MAX                               = 60 * 60, // 60 min.
 };
 
+// 天灾入侵生物自定义事件枚举
 enum ScourgeInvasionNPCEvents
 {
     EVENT_SHARD_MINION_SPAWNER_SMALL        = 1,
@@ -328,6 +332,7 @@ enum ScourgeInvasionNPCEvents
     EVENT_PALLID_SUMMON_FLAMESHOCKER        = 56
 };
 
+// 天灾入侵相关任务枚举
 enum ScourgeInvasionQuests
 {
     QUEST_UNDER_THE_SHADOW                      = 9153,
@@ -335,9 +340,10 @@ enum ScourgeInvasionQuests
     QUEST_FAINT_NECROTIC_CRYSTAL                = 9310
 };
 
+// 天灾入侵台词与广播文本 ID 枚举
 enum ScourgeInvasionLang
 {
-    // Pallid Horror random yelling every 65-300 seconds
+    // Pallid Horror random yelling every 65-300 seconds (苍白恐魔随机大喊)
     BCT_PALLID_HORROR_YELL1                            = 12329, // What?  This not Naxxramas!  We not like this place... destroy!
     BCT_PALLID_HORROR_YELL2                            = 12327, // Raaarrrrggghhh!  We come for you!
     BCT_PALLID_HORROR_YELL3                            = 12326, // Kel'Thuzad say to tell you... DIE!

@@ -27,24 +27,25 @@
 class Creature;
 class Totem;
 
+// 图腾 AI：周期性锁定法术射程内的合法敌对目标并施放图腾关联法术（如灼热图腾、熔岩图腾）
 class TotemAI : public CreatureEventAI
 {
     public:
         explicit TotemAI(Creature* creature);
 
-        void SpellHit(Unit* unit, const SpellEntry* spellInfo) override;
-        void MoveInLineOfSight(Unit* who) override;
-        void AttackStart(Unit* who) override;
-        void EnterEvadeMode() override;
-        bool IsVisible(Unit* who) const override;
+        void SpellHit(Unit* unit, const SpellEntry* spellInfo) override; // 响应法术命中（继承 EventAI 触发）
+        void MoveInLineOfSight(Unit* who) override;                     // 图腾不通过视野主动触发普通生物移动索敌
+        void AttackStart(Unit* who) override;                           // 记录攻击目标 GUID（图腾不移动追击）
+        void EnterEvadeMode() override;                                 // 空实现（图腾不跑回脱战）
+        bool IsVisible(Unit* who) const override;                       // 视野可见性判定
 
-        void UpdateAI(const uint32 diff) override;
-        static int Permissible(const Creature* creature);
+        void UpdateAI(const uint32 diff) override;                      // 刷新目标校验并在就绪时施放图腾法术
+        static int Permissible(const Creature* creature);               // 判定生物是否为图腾类型
     protected:
         std::string GetAIName() override { return "TotemAI"; }
-        Totem& getTotem() const;
+        Totem& getTotem() const;                                        // 安全转换为 Totem 引用
 
     private:
-        ObjectGuid i_victimGuid;
+        ObjectGuid i_victimGuid;                                        // 当前锁定的攻击目标 GUID
 };
 #endif

@@ -21,6 +21,11 @@ SDComment: Quest support: 9729, 9752, 9785, 10009.
 SDCategory: Zangarmarsh
 EndScriptData */
 
+// 赞加沼泽野外任务与生物脚本
+/* 遭遇战概述：
+ * 赞加沼泽塞纳里奥远征队、孢子村与暗泽沼泽生物 AI。
+ */
+
 /* ContentData
 npc_cooshcoosh
 npc_kayra_longmane
@@ -36,11 +41,13 @@ EndContentData */
 ## npc_cooshcoosh
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_LIGHTNING_BOLT    = 9532,
 };
 
+// npc_cooshcooshAI 逻辑实现
 struct npc_cooshcooshAI : public ScriptedAI
 {
     npc_cooshcooshAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -52,6 +59,7 @@ struct npc_cooshcooshAI : public ScriptedAI
     uint32 m_uiNormFaction;
     uint32 m_uiLightningBolt_Timer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiLightningBolt_Timer = 2000;
@@ -76,6 +84,7 @@ struct npc_cooshcooshAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_cooshcoosh(Creature* pCreature)
 {
     return new npc_cooshcooshAI(pCreature);
@@ -85,6 +94,7 @@ UnitAI* GetAI_npc_cooshcoosh(Creature* pCreature)
 ## npc_kayra_longmane
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_START               = -1001243,
@@ -99,6 +109,7 @@ enum
     NPC_SLAVEBINDER         = 18042
 };
 
+// npc_kayra_longmaneAI 逻辑实现
 struct npc_kayra_longmaneAI : public npc_escortAI
 {
     npc_kayra_longmaneAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -150,9 +161,11 @@ struct npc_kayra_longmaneAI : public npc_escortAI
         }
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override { }
 };
 
+// 接受任务交互回调
 bool QuestAccept_npc_kayra_longmane(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ESCAPE_FROM)
@@ -166,6 +179,7 @@ bool QuestAccept_npc_kayra_longmane(Player* pPlayer, Creature* pCreature, const 
     return true;
 }
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_kayra_longmane(Creature* pCreature)
 {
     return new npc_kayra_longmaneAI(pCreature);
@@ -175,6 +189,7 @@ UnitAI* GetAI_npc_kayra_longmane(Creature* pCreature)
 ## event_stormcrow
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     EVENT_ID_STORMCROW      = 11225,
@@ -194,8 +209,10 @@ bool ProcessEventId_event_taxi_stormcrow(uint32 uiEventId, Object* pSource, Obje
     return false;
 }
 
+// StormcrowAmulet 光环脚本
 struct StormcrowAmulet : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         Unit* caster = aura->GetCaster();
@@ -224,6 +241,7 @@ struct StormcrowAmulet : public AuraScript
 ## npc_fhwoor
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_ESCORT_START            = -1000995,
@@ -245,6 +263,7 @@ enum
     QUEST_ID_FHWOOR_SMASH       = 9729,
 };
 
+// npc_fhwoorAI 逻辑实现
 struct npc_fhwoorAI : public npc_escortAI
 {
     npc_fhwoorAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -254,6 +273,7 @@ struct npc_fhwoorAI : public npc_escortAI
 
     bool m_bIsAmbush;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiStompTimer = urand(3000, 7000);
@@ -271,6 +291,7 @@ struct npc_fhwoorAI : public npc_escortAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* pSummoned) override
     {
         // move summoned towards the creature
@@ -282,6 +303,7 @@ struct npc_fhwoorAI : public npc_escortAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         // resume escort
@@ -358,11 +380,13 @@ struct npc_fhwoorAI : public npc_escortAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_fhwoor(Creature* pCreature)
 {
     return new npc_fhwoorAI(pCreature);
 }
 
+// 接受任务交互回调
 bool QuestAccept_npc_fhwoor(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ID_FHWOOR_SMASH)
@@ -378,6 +402,7 @@ bool QuestAccept_npc_fhwoor(Player* pPlayer, Creature* pCreature, const Quest* p
 ## npc_frostbite
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_FROSTBITE_ROTATE = 34748,
@@ -387,6 +412,7 @@ enum
     SPELL_FREEZING_CIRCLE = 34779
 };
 
+// npc_frostbiteAI 逻辑实现
 struct npc_frostbiteAI : public ScriptedAI
 {
     npc_frostbiteAI(Creature* creature) : ScriptedAI(creature)
@@ -397,6 +423,7 @@ struct npc_frostbiteAI : public ScriptedAI
 
     uint8 tick;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_creature->CastSpell(nullptr, SPELL_FROSTBITE_ROTATE, TRIGGERED_NONE);
@@ -444,6 +471,7 @@ struct npc_frostbiteAI : public ScriptedAI
     }
 };
 
+// 注册 zangarmarsh 脚本
 void AddSC_zangarmarsh()
 {
     Script* pNewScript = new Script;

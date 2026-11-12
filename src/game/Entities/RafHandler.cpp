@@ -24,6 +24,7 @@
 #include "Log/Log.h"
 #include "World/World.h"
 
+// 处理战友招募授予等级请求（CMSG_GRANT_LEVEL）
 void WorldSession::HandleGrantLevel(WorldPacket& recv_data)
 {
     DEBUG_LOG("Received opcode: CMSG_GRANT_LEVEL");
@@ -33,7 +34,7 @@ void WorldSession::HandleGrantLevel(WorldPacket& recv_data)
 
     Player* target = _player->GetMap()->GetPlayer(guid);
 
-    // check cheating
+    // check cheating (防作弊与条件校验)
     uint8 levels = _player->GetGrantableLevels();
     uint8 error = 0;
     if (!target)
@@ -51,6 +52,7 @@ void WorldSession::HandleGrantLevel(WorldPacket& recv_data)
     else if (target->GetGroup() != _player->GetGroup())
         error = ERR_REFER_A_FRIEND_NOT_IN_GROUP;
 
+    // 若校验失败则向客户端返回战友招募失败原因
     if (error)
     {
         WorldPacket data(SMSG_REFER_A_FRIEND_FAILURE, 24);
@@ -62,16 +64,19 @@ void WorldSession::HandleGrantLevel(WorldPacket& recv_data)
         return;
     }
 
+    // 向目标玩家发送授予等级确认弹窗数据包
     WorldPacket data2(SMSG_PROPOSE_LEVEL_GRANT, 8);
     data2 << _player->GetPackGUID();
     target->SendDirectMessage(data2);
 }
 
+// 处理战友招募请求（未实现占位）
 void WorldSession::HandleReferAFriend(WorldPacket& /*recv_data*/)
 {
 
 }
 
+// 处理玩家接受战友授予等级请求（CMSG_ACCEPT_LEVEL_GRANT）
 void WorldSession::HandleAcceptLevelGrant(WorldPacket& recv_data)
 {
     DEBUG_LOG("Received opcode: CMSG_ACCEPT_LEVEL_GRANT");
@@ -84,9 +89,11 @@ void WorldSession::HandleAcceptLevelGrant(WorldPacket& recv_data)
     if (!(other && other->GetSession()))
         return;
 
+    // 校验当前账号是否为招募者且对方为对应的被招募好友
     if (!IsARecruiter() || GetAccountId() != other->GetSession()->GetRecruitingFriendId())
         return;
 
+    // 扣除对方可授予等级次数并提升自身 1 级
     if (other->GetGrantableLevels())
         other->SetGrantableLevels(other->GetGrantableLevels() - 1);
     else

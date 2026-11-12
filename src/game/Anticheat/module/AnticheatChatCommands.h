@@ -1,5 +1,7 @@
 //This file included in Anticheat.hpp. This private table information
+// 此文件被包含在 Anticheat.hpp 中，定义反作弊模块的私有 GM 聊天子命令表
 
+// 指纹查询子命令表（.anticheat fingerprint ...）
 static ChatCommand anticheatFingerprintCommandTable[] =
 {
     { "list",      SEC_ADMINISTRATOR, false, &ChatHandler::HandleAnticheatFingerprintListCommand,      "", nullptr },

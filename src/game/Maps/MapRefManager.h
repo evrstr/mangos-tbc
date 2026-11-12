@@ -23,6 +23,7 @@
 
 class MapReference;
 
+// 地图引用管理器，管理当前地图中所有玩家的双向链表引用
 class MapRefManager : public RefManager<Map, Player>
 {
     public:

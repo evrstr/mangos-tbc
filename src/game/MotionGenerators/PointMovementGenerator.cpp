@@ -23,14 +23,15 @@
 #include "Entities/TemporarySpawn.h"
 #include "AI/BaseAI/UnitAI.h"
 
-//----- Point Movement Generator
+//----- Point Movement Generator (点对点移动生成器实现)
 
+/// 初始化点移动：先停止旧样条，添加漫游状态并下发移动指令
 void PointMovementGenerator::Initialize(Unit& unit)
 {
     if (unit.hasUnitState(UNIT_STAT_NO_FREE_MOVE | UNIT_STAT_NOT_MOVE))
         return;
 
-    // Stop any previously dispatched splines no matter the source
+    // Stop any previously dispatched splines no matter the source (停止之前任意来源残留的未完成样条)
     if (!unit.movespline->Finalized() && !m_speedChanged)
     {
         if (unit.IsClientControlled())
@@ -46,11 +47,12 @@ void PointMovementGenerator::Initialize(Unit& unit)
     m_speedChanged = false;
 }
 
+/// 结束点移动：清除漫游状态；若未到达则中断移动，已到达则触发 MovementInform
 void PointMovementGenerator::Finalize(Unit& unit)
 {
     unit.clearUnitState(UNIT_STAT_ROAMING | UNIT_STAT_ROAMING_MOVE);
 
-    // Stop any previously dispatched splines no matter the source
+    // Stop any previously dispatched splines no matter the source (若样条尚未结束则强制停止，否则派发到达通知)
     if (!unit.movespline->Finalized())
     {
         if (unit.IsClientControlled())
@@ -74,6 +76,7 @@ void PointMovementGenerator::Reset(Unit& unit)
     Initialize(unit);
 }
 
+/// 每帧检测：若受控无法移动则清除移动子状态；若速度变化或需重启则重新下发样条
 bool PointMovementGenerator::Update(Unit& unit, const uint32&/* diff*/)
 {
     if (unit.hasUnitState(UNIT_STAT_CAN_NOT_MOVE))
@@ -88,6 +91,7 @@ bool PointMovementGenerator::Update(Unit& unit, const uint32&/* diff*/)
     return !unit.movespline->Finalized();
 }
 
+/// 组装 MoveSplineInit 并启动前往目标坐标的移动
 void PointMovementGenerator::Move(Unit& unit)
 {
     Movement::MoveSplineInit init(unit);
@@ -106,6 +110,7 @@ void PointMovementGenerator::Move(Unit& unit)
     init.Launch();
 }
 
+/// 到达目标点后依次回调自身 AI、召唤者 AI 及关联 Relay 脚本
 void PointMovementGenerator::MovementInform(Unit& unit)
 {
     MovementGeneratorType const type = GetMovementGeneratorType();
@@ -127,9 +132,10 @@ void PointMovementGenerator::MovementInform(Unit& unit)
         unit.GetMap()->ScriptsStart(SCRIPT_TYPE_RELAY, m_relayId, &unit, m_guid ? unit.GetMap()->GetWorldObject(m_guid) : nullptr);
 }
 
+/// 初始化撤退移动：非玩家控制单位清除当前目标，并开始前往撤退点
 void RetreatMovementGenerator::Initialize(Unit& unit)
 {
-    // Non-client controlled unit with an AI should drop target
+    // Non-client controlled unit with an AI should drop target (非客户端控制单位进入撤退时放弃当前目标)
     if (unit.AI() && !unit.IsClientControlled())
     {
         unit.SetTarget(nullptr);
@@ -166,6 +172,7 @@ void RetreatMovementGenerator::Reset(Unit& unit)
         PointMovementGenerator::Reset(unit);
 }
 
+/// 到达撤退点后通知 AI RetreatingArrived，并开始消耗驻留延迟计时器
 bool RetreatMovementGenerator::Update(Unit& unit, const uint32& diff)
 {
     if (!PointMovementGenerator::Update(unit, diff))

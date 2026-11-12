@@ -21,25 +21,30 @@ SDComment:
 SDCategory: Stratholme
 EndScriptData */
 
+// 炮手威利（Cannon Master Willey）首领战 AI（召唤血色炮手装填大炮轰炸玩家）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_KNOCK_AWAY        = 10101,
-    SPELL_PUMMEL            = 15615,
-    SPELL_SHOOT             = 16496,
-    SPELL_SUMMON_RIFLEMAN   = 17279,        // spell needs script target
+    SPELL_KNOCK_AWAY        = 10101,                        // knockaway 法术 ID
+    SPELL_PUMMEL            = 15615,                        // pummel 法术 ID
+    SPELL_SHOOT             = 16496,                        // shoot 法术 ID
+    SPELL_SUMMON_RIFLEMAN   = 17279,        // spell needs script target (法术needsscript目标)
 };
 
+// 首领战 AI：大师威利（cannon_master_willey）
 struct boss_cannon_master_willeyAI : public ScriptedAI
 {
     boss_cannon_master_willeyAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiKnockAwayTimer;
-    uint32 m_uiPummelTimer;
-    uint32 m_uiShootTimer;
-    uint32 m_uiSummonRiflemanTimer;
+    uint32 m_uiKnockAwayTimer;                              // KnockAway 技能计时器
+    uint32 m_uiPummelTimer;                                 // Pummel 技能计时器
+    uint32 m_uiShootTimer;                                  // Shoot 技能计时器
+    uint32 m_uiSummonRiflemanTimer;                         // SummonRifleman 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiShootTimer          = 1000;
@@ -48,15 +53,17 @@ struct boss_cannon_master_willeyAI : public ScriptedAI
         m_uiSummonRiflemanTimer = 15000;
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (m_creature->GetVictim())
             pSummoned->AI()->AttackStart(m_creature->GetVictim());
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -99,15 +106,17 @@ struct boss_cannon_master_willeyAI : public ScriptedAI
         else
             m_uiSummonRiflemanTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_cannon_master_willey
 UnitAI* GetAI_boss_cannon_master_willey(Creature* pCreature)
 {
     return new boss_cannon_master_willeyAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_cannon_master_willey
 void AddSC_boss_cannon_master_willey()
 {
     Script* pNewScript = new Script;

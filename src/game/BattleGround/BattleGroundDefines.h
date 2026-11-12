@@ -21,19 +21,21 @@
 
 #include "Common.h"
 
-#define BATTLEGROUND_ARENA_POINT_DISTRIBUTION_DAY 86400     // seconds in a day
-#define COUNT_OF_PLAYERS_TO_AVERAGE_WAIT_TIME 10
+#define BATTLEGROUND_ARENA_POINT_DISTRIBUTION_DAY 86400     // seconds in a day (每日秒数，用于竞技场点数自动发放周期)
+#define COUNT_OF_PLAYERS_TO_AVERAGE_WAIT_TIME 10            // 平均等待时间采样人数上限
 
+// 战场排队队伍分类（区分预组队/散人及联盟/部落）
 enum BattleGroundQueueGroupTypes
 {
-    BG_QUEUE_PREMADE_ALLIANCE   = 0,
-    BG_QUEUE_PREMADE_HORDE      = 1,
-    BG_QUEUE_NORMAL_ALLIANCE    = 2,
-    BG_QUEUE_NORMAL_HORDE       = 3
+    BG_QUEUE_PREMADE_ALLIANCE   = 0,                        // 联盟预组队或排位竞技场队
+    BG_QUEUE_PREMADE_HORDE      = 1,                        // 部落预组队或排位竞技场队
+    BG_QUEUE_NORMAL_ALLIANCE    = 2,                        // 联盟散人或练习赛队列
+    BG_QUEUE_NORMAL_HORDE       = 3                         // 部落散人或练习赛队列
 };
 
 #define BG_QUEUE_GROUP_TYPES_COUNT 4
 
+// 团队加入战场队列的结果状态码
 enum BattleGroundGroupJoinStatus
 {
     BG_GROUP_JOIN_STATUS_TEAM_LEFT_QUEUE        = -7,
@@ -46,29 +48,31 @@ enum BattleGroundGroupJoinStatus
     BG_GROUP_JOIN_STATUS_SUCCESS                = 0,
 };
 
-// indexes of BattlemasterList.dbc
+// indexes of BattlemasterList.dbc (对应 BattlemasterList.dbc 的战场类型索引)
 enum BattleGroundTypeId
 {
     BATTLEGROUND_TYPE_NONE = 0,
-    BATTLEGROUND_AV = 1,
-    BATTLEGROUND_WS = 2,
-    BATTLEGROUND_AB = 3,
-    BATTLEGROUND_NA = 4,
-    BATTLEGROUND_BE = 5,
-    BATTLEGROUND_AA = 6,                         // all arenas
-    BATTLEGROUND_EY = 7,
-    BATTLEGROUND_RL = 8
+    BATTLEGROUND_AV = 1,                                    // 奥特兰克山谷
+    BATTLEGROUND_WS = 2,                                    // 战歌峡谷
+    BATTLEGROUND_AB = 3,                                    // 阿拉希盆地
+    BATTLEGROUND_NA = 4,                                    // 纳格兰竞技场
+    BATTLEGROUND_BE = 5,                                    // 刀锋山竞技场
+    BATTLEGROUND_AA = 6,                         // all arenas (所有竞技场随机入口)
+    BATTLEGROUND_EY = 7,                                    // 风暴之眼
+    BATTLEGROUND_RL = 8                                     // 洛丹伦废墟竞技场
 };
 #define MAX_BATTLEGROUND_TYPE_ID 9
 
+// 竞技场赛制规模枚举
 enum ArenaType
 {
-    ARENA_TYPE_NONE = 0,                            // used for mark non-arenas or problematic cases
+    ARENA_TYPE_NONE = 0,                            // used for mark non-arenas or problematic cases (非竞技场或无效类型)
     ARENA_TYPE_2v2 = 2,
     ARENA_TYPE_3v3 = 3,
     ARENA_TYPE_5v5 = 5
 };
 
+// 校验竞技场规模类型是否合法
 inline bool IsArenaTypeValid(ArenaType type) { return type == ARENA_TYPE_2v2 || type == ARENA_TYPE_3v3 || type == ARENA_TYPE_5v5; }
 
 #endif

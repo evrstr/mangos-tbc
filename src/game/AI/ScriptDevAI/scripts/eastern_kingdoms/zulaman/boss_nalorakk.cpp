@@ -21,40 +21,44 @@ SDComment: Small adjustments may be required
 SDCategory: Zul'Aman
 EndScriptData */
 
+// 纳洛拉克（Nalorakk）熊之化身首领战 AI（巨魔形态撕裂流血与巨熊形态强力狂暴交替）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulaman.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_EVENT1_SACRIFICE    = -1568014,
-    SAY_EVENT2_SACRIFICE    = -1568015,
+    SAY_EVENT1_SACRIFICE    = -1568014,                     // event1sacrifice 台词广播 ID
+    SAY_EVENT2_SACRIFICE    = -1568015,                     // event2sacrifice 台词广播 ID
 
-    SAY_AGGRO               = -1568016,
-    SAY_SURGE               = -1568017,
-    SAY_TOBEAR              = -1568018,
-    SAY_TOBEAR_EMOTE        = -1568172,
-    SAY_TOTROLL             = -1568019,
-    SAY_BERSERK             = -1568020,
-    SAY_SLAY1               = 23171,
-    SAY_SLAY2               = 23172,
-    SAY_DEATH               = -1568023,
+    SAY_AGGRO               = -1568016,                     // 开战 台词广播 ID
+    SAY_SURGE               = -1568017,                     // surge 台词广播 ID
+    SAY_TOBEAR              = -1568018,                     // tobear 台词广播 ID
+    SAY_TOBEAR_EMOTE        = -1568172,                     // tobear表情 台词广播 ID
+    SAY_TOTROLL             = -1568019,                     // totroll 台词广播 ID
+    SAY_BERSERK             = -1568020,                     // 狂暴 台词广播 ID
+    SAY_SLAY1               = 23171,                        // slay1 台词广播 ID
+    SAY_SLAY2               = 23172,                        // slay2 台词广播 ID
+    SAY_DEATH               = -1568023,                     // 死亡 台词广播 ID
 
     SPELL_BERSERK           = 45078,                        // unsure, this increases damage, size and speed
 
     // Defines for Troll form
-    SPELL_BRUTAL_SWIPE      = 42384,
-    SPELL_MANGLE            = 42389,
-    SPELL_SURGE             = 42402,
-    SPELL_SURGE_MELEE_SUPPRESS = 44960,
-    SPELL_BEAR_SHAPE        = 42377,
+    SPELL_BRUTAL_SWIPE      = 42384,                        // brutalswipe 法术 ID
+    SPELL_MANGLE            = 42389,                        // mangle 法术 ID
+    SPELL_SURGE             = 42402,                        // surge 法术 ID
+    SPELL_SURGE_MELEE_SUPPRESS = 44960,                     // surgemeleesuppress 法术 ID
+    SPELL_BEAR_SHAPE        = 42377,                        // bearshape 法术 ID
 
     // Defines for Bear form
-    SPELL_LACERATING_SLASH  = 42395,
-    SPELL_REND_FLESH        = 42397,
-    SPELL_DEAFENING_ROAR    = 42398,
+    SPELL_LACERATING_SLASH  = 42395,                        // lacerating斩击 法术 ID
+    SPELL_REND_FLESH        = 42397,                        // 雷德flesh 法术 ID
+    SPELL_DEAFENING_ROAR    = 42398,                        // deafeningroar 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum NalorakkActions
 {
     NALORAKK_ACTION_BERSERK,
@@ -68,6 +72,7 @@ enum NalorakkActions
     NALORAKK_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（nalorakk）
 struct boss_nalorakkAI : public CombatAI
 {
     boss_nalorakkAI(Creature* creature) : CombatAI(creature, NALORAKK_ACTION_MAX), m_instance(static_cast<instance_zulaman*>(creature->GetInstanceData())), m_uiCurrentWave(0)
@@ -91,8 +96,9 @@ struct boss_nalorakkAI : public CombatAI
     instance_zulaman* m_instance;
 
     uint8 m_uiCurrentWave;
-    bool m_bIsInBearForm;
+    bool m_bIsInBearForm;                                   // IsInBearForm 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -114,12 +120,14 @@ struct boss_nalorakkAI : public CombatAI
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_NALORAKK, FAIL);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != POINT_MOTION_TYPE)
@@ -129,7 +137,7 @@ struct boss_nalorakkAI : public CombatAI
         {
             m_creature->GetMotionMaster()->Clear(false, true);
             m_creature->GetMotionMaster()->MoveIdle();
-            m_creature->SetFacingTo(aBearEventInfo[m_uiCurrentWave + 1].ori); // First point is spawn
+            m_creature->SetFacingTo(aBearEventInfo[m_uiCurrentWave + 1].ori); // First point is spawn (First路径点is生成)
 
             if (m_uiCurrentWave < MAX_BEAR_WAVES - 1)
             {
@@ -250,6 +258,7 @@ struct boss_nalorakkAI : public CombatAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SurgeNalorakk）
 struct SurgeNalorakk : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -258,6 +267,7 @@ struct SurgeNalorakk : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_nalorakk
 void AddSC_boss_nalorakk()
 {
     Script* pNewScript = new Script;

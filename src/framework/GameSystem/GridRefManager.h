@@ -23,6 +23,7 @@
 
 template<class OBJECT> class GridReference;
 
+/// 网格引用管理器：管理指向同一目标类型（如网格或世界对象列表）的 GridReference 双向链表
 template<class OBJECT>
 class GridRefManager : public RefManager<GridRefManager<OBJECT>, OBJECT>
 {
@@ -30,11 +31,13 @@ class GridRefManager : public RefManager<GridRefManager<OBJECT>, OBJECT>
 
         typedef LinkedListHead::Iterator< GridReference<OBJECT> > iterator;
 
+        /// 获取链表中的第一个网格引用
         GridReference<OBJECT>* getFirst()
         {
             return (GridReference<OBJECT>*)RefManager<GridRefManager<OBJECT>, OBJECT>::getFirst();
         }
 
+        /// 获取链表中的最后一个网格引用
         GridReference<OBJECT>* getLast()
         {
             return (GridReference<OBJECT>*)RefManager<GridRefManager<OBJECT>, OBJECT>::getLast();

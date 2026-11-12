@@ -24,6 +24,7 @@
 //============================================
 class LinkedListHead;
 
+/// 侵入式双向链表元素节点基类
 class LinkedListElement
 {
     private:
@@ -52,6 +53,7 @@ class LinkedListElement
         LinkedListElement*       nocheck_prev()       { return iPrev; }
         LinkedListElement const* nocheck_prev() const { return iPrev; }
 
+        /// 将当前节点从所在链表摘除
         void delink()
         {
             if (isInList())
@@ -63,6 +65,7 @@ class LinkedListElement
             }
         }
 
+        /// 将 pElem 插入到当前节点之前
         void insertBefore(LinkedListElement* pElem)
         {
             pElem->iNext = this;
@@ -71,6 +74,7 @@ class LinkedListElement
             iPrev = pElem;
         }
 
+        /// 将 pElem 插入到当前节点之后
         void insertAfter(LinkedListElement* pElem)
         {
             pElem->iPrev = this;
@@ -82,6 +86,7 @@ class LinkedListElement
 
 //============================================
 
+/// 侵入式双向链表头哨兵封装（维护首尾哨兵与元素数量）
 class LinkedListHead
 {
     private:
@@ -94,7 +99,7 @@ class LinkedListHead
 
         LinkedListHead()
         {
-            // create empty list
+            // create empty list | 初始化空链表，首尾哨兵互相指向
 
             iFirst.iNext = &iLast;
             iLast.iPrev = &iFirst;
@@ -119,6 +124,7 @@ class LinkedListHead
             iLast.insertBefore(pElem);
         }
 
+        /// 获取链表元素个数（若未通过 incSize/decSize 维护计数则回退为线性遍历统计）
         uint32 getSize() const
         {
             if (!iSize)
@@ -140,6 +146,7 @@ class LinkedListHead
         void incSize() { ++iSize; }
         void decSize() { --iSize; }
 
+        /// 双向链表迭代器模板
         template<class _Ty>
         class Iterator
         {
@@ -157,13 +164,13 @@ class LinkedListHead
                 Iterator()
                     : _Ptr(nullptr)
                 {
-                    // construct with null node pointer
+                    // construct with null node pointer | 以空节点指针构造
                 }
 
                 Iterator(pointer _Pnode)
                     : _Ptr(_Pnode)
                 {
-                    // construct with node pointer _Pnode
+                    // construct with node pointer _Pnode | 以指定节点指针构造
                 }
 
                 Iterator& operator=(Iterator const& _Right)
@@ -179,26 +186,26 @@ class LinkedListHead
 
                 reference operator*()
                 {
-                    // return designated value
+                    // return designated value | 解引用返回目标对象引用
                     return *_Ptr;
                 }
 
                 pointer operator->()
                 {
-                    // return pointer to class object
+                    // return pointer to class object | 返回指向目标对象的指针
                     return _Ptr;
                 }
 
                 Iterator& operator++()
                 {
-                    // preincrement
+                    // preincrement | 前置自增，移动到下一节点
                     _Ptr = _Ptr->next();
                     return (*this);
                 }
 
                 Iterator operator++(int)
                 {
-                    // postincrement
+                    // postincrement | 后置自增
                     iterator _Tmp = *this;
                     ++*this;
                     return (_Tmp);
@@ -206,14 +213,14 @@ class LinkedListHead
 
                 Iterator& operator--()
                 {
-                    // predecrement
+                    // predecrement | 前置自减，移动到上一节点
                     _Ptr = _Ptr->prev();
                     return (*this);
                 }
 
                 Iterator operator--(int)
                 {
-                    // postdecrement
+                    // postdecrement | 后置自减
                     iterator _Tmp = *this;
                     --*this;
                     return (_Tmp);
@@ -221,49 +228,49 @@ class LinkedListHead
 
                 bool operator==(Iterator const& _Right) const
                 {
-                    // test for iterator equality
+                    // test for iterator equality | 判断迭代器是否相等
                     return (_Ptr == _Right._Ptr);
                 }
 
                 bool operator!=(Iterator const& _Right) const
                 {
-                    // test for iterator inequality
+                    // test for iterator inequality | 判断迭代器是否不等
                     return (!(*this == _Right));
                 }
 
                 bool operator==(pointer const& _Right) const
                 {
-                    // test for pointer equality
+                    // test for pointer equality | 注意：此处沿用原逻辑（比较 _Ptr != _Right）
                     return (_Ptr != _Right);
                 }
 
                 bool operator!=(pointer const& _Right) const
                 {
-                    // test for pointer equality
+                    // test for pointer equality | 测试指针不等性
                     return (!(*this == _Right));
                 }
 
                 bool operator==(const_reference _Right) const
                 {
-                    // test for reference equality
+                    // test for reference equality | 判断是否指向同一对象引用
                     return (_Ptr == &_Right);
                 }
 
                 bool operator!=(const_reference _Right) const
                 {
-                    // test for reference equality
+                    // test for reference equality | 判断是否指向不同对象引用
                     return (_Ptr != &_Right);
                 }
 
                 pointer _Mynode()
                 {
-                    // return node pointer
+                    // return node pointer | 返回底层节点指针
                     return (_Ptr);
                 }
 
             protected:
 
-                pointer _Ptr;                               // pointer to node
+                pointer _Ptr;                               // pointer to node | 指向当前节点的指针
         };
 
         typedef Iterator<LinkedListElement> iterator;

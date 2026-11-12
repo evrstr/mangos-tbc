@@ -25,35 +25,36 @@
 
 #include "World/WorldStateDefines.h"
 
+// 地狱火半岛野外 PvP 常量定义
 enum
 {
     MAX_HP_TOWERS                           = 3,
 
-    // spells
+    // spells (占领奖励牌子法术与地狱火优势区域增益)
     SPELL_HELLFIRE_TOWER_TOKEN_ALLIANCE     = 32155,
     SPELL_HELLFIRE_TOWER_TOKEN_HORDE        = 32158,
     SPELL_HELLFIRE_SUPERIORITY_ALLIANCE     = 32071,
     SPELL_HELLFIRE_SUPERIORITY_HORDE        = 32049,
 
-    // npcs
+    // npcs (任务击杀计数虚拟生物)
     NPC_CAPTURE_CREDIT_OVERLOOK             = 19028,
     NPC_CAPTURE_CREDIT_STADIUM              = 19029,
     NPC_CAPTURE_CREDIT_BROKEN_HILL          = 19032,
 
-    // misc
-    HONOR_REWARD_HELLFIRE                   = 10, // pre 2.0.6 is 18
+    // misc (杂项：击杀奖励荣誉)
+    HONOR_REWARD_HELLFIRE                   = 10, // pre 2.0.6 is 18 (2.0.6 之前版本为 18 点)
 
-    // gameobjects
+    // gameobjects (三座防御塔的外观实体)
     GO_TOWER_BANNER_OVERLOOK                = 182525,
     GO_TOWER_BANNER_STADIUM                 = 183515,
     GO_TOWER_BANNER_BROKEN_HILL             = 183514,
 
-    // capture points
+    // capture points (三座防御塔的占领点对象)
     GO_HELLFIRE_BANNER_OVERLOOK             = 182174,
     GO_HELLFIRE_BANNER_STADIUM              = 182173,
     GO_HELLFIRE_BANNER_BROKEN_HILL          = 182175,
 
-    // events
+    // events (三座防御塔占领/中立化事件 ID)
     //EVENT_OVERLOOK_WIN_ALLIANCE           = 11398,
     //EVENT_OVERLOOK_WIN_HORDE              = 11397,
     //EVENT_OVERLOOK_CONTEST_ALLIANCE       = 11392,
@@ -81,7 +82,7 @@ enum
     EVENT_BROKEN_HILL_NEUTRAL_ALLIANCE      = 11402,
     EVENT_BROKEN_HILL_NEUTRAL_HORDE         = 11401,
 
-    // tower artkits
+    // tower artkits (防御塔不同阵营控制时的旗帜 ArtKit)
     GO_ARTKIT_BROKEN_HILL_ALLIANCE          = 65,
     GO_ARTKIT_BROKEN_HILL_HORDE             = 64,
     GO_ARTKIT_BROKEN_HILL_NEUTRAL           = 66,
@@ -95,6 +96,7 @@ enum
     GO_ARTKIT_STADIUM_NEUTRAL               = 69,
 };
 
+// 地狱火半岛防御塔事件映射结构
 struct HellfireTowerEvent
 {
     uint32  eventEntry;
@@ -129,6 +131,7 @@ static const HellfireTowerEvent hellfireTowerEvents[MAX_HP_TOWERS][4] =
 
 static const uint32 hellfireBanners[MAX_HP_TOWERS] = {GO_HELLFIRE_BANNER_OVERLOOK, GO_HELLFIRE_BANNER_STADIUM, GO_HELLFIRE_BANNER_BROKEN_HILL};
 
+// 地狱火半岛野外 PvP 控制器：管理三座堡垒（瞭望台、竞技场、碎石岭）的争夺、击杀荣誉和全控增益
 class OutdoorPvPHP : public OutdoorPvP
 {
     public:
@@ -146,7 +149,7 @@ class OutdoorPvPHP : public OutdoorPvP
         void HandlePlayerKillInsideArea(Player* player) override;
 
     private:
-        // process capture events
+        // process capture events (处理单座防御塔占领/中立化事件)
         bool ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team, uint32 newWorldState, uint32 towerArtKit, uint32 towerAnim);
 
         Team m_towerOwner[MAX_HP_TOWERS];

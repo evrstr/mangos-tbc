@@ -29,12 +29,13 @@
 #include <vector>
 #include <algorithm>
 
-#define MAX_STACK_SIZE 64
+#define MAX_STACK_SIZE 64 // BIH 遍历栈最大深度
 
 using G3D::Vector3;
 using G3D::AABox;
 using G3D::Ray;
 
+// 将 float 按原始二进制位解释为 uint32（用于提取符号位及写入紧致节点数组）
 static inline uint32 floatToRawIntBits(float f)
 {
     union
@@ -46,6 +47,7 @@ static inline uint32 floatToRawIntBits(float f)
     return temp.ival;
 }
 
+// 将 uint32 按原始二进制位还原为 float
 static inline float intBitsToFloat(uint32 i)
 {
     union
@@ -57,6 +59,7 @@ static inline float intBitsToFloat(uint32 i)
     return temp.fval;
 }
 
+// 轴对齐包围盒区间（低点与高点）
 struct AABound
 {
     Vector3 lo, hi;
@@ -67,11 +70,13 @@ struct AABound
     Sunflow, a Java Raytracer, released under MIT/X11 License
     http://sunflow.sourceforge.net/
     Copyright (c) 2003-2007 Christopher Kulla
+    包围区间层次树 (Bounding Interval Hierarchy, BIH)：用于静态/动态模型空间划分及高速射线/点相交查询
 */
 
 class BIH
 {
     private:
+        // 初始化为空树（包含一个哑叶节点）
         void init_empty()
         {
             tree.clear();
@@ -83,6 +88,7 @@ class BIH
 
     public:
         BIH() {init_empty();}
+        // 根据图元数组及包围盒提取函数构建 BIH 层次结构
         template< class BoundsFunc, class PrimArray >
         void build(const PrimArray& primitives, BoundsFunc& getBounds, uint32 leafSize = 3, bool printStats = false)
         {
@@ -119,6 +125,7 @@ class BIH
         }
         size_t primCount() const { return objects.size(); }
 
+        // 射线与 BIH 树求交（使用前/后子节点栈遍历并支持首次命中即停与忽略 M2 模型）
         template<typename RayCallback>
         void intersectRay(const Ray& r, RayCallback& intersectCallback, float& maxDist, bool stopAtFirst = false, bool ignoreM2Model = false) const
         {
@@ -263,6 +270,7 @@ class BIH
             }
         }
 
+        // 空间点查询：遍历包含点 p 的所有叶节点图元并触发回调
         template<typename IsectCallback>
         void intersectPoint(const Vector3& p, IsectCallback& intersectCallback) const
         {
@@ -343,28 +351,29 @@ class BIH
             }
         }
 
-        bool writeToFile(FILE* wf) const;
-        bool readFromFile(FILE* rf);
+        bool writeToFile(FILE* wf) const;                             // 序列化 BIH 树与图元索引到文件
+        bool readFromFile(FILE* rf);                                    // 从文件反序列化加载 BIH 树与图元索引
 
     protected:
-        std::vector<uint32> tree;
-        std::vector<uint32> objects;
-        AABox bounds;
+        std::vector<uint32> tree;                                       // 紧致编码的节点数组（前2位存划分轴/叶标识，第29位存 BVH2 标记）
+        std::vector<uint32> objects;                                    // 重排后的图元索引表
+        AABox bounds;                                                   // 整棵树的总包围盒
 
-        struct buildData
+        struct buildData                                                // 构建期辅助数据结构
         {
             uint32* indices;
             AABox* primBound;
             uint32 numPrims;
             int maxPrims;
         };
-        struct StackNode
+        struct StackNode                                                // 非递归遍历栈帧
         {
             uint32 node;
             float tnear;
             float tfar;
         };
 
+        // 构建统计信息收集器
         class BuildStats
         {
             private:
@@ -394,16 +403,16 @@ class BIH
                 void printStats();
         };
 
-        void buildHierarchy(std::vector<uint32>& tempTree, buildData& dat, BuildStats& stats);
+        void buildHierarchy(std::vector<uint32>& tempTree, buildData& dat, BuildStats& stats); // 自顶向下构建 BIH 层次树
 
         void createNode(std::vector<uint32>& tempTree, int nodeIndex, uint32 left, uint32 right) const
         {
-            // write leaf node
+            // write leaf node (写入叶节点编码：轴位=3 表示叶子，记录起始索引与图元数量)
             tempTree[nodeIndex + 0] = (3 << 30) | left;
             tempTree[nodeIndex + 1] = right - left + 1;
         }
 
-        void subdivide(int left, int right, std::vector<uint32>& tempTree, buildData& dat, AABound& gridBox, AABound& nodeBox, int nodeIndex, int depth, BuildStats& stats);
+        void subdivide(int left, int right, std::vector<uint32>& tempTree, buildData& dat, AABound& gridBox, AABound& nodeBox, int nodeIndex, int depth, BuildStats& stats); // 递归空间切分节点
 };
 
 #endif // _BIH_H

@@ -21,11 +21,15 @@ SDComment: Placeholder
 SDCategory: Ironforge
 EndScriptData */
 
+// 铁炉堡（Ironforge）联盟主城 NPC 交互脚本
+
 /* ContentData
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 注册并载入脚本模块：ironforge
 void AddSC_ironforge()
 {
+    // 占位函数：当前该区域暂无特殊脚本逻辑
 }

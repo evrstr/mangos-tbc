@@ -21,84 +21,88 @@ SDComment: Small adjustments required
 SDCategory: Sunwell Plateau
 EndScriptData */
 
+// 穆鲁与熵魔（M'uru & Entropius）5号首领战 AI（暗影虚空传送门召唤暗怒狂暴者，转阶段坍缩为黑洞熵魔）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // muru spells
-    SPELL_NEGATIVE_ENERGY           = 46009,
+    // muru spells (穆鲁spells)
+    SPELL_NEGATIVE_ENERGY           = 46009,                // 负电荷energy 法术 ID
     SPELL_DARKNESS                  = 45996,    // big void zone; at 45 sec
     SPELL_OPEN_PORTAL_PERIODIC      = 45994,    // periodic spell which opens a portal at 30 secs; triggers 45976
-    SPELL_OPEN_PORTAL               = 45976,    // has muru portal as target
-    SPELL_OPEN_PORTAL_AURA          = 45977,
+    SPELL_OPEN_PORTAL               = 45976,    // has muru portal as target (has穆鲁传送门as目标)
+    SPELL_OPEN_PORTAL_AURA          = 45977,                // open传送门光环 法术 ID
     SPELL_SUMMON_BERSERKER_1        = 46037,    // humanoids summoned at 15 secs (3 on each side) then after 60 secs
     SPELL_SUMMON_BERSERKER_2        = 46040,    // there are two spells. one for each side
-    SPELL_SUMMON_FURY_MAGE_1        = 46038,
-    SPELL_SUMMON_FURY_MAGE_2        = 46039,
+    SPELL_SUMMON_FURY_MAGE_1        = 46038,                // 召唤fury法师1 法术 ID
+    SPELL_SUMMON_FURY_MAGE_2        = 46039,                // 召唤fury法师2 法术 ID
 
-    SPELL_SUMMON_DARK_FIEND_1       = 46000,    // summons 8 dark fiends (25744); ToDo: script npc in eventAI
-    SPELL_SUMMON_DARK_FIEND_2       = 46001,
-    SPELL_SUMMON_DARK_FIEND_3       = 46002,
-    SPELL_SUMMON_DARK_FIEND_4       = 46003,
-    SPELL_SUMMON_DARK_FIEND_5       = 46004,
-    SPELL_SUMMON_DARK_FIEND_6       = 46005,
-    SPELL_SUMMON_DARK_FIEND_7       = 46006,
-    SPELL_SUMMON_DARK_FIEND_8       = 46007,
+    SPELL_SUMMON_DARK_FIEND_1       = 46000,    // summons 8 dark fiends (25744); ToDo: script npc in eventAI (召唤 dark fiends (25744); ToDo: script npc in eventAI)
+    SPELL_SUMMON_DARK_FIEND_2       = 46001,                // 召唤darkfiend2 法术 ID
+    SPELL_SUMMON_DARK_FIEND_3       = 46002,                // 召唤darkfiend3 法术 ID
+    SPELL_SUMMON_DARK_FIEND_4       = 46003,                // 召唤darkfiend4 法术 ID
+    SPELL_SUMMON_DARK_FIEND_5       = 46004,                // 召唤darkfiend5 法术 ID
+    SPELL_SUMMON_DARK_FIEND_6       = 46005,                // 召唤darkfiend6 法术 ID
+    SPELL_SUMMON_DARK_FIEND_7       = 46006,                // 召唤darkfiend7 法术 ID
+    SPELL_SUMMON_DARK_FIEND_8       = 46007,                // 召唤darkfiend8 法术 ID
 
-    SPELL_DARK_FIEND_TRIGGER        = 45936,
+    SPELL_DARK_FIEND_TRIGGER        = 45936,                // darkfiend触发 法术 ID
 
     // transition
     SPELL_OPEN_ALL_PORTALS          = 46177,    // dummy spell which opens all the portals to begin the transition phase - has muru portal as target
-    SPELL_SUMMON_ENTROPIUS          = 46217,
-    SPELL_ENTROPIUS_SPAWN           = 46223,    // visual effect after spawn
+    SPELL_SUMMON_ENTROPIUS          = 46217,                // 召唤熵魔 法术 ID
+    SPELL_ENTROPIUS_SPAWN           = 46223,    // visual effect after spawn (视觉特效效果after生成)
 
-    // entropius spells
+    // entropius spells (熵魔spells)
     SPELL_NEGATIVE_ENERGY_ENT       = 46284,    // periodic aura spell; triggers 46289 which has script effect
-    SPELL_NEGATIVE_ENERGY_DAMAGE    = 46285,
-    SPELL_SUMMON_BLACK_HOLE         = 46282,    // 15 sec cooldown; summons 25855
-    SPELL_SUMMON_DARKNESS           = 46269,    // summons 25879 by missile
+    SPELL_NEGATIVE_ENERGY_DAMAGE    = 46285,                // 负电荷energy伤害 法术 ID
+    SPELL_SUMMON_BLACK_HOLE         = 46282,    // 15 sec cooldown; summons 25855 (15秒倒计时)
+    SPELL_SUMMON_DARKNESS           = 46269,    // summons 25879 by missile (召唤 by missile)
 
-    // portal spells
-    SPELL_SUMMON_BLOOD_ELVES_SCRIPT = 46050,
-    SPELL_SUMMON_BLOOD_ELVES_PERIODIC = 46041,
+    // portal spells (传送门spells)
+    SPELL_SUMMON_BLOOD_ELVES_SCRIPT = 46050,                // 召唤鲜血elvesscript 法术 ID
+    SPELL_SUMMON_BLOOD_ELVES_PERIODIC = 46041,              // 召唤鲜血elvesperiodic 法术 ID
     SPELL_SENTINEL_SUMMONER_VISUAL  = 45989,    // hits the summoner, so it will summon the sentinel; triggers 45988
-    SPELL_SUMMON_VOID_SENTINEL      = 45988,
-    SPELL_SUMMON_SENTINEL_SUMMONER  = 45978,
+    SPELL_SUMMON_VOID_SENTINEL      = 45988,                // 召唤voidsentinel 法术 ID
+    SPELL_SUMMON_SENTINEL_SUMMONER  = 45978,                // 召唤sentinelsummoner 法术 ID
     SPELL_TRANSFORM_VISUAL_1        = 46178,    // Visual - has Muru as script target
     SPELL_TRANSFORM_VISUAL_2        = 46208,    // Visual - has Muru as script target
     // SPELL_TRANSFORM_VISUAL_PERIODIC = 46205,
 
-    // Muru npcs
-    NPC_VOID_SENTINEL_SUMMONER      = 25782,
+    // Muru npcs (穆鲁npcs)
+    NPC_VOID_SENTINEL_SUMMONER      = 25782,                // voidsentinelsummoner Entry ID
 
-    // darkness spells
-    SPELL_DARKNESS_PERIODIC         = 45998,
-    SPELL_VOID_ZONE_VISUAL          = 46265,
-    SPELL_VOID_ZONE_PERIODIC        = 46262,
-    SPELL_SUMMON_DARK_FIEND         = 46263,
+    // darkness spells (黑暗spells)
+    SPELL_DARKNESS_PERIODIC         = 45998,                // 黑暗periodic 法术 ID
+    SPELL_VOID_ZONE_VISUAL          = 46265,                // voidzone视觉特效 法术 ID
+    SPELL_VOID_ZONE_PERIODIC        = 46262,                // voidzoneperiodic 法术 ID
+    SPELL_SUMMON_DARK_FIEND         = 46263,                // 召唤darkfiend 法术 ID
 
     // singularity
     // NPC_SINGULARITY                 = 25855,
-    SPELL_BLACK_HOLE_SUMMON_VISUAL  = 46242,
-    SPELL_BLACK_HOLE_SUMMON_VISUAL_2= 46247,
-    SPELL_BLACK_HOLE_PASSIVE        = 46228,
-    SPELL_BLACK_HOLE_VISUAL_2       = 46235,
+    SPELL_BLACK_HOLE_SUMMON_VISUAL  = 46242,                // blackhole召唤视觉特效 法术 ID
+    SPELL_BLACK_HOLE_SUMMON_VISUAL_2= 46247,                // blackhole召唤视觉特效2 法术 ID
+    SPELL_BLACK_HOLE_PASSIVE        = 46228,                // blackholepassive 法术 ID
+    SPELL_BLACK_HOLE_VISUAL_2       = 46235,                // blackhole视觉特效2 法术 ID
 
     // dark fiend
-    SPELL_DARK_FIEND_DUMMY          = 45943,
-    SPELL_DARK_FIEND_EXPLO          = 45944,
-    SPELL_DARK_FIEND_VISUAL         = 45934,
+    SPELL_DARK_FIEND_DUMMY          = 45943,                // darkfienddummy 法术 ID
+    SPELL_DARK_FIEND_EXPLO          = 45944,                // darkfiendexplo 法术 ID
+    SPELL_DARK_FIEND_VISUAL         = 45934,                // darkfiend视觉特效 法术 ID
 
-    MAX_TRANSFORM_CASTS             = 10
+    MAX_TRANSFORM_CASTS             = 10                    // 变形casts 标识 ID
 };
 
 /*######
 ## boss_muru
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MuruActions
 {
     MURU_TRANSITION,
@@ -109,6 +113,7 @@ enum MuruActions
     MURU_ATTACK_SPAWNS
 };
 
+// 首领战 AI：标识 ID（muru）
 struct boss_muruAI : public CombatAI
 {
     boss_muruAI(Creature* creature) : CombatAI(creature, MURU_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -124,6 +129,7 @@ struct boss_muruAI : public CombatAI
     instance_sunwell_plateau* m_instance;
     GuidVector m_spawns;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -156,6 +162,7 @@ struct boss_muruAI : public CombatAI
         SetReactState(REACT_PASSIVE);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         m_creature->RemoveAllAurasOnEvade();
@@ -171,6 +178,7 @@ struct boss_muruAI : public CombatAI
         SetActionReadyStatus(MURU_TRANSITION, true);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -266,7 +274,7 @@ struct boss_muruAI : public CombatAI
         {
             case MURU_TRANSITION:
             {
-                // Start transition
+                // Start transition (开始transition)
                 if (DoCastSpellIfCan(nullptr, SPELL_OPEN_ALL_PORTALS) == CAST_OK)
                 {
                     // remove the auras
@@ -303,6 +311,7 @@ struct boss_muruAI : public CombatAI
 ## boss_entropius
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum EntropiusActions
 {
     ENTROPIUS_DARKNESS,
@@ -311,6 +320,7 @@ enum EntropiusActions
     ENTROPIUS_ATTACK_DELAY,
 };
 
+// 首领战 AI：标识 ID（entropius）
 struct boss_entropiusAI : public CombatAI
 {
     boss_entropiusAI(Creature* creature) : CombatAI(creature, ENTROPIUS_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -334,12 +344,14 @@ struct boss_entropiusAI : public CombatAI
             m_instance->SetData(TYPE_MURU, DONE);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_MURU, FAIL);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SINGULARITY) // only one should be up at a time
@@ -389,6 +401,7 @@ struct boss_entropiusAI : public CombatAI
 ## npc_portal_target
 ######*/
 
+// 随从/NPC AI：目标（portal_target）
 struct npc_portal_targetAI : public ScriptedAI
 {
     npc_portal_targetAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -399,9 +412,10 @@ struct npc_portal_targetAI : public ScriptedAI
     instance_sunwell_plateau* m_instance;
 
     uint8 m_uiTransformCount;
-    uint32 m_uiTransformTimer;
-    uint32 m_uiSentinelTimer;
+    uint32 m_uiTransformTimer;                              // Transform 技能计时器
+    uint32 m_uiSentinelTimer;                               // Sentinel 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiTransformCount = 0;
@@ -412,6 +426,7 @@ struct npc_portal_targetAI : public ScriptedAI
         SetReactState(REACT_PASSIVE);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         // Cast a visual ball on the summoner
@@ -429,18 +444,19 @@ struct npc_portal_targetAI : public ScriptedAI
         // They could use the EffectDummyCreature to handle this, but this makes code easier
         switch (spellInfo->Id)
         {
-            // Init sentinel summon timer
+            // Init sentinel summon timer (Initsentinel召唤计时器)
             case SPELL_OPEN_PORTAL:
                 m_uiSentinelTimer = 5000;
                 break;
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_uiSentinelTimer)
         {
-            // Summon the sentinel on a short timer after the portal opens
+            // Summon the sentinel on a short timer after the portal opens (召唤 the sentinel on a short timer after the portal opens)
             if (m_uiSentinelTimer <= diff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_SENTINEL_SUMMONER) == CAST_OK)
@@ -456,6 +472,7 @@ struct npc_portal_targetAI : public ScriptedAI
 ## npc_darkness
 ######*/
 
+// 随从/NPC AI：标识 ID（darkness）
 struct npc_darknessAI : public CombatAI
 {
     npc_darknessAI(Creature* creature) : CombatAI(creature, 0)
@@ -480,6 +497,7 @@ struct npc_darknessAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_VOID_ZONE_VISUAL, CAST_TRIGGERED);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_DARK_FIEND)
@@ -494,12 +512,14 @@ struct npc_darknessAI : public CombatAI
 ## npc_singularity
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SingularityActions
 {
     SINGULARITY_SPAWN,
     SINGULARITY_TARGET_CHANGE,
 };
 
+// 随从/NPC AI：标识 ID（singularity）
 struct npc_singularityAI : public CombatAI
 {
     npc_singularityAI(Creature* creature) : CombatAI(creature, 0)
@@ -510,6 +530,7 @@ struct npc_singularityAI : public CombatAI
 
     uint8 m_uiActivateStage;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
 
@@ -628,6 +649,7 @@ struct DarkFiendAura : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（DarkFiendDummy）
 struct DarkFiendDummy : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -649,7 +671,7 @@ struct DarkFiendDummy : public SpellScript
 
 void SummonElves(Unit* target)
 {
-    // summon 2 berserkers and 1 fury mage on each side
+    // summon 2 berserkers and 1 fury mage on each side (召唤 berserkers and 1 fury mage on each side)
     for (uint8 i = 0; i < 2; i++)
     {
         target->CastSpell(nullptr, SPELL_SUMMON_BERSERKER_1, TRIGGERED_OLD_TRIGGERED);
@@ -662,6 +684,7 @@ void SummonElves(Unit* target)
     target->AI()->SendAIEvent(AI_EVENT_CUSTOM_B, target, target);
 }
 
+// 法术脚本逻辑实现：标识 ID（SummonBloodElvesScript）
 struct SummonBloodElvesScript : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -683,6 +706,7 @@ struct SummonBloodElvesPeriodic : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（DarknessMuru）
 struct DarknessMuru : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -693,6 +717,7 @@ struct DarknessMuru : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（EntropiusDarkEnergy）
 struct EntropiusDarkEnergy : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -714,6 +739,7 @@ struct EntropiusDarkEnergy : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（OpenAllPortals）
 struct OpenAllPortals : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -733,6 +759,7 @@ struct TransformVisualPeriodic : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（OpenPortalMuru）
 struct OpenPortalMuru : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -744,6 +771,7 @@ struct OpenPortalMuru : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SummonVoidSentinelSummoner）
 struct SummonVoidSentinelSummoner : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -754,6 +782,7 @@ struct SummonVoidSentinelSummoner : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SummonVoidSentinelSummonerVisual）
 struct SummonVoidSentinelSummonerVisual : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -780,6 +809,7 @@ struct SpellShadowPulsePeriodic : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（BlackHoleEffect）
 struct BlackHoleEffect : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -788,6 +818,7 @@ struct BlackHoleEffect : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_muru
 void AddSC_boss_muru()
 {
     Script* pNewScript = new Script;

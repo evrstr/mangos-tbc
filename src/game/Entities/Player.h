@@ -32,7 +32,7 @@
 #include "Server/WorldSession.h"
 #include "Entities/Pet.h"
 #include "Maps/MapReference.h"
-#include "Util/Util.h"                                           // for Tokens typedef
+#include "Util/Util.h"                                           // for Tokens typedef (用于 Tokens 类型定义)
 #include "Reputation/ReputationMgr.h"
 #include "BattleGround/BattleGround.h"
 #include "Server/DBCStores.h"
@@ -68,31 +68,34 @@ class PlayerbotMgr;
 
 struct AreaTrigger;
 
+/// 玩家邮件双端队列类型
 typedef std::deque<Mail*> PlayerMails;
 
 #define PLAYER_MAX_SKILLS           127
 #define PLAYER_MAX_DAILY_QUESTS     25
 #define PLAYER_EXPLORED_ZONES_SIZE  128
 
-// TODO: Maybe this can be implemented in configuration file.
+// TODO: Maybe this can be implemented in configuration file. (待办: 也许可以在配置文件中实现此项)
 #define PLAYER_NEW_INSTANCE_LIMIT_PER_HOUR 5
 
+/// 玩家所处环境液体/地形标志位枚举
 enum EnvironmentFlags
 {
     ENVIRONMENT_FLAG_NONE           = 0x00,
-    ENVIRONMENT_FLAG_IN_WATER       = 0x01,                     // Swimming or standing in water
-    ENVIRONMENT_FLAG_IN_MAGMA       = 0x02,                     // Swimming or standing in magma
-    ENVIRONMENT_FLAG_IN_SLIME       = 0x04,                     // Swimming or standing in slime
-    ENVIRONMENT_FLAG_HIGH_SEA       = 0x08,                     // Anywhere inside deep water area
-    ENVIRONMENT_FLAG_UNDERWATER     = 0x10,                     // Swimming fully submerged in any liquid
-    ENVIRONMENT_FLAG_HIGH_LIQUID    = 0x20,                     // In any liquid deep enough to be able to swim
-    ENVIRONMENT_FLAG_LIQUID         = 0x40,                     // Anywhere indide area with any liquid
+    ENVIRONMENT_FLAG_IN_WATER       = 0x01,                     // Swimming or standing in water (在水中游泳或站立)
+    ENVIRONMENT_FLAG_IN_MAGMA       = 0x02,                     // Swimming or standing in magma (在岩浆中游泳或站立)
+    ENVIRONMENT_FLAG_IN_SLIME       = 0x04,                     // Swimming or standing in slime (在软泥/毒水中游泳或站立)
+    ENVIRONMENT_FLAG_HIGH_SEA       = 0x08,                     // Anywhere inside deep water area (处于深水区域内的任意位置)
+    ENVIRONMENT_FLAG_UNDERWATER     = 0x10,                     // Swimming fully submerged in any liquid (完全浸没在任意液体中游泳)
+    ENVIRONMENT_FLAG_HIGH_LIQUID    = 0x20,                     // In any liquid deep enough to be able to swim (处于足够深以至于可以游泳的液体中)
+    ENVIRONMENT_FLAG_LIQUID         = 0x40,                     // Anywhere indide area with any liquid (处于包含任意液体的区域内)
 
     ENVIRONMENT_MASK_LIQUID_HAZARD  = (ENVIRONMENT_FLAG_IN_MAGMA | ENVIRONMENT_FLAG_IN_SLIME),
     ENVIRONMENT_MASK_IN_LIQUID      = (ENVIRONMENT_FLAG_IN_WATER | ENVIRONMENT_MASK_LIQUID_HAZARD),
     ENVIRONMENT_MASK_LIQUID_FLAGS   = (ENVIRONMENT_FLAG_UNDERWATER | ENVIRONMENT_MASK_IN_LIQUID | ENVIRONMENT_FLAG_HIGH_SEA | ENVIRONMENT_FLAG_LIQUID | ENVIRONMENT_FLAG_HIGH_LIQUID),
 };
 
+/// 购买银行栏位操作结果枚举
 enum BuyBankSlotResult
 {
     ERR_BANKSLOT_FAILED_TOO_MANY    = 0,
@@ -101,6 +104,7 @@ enum BuyBankSlotResult
     ERR_BANKSLOT_OK                 = 3
 };
 
+/// 玩家法术状态（用于持久化增删改跟踪）
 enum PlayerSpellState
 {
     PLAYERSPELL_UNCHANGED       = 0,
@@ -109,16 +113,18 @@ enum PlayerSpellState
     PLAYERSPELL_REMOVED         = 3
 };
 
+/// 玩家已学法术条目信息
 struct PlayerSpell
 {
     PlayerSpellState state : 8;
-    bool active            : 1;                             // show in spellbook
-    bool dependent         : 1;                             // learned as result another spell learn, skill grow, quest reward, etc
-    bool disabled          : 1;                             // first rank has been learned in result talent learn but currently talent unlearned, save max learned ranks
+    bool active            : 1;                             // show in spellbook (在法术书中显示)
+    bool dependent         : 1;                             // learned as result another spell learn, skill grow, quest reward, etc (因学习其他法术、技能提升或任务奖励等而习得)
+    bool disabled          : 1;                             // first rank has been learned in result talent learn but currently talent unlearned, save max learned ranks (曾通过天赋学会低阶法术但当前未点该天赋，保留已学最高阶标记)
 };
 
 typedef std::unordered_map<uint32, PlayerSpell> PlayerSpellMap;
 
+/// 法术冷却记录（结束时间戳与触发物品 ID）
 struct SpellCooldown
 {
     time_t end;
@@ -127,14 +133,16 @@ struct SpellCooldown
 
 typedef std::map<uint32, SpellCooldown> SpellCooldowns;
 
+/// 训练师法术学习状态
 enum TrainerSpellState
 {
     TRAINER_SPELL_GREEN         = 0,
     TRAINER_SPELL_RED           = 1,
     TRAINER_SPELL_GRAY          = 2,
-    TRAINER_SPELL_GREEN_DISABLED = 10                       // custom value, not send to client: formally green but learn not allowed
+    TRAINER_SPELL_GREEN_DISABLED = 10                       // custom value, not send to client: formally green but learn not allowed (自定义值，不发给客户端：表面显示绿色但禁止学习)
 };
 
+/// 动作条按钮更新状态（用于数据库增量保存）
 enum ActionButtonUpdateState
 {
     ACTIONBUTTON_UNCHANGED      = 0,
@@ -143,10 +151,11 @@ enum ActionButtonUpdateState
     ACTIONBUTTON_DELETED        = 3
 };
 
+/// 动作条按钮类型（法术、宏、物品等）
 enum ActionButtonType
 {
     ACTION_BUTTON_SPELL         = 0x00,
-    ACTION_BUTTON_C             = 0x01,                     // click?
+    ACTION_BUTTON_C             = 0x01,                     // click? (点击触发？)
     ACTION_BUTTON_MACRO         = 0x40,
     ACTION_BUTTON_CMACRO        = ACTION_BUTTON_C | ACTION_BUTTON_MACRO,
     ACTION_BUTTON_ITEM          = 0x80
@@ -156,6 +165,7 @@ enum ActionButtonType
 #define ACTION_BUTTON_TYPE(X)   ((uint32(X) & 0xFF000000) >> 24)
 #define MAX_ACTION_BUTTON_ACTION_VALUE (0x00FFFFFF+1)
 
+/// 动作条单个按钮数据结构
 struct ActionButton
 {
     ActionButton() : packedData(0), uState(ACTIONBUTTON_NEW) {}
@@ -163,7 +173,7 @@ struct ActionButton
     uint32 packedData;
     ActionButtonUpdateState uState;
 
-    // helpers
+    // helpers (辅助方法)
     ActionButtonType GetType() const { return ActionButtonType(ACTION_BUTTON_TYPE(packedData)); }
     uint32 GetAction() const { return ACTION_BUTTON_ACTION(packedData); }
     void SetActionAndType(uint32 action, ActionButtonType type)
@@ -178,10 +188,11 @@ struct ActionButton
     }
 };
 
-#define  MAX_ACTION_BUTTONS 132                             // checked in 2.3.0
+#define  MAX_ACTION_BUTTONS 132                             // checked in 2.3.0 (在 2.3.0 版本中校验)
 
 typedef std::map<uint8, ActionButton> ActionButtonList;
 
+/// 角色创建初始物品条目
 struct PlayerCreateInfoItem
 {
     PlayerCreateInfoItem(uint32 id, uint32 amount) : item_id(id), item_amount(amount) {}
@@ -192,6 +203,7 @@ struct PlayerCreateInfoItem
 
 typedef std::list<PlayerCreateInfoItem> PlayerCreateInfoItems;
 
+/// 职业每级基础生命与法力值信息
 struct PlayerClassLevelInfo
 {
     PlayerClassLevelInfo() : basehealth(0), basemana(0) {}
@@ -199,13 +211,15 @@ struct PlayerClassLevelInfo
     uint16 basemana;
 };
 
+/// 职业等级属性表容器
 struct PlayerClassInfo
 {
     PlayerClassInfo() : levelInfo(nullptr) { }
 
-    PlayerClassLevelInfo* levelInfo;                        //[level-1] 0..MaxPlayerLevel-1
+    PlayerClassLevelInfo* levelInfo;                        //[level-1] 0..MaxPlayerLevel-1 (按 [等级-1] 索引，范围 0..MaxPlayerLevel-1)
 };
 
+/// 角色各等级基础五大属性数组
 struct PlayerLevelInfo
 {
     PlayerLevelInfo() { for (unsigned char& stat : stats) stat = 0; }
@@ -215,6 +229,7 @@ struct PlayerLevelInfo
 
 typedef std::list<uint32> PlayerCreateInfoSpells;
 
+/// 角色创建初始动作条配置条目
 struct PlayerCreateInfoAction
 {
     PlayerCreateInfoAction() : button(0), type(0), action(0) {}
@@ -227,6 +242,7 @@ struct PlayerCreateInfoAction
 
 typedef std::list<PlayerCreateInfoAction> PlayerCreateInfoActions;
 
+/// 角色创建初始技能条目
 struct PlayerCreateInfoSkill
 {
     uint16 SkillId;
@@ -235,9 +251,10 @@ struct PlayerCreateInfoSkill
 
 typedef std::list<PlayerCreateInfoSkill> PlayerCreateInfoSkills;
 
+/// 角色创建模板信息（出生点、模型、初始物品/法术/技能/动作条）
 struct PlayerInfo
 {
-    // existence checked by displayId != 0             // existence checked by displayId != 0
+    // existence checked by displayId != 0 (通过 displayId != 0 检查是否存在)
     PlayerInfo() : mapId(0), areaId(0), positionX(0.f), positionY(0.f), positionZ(0.f), orientation(0.f), displayId_m(0), displayId_f(0), levelInfo(nullptr)
     {
     }
@@ -255,9 +272,10 @@ struct PlayerInfo
     PlayerCreateInfoSkills skill;
     PlayerCreateInfoActions action;
 
-    PlayerLevelInfo* levelInfo;                             //[level-1] 0..MaxPlayerLevel-1
+    PlayerLevelInfo* levelInfo;                             //[level-1] 0..MaxPlayerLevel-1 (按 [等级-1] 索引，范围 0..MaxPlayerLevel-1)
 };
 
+/// 玩家 PvP 状态与计时器信息
 struct PvPInfo
 {
     PvPInfo() : inPvPCombat(false), inPvPEnforcedArea(false), inPvPCapturePoint(false), isPvPFlagCarrier(false), timerPvPRemaining(0), timerPvPContestedRemaining(0) {}
@@ -270,6 +288,7 @@ struct PvPInfo
     uint32 timerPvPContestedRemaining;
 };
 
+/// 决斗状态与双方信息
 struct DuelInfo
 {
     DuelInfo() : initiator(nullptr), opponent(nullptr), startTimer(0), startTime(0), outOfBound(0) {}
@@ -281,6 +300,7 @@ struct DuelInfo
     time_t outOfBound;
 };
 
+/// 区域边界坐标结构
 struct Areas
 {
     uint32 areaID;
@@ -291,6 +311,7 @@ struct Areas
     float y2;
 };
 
+/// 物品限时附魔剩余时间记录
 struct EnchantDuration
 {
     EnchantDuration() : item(nullptr), slot(MAX_ENCHANTMENT_SLOT), leftduration(0) {};
@@ -304,6 +325,7 @@ struct EnchantDuration
 typedef std::list<EnchantDuration> EnchantDurationList;
 typedef std::list<Item*> ItemDurationList;
 
+/// 加入团队/副本队伍错误码
 enum RaidGroupError
 {
     ERR_RAID_GROUP_NONE                 = 0,
@@ -313,6 +335,7 @@ enum RaidGroupError
     ERR_RAID_GROUP_REQUIREMENTS_UNMATCH = 4
 };
 
+/// 角色醉酒程度状态
 enum DrunkenState
 {
     DRUNKEN_SOBER               = 0,
@@ -323,6 +346,7 @@ enum DrunkenState
 
 #define MAX_DRUNKEN             4
 
+/// 玩家状态标志位（对应 PLAYER_FLAGS 字段）
 enum PlayerFlags
 {
     PLAYER_FLAGS_NONE                   = 0x00000000,
@@ -332,49 +356,52 @@ enum PlayerFlags
     PLAYER_FLAGS_GM                     = 0x00000008,
     PLAYER_FLAGS_GHOST                  = 0x00000010,
     PLAYER_FLAGS_RESTING                = 0x00000020,
-    PLAYER_FLAGS_UNK7                   = 0x00000040,       // admin?
+    PLAYER_FLAGS_UNK7                   = 0x00000040,       // admin? (管理员标记？)
     PLAYER_FLAGS_FFA_PVP                = 0x00000080,
-    PLAYER_FLAGS_CONTESTED_PVP          = 0x00000100,       // Player has been involved in a PvP combat and will be attacked by contested guards
-    PLAYER_FLAGS_PVP_DESIRED            = 0x00000200,       // Stores player's permanent PvP flag preference
+    PLAYER_FLAGS_CONTESTED_PVP          = 0x00000100,       // Player has been involved in a PvP combat and will be attacked by contested guards (玩家已卷入 PvP 战斗，将被争夺区域守卫攻击)
+    PLAYER_FLAGS_PVP_DESIRED            = 0x00000200,       // Stores player's permanent PvP flag preference (保存玩家的永久 PvP 标记偏好)
     PLAYER_FLAGS_HIDE_HELM              = 0x00000400,
     PLAYER_FLAGS_HIDE_CLOAK             = 0x00000800,
-    PLAYER_FLAGS_PARTIAL_PLAY_TIME      = 0x00001000,       // played long time
-    PLAYER_FLAGS_NO_PLAY_TIME           = 0x00002000,       // played too long time
+    PLAYER_FLAGS_PARTIAL_PLAY_TIME      = 0x00001000,       // played long time (防沉迷：累计在线较长时间)
+    PLAYER_FLAGS_NO_PLAY_TIME           = 0x00002000,       // played too long time (防沉迷：累计在线过长时间)
     PLAYER_FLAGS_UNK15                  = 0x00004000,
-    PLAYER_FLAGS_UNK16                  = 0x00008000,       // strange visual effect (2.0.1), looks like PLAYER_FLAGS_GHOST flag
-    PLAYER_FLAGS_SANCTUARY              = 0x00010000,       // player entered sanctuary
-    PLAYER_FLAGS_TAXI_BENCHMARK         = 0x00020000,       // taxi benchmark mode (on/off) (2.0.1)
-    PLAYER_FLAGS_PVP_TIMER              = 0x00040000,       // 3.0.2, pvp timer active (after you disable pvp manually)
-    PLAYER_FLAGS_COMMENTATOR            = 0x00080000,       // first appeared in TBC
+    PLAYER_FLAGS_UNK16                  = 0x00008000,       // strange visual effect (2.0.1), looks like PLAYER_FLAGS_GHOST flag (2.0.1 奇特视觉效果，类似幽灵标记 PLAYER_FLAGS_GHOST)
+    PLAYER_FLAGS_SANCTUARY              = 0x00010000,       // player entered sanctuary (玩家已进入庇护所安全区)
+    PLAYER_FLAGS_TAXI_BENCHMARK         = 0x00020000,       // taxi benchmark mode (on/off) (2.0.1) (飞行路线性能基准测试模式开关 2.0.1)
+    PLAYER_FLAGS_PVP_TIMER              = 0x00040000,       // 3.0.2, pvp timer active (after you disable pvp manually) (3.0.2 手动关闭 PvP 后的倒计时激活标记)
+    PLAYER_FLAGS_COMMENTATOR            = 0x00080000,       // first appeared in TBC (首次在 TBC 资料片中引入，评论员标记)
     PLAYER_FLAGS_UNK21                  = 0x00100000,
     PLAYER_FLAGS_UNK22                  = 0x00200000,
-    PLAYER_FLAGS_COMMENTATOR_UBER       = 0x00400000,       // something like COMMENTATOR_CAN_USE_INSTANCE_COMMAND
+    PLAYER_FLAGS_COMMENTATOR_UBER       = 0x00400000,       // something like COMMENTATOR_CAN_USE_INSTANCE_COMMAND (类似于 COMMENTATOR_CAN_USE_INSTANCE_COMMAND 权限)
 };
 
-#define MAX_TITLE_INDEX     64                              // 1 uint64 field
+#define MAX_TITLE_INDEX     64                              // 1 uint64 field (占 1 个 uint64 字段，共 64 个称号位)
 
-// used in (PLAYER_FIELD_BYTES, 0) byte values
+// used in (PLAYER_FIELD_BYTES, 0) byte values (用于 PLAYER_FIELD_BYTES 第 0 字节标志位)
+/// 玩家字段字节标志位（PLAYER_FIELD_BYTES 字节 0）
 enum PlayerFieldByteFlags
 {
     PLAYER_FIELD_BYTE_CONTROLLING_PET   = 0x01,
     PLAYER_FIELD_BYTE_TRACK_STEALTHED   = 0x02,
     PLAYER_FIELD_BYTE_LOGGING_OUT       = 0x04,
-    PLAYER_FIELD_BYTE_RELEASE_TIMER     = 0x08,             // Display time till auto release spirit
-    PLAYER_FIELD_BYTE_NO_RELEASE_WINDOW = 0x10              // Display no "release spirit" window at all
+    PLAYER_FIELD_BYTE_RELEASE_TIMER     = 0x08,             // Display time till auto release spirit (显示自动释放灵魂倒计时)
+    PLAYER_FIELD_BYTE_NO_RELEASE_WINDOW = 0x10              // Display no "release spirit" window at all (完全不显示“释放灵魂”弹窗)
 };
 
-// used in byte (PLAYER_FIELD_BYTES2,1) values
+// used in byte (PLAYER_FIELD_BYTES2,1) values (用于 PLAYER_FIELD_BYTES2 第 1 字节标志位)
+/// 玩家字段字节2标志位（PLAYER_FIELD_BYTES2 字节 1）
 enum PlayerFieldByte2Flags
 {
     PLAYER_FIELD_BYTE2_NONE              = 0x00,
-    PLAYER_FIELD_BYTE2_DETECT_AMORE_0    = 0x02,            // SPELL_AURA_DETECT_AMORE, not used as value and maybe not relcted to, but used in code as base for mask apply
-    PLAYER_FIELD_BYTE2_DETECT_AMORE_1    = 0x04,            // SPELL_AURA_DETECT_AMORE value 1
-    PLAYER_FIELD_BYTE2_DETECT_AMORE_2    = 0x08,            // SPELL_AURA_DETECT_AMORE value 2
-    PLAYER_FIELD_BYTE2_DETECT_AMORE_3    = 0x10,            // SPELL_AURA_DETECT_AMORE value 3
+    PLAYER_FIELD_BYTE2_DETECT_AMORE_0    = 0x02,            // SPELL_AURA_DETECT_AMORE, not used as value and maybe not relcted to, but used in code as base for mask apply (SPELL_AURA_DETECT_AMORE 基础掩码位，仅在代码中作为掩码计算基址)
+    PLAYER_FIELD_BYTE2_DETECT_AMORE_1    = 0x04,            // SPELL_AURA_DETECT_AMORE value 1 (SPELL_AURA_DETECT_AMORE 值 1)
+    PLAYER_FIELD_BYTE2_DETECT_AMORE_2    = 0x08,            // SPELL_AURA_DETECT_AMORE value 2 (SPELL_AURA_DETECT_AMORE 值 2)
+    PLAYER_FIELD_BYTE2_DETECT_AMORE_3    = 0x10,            // SPELL_AURA_DETECT_AMORE value 3 (SPELL_AURA_DETECT_AMORE 值 3)
     PLAYER_FIELD_BYTE2_STEALTH           = 0x20,
     PLAYER_FIELD_BYTE2_INVISIBILITY_GLOW = 0x40
 };
 
+/// PLAYER_FIELD_BYTES 各字节偏移索引
 enum PlayerFieldBytesOffsets
 {
     PLAYER_FIELD_BYTES_OFFSET_FLAGS                 = 0,
@@ -383,6 +410,7 @@ enum PlayerFieldBytesOffsets
     PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK = 3
 };
 
+/// 镜像计时器类（管理疲劳、水下呼吸、假死与环境伤害计时）
 class MirrorTimer
 {
     public:
@@ -448,36 +476,38 @@ class MirrorTimer
         bool m_frozen;
 };
 
-// 2^n values
+// 2^n values (2 的幂次标志位)
+/// 玩家额外标志位（GM 功能、拍卖行访问、防死亡等扩展标志）
 enum PlayerExtraFlags
 {
-    // gm abilities
+    // gm abilities (GM 能力标记)
     PLAYER_EXTRA_GM_ON              = 0x0001,
     PLAYER_EXTRA_GM_ACCEPT_TICKETS  = 0x0002,
     PLAYER_EXTRA_ACCEPT_WHISPERS    = 0x0004,
     PLAYER_EXTRA_TAXICHEAT          = 0x0008,
     PLAYER_EXTRA_GM_INVISIBLE       = 0x0010,
-    PLAYER_EXTRA_GM_CHAT            = 0x0020,               // Show GM badge in chat messages
+    PLAYER_EXTRA_GM_CHAT            = 0x0020,               // Show GM badge in chat messages (在聊天消息中显示 GM 徽章)
     PLAYER_EXTRA_AUCTION_NEUTRAL    = 0x0040,
-    PLAYER_EXTRA_AUCTION_ENEMY      = 0x0080,               // overwrite PLAYER_EXTRA_AUCTION_NEUTRAL
+    PLAYER_EXTRA_AUCTION_ENEMY      = 0x0080,               // overwrite PLAYER_EXTRA_AUCTION_NEUTRAL (覆盖中立拍卖行访问标记)
 
-    // other states
-    PLAYER_EXTRA_PVP_DEATH          = 0x0100,                // store PvP death status until corpse creating.
+    // other states (其他状态标记)
+    PLAYER_EXTRA_PVP_DEATH          = 0x0100,                // store PvP death status until corpse creating. (保存 PvP 死亡状态直到生成尸体)
     PLAYER_EXTRA_WHISP_RESTRICTION  = 0x0200,
 
-    // death prevention
+    // death prevention (免死保护标记)
     PLAYER_EXTRA_GM_UNKILLABLE         = 0x0400,
 };
 
-// 2^n values
+// 2^n values (2 的幂次标志位)
+/// 下次登录触发标志位（改名、重置法术/天赋、首次登录等）
 enum AtLoginFlags
 {
     AT_LOGIN_NONE                 = 0x00,
     AT_LOGIN_RENAME               = 0x01,
     AT_LOGIN_RESET_SPELLS         = 0x02,
     AT_LOGIN_RESET_TALENTS        = 0x04,
-    // AT_LOGIN_CUSTOMIZE         = 0x08, -- used in post-3.x
-    // AT_LOGIN_RESET_PET_TALENTS = 0x10, -- used in post-3.x
+    // AT_LOGIN_CUSTOMIZE         = 0x08, -- used in post-3.x (3.x 之后版本使用)
+    // AT_LOGIN_RESET_PET_TALENTS = 0x10, -- used in post-3.x (3.x 之后版本使用)
     AT_LOGIN_FIRST                = 0x20,
     AT_LOGIN_RESET_TAXINODES      = 0x40,
     AT_LOGIN_ADD_BG_DESERTER      = 0x80
@@ -485,6 +515,7 @@ enum AtLoginFlags
 
 typedef std::map<uint32, QuestStatusData> QuestStatusMap;
 
+/// 任务日志槽位字段偏移索引
 enum QuestSlotOffsets
 {
     QUEST_ID_OFFSET             = 0,
@@ -495,6 +526,7 @@ enum QuestSlotOffsets
 
 #define MAX_QUEST_OFFSET 4
 
+/// 任务日志槽位状态掩码
 enum QuestSlotStateMask
 {
     QUEST_STATE_NONE            = 0x0000,
@@ -502,6 +534,7 @@ enum QuestSlotStateMask
     QUEST_STATE_FAIL            = 0x0002
 };
 
+/// 技能更新状态（用于数据库增量保存）
 enum SkillUpdateState
 {
     SKILL_UNCHANGED             = 0,
@@ -510,6 +543,7 @@ enum SkillUpdateState
     SKILL_DELETED               = 3
 };
 
+/// 玩家技能状态与字段位置信息
 struct SkillStatusData
 {
     SkillStatusData(uint8 _pos, SkillUpdateState _uState) : pos(_pos), uState(_uState)
@@ -521,18 +555,20 @@ struct SkillStatusData
 
 typedef std::unordered_map<uint32, SkillStatusData> SkillStatusMap;
 
+/// 玩家物品总槽位范围定义
 enum PlayerSlots
 {
-    // first slot for item stored (in any way in player m_items data)
+    // first slot for item stored (in any way in player m_items data) (玩家 m_items 中存储物品的起始槽位)
     PLAYER_SLOT_START           = 0,
-    // last+1 slot for item stored (in any way in player m_items data)
+    // last+1 slot for item stored (in any way in player m_items data) (玩家 m_items 中存储物品的结束槽位+1)
     PLAYER_SLOT_END             = 118,
     PLAYER_SLOTS_COUNT          = (PLAYER_SLOT_END - PLAYER_SLOT_START)
 };
 
 #define INVENTORY_SLOT_BAG_0    255
 
-enum EquipmentSlots                                         // 19 slots
+/// 角色装备槽位枚举（19 个部位）
+enum EquipmentSlots                                         // 19 slots (19 个装备槽位)
 {
     EQUIPMENT_SLOT_START        = 0,
     EQUIPMENT_SLOT_HEAD         = 0,
@@ -557,43 +593,50 @@ enum EquipmentSlots                                         // 19 slots
     EQUIPMENT_SLOT_END          = 19
 };
 
-enum InventorySlots                                         // 4 slots
+/// 角色额外背包栏槽位范围（4 个背包）
+enum InventorySlots                                         // 4 slots (4 个背包栏槽位)
 {
     INVENTORY_SLOT_BAG_START    = 19,
     INVENTORY_SLOT_BAG_END      = 23
 };
 
-enum InventoryPackSlots                                     // 16 slots
+/// 主行囊物品槽位范围（16 格）
+enum InventoryPackSlots                                     // 16 slots (16 个主背包物品槽位)
 {
     INVENTORY_SLOT_ITEM_START   = 23,
     INVENTORY_SLOT_ITEM_END     = 39
 };
 
-enum BankItemSlots                                          // 28 slots
+/// 银行主物品槽位范围（28 格）
+enum BankItemSlots                                          // 28 slots (28 个银行主物品槽位)
 {
     BANK_SLOT_ITEM_START        = 39,
     BANK_SLOT_ITEM_END          = 67
 };
 
-enum BankBagSlots                                           // 7 slots
+/// 银行背包栏槽位范围（7 个背包）
+enum BankBagSlots                                           // 7 slots (7 个银行背包栏槽位)
 {
     BANK_SLOT_BAG_START         = 67,
     BANK_SLOT_BAG_END           = 74
 };
 
-enum BuyBackSlots                                           // 12 slots
+/// 商人回购栏槽位范围（12 格）
+enum BuyBackSlots                                           // 12 slots (12 个商人回购槽位)
 {
-    // stored in m_buybackitems
+    // stored in m_buybackitems (保存在回购列表对应槽位中)
     BUYBACK_SLOT_START          = 74,
     BUYBACK_SLOT_END            = 86
 };
 
-enum KeyRingSlots                                           // 32 slots
+/// 钥匙链槽位范围（32 格）
+enum KeyRingSlots                                           // 32 slots (32 个钥匙链槽位)
 {
     KEYRING_SLOT_START          = 86,
     KEYRING_SLOT_END            = 118
 };
 
+/// 物品位置（背包+槽位）与数量二元组
 struct ItemPosCount
 {
     ItemPosCount(uint16 _pos, uint8 _count) : pos(_pos), count(_count) {}
@@ -603,6 +646,7 @@ struct ItemPosCount
 };
 typedef std::vector<ItemPosCount> ItemPosCountVec;
 
+/// 交易窗口槽位数量定义（6 个可交易格 + 1 个不可交易附魔/开锁格）
 enum TradeSlots
 {
     TRADE_SLOT_COUNT            = 7,
@@ -610,30 +654,33 @@ enum TradeSlots
     TRADE_SLOT_NONTRADED        = 6
 };
 
+/// 副本传送失败中止原因枚举
 enum TransferAbortReason
 {
     TRANSFER_ABORT_NONE                         = 0x00,
-    TRANSFER_ABORT_MAX_PLAYERS                  = 0x01,     // Transfer Aborted: instance is full
-    TRANSFER_ABORT_NOT_FOUND                    = 0x02,     // Transfer Aborted: instance not found
-    TRANSFER_ABORT_TOO_MANY_INSTANCES           = 0x03,     // You have entered too many instances recently.
-    TRANSFER_ABORT_ZONE_IN_COMBAT               = 0x05,     // Unable to zone in while an encounter is in progress.
-    TRANSFER_ABORT_INSUF_EXPAN_LVL              = 0x06,     // You must have TBC expansion installed to access this area.
-    TRANSFER_ABORT_DIFFICULTY                   = 0x07,     // <Normal,Heroic,Epic> difficulty mode is not available for %s.
+    TRANSFER_ABORT_MAX_PLAYERS                  = 0x01,     // Transfer Aborted: instance is full (传送中止：副本人数已满)
+    TRANSFER_ABORT_NOT_FOUND                    = 0x02,     // Transfer Aborted: instance not found (传送中止：未找到副本)
+    TRANSFER_ABORT_TOO_MANY_INSTANCES           = 0x03,     // You have entered too many instances recently. (最近进入过多副本)
+    TRANSFER_ABORT_ZONE_IN_COMBAT               = 0x05,     // Unable to zone in while an encounter is in progress. (首领战斗进行中无法进入副本)
+    TRANSFER_ABORT_INSUF_EXPAN_LVL              = 0x06,     // You must have TBC expansion installed to access this area. (必须安装燃烧的远征资料片才能进入此区域)
+    TRANSFER_ABORT_DIFFICULTY                   = 0x07,     // <Normal,Heroic,Epic> difficulty mode is not available for %s. (<普通/英雄/史诗>难度模式不适用于 %s)
 };
 
+/// 团队副本重置警告类型枚举
 enum InstanceResetWarningType
 {
-    RAID_INSTANCE_WARNING_HOURS     = 1,                    // WARNING! %s is scheduled to reset in %d hour(s).
-    RAID_INSTANCE_WARNING_MIN       = 2,                    // WARNING! %s is scheduled to reset in %d minute(s)!
-    RAID_INSTANCE_WARNING_MIN_SOON  = 3,                    // WARNING! %s is scheduled to reset in %d minute(s). Please exit the zone or you will be returned to your bind location!
-    RAID_INSTANCE_WELCOME           = 4                     // Welcome to %s. This raid instance is scheduled to reset in %s.
+    RAID_INSTANCE_WARNING_HOURS     = 1,                    // WARNING! %s is scheduled to reset in %d hour(s). (警告：%s 计划在 %d 小时后重置)
+    RAID_INSTANCE_WARNING_MIN       = 2,                    // WARNING! %s is scheduled to reset in %d minute(s)! (警告：%s 计划在 %d 分钟后重置)
+    RAID_INSTANCE_WARNING_MIN_SOON  = 3,                    // WARNING! %s is scheduled to reset in %d minute(s). Please exit the zone or you will be returned to your bind location! (警告：%s 计划在 %d 分钟后重置，请离开区域否则将被传回绑定点)
+    RAID_INSTANCE_WELCOME           = 4                     // Welcome to %s. This raid instance is scheduled to reset in %s. (欢迎来到 %s，该团队副本将于 %s 后重置)
 };
 
-// PLAYER_FIELD_ARENA_TEAM_INFO_1_1 offsets
+// PLAYER_FIELD_ARENA_TEAM_INFO_1_1 offsets (竞技场战队信息字段偏移量)
+/// 竞技场战队信息字段偏移索引
 enum ArenaTeamInfoType
 {
     ARENA_TEAM_ID               = 0,
-    ARENA_TEAM_MEMBER           = 1,                        // 0 - captain, 1 - member
+    ARENA_TEAM_MEMBER           = 1,                        // 0 - captain, 1 - member (0 - 队长，1 - 队员)
     ARENA_TEAM_GAMES_WEEK       = 2,
     ARENA_TEAM_GAMES_SEASON     = 3,
     ARENA_TEAM_WINS_SEASON      = 4,
@@ -641,6 +688,7 @@ enum ArenaTeamInfoType
     ARENA_TEAM_END              = 6
 };
 
+/// 休息区类型（无、旅店、主城）
 enum RestType
 {
     REST_TYPE_NO                = 0,
@@ -648,6 +696,7 @@ enum RestType
     REST_TYPE_IN_CITY           = 2
 };
 
+/// 决斗结束类型（中断、胜出、逃离）
 enum DuelCompleteType
 {
     DUEL_INTERRUPTED            = 0,
@@ -655,6 +704,7 @@ enum DuelCompleteType
     DUEL_FLED                   = 2
 };
 
+/// 传送选项标志位
 enum TeleportToOptions
 {
     TELE_TO_GM_MODE             = 0x01,
@@ -664,7 +714,7 @@ enum TeleportToOptions
     TELE_TO_SPELL               = 0x10,
 };
 
-/// Type of environmental damages
+/// Type of environmental damages (环境伤害类型)
 enum EnviromentalDamage
 {
     DAMAGE_EXHAUSTED            = 0,
@@ -673,9 +723,10 @@ enum EnviromentalDamage
     DAMAGE_LAVA                 = 3,
     DAMAGE_SLIME                = 4,
     DAMAGE_FIRE                 = 5,
-    DAMAGE_FALL_TO_VOID         = 6                         // custom case for fall without durability loss
+    DAMAGE_FALL_TO_VOID         = 6                         // custom case for fall without durability loss (自定义类型：掉落但不损失装备耐久)
 };
 
+/// 累计在线时间统计索引（总计、当前等级）
 enum PlayedTimeIndex
 {
     PLAYED_TIME_TOTAL           = 0,
@@ -684,7 +735,8 @@ enum PlayedTimeIndex
 
 #define MAX_PLAYED_TIME_INDEX   2
 
-// used at player loading query list preparing, and later result selection
+// used at player loading query list preparing, and later result selection (用于玩家登录加载数据库异步查询列表的准备与结果读取)
+/// 玩家登录异步数据库查询索引枚举
 enum PlayerLoginQueryIndex
 {
     PLAYER_LOGIN_QUERY_LOADFROM,
@@ -715,6 +767,7 @@ enum PlayerLoginQueryIndex
     MAX_PLAYER_LOGIN_QUERY
 };
 
+/// 玩家延迟执行操作掩码（保存、复活、逃亡者法术）
 enum PlayerDelayedOperations
 {
     DELAYED_SAVE_PLAYER         = 0x01,
@@ -723,6 +776,7 @@ enum PlayerDelayedOperations
     DELAYED_END
 };
 
+/// 声望获取来源类型
 enum ReputationSource
 {
     REPUTATION_SOURCE_KILL,
@@ -730,20 +784,23 @@ enum ReputationSource
     REPUTATION_SOURCE_SPELL
 };
 
-// Player summoning auto-decline time (in secs)
+// Player summoning auto-decline time (in secs) (玩家召唤请求自动拒绝超时时间，单位：秒)
 #define MAX_PLAYER_SUMMON_DELAY (2*MINUTE)
 #define MAX_MONEY_AMOUNT        (0x7FFFFFFF-1)
 
+/// 玩家副本进度绑定结构
 struct InstancePlayerBind
 {
     DungeonPersistentState* state;
     bool perm;
     /* permanent PlayerInstanceBinds are created in Raid/Heroic instances for players
        that aren't already permanently bound when they are inside when a boss is killed
-       or when they enter an instance that the group leader is permanently bound to. */
+       or when they enter an instance that the group leader is permanently bound to.
+       当团队或英雄副本中的首领被击杀时，或玩家进入队长已永久绑定的副本时，为尚未永久绑定的玩家创建永久副本进度绑定。 */
     InstancePlayerBind() : state(nullptr), perm(false) {}
 };
 
+/// 战友招募（RAF）错误码
 enum ReferAFriendError
 {
     ERR_REFER_A_FRIEND_NONE                          = 0x00,
@@ -762,19 +819,21 @@ enum ReferAFriendError
     ERR_REFER_A_FRIEND_SUMMON_OFFLINE_S              = 0x0D
 };
 
+/// 玩家双倍经验/休息状态枚举
 enum PlayerRestState
 {
     REST_STATE_RESTED           = 0x01,
     REST_STATE_NORMAL           = 0x02,
-    REST_STATE_RAF_LINKED       = 0x04                      // Exact use unknown
+    REST_STATE_RAF_LINKED       = 0x04                      // Exact use unknown (具体用途未知)
 };
 
+/// 玩家已解锁飞行点位图管理类
 class PlayerTaxi
 {
     public:
         PlayerTaxi();
         ~PlayerTaxi() {}
-        // Nodes
+        // Nodes (飞行节点)
         void InitTaxiNodesForLevel(uint32 race, uint32 level);
         void LoadTaxiMask(const char* data);
 
@@ -805,27 +864,28 @@ class PlayerTaxi
 
 std::ostringstream& operator<< (std::ostringstream& ss, PlayerTaxi const& taxi);
 
-/// Holder for BattleGround data
+/// Holder for BattleGround data (战场数据容器)
 struct BGData
 {
     BGData() : bgInstanceID(0), bgTypeID(BATTLEGROUND_TYPE_NONE), bgAfkReportedCount(0), bgAfkReportedTimer(0),
         bgTeam(TEAM_NONE), m_needSave(false) {}
 
-    uint32 bgInstanceID;                                    ///< This variable is set to bg->m_InstanceID, saved
-    ///  when player is teleported to BG - (it is battleground's GUID)
+    uint32 bgInstanceID;                                    ///< This variable is set to bg->m_InstanceID, saved (设置为 bg->m_InstanceID，持久化保存)
+    ///  when player is teleported to BG - (it is battleground's GUID) (玩家传送进入战场时记录，即战场实例 ID)
     BattleGroundTypeId bgTypeID;
 
     std::set<uint32>   bgAfkReporter;
     uint8              bgAfkReportedCount;
     time_t             bgAfkReportedTimer;
 
-    Team bgTeam;                                            ///< What side the player will be added to, saved
+    Team bgTeam;                                            ///< What side the player will be added to, saved (玩家被分配到的战场阵营，持久化保存)
 
-    WorldLocation joinPos;                                  ///< From where player entered BG, saved
+    WorldLocation joinPos;                                  ///< From where player entered BG, saved (玩家进入战场前的位置，持久化保存)
 
-    bool m_needSave;                                        ///< true, if saved to DB fields modified after prev. save (marked as "saved" above)
+    bool m_needSave;                                        ///< true, if saved to DB fields modified after prev. save (marked as "saved" above) (若上述需持久化字段在上次保存后有变更则为 true)
 };
 
+/// 交易状态通知数据包结构
 struct TradeStatusInfo
 {
     TradeStatusInfo() : Status(TRADE_STATUS_BUSY), TraderGuid(), Result(EQUIP_ERR_OK),
@@ -835,13 +895,14 @@ struct TradeStatusInfo
     ObjectGuid TraderGuid;
     InventoryResult Result;
     bool IsTargetResult;
-    uint32 ItemLimitCategoryId; // sent as 0 but not used in client in tbc
+    uint32 ItemLimitCategoryId; // sent as 0 but not used in client in tbc (发送为 0，TBC 客户端未使用)
     uint8 Slot;
 };
 
+/// 玩家交易会话数据管理类（物品、金币、法术附魔及双端状态同步）
 class TradeData
 {
-    public:                                                 // constructors
+    public:                                                 // constructors (构造函数)
         TradeData(Player* player, Player* trader) :
             m_player(player),  m_trader(trader), m_accepted(false), m_acceptProccess(false),
             m_money(0), m_spell(0), m_clientStateIndex(1), m_serverStateIndex(1), m_windowOpen(false) {}
@@ -874,33 +935,34 @@ class TradeData
 
         void SetAccepted(bool state, bool crosssend = false);
 
-        // must be called only from accept handler helper functions
+        // must be called only from accept handler helper functions (仅允许由交易确认处理辅助函数调用)
         void SetInAcceptProcess(bool state) { m_acceptProccess = state; }
 
-    private:                                                // internal functions
+    private:                                                // internal functions (内部函数)
 
         void Update(bool for_trader = true) const;
 
-        Player*    m_player;                                // Player who own of this TradeData
-        Player*    m_trader;                                // Player who trade with m_player
+        Player*    m_player;                                // Player who own of this TradeData (拥有此 TradeData 的玩家)
+        Player*    m_trader;                                // Player who trade with m_player (与 m_player 进行交易的对手玩家)
 
-        bool       m_accepted;                              // m_player press accept for trade list
-        bool       m_acceptProccess;                        // one from player/trader press accept and this processed
+        bool       m_accepted;                              // m_player press accept for trade list (m_player 已点击接受交易)
+        bool       m_acceptProccess;                        // one from player/trader press accept and this processed (一方点击接受且正在处理确认流程)
 
-        uint32     m_money;                                 // m_player place money to trade
+        uint32     m_money;                                 // m_player place money to trade (m_player 放入交易的金币数量)
 
-        uint32     m_spell;                                 // m_player apply spell to non-traded slot item
-        ObjectGuid m_spellCastItem;                         // applied spell casted by item use
+        uint32     m_spell;                                 // m_player apply spell to non-traded slot item (m_player 对不可交易栏位物品施加的法术，如附魔/开锁)
+        ObjectGuid m_spellCastItem;                         // applied spell casted by item use (由使用物品触发施加的法术)
 
-        ObjectGuid m_items[TRADE_SLOT_COUNT];               // traded itmes from m_player side including non-traded slot
+        ObjectGuid m_items[TRADE_SLOT_COUNT];               // traded itmes from m_player side including non-traded slot (m_player 放入交易栏的物品数组，含第 7 个不可交易/附魔槽位)
 
-        // Both start at 1, like the client's counters when the trade window opens
-        uint32     m_clientStateIndex;                      // requests from m_player's client to change its offer, refused or not; it ignores an update of its own offer with a lower index
-        uint32     m_serverStateIndex;                      // version of m_player's offer, raised by every change; the trader's client sends it back in CMSG_ACCEPT_TRADE
+        // Both start at 1, like the client's counters when the trade window opens (打开交易窗口时均从 1 开始，与客户端计数器同步)
+        uint32     m_clientStateIndex;                      // requests from m_player's client to change its offer, refused or not; it ignores an update of its own offer with a lower index (来自 m_player 客户端修改报价的请求序号；客户端会忽略序号更低的自身报价更新)
+        uint32     m_serverStateIndex;                      // version of m_player's offer, raised by every change; the trader's client sends it back in CMSG_ACCEPT_TRADE (m_player 报价版本号，每次修改递增；对方客户端在 CMSG_ACCEPT_TRADE 中回传用于防篡改校验)
 
-        bool       m_windowOpen;                            // the trade window was opened on both clients
+        bool       m_windowOpen;                            // the trade window was opened on both clients (双方客户端均已打开交易窗口)
 };
 
+/// 玩家实体核心类（继承自 Unit），负责角色属性、背包装备、任务、法术天赋、战场、副本、组队与数据库持久化
 class Player : public Unit
 {
         friend class WorldSession;
@@ -988,7 +1050,7 @@ class Player : public Unit
         bool isEnabledWhisperRestriction() const { return m_ExtraFlags & PLAYER_EXTRA_WHISP_RESTRICTION; }
         void SetWhisperRestriction(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_WHISP_RESTRICTION; else m_ExtraFlags &= ~PLAYER_EXTRA_WHISP_RESTRICTION; }
 
-        // 0 = own auction, -1 = enemy auction, 1 = goblin auction
+        // 0 = own auction, -1 = enemy auction, 1 = goblin auction (0 = 本阵营拍卖行，-1 = 敌对阵营拍卖行，1 = 地精中立拍卖行)
         int GetAuctionAccessMode() const { return m_ExtraFlags & PLAYER_EXTRA_AUCTION_ENEMY ? -1 : (m_ExtraFlags & PLAYER_EXTRA_AUCTION_NEUTRAL ? 1 : 0); }
         void SetAuctionAccessMode(int state)
         {
@@ -1008,7 +1070,7 @@ class Player : public Unit
         uint32 GetMaxAttainableLevel() const { return GetUInt32Value(PLAYER_FIELD_MAX_LEVEL); }
         void OnExpansionChange();
 
-        // Played Time Stuff
+        // Played Time Stuff (在线游戏时间统计)
         time_t m_logintime;
         time_t m_Last_tick;
 
@@ -1018,7 +1080,7 @@ class Player : public Unit
 
         Player* GetSpellModOwner() const override { return const_cast<Player*>(this); }
 
-        void SetDeathState(DeathState s) override;          // overwrite Unit::SetDeathState
+        void SetDeathState(DeathState s) override;          // overwrite Unit::SetDeathState (重写 Unit::SetDeathState)
 
         float GetRestBonus() const { return m_rest_bonus; }
         void SetRestBonus(float rest_bonus_new);
@@ -1030,17 +1092,17 @@ class Player : public Unit
         void SetGrantableLevels(uint32 levels) { m_grantableLevels = levels; }
 
         /**
-        * \brief: compute rest bonus
-        * \param: time_t timePassed > time from last check
-        * \param: bool offline      > is the player was offline?
-        * \param: bool inRestPlace  > if it was offline, is the player was in city/tavern/inn?
-        * \returns: float
+        * \brief: compute rest bonus (计算双倍精力/休息经验加成)
+        * \param: time_t timePassed > time from last check (距上次检查经过的时间)
+        * \param: bool offline      > is the player was offline? (玩家是否处于离线状态)
+        * \param: bool inRestPlace  > if it was offline, is the player was in city/tavern/inn? (离线时是否位于主城/旅店)
+        * \returns: float (计算得到的休息经验值)
         **/
         float ComputeRest(time_t timePassed, bool offline = false, bool inRestPlace = false) const;
 
         /**
-        * \brief: player is interacting with something.
-        * \param: ObjectGuid interactObj > object that interact with this player
+        * \brief: player is interacting with something. (玩家正在与对象交互)
+        * \param: ObjectGuid interactObj > object that interact with this player (与玩家交互的对象 GUID)
         **/
         void DoInteraction();
         void DoLoot();
@@ -1058,10 +1120,10 @@ class Player : public Unit
         void Whisper(const std::string& text, const uint32 language, ObjectGuid receiver);
 
         /*********************************************************/
-        /***                    TAXI SYSTEM                    ***/
+        /***             TAXI SYSTEM (飞行路线系统)              ***/
         /*********************************************************/
 
-        // Legacy taxi system
+        // Legacy taxi system (旧版飞行系统)
         PlayerTaxi m_taxi;
 
         void InitTaxiNodesForLevel() { m_taxi.InitTaxiNodesForLevel(getRace(), GetLevel()); }
@@ -1069,7 +1131,7 @@ class Player : public Unit
         bool ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc = nullptr, uint32 spellid = 0);
         bool ActivateTaxiPathTo(uint32 path_id, uint32 spellid = 0);
 
-        // New taxi system
+        // New taxi system (新版飞行轨迹追踪系统)
         void TaxiFlightResume(bool forceRenewMoveGen = false);
         bool TaxiFlightInterrupt(bool cancel = true);
 
@@ -1091,11 +1153,11 @@ class Player : public Unit
         void OnTaxiFlightRouteProgress(const TaxiPathNodeEntry* node, const TaxiPathNodeEntry* next = nullptr);
 
         /*********************************************************/
-        /***                    STORAGE SYSTEM                 ***/
+        /***             STORAGE SYSTEM (物品存储系统)           ***/
         /*********************************************************/
 
         void SetVirtualItemSlot(uint8 i, Item* item);
-        void SetSheath(SheathState sheathed) override;      // overwrite Unit version
+        void SetSheath(SheathState sheathed) override;      // overwrite Unit version (重写 Unit 基类版本)
         bool ViableEquipSlots(ItemPrototype const* proto, uint8* viable_slots) const;
         uint8 FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) const;
         uint32 GetItemCount(uint32 item, bool inBankAlso = false, Item* skipItem = nullptr) const;
@@ -1107,7 +1169,7 @@ class Player : public Unit
         Item* GetWeaponForAttack(WeaponAttackType attackType) const { return GetWeaponForAttack(attackType, false, false); }
         Item* GetWeaponForAttack(WeaponAttackType attackType, bool nonbroken, bool useable) const;
         Item* GetShield(bool useable = false) const;
-        static uint32 GetAttackBySlot(uint8 slot);          // MAX_ATTACK if not weapon slot
+        static uint32 GetAttackBySlot(uint8 slot);          // MAX_ATTACK if not weapon slot (若非武器槽位则返回 MAX_ATTACK)
         std::vector<Item*>& GetItemUpdateQueue() { return m_itemUpdateQueue; }
         static bool IsInventoryPos(uint16 pos) { return IsInventoryPos(pos >> 8, pos & 255); }
         static bool IsInventoryPos(uint8 bag, uint8 slot);
@@ -1179,11 +1241,11 @@ class Player : public Unit
         {
             return StoreItem(dest, pItem, update);
         }
-        void RemoveItem(uint8 bag, uint8 slot, bool update);// see ApplyItemOnStoreSpell notes
+        void RemoveItem(uint8 bag, uint8 slot, bool update);// see ApplyItemOnStoreSpell notes (详见 ApplyItemOnStoreSpell 说明)
         void MoveItemFromInventory(uint8 bag, uint8 slot, bool update);
-        // in trade, auction, guild bank, mail....
+        // in trade, auction, guild bank, mail.... (用于交易、拍卖行、公会银行、邮件等场景)
         void MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool update, bool in_characterInventoryDB = false);
-        // in trade, guild bank, mail....
+        // in trade, guild bank, mail.... (用于交易、公会银行、邮件等场景)
         void RemoveItemDependentAurasAndCasts(Item* pItem);
         void DestroyItem(uint8 bag, uint8 slot, bool update);
         void DestroyItemCount(uint32 item, uint32 count, bool update, bool unequip_check = false, bool inBankAlso = false);
@@ -1242,7 +1304,7 @@ class Player : public Unit
         uint32 m_stableSlots;
 
         /*********************************************************/
-        /***                    GOSSIP SYSTEM                  ***/
+        /***             GOSSIP SYSTEM (NPC 对话系统)            ***/
         /*********************************************************/
 
         void PrepareGossipMenu(WorldObject* pSource, uint32 menuId = 0, bool forceQuests = false);
@@ -1254,21 +1316,21 @@ class Player : public Unit
         uint32 GetDefaultGossipMenuForSource(WorldObject* pSource) const;
 
         /*********************************************************/
-        /***                    QUEST SYSTEM                   ***/
+        /***             QUEST SYSTEM (任务系统)                 ***/
         /*********************************************************/
 
-        // Return player level when QuestLevel is dynamic (-1)
+        // Return player level when QuestLevel is dynamic (-1) (当任务等级为动态 -1 时返回玩家当前等级)
         uint32 GetQuestLevelForPlayer(Quest const* pQuest) const { return pQuest && (pQuest->GetQuestLevel() > 0) ? (uint32)pQuest->GetQuestLevel() : GetLevel(); }
 
         void PrepareQuestMenu(ObjectGuid guid) const;
         void SendPreparedQuest(ObjectGuid guid) const;
-        bool IsActiveQuest(uint32 quest_id) const; // can be taken or completed
+        bool IsActiveQuest(uint32 quest_id) const; // can be taken or completed (当前处于已接取状态，无论是否已完成目标)
 
-        // Quest is taken and not yet rewarded
-        // if completed_or_not = 0 (or any other value except 1 or 2) - returns true, if quest is taken and doesn't depend if quest is completed or not
-        // if completed_or_not = 1 - returns true, if quest is taken but not completed
-        // if completed_or_not = 2 - returns true, if quest is taken and already completed
-        bool IsCurrentQuest(uint32 quest_id, uint8 completed_or_not = 0) const; // taken and not yet rewarded
+        // Quest is taken and not yet rewarded (任务已接取且尚未领奖)
+        // if completed_or_not = 0 (or any other value except 1 or 2) - returns true, if quest is taken and doesn't depend if quest is completed or not (参数为 0 或非 1/2 时：只要已接取即返回 true)
+        // if completed_or_not = 1 - returns true, if quest is taken but not completed (参数为 1 时：已接取但未完成返回 true)
+        // if completed_or_not = 2 - returns true, if quest is taken and already completed (参数为 2 时：已接取且已完成返回 true)
+        bool IsCurrentQuest(uint32 quest_id, uint8 completed_or_not = 0) const; // taken and not yet rewarded (已接取且尚未领奖)
 
         Quest const* GetNextQuest(ObjectGuid guid, Quest const* pQuest) const;
         bool CanSeeStartQuest(Quest const* pQuest) const;
@@ -1385,7 +1447,7 @@ class Player : public Unit
         void RemoveTimedQuest(uint32 quest_id) { m_timedquests.erase(quest_id); }
 
         /*********************************************************/
-        /***                   LOAD SYSTEM                     ***/
+        /***             LOAD SYSTEM (角色加载系统)              ***/
         /*********************************************************/
 
         bool LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder);
@@ -1395,11 +1457,11 @@ class Player : public Unit
         static bool   LoadPositionFromDB(ObjectGuid guid, uint32& mapid, float& x, float& y, float& z, float& o, bool& in_flight);
 
         /*********************************************************/
-        /***                   SAVE SYSTEM                     ***/
+        /***             SAVE SYSTEM (角色保存系统)              ***/
         /*********************************************************/
 
         void SaveToDB();
-        void SaveInventoryAndGoldToDB();                    // fast save function for item/money cheating preventing
+        void SaveInventoryAndGoldToDB();                    // fast save function for item/money cheating preventing (快速保存物品与金币以防止刷物品/刷金作弊)
         void SaveGoldToDB() const;
         static void SetUInt32ValueInArray(Tokens& tokens, uint16 index, uint32 value);
         static void SavePositionInDB(ObjectGuid guid, uint32 mapid, float x, float y, float z, float o, uint32 zone);
@@ -1428,7 +1490,7 @@ class Player : public Unit
             else
                 SetMoney(GetMoney() < uint32(MAX_MONEY_AMOUNT - d) ? GetMoney() + d : MAX_MONEY_AMOUNT);
 
-            // "At Gold Limit"
+            // "At Gold Limit" (达到金币持有上限)
             if (GetMoney() >= MAX_MONEY_AMOUNT)
                 SendEquipError(EQUIP_ERR_TOO_MUCH_GOLD, nullptr, nullptr);
         }
@@ -1454,7 +1516,7 @@ class Player : public Unit
 
         void RemoveMail(uint32 id);
 
-        void AddMail(Mail* mail) { m_mail.push_front(mail);}// for call from WorldSession::SendMailTo
+        void AddMail(Mail* mail) { m_mail.push_front(mail);}// for call from WorldSession::SendMailTo (供 WorldSession::SendMailTo 调用)
         size_t GetMailSize() const { return m_mail.size(); }
         Mail* GetMail(uint32 id);
 
@@ -1462,7 +1524,7 @@ class Player : public Unit
         PlayerMails::iterator GetMailEnd() { return m_mail.end();}
 
         /*********************************************************/
-        /*** MAILED ITEMS SYSTEM ***/
+        /*** MAILED ITEMS SYSTEM (邮件附件物品系统) ***/
         /*********************************************************/
 
         uint8 unReadMails;
@@ -1470,7 +1532,7 @@ class Player : public Unit
 
         typedef std::unordered_map<uint32, Item*> ItemMap;
 
-        ItemMap mMitems;                                    // template defined in objectmgr.cpp
+        ItemMap mMitems;                                    // template defined in objectmgr.cpp (模板在 objectmgr.cpp 中定义)
 
         Item* GetMItem(uint32 id)
         {
@@ -1481,7 +1543,7 @@ class Player : public Unit
         void AddMItem(Item* it)
         {
             MANGOS_ASSERT(it);
-            // ASSERT deleted, because items can be added before loading
+            // ASSERT deleted, because items can be added before loading (移除断言，因为物品可能在完整加载前被提前加入)
             mMitems[it->GetGUIDLow()] = it;
         }
 
@@ -1498,7 +1560,7 @@ class Player : public Unit
         void RelinquishFollowData(ObjectGuid guid);
 
         bool HasSpell(uint32 spell) const override;
-        bool HasActiveSpell(uint32 spell) const;            // show in spellbook
+        bool HasActiveSpell(uint32 spell) const;            // show in spellbook (在法术书中显示)
         TrainerSpellState GetTrainerSpellState(TrainerSpell const* trainer_spell, uint32 reqLevel) const;
         bool IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel = nullptr) const;
         bool IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) const;
@@ -1546,7 +1608,7 @@ class Player : public Unit
         void RemoveSpellMods(std::set<SpellModifierPair>& usedAuraCharges);
         void ResetSpellModsDueToCanceledSpell(std::set<SpellModifierPair>& usedAuraCharges);
         void SetSpellClass(uint8 playerClass);
-        SpellFamily GetSpellClass() const { return m_spellClassName; } // client function equivalent - says what player can cast
+        SpellFamily GetSpellClass() const { return m_spellClassName; } // client function equivalent - says what player can cast (与客户端函数等效，表示玩家可施放的职业法术族)
 
         void setResurrectRequestData(ObjectGuid guid, uint32 mapId, float X, float Y, float Z, uint32 health, uint32 mana)
         {
@@ -1563,8 +1625,8 @@ class Player : public Unit
         void clearResurrectRequestData() { setResurrectRequestData(ObjectGuid(), 0, 0.0f, 0.0f, 0.0f, 0, 0); }
         bool isRessurectRequestedBy(ObjectGuid guid) const { return m_resurrectGuid == guid; }
         bool isRessurectRequested() const { return !m_resurrectGuid.IsEmpty(); }
-        void ResurrectUsingRequestDataInit(); // Initializes motion and schedules rest / executes it
-        void ResurrectUsingRequestDataFinish(); // Finalizes resurrection
+        void ResurrectUsingRequestDataInit(); // Initializes motion and schedules rest / executes it (初始化移动状态并安排/执行复活流程)
+        void ResurrectUsingRequestDataFinish(); // Finalizes resurrection (完成复活最终处理)
 
         uint32 getCinematic() const { return m_cinematic; }
         void setCinematic(uint32 cine) { m_cinematic = cine; }
@@ -1578,20 +1640,20 @@ class Player : public Unit
         void UpdatePvP(bool state, bool overriding = false);
         void UpdatePvPContested(bool state, bool overriding = false);
 
-        // forced update needed for on-resurrection event
+        // forced update needed for on-resurrection event (复活事件需要强制刷新区域状态)
         void UpdateZone(uint32 newZone, uint32 newArea, bool force = false);
         void UpdateArea(uint32 newArea);
         uint32 GetCachedZoneId() const { return m_zoneUpdateId; }
 
         void UpdateZoneDependentAuras();
-        void UpdateAreaDependentAuras();                    // subzones
+        void UpdateAreaDependentAuras();                    // subzones (子区域)
         void UpdateZoneDependentPets();
 
         void UpdateAfkReport(time_t currTime);
         void UpdatePvPFlagTimer(uint32 diff);
         void UpdatePvPContestedFlagTimer(uint32 diff);
 
-        /** todo: -maybe move UpdateDuelFlag+DuelComplete to independent DuelHandler.. **/
+        /** todo: -maybe move UpdateDuelFlag+DuelComplete to independent DuelHandler.. (待办：可将决斗逻辑移至独立的 DuelHandler) **/
         DuelInfo* duel;
         bool IsInDuelWith(Player const* player) const { return duel && duel->opponent == player && duel->startTime != 0; }
         void UpdateDuelFlag(time_t currTime);
@@ -1614,7 +1676,7 @@ class Player : public Unit
         int GetGuildIdInvited() const { return m_GuildIdInvited; }
         static void RemovePetitionsAndSigns(ObjectGuid guid, uint32 type);
 
-        // Arena Team
+        // Arena Team (竞技场战队)
         void SetInArenaTeam(uint32 ArenaTeamId, uint8 slot)
         {
             SetArenaTeamInfoField(slot, ARENA_TEAM_ID, ArenaTeamId);
@@ -1701,7 +1763,7 @@ class Player : public Unit
         uint8 LastSwingErrorMsg() const { return m_swingErrorMsg; }
         void SwingErrorMsg(uint8 val) { m_swingErrorMsg = val; }
 
-        // notifiers
+        // notifiers (状态通知消息发送函数)
         void SendAttackSwingCantAttack() const;
         void SendAttackSwingCancelAttack() const;
         void SendAttackSwingDeadTarget() const;
@@ -1721,9 +1783,9 @@ class Player : public Unit
         bool SetPosition(float x, float y, float z, float orientation, bool teleport = false);
         void UpdateTerainEnvironmentFlags(Map* m, float x, float y, float z);
 
-        void SendMessageToSet(WorldPacket const& data, bool self) const override;// overwrite Object::SendMessageToSet
+        void SendMessageToSet(WorldPacket const& data, bool self) const override;// overwrite Object::SendMessageToSet (重写 Object::SendMessageToSet)
         void SendMessageToSetInRange(WorldPacket const& data, float dist, bool self) const override;
-        // overwrite Object::SendMessageToSetInRange
+        // overwrite Object::SendMessageToSetInRange (重写 Object::SendMessageToSetInRange)
         void SendMessageToSetInRange(WorldPacket const& data, float dist, bool self, bool own_team_only) const;
         void SendMessageToAllWhoSeeMe(WorldPacket const& data, bool self) const override;
 
@@ -1761,20 +1823,20 @@ class Player : public Unit
         void SetSkill(SkillStatusMap::iterator itr, uint16 value, uint16 max, uint16 step = 0);
         void SetSkill(uint16 id, uint16 value, uint16 max, uint16 step = 0);
         uint16 GetSkill(uint16 id, bool bonusPerm, bool bonusTemp, bool max = false) const;
-        inline uint16 GetSkillValue(uint16 id) const { return GetSkill(id, true, true); }           // skill value + perm. bonus + temp bonus
-        inline uint16 GetSkillValueBase(uint16 id) const { return GetSkill(id, true, false); }      // skill value + perm. bonus
-        inline uint16 GetSkillValuePure(uint16 id) const { return GetSkill(id, false, false); }     // skill value
-        inline uint16 GetSkillMax(uint16 id) const { return GetSkill(id, true, true, true); }       // skill max + perm. bonus + temp bonus
-        inline uint16 GetSkillMaxPure(uint16 id) const { return GetSkill(id, false, false, true); } // skill max
+        inline uint16 GetSkillValue(uint16 id) const { return GetSkill(id, true, true); }           // skill value + perm. bonus + temp bonus (技能基础值 + 永久加成 + 临时加成)
+        inline uint16 GetSkillValueBase(uint16 id) const { return GetSkill(id, true, false); }      // skill value + perm. bonus (技能基础值 + 永久加成)
+        inline uint16 GetSkillValuePure(uint16 id) const { return GetSkill(id, false, false); }     // skill value (纯技能基础值)
+        inline uint16 GetSkillMax(uint16 id) const { return GetSkill(id, true, true, true); }       // skill max + perm. bonus + temp bonus (技能上限 + 永久加成 + 临时加成)
+        inline uint16 GetSkillMaxPure(uint16 id) const { return GetSkill(id, false, false, true); } // skill max (纯技能上限)
         void SetSkillStep(uint16 id, uint16 step);
         uint16 GetSkillStep(uint16 id) const;
         bool ModifySkillBonus(uint16 id, int16 diff, bool permanent = false);
         int16 GetSkillBonus(uint16 id, bool permanent = false) const;
-        inline int16 GetSkillBonusPermanent(uint16 id) const { return GetSkillBonus(id, true); }    // skill perm. bonus
-        inline int16 GetSkillBonusTemporary(uint16 id) const { return GetSkillBonus(id); }          // skill temp bonus
+        inline int16 GetSkillBonusPermanent(uint16 id) const { return GetSkillBonus(id, true); }    // skill perm. bonus (技能永久加成)
+        inline int16 GetSkillBonusTemporary(uint16 id) const { return GetSkillBonus(id); }          // skill temp bonus (技能临时加成)
         void UpdateSkillsForLevel(bool maximize = false);
-        void UpdateSkillTrainedSpells(uint16 id, uint16 currVal);                                   // learns/unlearns spells dependent on a skill
-        void UpdateSpellTrainedSkills(uint32 spellId, bool apply);                                  // learns/unlearns skills dependent on a spell
+        void UpdateSkillTrainedSpells(uint16 id, uint16 currVal);                                   // learns/unlearns spells dependent on a skill (根据技能点变化学习或遗忘关联法术)
+        void UpdateSpellTrainedSkills(uint32 spellId, bool apply);                                  // learns/unlearns skills dependent on a spell (根据法术学习或移除关联技能)
         void LearnDefaultSkills();
 
         virtual uint32 GetSpellRank(SpellEntry const* spellInfo) const override;
@@ -1836,7 +1898,7 @@ class Player : public Unit
         int32 CalculateReputationGain(ReputationSource source, int32 rep, int32 maxRep, int32 faction, uint32 creatureOrQuestLevel = 0, bool noAuraBonus = false);
 
         /*********************************************************/
-        /***                  PVP SYSTEM                       ***/
+        /***             PVP SYSTEM (PvP 荣誉与竞技场系统)       ***/
         /*********************************************************/
         void UpdateArenaFields();
         void UpdateHonorFields();
@@ -1851,7 +1913,7 @@ class Player : public Unit
         uint8 GetHighestPvPRankIndex() const;
         uint32 GetMaxPersonalArenaRatingRequirement();
 
-        // End of PvP System
+        // End of PvP System (PvP 系统接口结束)
 
         void SetDrunkValue(uint16 newDrunkValue, uint32 itemid = 0);
         uint16 GetDrunkValue() const { return m_drunk; }
@@ -1862,7 +1924,7 @@ class Player : public Unit
         void UpdateCorpseReclaimDelay();
         void SendCorpseReclaimDelay(bool load = false) const;
 
-        uint32 GetShieldBlockValue() const override;        // overwrite Unit version (virtual)
+        uint32 GetShieldBlockValue() const override;        // overwrite Unit version (virtual) (重写 Unit 虚函数版本)
 
         void SetPet(Unit* pet) override;
 
@@ -1905,8 +1967,8 @@ class Player : public Unit
         void SendDirectMessage(WorldPacket const& data) const;
 
         void SendAuraDurationsForTarget(Unit* target);
-        void SendAuraDurationsOnLogin(); // sends own durations
-        void SendExtraAuraDurationsOnLogin(bool visible); // sends init and non visible slot auras
+        void SendAuraDurationsOnLogin(); // sends own durations (发送自身光环持续时间)
+        void SendExtraAuraDurationsOnLogin(bool visible); // sends init and non visible slot auras (发送初始及非可见栏位光环持续时间)
 
         static std::vector<WorldPacket> BuildAurasForTarget(Player const& caster, Unit const& target);
 
@@ -1917,7 +1979,7 @@ class Player : public Unit
         void RemoveItemSetEffect(uint32 setId);
 
         /*********************************************************/
-        /***               BATTLEGROUND SYSTEM                 ***/
+        /***             BATTLEGROUND SYSTEM (战场系统)          ***/
         /*********************************************************/
 
         bool InBattleGround()       const                { return m_bgData.bgInstanceID != 0; }
@@ -2025,11 +2087,11 @@ class Player : public Unit
         bool CanUseBattleGroundObject() const;
         bool isTotalImmune() const;
 
-        // returns true if the player is in active state for capture point capturing
+        // returns true if the player is in active state for capture point capturing (若玩家处于可占领据点的活跃状态则返回 true)
         bool CanUseCapturePoint() const;
 
         /*********************************************************/
-        /***                    REST SYSTEM                    ***/
+        /***             REST SYSTEM (休息双倍经验系统)          ***/
         /*********************************************************/
 
         bool isRested() const { return GetRestTime() >= 10 * IN_MILLISECONDS; }
@@ -2037,7 +2099,7 @@ class Player : public Unit
         uint32 GetRestTime() const { return m_restTime; }
         void SetRestTime(uint32 v) { m_restTime = v; }
 
-        /*********************************************************/
+        /***             ENVIROMENTAL SYSTEM (环境与呼吸系统)    ***/
         /***              ENVIROMENTAL SYSTEM                  ***/
         /*********************************************************/
 
@@ -2056,16 +2118,16 @@ class Player : public Unit
         uint32 EnvironmentalDamage(EnviromentalDamage type, uint32 damage);
 
         /*********************************************************/
-        /***               FLOOD FILTER SYSTEM                 ***/
+        /***             FLOOD FILTER SYSTEM (聊天防刷屏系统)    ***/
         /*********************************************************/
 
         void UpdateSpeakTime();
         bool CanSpeak() const;
 
         /*********************************************************/
-        /***                 VARIOUS SYSTEMS                   ***/
+        /***             VARIOUS SYSTEMS (综合杂项系统)          ***/
         /*********************************************************/
-        bool HasMovementFlag(MovementFlags f) const;        // for script access to m_movementInfo.HasMovementFlag
+        bool HasMovementFlag(MovementFlags f) const;        // for script access to m_movementInfo.HasMovementFlag (供脚本检查 m_movementInfo.HasMovementFlag)
         void UpdateFallInformationIfNeed(MovementInfo const& minfo, uint16 opcode);
         void SetFallInformation(uint32 time, float z)
         {
@@ -2086,7 +2148,7 @@ class Player : public Unit
 
         void SetMover(Unit* target) { m_mover = target ? target : this; }
         Unit* GetMover() const { return m_mover; }
-        bool IsSelfMover() const { return m_mover == this; }// normal case for player not controlling other unit
+        bool IsSelfMover() const { return m_mover == this; }// normal case for player not controlling other unit (玩家未控制其他单位时的常规情况)
 
         bool SetStunnedByLogout(bool apply);
 
@@ -2095,7 +2157,7 @@ class Player : public Unit
         uint32 GetSaveTimer() const { return m_nextSave; }
         void   SetSaveTimer(uint32 timer) { m_nextSave = timer; }
 
-        // Recall position
+        // Recall position (传送回溯点坐标)
         uint32 m_recallMap;
         float  m_recallX;
         float  m_recallY;
@@ -2110,7 +2172,7 @@ class Player : public Unit
 
         Object* GetObjectByTypeMask(ObjectGuid guid, TypeMask typemask);
 
-        // currently visible objects at player client
+        // currently visible objects at player client (玩家客户端当前可见对象集合维护)
         bool HasAtClient(WorldObject const* u) { return u == this || m_clientGUIDs.find(u->GetObjectGuid()) != m_clientGUIDs.end(); }
         void AddAtClient(WorldObject* target);
         void RemoveAtClient(WorldObject* target, bool skipRemovalOfAt = false);
@@ -2129,12 +2191,12 @@ class Player : public Unit
 
         void ResetMap() override;
 
-        // Stealth detection system
+        // Stealth detection system (潜行侦测系统)
         void HandleStealthedUnitsDetection();
 
         Camera& GetCamera() { return m_camera; }
 
-        void SetPhaseMask(uint32 newPhaseMask) override; // overwrite Unit::SetPhaseMask
+        void SetPhaseMask(uint32 newPhaseMask) override; // overwrite Unit::SetPhaseMask (重写 Unit::SetPhaseMask)
 
         uint8 m_forced_speed_changes[MAX_MOVE_TYPE];
 
@@ -2143,7 +2205,7 @@ class Player : public Unit
         void RemoveAtLoginFlag(AtLoginFlags f, bool in_db_also = false);
         static bool ValidateAppearance(uint8 race, uint8 class_, uint8 gender, uint8 hairID, uint8 hairColor, uint8 faceID, uint8 facialHair, uint8 skinColor, bool create = false);
 
-        // Temporarily removed pet cache
+        // Temporarily removed pet cache (临时解散宠物缓存)
         uint32 GetTemporaryUnsummonedPetNumber() const { return m_temporaryUnsummonedPetNumber; }
         void SetTemporaryUnsummonedPetNumber(uint32 petnumber) { m_temporaryUnsummonedPetNumber = petnumber; }
         void UnsummonPetTemporaryIfAny();
@@ -2156,16 +2218,16 @@ class Player : public Unit
         void SendCinematicStart(uint32 CinematicSequenceId);
 
         /*********************************************************/
-        /***                 INSTANCE SYSTEM                   ***/
+        /***             INSTANCE SYSTEM (副本与绑定系统)        ***/
         /*********************************************************/
 
-        typedef std::unordered_map < uint32 /*mapId*/, InstancePlayerBind > BoundInstancesMap;
+        typedef std::unordered_map < uint32 /*mapId (地图ID)*/, InstancePlayerBind > BoundInstancesMap;
 
         void UpdateHomebindTime(uint32 time);
 
         uint32 m_HomebindTimer;
         bool m_InstanceValid;
-        // permanent binds and solo binds by difficulty
+        // permanent binds and solo binds by difficulty (按难度划分的永久绑定与个人副本绑定)
         BoundInstancesMap m_boundInstances[MAX_DIFFICULTY];
         InstancePlayerBind* GetBoundInstance(uint32 mapid, Difficulty difficulty);
         BoundInstancesMap& GetBoundInstances(Difficulty difficulty) { return m_boundInstances[difficulty]; }
@@ -2181,7 +2243,7 @@ class Player : public Unit
         void SendTransferAbortedByLockStatus(MapEntry const* mapEntry, AreaTrigger const* at, AreaLockStatus lockStatus, uint32 miscRequirement = 0) const;
 
         /*********************************************************/
-        /***                   GROUP SYSTEM                    ***/
+        /***             GROUP SYSTEM (队伍与团队系统)           ***/
         /*********************************************************/
 
         Group* GetGroupInvite() const { return m_groupInvite; }
@@ -2196,7 +2258,7 @@ class Player : public Unit
         Player* GetNextRaidMemberWithLowestLifePercentage(float radius, AuraType noAuraType);
         PartyResult CanUninviteFromGroup() const;
         void UpdateGroupLeaderFlag(const bool remove = false);
-        // BattleGround Group System
+        // BattleGround Group System (战场团队系统)
         void SetBattleGroundRaid(Group* group, int8 subgroup = -1);
         void RemoveFromBattleGroundRaid();
         Group* GetOriginalGroup() const { return m_originalGroup.getTarget(); }
@@ -2213,11 +2275,11 @@ class Player : public Unit
         void SetTitle(uint32 titleId, bool lost = false);
         void SetTitle(CharTitlesEntry const* title, bool lost = false, bool send = true);
 
-        void SendMessageToPlayer(std::string const& message) const; // debugging purposes
+        void SendMessageToPlayer(std::string const& message) const; // debugging purposes (仅用于调试)
 
 #ifdef ENABLE_PLAYERBOTS
-        // A Player can either have a playerbotMgr (to manage its bots), or have playerbotAI (if it is a bot), or
-        // neither. Code that enables bots must create the playerbotMgr and set it using SetPlayerbotMgr.
+        // A Player can either have a playerbotMgr (to manage its bots), or have playerbotAI (if it is a bot), or (玩家可拥有管理机器人的 playerbotMgr，或自身作为机器人拥有 playerbotAI，)
+        // neither. Code that enables bots must create the playerbotMgr and set it using SetPlayerbotMgr. (或两者皆无；启用机器人的代码须创建 playerbotMgr 并调用 SetPlayerbotMgr 设置)
         void UpdateAI(const uint32 diff, bool minimal = false);
         void CreatePlayerbotAI();
         void RemovePlayerbotAI();
@@ -2238,7 +2300,7 @@ class Player : public Unit
         void SetDeathPrevention(bool enable);
         bool IsPreventingDeath() const override;
 
-        // cooldown system
+        // cooldown system (冷却时间系统)
         virtual void AddGCD(SpellEntry const& spellEntry, uint32 forcedDuration = 0, bool updateClient = false) override;
         virtual void AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* itemProto = nullptr, bool permanent = false, uint32 forcedDuration = 0, bool ignoreCat = false) override;
         virtual void RemoveSpellCooldown(SpellEntry const& spellEntry, bool updateClient = true) override;
@@ -2270,9 +2332,9 @@ class Player : public Unit
 
         void UpdateEverything();
 
-        // Public Save system functions
-        void SaveItemToInventory(Item* item); // optimization for gift wrapping
-        void SaveTitles(); // optimization for arena rewards
+        // Public Save system functions (公共保存辅助函数)
+        void SaveItemToInventory(Item* item); // optimization for gift wrapping (礼物包装优化)
+        void SaveTitles(); // optimization for arena rewards (竞技场奖励发放优化)
 
         void SetQueuedSpell(Spell* spell);
         bool HasQueuedSpell();
@@ -2300,11 +2362,12 @@ class Player : public Unit
         void UpdateRangedWeaponDependantAmmoHasteAura();
     protected:
         /*********************************************************/
-        /***               BATTLEGROUND SYSTEM                 ***/
+        /***             BATTLEGROUND SYSTEM (战场系统数据)      ***/
         /*********************************************************/
 
         /*
         this is an array of BG queues (BgTypeIDs) in which is player
+        玩家当前加入的战场队列数组 (按 BgTypeID 存储)
         */
         struct BgBattleGroundQueueID_Rec
         {
@@ -2316,10 +2379,10 @@ class Player : public Unit
         BGData                    m_bgData;
 
         /*********************************************************/
-        /***                    QUEST SYSTEM                   ***/
+        /***             QUEST SYSTEM (任务系统数据)             ***/
         /*********************************************************/
 
-        // We allow only one timed quest active at the same time. Below can then be simple value instead of set.
+        // We allow only one timed quest active at the same time. Below can then be simple value instead of set. (保留说明：当前使用集合管理激活的限时任务)
         typedef std::set<uint32> QuestSet;
         QuestSet m_timedquests;
         QuestSet m_weeklyquests;
@@ -2329,7 +2392,7 @@ class Player : public Unit
         uint32 m_ingametime;
 
         /*********************************************************/
-        /***                   LOAD SYSTEM                     ***/
+        /***             LOAD SYSTEM (数据库加载私有方法)        ***/
         /*********************************************************/
 
         void _LoadActions(std::unique_ptr<QueryResult> queryResult);
@@ -2355,7 +2418,7 @@ class Player : public Unit
         void _SaveNewInstanceIdTimer();
 
         /*********************************************************/
-        /***                   SAVE SYSTEM                     ***/
+        /***             SAVE SYSTEM (数据库保存私有方法)        ***/
         /*********************************************************/
 
         void _SaveActions();
@@ -2372,7 +2435,7 @@ class Player : public Unit
         void _SaveStats();
 
         /*********************************************************/
-        /***              ENVIRONMENTAL SYSTEM                 ***/
+        /***             ENVIRONMENTAL SYSTEM (环境与镜像计时器) ***/
         /*********************************************************/
         void HandleSobering();
 
@@ -2396,7 +2459,7 @@ class Player : public Unit
         uint32 getCorpseReclaimDelayHelper(time_t deathExpirationTime, time_t time, bool pvp) const;
 
         /*********************************************************/
-        /***                  HONOR SYSTEM                     ***/
+        /***             HONOR SYSTEM (荣誉与成员数据)           ***/
         /*********************************************************/
         time_t m_lastHonorUpdateTime;
 
@@ -2435,11 +2498,11 @@ class Player : public Unit
         float m_auraBaseMod[BASEMOD_END][MOD_END];
         int16 m_baseRatingValue[MAX_COMBAT_RATING];
 
-        uint32 m_enchantmentFlatMod[MAX_ATTACK]; // TODO: Stat system - incorporate generically, exposes a required hidden weapon stat that does not apply when unarmed
+        uint32 m_enchantmentFlatMod[MAX_ATTACK]; // TODO: Stat system - incorporate generically, exposes a required hidden weapon stat that does not apply when unarmed (待办：属性系统 - 通用化整合，暴露仅持武器时生效的隐藏附魔属性)
 
         SpellModList m_spellMods[MAX_SPELLMOD];
         int32 m_SpellModRemoveCount;
-        SpellFamily m_spellClassName; // s_spellClassSet
+        SpellFamily m_spellClassName; // s_spellClassSet (对应客户端职业法术族枚举)
         EnchantDurationList m_enchantDuration;
         ItemDurationList m_itemDuration;
 
@@ -2481,27 +2544,27 @@ class Player : public Unit
         float m_ammoDPSMax;
         int32 m_highestAmmoMod;
 
-        //////////////////// Rest System/////////////////////
+        //////////////////// Rest System (休息系统) /////////////////////
         time_t time_inn_enter;
         uint32 inn_trigger_id;
         float m_rest_bonus;
         RestType m_restType;
-        //////////////////// Rest System/////////////////////
+        //////////////////// Rest System (休息系统) /////////////////////
 
         uint32 m_resetTalentsCost;
         time_t m_resetTalentsTime;
         uint32 m_usedTalentCount;
 
-        // Social
+        // Social (社交系统)
         PlayerSocial* m_social;
 
-        // Groups
+        // Groups (队伍系统)
         GroupReference m_group;
         GroupReference m_originalGroup;
         Group* m_groupInvite;
         uint32 m_groupUpdateMask;
 
-        // Player summoning
+        // Player summoning (玩家召唤请求数据)
         time_t m_summon_expire;
         uint32 m_summon_mapid;
         float  m_summon_x;
@@ -2513,7 +2576,7 @@ class Player : public Unit
 
         bool m_isDebuggingAreaTriggers;
     private:
-        // internal common parts for CanStore/StoreItem functions
+        // internal common parts for CanStore/StoreItem functions (CanStore/StoreItem 的内部公共实现)
         InventoryResult _CanStoreItem_InSpecificSlot(uint8 bag, uint8 slot, ItemPosCountVec& dest, ItemPrototype const* pProto, uint32& count, bool swap, Item* pSrcItem, uint8& bagSlot) const;
         InventoryResult _CanStoreItem_InBag(uint8 bag, ItemPosCountVec& dest, ItemPrototype const* pProto, uint32& count, bool merge, bool non_specialized, Item* pSrcItem, uint8 skip_bag, uint8 skip_slot, uint8& bagSlot) const;
         InventoryResult _CanStoreItem_InInventorySlots(uint8 slot_begin, uint8 slot_end, ItemPosCountVec& dest, ItemPrototype const* pProto, uint32& count, bool merge, Item* pSrcItem, uint8 skip_bag, uint8 skip_slot) const;
@@ -2526,8 +2589,8 @@ class Player : public Unit
         void SetCanDelayTeleport(bool setting) { m_bCanDelayTeleport = setting; }
         bool IsHasDelayedTeleport() const
         {
-            // we should not execute delayed teleports for now dead players but has been alive at teleport
-            // because we don't want player's ghost teleported from graveyard
+            // we should not execute delayed teleports for now dead players but has been alive at teleport (若玩家在触发延迟传送时存活而当前已死亡，则不执行传送，)
+            // because we don't want player's ghost teleported from graveyard (防止将墓地中的灵魂误传送走)
             return m_bHasDelayedTeleport && (IsAlive() || !m_bHasBeenAliveAtDelayedTeleport || GetDeathState() == JUST_DIED);
         }
 
@@ -2558,7 +2621,7 @@ class Player : public Unit
         std::unique_ptr<PlayerbotMgr> m_playerbotMgr;
 #endif
 
-        // Homebind coordinates
+        // Homebind coordinates (炉石绑定点坐标)
         uint32 m_homebindMapId;
         uint16 m_homebindAreaId;
         float m_homebindX;
@@ -2575,11 +2638,11 @@ class Player : public Unit
 
         MirrorTimer m_mirrorTimers[MirrorTimer::NUM_TIMERS] = { MirrorTimer::FATIGUE, MirrorTimer::BREATH, MirrorTimer::FEIGNDEATH, MirrorTimer::ENVIRONMENTAL };
 
-        // Current teleport data
+        // Current teleport data (当前延迟传送目标数据)
         WorldLocation m_teleport_dest;
         uint32 m_teleport_options;
         ObjectGuid m_teleportTransport;
-        Position m_teleportWorldDest;                       // world position of a delayed teleport onto a transport
+        Position m_teleportWorldDest;                       // world position of a delayed teleport onto a transport (延迟传送至载具/船只时的世界坐标)
         bool m_semaphoreTeleport_Near;
         bool m_semaphoreTeleport_Far;
 
@@ -2591,7 +2654,7 @@ class Player : public Unit
         bool m_needsZoneUpdate;
         uint32 m_newZone;
 
-        // Temporary removed pet cache
+        // Temporary removed pet cache (临时解散宠物缓存)
         uint32 m_temporaryUnsummonedPetNumber;
         uint32 m_BGPetSpell;
 
@@ -2613,7 +2676,7 @@ class Player : public Unit
 
         GuidSet m_clientGUIDs;
 
-        // Recruit-A-Friend
+        // Recruit-A-Friend (招募战友 RAF 数据)
         uint8 m_grantableLevels;
 
         std::unordered_map<uint32, TimePoint> m_enteredInstances;
@@ -2633,11 +2696,11 @@ class Player : public Unit
 void AddItemsSetItem(Player* player, Item* item);
 void RemoveItemsSetItem(Player* player, ItemPrototype const* proto);
 
-// "the bodies of template functions must be made available in a header file"
+// "the bodies of template functions must be made available in a header file" (模板函数体必须定义在头文件中)
 template <class T> void Player::ApplySpellMod(uint32 spellId, SpellModOp op, T& basevalue, bool finalUse)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
-    if (!spellInfo || spellInfo->SpellFamilyName != GetSpellClass() || spellInfo->HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_MODIFIERS)) return; // client condition
+    if (!spellInfo || spellInfo->SpellFamilyName != GetSpellClass() || spellInfo->HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_MODIFIERS)) return; // client condition (客户端过滤条件)
     int32 totalpct = 100;
     int32 totalflat = 0;
     std::vector<SpellModifier*> consumedFiniteMods;
@@ -2653,7 +2716,7 @@ template <class T> void Player::ApplySpellMod(uint32 spellId, SpellModOp op, T& 
             totalflat += mod->value;
         else if (mod->type == SPELLMOD_PCT)
         {
-            // special case (skip >10sec spell casts for instant cast setting)
+            // special case (skip >10sec spell casts for instant cast setting) (特殊情况：跳过施法时间大于10秒法术的瞬发修正)
             if (mod->op == SPELLMOD_CASTING_TIME && basevalue >= T(10 * IN_MILLISECONDS) && mod->value <= -100)
                 continue;
 
@@ -2663,12 +2726,12 @@ template <class T> void Player::ApplySpellMod(uint32 spellId, SpellModOp op, T& 
         if (mod->isFinite && finalUse)
         {
             bool consume = true;
-            if (!m_consumedMods) // If empty pointer then immediately consume
+            if (!m_consumedMods) // If empty pointer then immediately consume (若无延迟消耗集合指针则立即消耗充能)
             {
-                consumedFiniteMods.push_back(mod); // need to delay in order to not corrupt the list
+                consumedFiniteMods.push_back(mod); // need to delay in order to not corrupt the list (需延迟移除光环次数以免破坏迭代列表)
                 consume = false;
             }
-            else if (m_consumedMods->find(SpellModifierPair(mod->spellId, mod->modId)) != m_consumedMods->end()) // if already consumed, dont consume again
+            else if (m_consumedMods->find(SpellModifierPair(mod->spellId, mod->modId)) != m_consumedMods->end()) // if already consumed, dont consume again (若本次施法已消耗过该修正则不重复消耗)
                 consume = false;
 
             if (consume)

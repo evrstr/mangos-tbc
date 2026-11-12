@@ -33,37 +33,40 @@
 
 INSTANTIATE_SINGLETON_1(GameEventMgr);
 
+/// 检查事件在指定时刻是否处于有效时间窗口与周期持续期内
 bool GameEventMgr::CheckOneGameEvent(uint16 entry, time_t currenttime) const
 {
-    // Get the event information
+    // Get the event information (判断当前时间是否在 [start, end) 且处于当前周期的 length 窗口内)
     return m_gameEvents[entry].start < currenttime && currenttime < m_gameEvents[entry].end && ((currenttime - m_gameEvents[entry].start) % (m_gameEvents[entry].occurence * MINUTE)) < (m_gameEvents[entry].length * MINUTE);
 }
 
+/// 计算距离指定事件下一次状态切换（开启或结束）的剩余秒数
 uint32 GameEventMgr::NextCheck(uint16 entry) const
 {
     time_t currenttime = time(nullptr);
 
-    // outdated event: we return max
+    // outdated event: we return max (事件已过最终结束时间，返回最大检查延迟)
     if (currenttime > m_gameEvents[entry].end)
         return max_ge_check_delay;
 
-    // never started event, we return delay before start
+    // never started event, we return delay before start (事件尚未首次开启，返回距 start 的秒数)
     if (m_gameEvents[entry].start > currenttime)
         return uint32(m_gameEvents[entry].start - currenttime);
 
     uint32 delay;
-    // in event, we return the end of it
+    // in event, we return the end of it (若当前在活动持续窗口内，计算距离本轮结束的时间)
     if ((((currenttime - m_gameEvents[entry].start) % (m_gameEvents[entry].occurence * 60)) < (m_gameEvents[entry].length * 60)))
         // we return the delay before it ends
         delay = (m_gameEvents[entry].length * MINUTE) - ((currenttime - m_gameEvents[entry].start) % (m_gameEvents[entry].occurence * MINUTE));
-    else                                                    // not in window, we return the delay before next start
+    else                                                    // not in window, we return the delay before next start (否则计算距下一轮开始的时间)
         delay = (m_gameEvents[entry].occurence * MINUTE) - ((currenttime - m_gameEvents[entry].start) % (m_gameEvents[entry].occurence * MINUTE));
-    // In case the end is before next check
+    // In case the end is before next check (若总结束时间早于下一检查点，则截断到总结束时间)
     if (m_gameEvents[entry].end  < time_t(currenttime + delay))
         return uint32(m_gameEvents[entry].end - currenttime);
     return delay;
 }
 
+/// 启动指定游戏事件（overwrite=true 时同步覆盖内存起止时间戳）
 void GameEventMgr::StartEvent(uint16 event_id, bool overwrite /*=false*/, bool resume /*=false*/)
 {
     ApplyNewEvent(event_id, resume);
@@ -75,6 +78,7 @@ void GameEventMgr::StartEvent(uint16 event_id, bool overwrite /*=false*/, bool r
     }
 }
 
+/// 停止指定游戏事件（overwrite=true 时同步回退内存起始时间避免立即重新触发）
 void GameEventMgr::StopEvent(uint16 event_id, bool overwrite)
 {
     UnApplyEvent(event_id);
@@ -86,6 +90,7 @@ void GameEventMgr::StopEvent(uint16 event_id, bool overwrite)
     }
 }
 
+/// 从数据库加载全部事件定义、关联生物/GO/刷怪池、任务、生物外观替换及节日邮件
 void GameEventMgr::LoadFromDB()
 {
     {
@@ -168,8 +173,8 @@ void GameEventMgr::LoadFromDB()
                 gameEvent.start = time_t(FAR_FUTURE);
                 gameEvent.occurence = gameEvent.length;
             }
-			
-            if (gameEvent.length == 0 && gameEvent.scheduleType != GAME_EVENT_SCHEDULE_SERVERSIDE) // length>0 is validity check
+
+            if (gameEvent.length == 0 && gameEvent.scheduleType != GAME_EVENT_SCHEDULE_SERVERSIDE) // length>0 is validity check (非服务端手动事件必须具有正持续时长)
             {
                 sLog.outErrorDb("`game_event` game event id (%i) have length 0 and can't be used.", event_id);
                 gameEvent.start = time_t(FAR_FUTURE);
@@ -654,6 +659,7 @@ void GameEventMgr::LoadFromDB()
     }
 }
 
+/// 读取上次停机前激活的事件并初始化事件调度器，返回下次检查延迟（毫秒）
 uint32 GameEventMgr::Initialize()                           // return the next event delay in ms
 {
     m_activeEvents.clear();
@@ -679,16 +685,18 @@ uint32 GameEventMgr::Initialize()                           // return the next e
     return delay;
 }
 
+/// 为新创建的地图持久状态应用当前已激活事件的刷怪池规则
 void GameEventMgr::Initialize(MapPersistentState* state)
 {
     // At map persistent state creating need only apply pool spawn modifications
     // other data is global and will be auto-apply
+    // 地图持久状态创建时仅需同步事件关联的刷怪池规则，其余全局数据由地图自动应用
     for (uint16 m_ActiveEvent : m_activeEvents)
         for (IdList::iterator pool_itr = m_gameEventSpawnPoolIds[m_ActiveEvent].begin(); pool_itr != m_gameEventSpawnPoolIds[m_ActiveEvent].end(); ++pool_itr)
             sPoolMgr.InitSpawnPool(*state, *pool_itr);
 }
 
-// return the next event delay in ms
+// return the next event delay in ms (遍历所有事件更新启停状态，返回距离下次事件变化的最短毫秒延迟)
 uint32 GameEventMgr::Update(ActiveEvents const* activeAtShutdown /*= nullptr*/)
 {
     time_t currenttime = time(nullptr);
@@ -734,26 +742,28 @@ uint32 GameEventMgr::Update(ActiveEvents const* activeAtShutdown /*= nullptr*/)
     return (nextEventDelay + 1) * IN_MILLISECONDS;          // Add 1 second to be sure event has started/stopped at next call
 }
 
+/// 取消应用已结束的游戏事件（清理正事件实体、恢复负事件实体、还原生物数据与任务并通知地图）
 void GameEventMgr::UnApplyEvent(uint16 event_id)
 {
     m_activeEvents.erase(event_id);
     CharacterDatabase.PExecute("DELETE FROM game_event_status WHERE event = %u", event_id);
 
     sLog.outString("GameEvent %u \"%s\" removed.", event_id, m_gameEvents[event_id].description.c_str());
-    // un-spawn positive event tagged objects
+    // un-spawn positive event tagged objects (移除正事件编号关联的实体)
     GameEventUnspawn(event_id);
-    // spawn negative event tagget objects
+    // spawn negative event tagget objects (重新刷新负事件编号关联的常驻实体)
     int16 event_nid = (-1) * event_id;
     GameEventSpawn(event_nid);
-    // restore equipment or model
+    // restore equipment or model (还原生物临时模型与装备)
     UpdateCreatureData(event_id, false);
-    // Remove quests that are events only to non event npc
+    // Remove quests that are events only to non event npc (下架节日专属任务)
     UpdateEventQuests(event_id, false);
     SendEventMails(event_nid);
 
     OnEventHappened(event_id, false, false);
 }
 
+/// 应用新开启的游戏事件（刷新正事件实体、移除负事件实体、替换生物数据、开放任务并发送节日邮件）
 void GameEventMgr::ApplyNewEvent(uint16 event_id, bool resume)
 {
     m_activeEvents.insert(event_id);
@@ -787,6 +797,7 @@ void GameEventMgr::ApplyNewEvent(uint16 event_id, bool resume)
     OnEventHappened(event_id, true, resume);
 }
 
+/// 跨线程投递并刷新指定事件编号（正数=开启生成，负数=反事件恢复）关联的生物与游戏对象
 void GameEventMgr::GameEventSpawn(int16 event_id)
 {
     int32 internal_event_id = m_gameEvents.size() + event_id - 1;
@@ -900,6 +911,7 @@ void GameEventMgr::GameEventSpawn(int16 event_id)
     }
 }
 
+/// 跨线程投递并移除指定事件编号关联的生物与游戏对象
 void GameEventMgr::GameEventUnspawn(int16 event_id)
 {
     int32 internal_event_id = m_gameEvents.size() + event_id - 1;
@@ -1013,6 +1025,7 @@ void GameEventMgr::GameEventUnspawn(int16 event_id)
     }
 }
 
+/// 查询指定生物 DB GUID 在当前激活事件下是否有外观/装备/法术覆盖数据
 GameEventCreatureData const* GameEventMgr::GetCreatureUpdateDataForActiveEvent(uint32 dbGuid) const
 {
     // only for active event, creature can be listed for many so search all
@@ -1182,6 +1195,7 @@ void GameEventMgr::OnEventHappened(uint16 event_id, bool activate, bool resume)
     });
 }
 
+/// 高斯复活节算法：根据公历年份计算复活节所在的年月日
 std::tuple<int, int, int> gaussEaster(int Y)
 {
     float A, B, C, P, Q,
@@ -1230,6 +1244,7 @@ std::tuple<int, int, int> gaussEaster(int Y)
     }
 }
 
+/// 根据事件的调度类型（暗月马戏团、年循环、春节月相、复活节）动态计算当前周期起止时间
 void GameEventMgr::ComputeEventStartAndEndTime(GameEventData& data, time_t today)
 {
     time_t curTime = today;
@@ -1357,6 +1372,7 @@ void GameEventMgr::ComputeEventStartAndEndTime(GameEventData& data, time_t today
     }
 }
 
+/// 周期性重算所有动态调度型事件的起止时间
 void GameEventMgr::WeeklyEventTimerRecalculation()
 {
     for (GameEventData& gameEvent : m_gameEvents)

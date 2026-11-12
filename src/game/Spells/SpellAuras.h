@@ -27,6 +27,7 @@
 /**
  * Used to modify what an Aura does to a player/npc.
  * Accessible through Aura::m_modifier.
+ * 光环效果修饰器结构：定义光环对玩家/NPC 产生何种数值与周期修正（通过 Aura::m_modifier 访问）。
  * \see CreateAura
  * \see Aura
  * \see AreaAura
@@ -38,6 +39,7 @@ struct Modifier
      * Decides what the aura does, ie, it may have the
      * value AuraType::SPELL_AURA_MOD_BASE_RESISTANCE_PCT which
      * would change the base armor of a player.
+     * 光环类型（决定光环具体作用，如修改基础护甲百分比等）
      */
     AuraType m_auraname;
     /**
@@ -45,6 +47,7 @@ struct Modifier
      * value. Ie, -27 would make the value decided by Modifier::m_miscvalue
      * be reduced by 27% if the earlier mentioned AuraType
      * would have been used. And 27 would increase the value by 27%
+     * 效果数值/幅度（正负值决定增减量或百分比）
      */
     int32 m_amount;
     /**
@@ -55,20 +58,24 @@ struct Modifier
      * tell the aura that it should change armor.
      * If Modifier::m_auraname would have been AuraType::SPELL_AURA_MOUNTED
      * then m_miscvalue would have decided which model the mount should have
+     * 附加杂项参数（含义随 AuraType 变化，例如法术学派掩码或坐骑生物模板 ID）
      */
     int32 m_miscvalue;
     /**
      * Decides how often the aura should be applied, if it is
      * set to 0 it's only applied once and then removed when
      * the Aura is removed
+     * 周期触发间隔（毫秒）；为 0 表示非周期光环，仅在施加/移除时生效
      */
     uint32 periodictime;
     /**
     * Tells how much amount increased during recent stacks change
+    * 最近一次层数变化导致的数值增量
     */
     int32 m_recentAmount;
     /**
     * Set at the beginning so that stack increases dont need to calculate spell values
+    * 初始计算得到的单层基础数值（叠层时无需重新计算公式）
     */
     int32 m_baseAmount;
 };
@@ -80,17 +87,19 @@ struct ProcTriggerSpell;
 
 class Aura;
 
-// internal helper
+// internal helper（内部辅助结构，用于重算并重新应用受影响的被动光环）
 struct ReapplyAffectedPassiveAurasHelper;
 
+// 光环容器（SpellAuraHolder）生命周期状态
 enum SpellAuraHolderState
 {
-    SPELLAURAHOLDER_STATE_CREATED       = 0,                // just created, initialization steps
-    SPELLAURAHOLDER_STATE_READY         = 1,                // all initialization steps are done
-    SPELLAURAHOLDER_STATE_REMOVING      = 2,                // removing steps
-    SPELLAURAHOLDER_STATE_DB_LOAD       = 3                 // during db load some events must not be executed
+    SPELLAURAHOLDER_STATE_CREATED       = 0,                // just created, initialization steps（刚创建，处于初始化阶段）
+    SPELLAURAHOLDER_STATE_READY         = 1,                // all initialization steps are done（初始化完成，处于正常激活状态）
+    SPELLAURAHOLDER_STATE_REMOVING      = 2,                // removing steps（正在执行移除清理流程）
+    SPELLAURAHOLDER_STATE_DB_LOAD       = 3                 // during db load some events must not be executed（从数据库加载中，禁止执行部分运行时事件）
 };
 
+// 法术光环容器类：对应目标身上由单个法术施加的光环实例组（最多包含 3 个效果对应的 Aura 对象），统一管理持续时间、叠层、充能、客户端槽位与脚本钩子
 class SpellAuraHolder
 {
     public:
@@ -111,7 +120,7 @@ class SpellAuraHolder
 
         uint32 GetStackAmount() const { return m_stackAmount; }
         void SetStackAmount(uint32 stackAmount, Unit* newCaster);
-        bool ModStackAmount(int32 num, Unit* newCaster); // return true if last charge dropped
+        bool ModStackAmount(int32 num, Unit* newCaster); // return true if last charge dropped（增减层数，若最后一层耗尽则返回 true）
 
         Aura* GetAuraByEffectIndex(SpellEffectIndex index) const { return m_auras[index]; }
         SpellEntry const* GetTriggeredBy() const { return m_triggeredBy; }
@@ -134,7 +143,7 @@ class SpellAuraHolder
         bool IsDeathPersistent() const { return m_isDeathPersist; }
         bool IsPersistent() const;
         bool IsPositive() const;
-        bool IsAreaAura() const;                            // if one from auras of holder applied as area aura
+        bool IsAreaAura() const;                            // if one from auras of holder applied as area aura（容器内任意光环为区域光环时返回 true）
         bool IsWeaponBuffCoexistableWith(SpellAuraHolder const* ref) const;
         bool IsNeedVisibleSlot(Unit const* caster) const;
         bool IsRemovedOnShapeLost() const { return m_isRemovedOnShapeLost; }
@@ -167,13 +176,13 @@ class SpellAuraHolder
         uint32 GetAuraCharges() const { return m_procCharges; }
         void SetAuraCharges(uint32 charges, bool update = true);
 
-        // SpellMods
-        bool DropAuraCharge();                               // return true if last charge dropped
+        // SpellMods（法术修饰器充能管理）
+        bool DropAuraCharge();                               // return true if last charge dropped（消耗一次充能，耗尽最后一次时返回 true）
         void ResetSpellModCharges();
         bool HasModifier(const uint64& modId) const;
 
         uint32 GetAuraApplyTime() const { return m_applyTime; }
-        uint32 GetAuraApplyMSTime() const { return m_applyMSTime; } // milliseconds time
+        uint32 GetAuraApplyMSTime() const { return m_applyMSTime; } // milliseconds time（施加时的毫秒时间戳）
 
         void SetRemoveMode(AuraRemoveMode mode) { m_removeMode = mode; }
         void SetLoadedState(ObjectGuid const& casterGUID, ObjectGuid const& itemGUID, uint32 stackAmount, uint32 charges, int32 maxduration, int32 duration)
@@ -214,15 +223,15 @@ class SpellAuraHolder
         bool IsReducedProcChancePast60() { return m_reducedProcChancePast60; }
         void SetReducedProcChancePast60() { m_reducedProcChancePast60 = true; }
 
-        // Scripting system
+        // Scripting system（光环脚本系统接口与回调钩子）
         AuraScript* GetAuraScript() const { return m_auraScript; }
         // hooks
         void OnHolderInit(WorldObject* caster);
         void OnDispel(Unit* dispeller, uint32 dispellingSpellId, uint32 originalStacks);
         // helpers
-        void PresetAuraStacks(uint32 stacks) { m_stackAmount = stacks; } // use only in OnHolderInit
+        void PresetAuraStacks(uint32 stacks) { m_stackAmount = stacks; } // use only in OnHolderInit（仅限在 OnHolderInit 中预设初始层数）
     private:
-        void UpdateAuraApplication();                       // called at charges or stack changes
+        void UpdateAuraApplication();                       // called at charges or stack changes（在充能或叠层变化时同步更新客户端显示）
         void ClearExtraAuraInfo(Unit* caster);
         void UpdateHeartbeatResist(uint32 diff);
 
@@ -230,27 +239,27 @@ class SpellAuraHolder
 
         Unit* m_target;
         ObjectGuid m_casterGuid;
-        ObjectGuid m_castItemGuid;                          // it is NOT safe to keep a pointer to the item because it may get deleted
+        ObjectGuid m_castItemGuid;                          // it is NOT safe to keep a pointer to the item because it may get deleted（不可保存 Item 指针以防物品被销毁产生悬垂指针，仅存 GUID）
         time_t m_applyTime;
         uint32 m_applyMSTime;
-        SpellEntry const* m_triggeredBy;                    // Spell responsible for this holder
-        SpellAuraHolderState m_spellAuraHolderState;        // State used to be sure init part is finished (ex there is still some aura to add or effect to process)
+        SpellEntry const* m_triggeredBy;                    // Spell responsible for this holder（触发产生此光环容器的父法术原型）
+        SpellAuraHolderState m_spellAuraHolderState;        // State used to be sure init part is finished (ex there is still some aura to add or effect to process)（容器生命周期状态，确保初始化完成后再触发回调）
 
-        uint8 m_auraSlot;                                   // Aura slot on unit (for show in client)
-        uint8 m_auraLevel;                                  // Aura level (store caster level for correct show level dep amount)
-        uint32 m_procCharges;                               // Aura charges (0 for infinite)
-        uint32 m_stackAmount;                               // Aura stack amount
-        int32 m_maxDuration;                                // Max aura duration
-        int32 m_duration;                                   // Current time
-        int32 m_timeCla;                                    // Timer for power per sec calculation
+        uint8 m_auraSlot;                                   // Aura slot on unit (for show in client)（单位身上的客户端可见光环槽位索引）
+        uint8 m_auraLevel;                                  // Aura level (store caster level for correct show level dep amount)（光环等级，记录施法者等级以正确显示随等级变化的数值）
+        uint32 m_procCharges;                               // Aura charges (0 for infinite)（光环剩余触发充能次数，0 表示无限次）
+        uint32 m_stackAmount;                               // Aura stack amount（当前叠加层数）
+        int32 m_maxDuration;                                // Max aura duration（最大持续时间，毫秒）
+        int32 m_duration;                                   // Current time（当前剩余持续时间，毫秒）
+        int32 m_timeCla;                                    // Timer for power per sec calculation（引导/持续消耗类光环的每秒扣蓝计时器）
 
-        float m_heartbeatResistChance;                      // Chance to break this spell due to heartbeat resistance
-        int32 m_heartbeatResistInterval;                    // Heartbeat resistance periodic interval
-        int32 m_heartbeatResistTimer;                       // Timer for heartbeat resistance
+        float m_heartbeatResistChance;                      // Chance to break this spell due to heartbeat resistance（心跳抵抗触发几率）
+        int32 m_heartbeatResistInterval;                    // Heartbeat resistance periodic interval（心跳抵抗检测周期）
+        int32 m_heartbeatResistTimer;                       // Timer for heartbeat resistance（心跳抵抗倒计时）
 
-        AuraRemoveMode m_removeMode: 8;                     // Store info for know remove aura reason
-        DiminishingGroup m_AuraDRGroup: 8;                  // Diminishing
-        TrackedAuraType m_trackedAuraType: 8;               // store if the caster tracks the aura - can change at spell steal for example
+        AuraRemoveMode m_removeMode: 8;                     // Store info for know remove aura reason（记录光环移除原因）
+        DiminishingGroup m_AuraDRGroup: 8;                  // Diminishing（所属控制技能递减分组）
+        TrackedAuraType m_trackedAuraType: 8;               // store if the caster tracks the aura - can change at spell steal for example（施法者对该光环的追踪类型，如法术窃取后会变更）
 
         bool m_permanent: 1;
         bool m_isPassive: 1;
@@ -263,31 +272,36 @@ class SpellAuraHolder
 
         bool m_reducedProcChancePast60;
 
-        // Scripting System
+        // Scripting System（关联的光环脚本实例）
         AuraScript* m_auraScript;
 };
 
 typedef void(Aura::*pAuraHandler)(bool Apply, bool Real);
 // Real == true at aura add/remove
 // Real == false at aura mod unapply/reapply; when adding/removing dependent aura/item/stat mods
+// （Real == true 表示光环真正添加或移除；Real == false 表示因重算属性/装备/依赖光环而临时卸载并重新应用修饰器）
 //
 // Code in aura handler can be guarded by if(Real) check if it should execution only at real add/remove of aura
+// （仅需在光环真正施加或移除时执行的逻辑应放在 if(Real) 保护内）
 //
 // MAIN RULE: Code MUST NOT be guarded by if(Real) check if it modifies any stats
 //      (percent auras, stats mods, etc)
+// （主规则：修改任何属性数值或百分比修正的代码严禁放入 if(Real) 判断中，否则属性重算时会丢失）
 // Second rule: Code must be guarded by if(Real) check if it modifies object state (start/stop attack, send packets to client, etc)
+// （第二规则：修改单位状态、启停攻击或向客户端发包的代码必须放入 if(Real) 判断中）
 //
 // Other case choice: each code line moved under if(Real) check is mangos speedup,
 //      each setting object update field code line moved under if(Real) check is significant mangos speedup, and less server->client data sends
 //      each packet sending code moved under if(Real) check is _large_ mangos speedup, and lot less server->client data sends
 
+// 单个光环效果实例类：对应法术的某一个效果索引，负责具体 AuraType 处理器分发、周期跳动及脚本钩子调用
 class Aura
 {
         friend struct ReapplyAffectedPassiveAurasHelper;
         friend Aura* CreateAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster, Item* castItem, uint64 scriptValue);
 
     public:
-        // aura handlers
+        // aura handlers（光环类型处理器声明，对应 SpellAuras.cpp 中的 AuraHandler 表）
         void HandleNULL(bool, bool)
         {
             // NOT IMPLEMENTED
@@ -501,13 +515,13 @@ class Aura
 
         virtual Unit* GetTriggerTarget() const { return m_spellAuraHolder->GetTarget(); }
 
-        // add/remove SPELL_AURA_MOD_SHAPESHIFT (36) linked auras
+        // add/remove SPELL_AURA_MOD_SHAPESHIFT (36) linked auras（添加/移除变形姿态关联的额外被动光环）
         void HandleShapeshiftBoosts(bool apply);
 
         void TriggerSpell();
         void TriggerSpellWithValue();
 
-        // more limited that used in future versions (spell_affect table based only), so need be careful with backporting uses
+        // more limited that used in future versions (spell_affect table based only), so need be careful with backporting uses（基于 spell_affect 表的法术影响掩码，向后移植时需注意适用范围）
         ClassFamilyMask GetAuraSpellClassMask() const;
         bool isAffectedOnSpell(SpellEntry const* spell) const;
         bool CanProcFrom(SpellEntry const* spell, uint32 EventProcEx, uint32 procEx, bool damaging, bool absorbing, bool useClassMask) const;
@@ -526,14 +540,14 @@ class Aura
 
         static uint32 CalculateAuraEffectValue(Unit* caster, Unit* target, SpellEntry const* spellProto, SpellEffectIndex effIdx, uint32 value);
 
-        // Scripting system
+        // Scripting system（光环脚本系统接口与事件钩子）
         AuraScript* GetAuraScript() const { return GetHolder()->GetAuraScript(); }
-        // Variable storage
+        // Variable storage（脚本状态与自定义存储指针）
         void SetScriptValue(uint64 value) { m_scriptValue = value; }
         uint64 GetScriptValue() { return m_scriptValue; }
-        void SetScriptStorage(ScriptStorage* storage) { m_storage = storage; } // do not set more than once
+        void SetScriptStorage(ScriptStorage* storage) { m_storage = storage; } // do not set more than once（仅允许设置一次）
         ScriptStorage* GetScriptStorage() { return m_storage; }
-        // hooks
+        // hooks（光环初始化、数值计算、应用/移除、触发、吸收及周期跳动钩子）
         void OnAuraInit();
         int32 OnAuraValueCalculate(Unit* caster, int32 currentValue, Item* castItem);
         void OnDamageCalculate(Unit* attacker, Unit* victim, int32& advertisedBenefit, float& totalMod);
@@ -552,9 +566,9 @@ class Aura
         void OnHeartbeat();
         bool OnAffectCheck(SpellEntry const* spellInfo) const;
         uint32 GetAuraScriptCustomizationValue();
-        // Hook Requirements
+        // Hook Requirements（供脚本覆写周期或影响条件）
         void ForcePeriodicity(uint32 periodicTime);
-        void SetAffectOverriden() { m_affectOverriden = true; } // spell script must implement condition
+        void SetAffectOverriden() { m_affectOverriden = true; } // spell script must implement condition（启用后脚本必须实现 OnAffectCheck）
 
         MaNGOS::unique_weak_ptr<Aura> GetWeakPtr() const { return m_scriptRef; }
         void InvalidateScriptRef() { m_scriptRef = nullptr; }
@@ -562,10 +576,10 @@ class Aura
     protected:
         Aura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster = nullptr, Item* castItem = nullptr);
 
-        // must be called only from Aura::UpdateAura
+        // must be called only from Aura::UpdateAura（仅限由 Aura::UpdateAura 调用）
         virtual void Update(uint32 diff);
 
-        // must be called only from Aura*::Update
+        // must be called only from Aura*::Update（仅限由 Aura 及其子类的 Update 调用）
         void PeriodicTick();
         void PeriodicDummyTick();
 
@@ -579,13 +593,13 @@ class Aura
 
         time_t m_applyTime;
 
-        int32 m_currentBasePoints;                          // cache SpellEntry::CalculateSimpleValue and use for set custom base points
-        int32 m_periodicTimer;                              // Timer for periodic auras
-        uint32 m_periodicTick;                              // Tick count pass (including current if use in tick code) from aura apply, used for some tick count dependent aura effects
+        int32 m_currentBasePoints;                          // cache SpellEntry::CalculateSimpleValue and use for set custom base points（缓存基础点数，支持自定义覆盖）
+        int32 m_periodicTimer;                              // Timer for periodic auras（周期光环下一次触发倒计时）
+        uint32 m_periodicTick;                              // Tick count pass (including current if use in tick code) from aura apply, used for some tick count dependent aura effects（已执行的周期跳数计数）
 
-        AuraRemoveMode m_removeMode: 8;                     // Store info for know remove aura reason
+        AuraRemoveMode m_removeMode: 8;                     // Store info for know remove aura reason（记录移除原因）
 
-        SpellEffectIndex m_effIndex : 8;                    // Aura effect index in spell
+        SpellEffectIndex m_effIndex : 8;                    // Aura effect index in spell（所属法术的效果索引 0..2）
 
         bool m_positive: 1;
         bool m_isPeriodic: 1;
@@ -595,7 +609,7 @@ class Aura
 
         SpellAuraHolder* const m_spellAuraHolder;
 
-        // Scripting system
+        // Scripting system（脚本状态存储与弱引用追踪指针）
         uint64 m_scriptValue; // persistent value for spell script state
         ScriptStorage* m_storage;
         bool m_affectOverriden;
@@ -606,6 +620,7 @@ class Aura
         void ReapplyAffectedPassiveAuras(Unit* target, bool owner_mode);
 };
 
+// 区域光环类：由施法者身上持续向周围队伍/团员/友方/敌方或图腾半径内目标扩散的光环（如圣骑士光环、图腾光环）
 class AreaAura : public Aura
 {
     public:
@@ -621,6 +636,7 @@ class AreaAura : public Aura
         uint32       m_originalRankSpellId;
 };
 
+// 持久区域光环类：挂载在 DynamicObject（地面法阵/暴风雪/奉献等）上周期作用的光环
 class PersistentAreaAura : public Aura
 {
     public:
@@ -630,7 +646,7 @@ class PersistentAreaAura : public Aura
         void Update(uint32 diff) override;
 };
 
-// Used for GO Area Auras
+// Used for GO Area Auras（游戏对象区域光环类：由 GameObject 持续向范围内单位施加光环）
 class GameObjectAura : public Aura
 {
     public:
@@ -641,6 +657,8 @@ class GameObjectAura : public Aura
         void Update(uint32 diff) override;
 };
 
+// 工厂函数：按法术与效果索引创建对应的 Aura/AreaAura/PersistentAreaAura 实例
 Aura* CreateAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster = nullptr, Item* castItem = nullptr, uint64 scriptValue = 0);
+// 工厂函数：创建并初始化 SpellAuraHolder 光环容器
 SpellAuraHolder* CreateSpellAuraHolder(SpellEntry const* spellproto, Unit* target, WorldObject* caster, Item* castItem = nullptr, SpellEntry const* triggeredBy = nullptr);
 #endif

@@ -25,6 +25,7 @@
 #include <atomic>
 #include <type_traits>
 
+/// 线程安全的生产者-消费者阻塞/非阻塞队列模板类（支持关闭唤醒与指针元素自动释放）
 template <typename T>
 class ProducerConsumerQueue
 {
@@ -32,6 +33,7 @@ class ProducerConsumerQueue
         ProducerConsumerQueue() : m_shutdown(false) { }
         ProducerConsumerQueue(const ProducerConsumerQueue<T>&) = delete;
 
+        /// 生产者入队并唤醒一个等待中的消费者线程
         void Push(const T&& value)
         {
             std::lock_guard<std::mutex> lock(m_queueLock);
@@ -40,6 +42,7 @@ class ProducerConsumerQueue
             m_condition.notify_one();
         }
 
+        /// 判断队列是否为空（线程安全）
         bool Empty()
         {
             std::lock_guard<std::mutex> lock(m_queueLock);
@@ -47,6 +50,7 @@ class ProducerConsumerQueue
             return m_queue.empty();
         }
 
+        /// 非阻塞出队：队列为空或已关闭时返回 false
         bool Pop(T& value)
         {
             std::lock_guard<std::mutex> lock(m_queueLock);
@@ -61,12 +65,14 @@ class ProducerConsumerQueue
             return true;
         }
 
+        /// 阻塞等待直至有元素可出队或队列被取消关闭
         void WaitAndPop(T& value)
         {
             std::unique_lock<std::mutex> lock(m_queueLock);
 
             // we could be using .wait(lock, predicate) overload here but it is broken
             // https://connect.microsoft.com/VisualStudio/feedback/details/1098841
+            // | 因旧版 MSVC 上 wait(lock, predicate) 存在缺陷，改用显式 while 循环等待条件变量
             while (m_queue.empty() && !m_shutdown)
                 m_condition.wait(lock);
 
@@ -78,6 +84,7 @@ class ProducerConsumerQueue
             m_queue.pop();
         }
 
+        /// 清空队列（若元素为指针类型则 delete 释放）、标记关闭并唤醒所有等待线程
         void Cancel()
         {
             std::unique_lock<std::mutex> lock(m_queueLock);

@@ -21,24 +21,28 @@ SDComment: Spells Dark strike and Flamespear need confirmation
 SDCategory: Molten Core
 EndScriptData */
 
+// 萨弗隆先驱者（Sulfuron Harbinger）7号首领战 AI（击退、下火雨与四名火誓祭司暗影协同治疗）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_DEMORALIZING_SHOUT    = 19778,
-    SPELL_INSPIRE               = 19779,
-    SPELL_HAND_OF_RAGNAROS      = 19780,
-    SPELL_FLAMESPEAR            = 19781,
+    SPELL_DEMORALIZING_SHOUT    = 19778,                    // demoralizingshout 法术 ID
+    SPELL_INSPIRE               = 19779,                    // inspire 法术 ID
+    SPELL_HAND_OF_RAGNAROS      = 19780,                    // handof拉格纳罗斯 法术 ID
+    SPELL_FLAMESPEAR            = 19781,                    // flamespear 法术 ID
 
     // Adds Spells
-    SPELL_DARK_STRIKE           = 19777,
-    SPELL_HEAL                  = 19775,
-    SPELL_SHADOWWORD_PAIN       = 19776,
-    SPELL_IMMOLATE              = 20294
+    SPELL_DARK_STRIKE           = 19777,                    // dark打击 法术 ID
+    SPELL_HEAL                  = 19775,                    // 治疗 法术 ID
+    SPELL_SHADOWWORD_PAIN       = 19776,                    // shadowwordpain 法术 ID
+    SPELL_IMMOLATE              = 20294                     // 献祭 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SulfuronActions
 {
     SULFURON_DEMORALIZING_SHOUT,
@@ -48,6 +52,7 @@ enum SulfuronActions
     SULFURON_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（sulfuron）
 struct boss_sulfuronAI : public CombatAI
 {
     boss_sulfuronAI(Creature* creature) : CombatAI(creature, SULFURON_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -73,6 +78,7 @@ struct boss_sulfuronAI : public CombatAI
             m_instance->SetData(TYPE_SULFURON, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -124,6 +130,7 @@ struct boss_sulfuronAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum FlamewakerPriestActions
 {
     FLAMEWAKER_PRIEST_DARK_STRIKE,
@@ -133,6 +140,7 @@ enum FlamewakerPriestActions
     FLAMEWAKER_PRIEST_ACTION_MAX,
 };
 
+// 随从/NPC AI：牧师（flamewaker_priest）
 struct mob_flamewaker_priestAI : public CombatAI
 {
     mob_flamewaker_priestAI(Creature* creature) : CombatAI(creature, FLAMEWAKER_PRIEST_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -180,6 +188,7 @@ struct mob_flamewaker_priestAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_sulfuron
 void AddSC_boss_sulfuron()
 {
     Script* pNewScript = new Script;

@@ -21,20 +21,29 @@ SDComment: Summoning event for Anzu NYI
 SDCategory: Auchindoun, Sethekk Halls
 EndScriptData */
 
+// 塞泰克大厅副本数据管理实现
+/* 副本概述：
+ * 塞泰克大厅是奥金顿的地下城之一，包含暗织者斯瑟、利爪之王艾吉斯以及德鲁伊史诗飞行形态任务召唤首领安苏。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sethekk_halls.h"
 #include "Entities/TemporarySpawn.h"
 #include "World/WorldStateDefines.h"
 
+// 构造函数：初始化副本数据
 instance_sethekk_halls::instance_sethekk_halls(Map* pMap) : ScriptedInstance(pMap), m_anzuTimer(0), m_anzuStage(0)
 {
     Initialize();
 }
+
+// 初始化首领进度数组
 void instance_sethekk_halls::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
 }
 
+// 副本生物创建时记录安苏召唤仪式各引导实体
 void instance_sethekk_halls::OnCreatureCreate(Creature* pCreature)
 {
     switch (pCreature->GetEntry())
@@ -50,6 +59,7 @@ void instance_sethekk_halls::OnCreatureCreate(Creature* pCreature)
     }
 }
 
+// 副本游戏对象创建时恢复门禁与宝箱状态
 void instance_sethekk_halls::OnObjectCreate(GameObject* pGo)
 {
     switch (pGo->GetEntry())
@@ -73,6 +83,7 @@ void instance_sethekk_halls::OnObjectCreate(GameObject* pGo)
     m_goEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
+// 设置首领战进度数据并触发门禁/存盘
 void instance_sethekk_halls::SetData(uint32 uiType, uint32 uiData)
 {
     switch (uiType)
@@ -82,7 +93,7 @@ void instance_sethekk_halls::SetData(uint32 uiType, uint32 uiData)
             break;
         case TYPE_ANZU:
             m_auiEncounter[uiType] = uiData;
-            // Respawn the Raven's Claw if event fails
+            // Respawn the Raven's Claw if event fails (事件失败时重新刷新乌鸦之爪)
             if (uiData == FAIL)
             {
                 if (GameObject* pClaw = GetSingleGameObjectFromStorage(GO_RAVENS_CLAW))
@@ -115,6 +126,7 @@ void instance_sethekk_halls::SetData(uint32 uiType, uint32 uiData)
     }
 }
 
+// 获取首领战进度数据
 uint32 instance_sethekk_halls::GetData(uint32 uiType) const
 {
     if (uiType < MAX_ENCOUNTER)
@@ -123,6 +135,7 @@ uint32 instance_sethekk_halls::GetData(uint32 uiType) const
     return 0;
 }
 
+// 读取副本存盘数据
 void instance_sethekk_halls::Load(const char* chrIn)
 {
     if (!chrIn)
@@ -145,17 +158,19 @@ void instance_sethekk_halls::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
+// 安苏召唤过场动画法术枚举
 enum AnzuIntro
 {
-    TRIGGER_COUNT = 14,
+    TRIGGER_COUNT = 14,                                 // 触发器数量
 
-    SPELL_OTHERWORLDLY_PORTAL = 39952,
-    SPELL_PURPLE_BANISH_STATE = 32566,
-    SPELL_RAVEN_GOD_SUMMON_BEAMS = 39978,
-    SPELL_ULTRIS_DESTROYED = 35757,
-    SPELL_RED_LIGHTNING_BOLT = 39990,
+    SPELL_OTHERWORLDLY_PORTAL = 39952,                  // 异界传送门
+    SPELL_PURPLE_BANISH_STATE = 32566,                  // 紫色放逐状态视觉
+    SPELL_RAVEN_GOD_SUMMON_BEAMS = 39978,               // 乌鸦之神召唤光束
+    SPELL_ULTRIS_DESTROYED = 35757,                     // 虚空湮灭法术
+    SPELL_RED_LIGHTNING_BOLT = 39990,                   // 红色闪电箭
 };
 
+// 召唤仪式各施法者点位坐标
 float triggerPositions[TRIGGER_COUNT][4] =
 {
     { -55.26986f, 313.4585f, 50.90593f, 0.3316126f},
@@ -174,6 +189,7 @@ float triggerPositions[TRIGGER_COUNT][4] =
     { -55.34531f, 258.1663f, 51.48593f, 1.623156f},
 };
 
+// 启动安苏召唤仪式过场
 void instance_sethekk_halls::StartAnzuIntro(Player* player)
 {
     Creature* target = player->SummonCreature(NPC_INVIS_RAVEN_GOD_TARGET, -87.08602f, 287.8433f, 83.77484f, 3.455752f, TEMPSPAWN_MANUAL_DESPAWN, 0, true);
@@ -197,6 +213,7 @@ void instance_sethekk_halls::StartAnzuIntro(Player* player)
     m_anzuStage = 0;
 }
 
+// 完成安苏召唤仪式并生成安苏首领实体
 void instance_sethekk_halls::FinishAnzuIntro()
 {
     Creature* target = GetSingleCreatureFromStorage(NPC_INVIS_RAVEN_GOD_TARGET, true);
@@ -218,6 +235,7 @@ void instance_sethekk_halls::FinishAnzuIntro()
     testRift->SetLootState(GO_JUST_DEACTIVATED);
 }
 
+// 仪式过场阶段时间步进循环
 void instance_sethekk_halls::Update(uint32 diff)
 {
     if (m_anzuTimer)
@@ -226,28 +244,28 @@ void instance_sethekk_halls::Update(uint32 diff)
         {
             switch (m_anzuStage)
             {
-                case 0: // make target move
+                case 0: // make target move (阶段 0：仪式目标移动)
                 {
                     Creature * target = GetSingleCreatureFromStorage(NPC_INVIS_RAVEN_GOD_TARGET, true);
                     target->GetMotionMaster()->MovePoint(0, -87.14738f, 287.8225f, 33.48315f);
                     m_anzuTimer = 20000;
                     break;
                 }
-                case 1:
+                case 1: // 阶段 1：施放湮灭视觉法术
                 {
                     Creature* target = GetSingleCreatureFromStorage(NPC_INVIS_RAVEN_GOD_TARGET, true);
                     target->CastSpell(nullptr, SPELL_ULTRIS_DESTROYED, TRIGGERED_NONE);
                     m_anzuTimer = 9000;
                     break;
                 }
-                case 2:
+                case 2: // 阶段 2：施放红色闪电箭
                 {
                     Creature * target = GetSingleCreatureFromStorage(NPC_INVIS_RAVEN_GOD_TARGET, true);
                     target->CastSpell(nullptr, SPELL_RED_LIGHTNING_BOLT, TRIGGERED_NONE);
                     m_anzuTimer = 1000;
                     break;
                 }
-                case 3: // done
+                case 3: // done (阶段 3：仪式完成)
                     FinishAnzuIntro();
                     break;
             }
@@ -257,6 +275,7 @@ void instance_sethekk_halls::Update(uint32 diff)
     }
 }
 
+// 处理玩家使用月亮石触发安苏召唤仪式事件
 bool ProcessEventId_event_spell_summon_raven_god(uint32 /*uiEventId*/, Object* source, Object* /*pTarget*/, bool bIsStart)
 {
     if (bIsStart && source->GetTypeId() == TYPEID_PLAYER)
@@ -264,11 +283,11 @@ bool ProcessEventId_event_spell_summon_raven_god(uint32 /*uiEventId*/, Object* s
         Player* player = static_cast<Player*>(source);
         if (instance_sethekk_halls* instance = (instance_sethekk_halls*)(player->GetInstanceData()))
         {
-            // This should be checked by despawning the Raven Claw Go; However it's better to double check the condition
+            // This should be checked by despawning the Raven Claw Go; However it's better to double check the condition (防止重复召唤)
             if (instance->GetData(TYPE_ANZU) == DONE || instance->GetData(TYPE_ANZU) == IN_PROGRESS)
                 return true;
 
-            // Don't summon him twice
+            // Don't summon him twice (防止重复召唤)
             if (instance->GetSingleCreatureFromStorage(NPC_ANZU, true))
                 return true;
 
@@ -278,11 +297,13 @@ bool ProcessEventId_event_spell_summon_raven_god(uint32 /*uiEventId*/, Object* s
     return false;
 }
 
+// 获取塞泰克大厅副本数据脚本实例
 InstanceData* GetInstanceData_instance_sethekk_halls(Map* pMap)
 {
     return new instance_sethekk_halls(pMap);
 }
 
+// 注册塞泰克大厅副本脚本
 void AddSC_instance_sethekk_halls()
 {
     Script* pNewScript = new Script;

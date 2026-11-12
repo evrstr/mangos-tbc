@@ -21,56 +21,60 @@ SDComment:
 SDCategory: Molten Core
 EndScriptData */
 
+// 管理者埃克索图斯（Majordomo Executus）9号首领战 AI（反弹护盾、反射法术与八名火妖随从投降剧情）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // Majordomo Executus Encounter
-    SAY_AGGRO                = -1409003,
-    SAY_SLAY_1               = 9425,
-    SAY_SLAY_SOUND           = 8036,
+    SAY_AGGRO                = -1409003,                    // 开战 台词广播 ID
+    SAY_SLAY_1               = 9425,                        // 击杀1 台词广播 ID
+    SAY_SLAY_SOUND           = 8036,                        // 击杀sound 台词广播 ID
     SAY_LAST_ADD             = -1409019,                    // When only one add remaining
-    SAY_DEFEAT_1             = -1409007,
-    SAY_DEFEAT_2             = -1409020,
-    SAY_DEFEAT_3             = -1409021,
+    SAY_DEFEAT_1             = -1409007,                    // defeat1 台词广播 ID
+    SAY_DEFEAT_2             = -1409020,                    // defeat2 台词广播 ID
+    SAY_DEFEAT_3             = -1409021,                    // defeat3 台词广播 ID
 
-    SPELL_MAGIC_REFLECTION   = 20619,
-    SPELL_DAMAGE_REFLECTION  = 21075,
-    SPELL_AEGIS              = 20620,
-    SPELL_TELEPORT_RANDOM    = 20618,                       // Teleport random target
-    SPELL_TELEPORT_TARGET    = 20534,                       // Teleport Victim
+    SPELL_MAGIC_REFLECTION   = 20619,                       // magic倒影镜像 法术 ID
+    SPELL_DAMAGE_REFLECTION  = 21075,                       // 伤害倒影镜像 法术 ID
+    SPELL_AEGIS              = 20620,                       // aegis 法术 ID
+    SPELL_TELEPORT_RANDOM    = 20618,                       // Teleport random target (传送random目标)
+    SPELL_TELEPORT_TARGET    = 20534,                       // Teleport Victim (传送Victim)
     SPELL_HATE_TO_ZERO       = 20538,                       // Threat reset after each teleport
     SPELL_IMMUNE_POLY        = 21087,                       // Cast onto Flamewaker Healers when half the adds are dead
     SPELL_SEPARATION_ANXIETY = 21094,                       // Aura cast on himself by Majordomo Executus, if adds move out of range, they will cast spell 21095 on themselves
     SPELL_ENCOURAGEMENT      = 21086,                       // Cast onto all remaining adds every time one is killed
     SPELL_CHAMPION           = 21090,                       // Cast onto the last remaining add
 
-    // Ragnaros summoning event
-    GOSSIP_ITEM_SUMMON_1     = -3409000,
-    GOSSIP_ITEM_SUMMON_2     = -3409001,
-    GOSSIP_ITEM_SUMMON_3     = -3409002,
+    // Ragnaros summoning event (拉格纳罗斯summoning事件)
+    GOSSIP_ITEM_SUMMON_1     = -3409000,                    // 物品召唤1 对话菜单选项 ID
+    GOSSIP_ITEM_SUMMON_2     = -3409001,                    // 物品召唤2 对话菜单选项 ID
+    GOSSIP_ITEM_SUMMON_3     = -3409002,                    // 物品召唤3 对话菜单选项 ID
 
-    SAY_SUMMON_0             = -1409023,
-    SAY_SUMMON_1             = -1409024,
-    SAY_SUMMON_MAJ           = -1409008,
-    SAY_ARRIVAL1_RAG         = -1409009,
-    SAY_ARRIVAL2_MAJ         = -1409010,
-    SAY_ARRIVAL3_RAG         = -1409011,
-    SAY_ARRIVAL4_MAJ         = -1409022,
+    SAY_SUMMON_0             = -1409023,                    // 召唤0 台词广播 ID
+    SAY_SUMMON_1             = -1409024,                    // 召唤1 台词广播 ID
+    SAY_SUMMON_MAJ           = -1409008,                    // 召唤maj 台词广播 ID
+    SAY_ARRIVAL1_RAG         = -1409009,                    // arrival1rag 台词广播 ID
+    SAY_ARRIVAL2_MAJ         = -1409010,                    // arrival2maj 台词广播 ID
+    SAY_ARRIVAL3_RAG         = -1409011,                    // arrival3rag 台词广播 ID
+    SAY_ARRIVAL4_MAJ         = -1409022,                    // arrival4maj 台词广播 ID
 
-    TEXT_ID_SUMMON_1         = 4995,
-    TEXT_ID_SUMMON_2         = 5011,
-    TEXT_ID_SUMMON_3         = 5012,
+    TEXT_ID_SUMMON_1         = 4995,                        // ID召唤1 标识 ID
+    TEXT_ID_SUMMON_2         = 5011,                        // ID召唤2 标识 ID
+    TEXT_ID_SUMMON_3         = 5012,                        // ID召唤3 标识 ID
 
-    SPELL_TELEPORT_SELF      = 19484,
-    SPELL_SUMMON_RAGNAROS    = 19774,
-    SPELL_ELEMENTAL_FIRE     = 19773,
-    SPELL_RAGNA_EMERGE       = 20568,
+    SPELL_TELEPORT_SELF      = 19484,                       // 传送self 法术 ID
+    SPELL_SUMMON_RAGNAROS    = 19774,                       // 召唤拉格纳罗斯 法术 ID
+    SPELL_ELEMENTAL_FIRE     = 19773,                       // 元素火焰 法术 ID
+    SPELL_RAGNA_EMERGE       = 20568,                       // ragna现身 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MajordomoActions
 {
     MAJORDOMO_REFLECTION_SHIELD,
@@ -81,6 +85,7 @@ enum MajordomoActions
     MAJORDOMO_OUTRO,
 };
 
+// 首领战 AI：标识 ID（majordomo）
 struct boss_majordomoAI : public CombatAI
 {
     boss_majordomoAI(Creature* creature) : CombatAI(creature, MAJORDOMO_ACTION_MAX), m_instance(static_cast<instance_molten_core*>(creature->GetInstanceData()))
@@ -99,18 +104,20 @@ struct boss_majordomoAI : public CombatAI
 
     instance_molten_core* m_instance;
 
-    ObjectGuid m_ragnarosGuid;
-    bool m_bHasEncounterFinished;
+    ObjectGuid m_ragnarosGuid;                              // ragnaros 实体 GUID
+    bool m_bHasEncounterFinished;                           // HasEncounterFinished 状态标记
     uint8 m_addsKilled;
     uint8 m_speechStage;
     GuidList m_luiMajordomoAddsGUIDs;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_addsKilled = 0;
         m_speechStage = 0;
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         if (who->GetTypeId() == TYPEID_UNIT && who->GetEntry() == NPC_RAGNAROS)
@@ -126,6 +133,7 @@ struct boss_majordomoAI : public CombatAI
             m_instance->SetData(TYPE_MAJORDOMO, IN_PROGRESS);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (!m_bHasEncounterFinished)                       // Normal reached home, FAIL
@@ -135,7 +143,7 @@ struct boss_majordomoAI : public CombatAI
         }
         else                                                // Finished the encounter, DONE
         {
-            // Exit combat
+            // Exit combat (Exit战斗)
             SetCombatScriptStatus(false);
             m_creature->RemoveAllAurasOnEvade();
             m_creature->CombatStop(true);
@@ -145,10 +153,10 @@ struct boss_majordomoAI : public CombatAI
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
             m_creature->SetFactionTemporary(FACTION_MAJORDOMO_FRIENDLY, TEMPFACTION_RESTORE_RESPAWN);
 
-            // Reset orientation
+            // Reset orientation (重置orientation)
             m_creature->SetFacingTo(m_aMajordomoLocations[0].m_fo);
 
-            // Start his speech
+            // Start his speech (开始his演讲)
             ResetTimer(MAJORDOMO_OUTRO, 0); // at next tick
             m_speechStage = 1;
 
@@ -182,6 +190,7 @@ struct boss_majordomoAI : public CombatAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_FLAMEWAKER_HEALER || summoned->GetEntry() == NPC_FLAMEWAKER_ELITE)
@@ -200,6 +209,7 @@ struct boss_majordomoAI : public CombatAI
         }
     }
 
+    // 尸体清除回调
     void CorpseRemoved(uint32& respawnDelay) override
     {
         respawnDelay = urand(2 * HOUR, 3 * HOUR);
@@ -212,6 +222,7 @@ struct boss_majordomoAI : public CombatAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_FLAMEWAKER_HEALER || summoned->GetEntry() == NPC_FLAMEWAKER_ELITE)
@@ -290,7 +301,7 @@ struct boss_majordomoAI : public CombatAI
                 m_speechStage = 0;
                 break;
 
-                // Ragnaros Summon Event
+                // Ragnaros Summon Event (拉格纳罗斯召唤事件)
             case 10:
                 DoScriptText(SAY_SUMMON_1, m_creature);
                 if (GameObject* lavaSplash = m_instance->GetSingleGameObjectFromStorage(GO_LAVA_SPLASH))
@@ -314,7 +325,7 @@ struct boss_majordomoAI : public CombatAI
                 timer = 11500;
                 break;
             case 12:
-                // Reset orientation
+                // Reset orientation (重置orientation)
                 if (GameObject* pLavaSteam = m_instance->GetSingleGameObjectFromStorage(GO_LAVA_STEAM))
                     m_creature->SetFacingToObject(pLavaSteam);
                 DoScriptText(SAY_SUMMON_MAJ, m_creature);
@@ -322,7 +333,7 @@ struct boss_majordomoAI : public CombatAI
                 timer = 8000;
                 break;
             case 13:
-                // Summon Ragnaros and make sure it faces Majordomo Executus
+                // Summon Ragnaros and make sure it faces Majordomo Executus (召唤 Ragnaros and make sure it faces Majordomo Executus)
                 if (m_instance)
                     if (GameObject* pGo = m_instance->GetSingleGameObjectFromStorage(GO_LAVA_STEAM))
                         m_creature->SummonCreature(NPC_RAGNAROS, 838.3082f, -831.4665f, -232.1853f, 2.199115f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 2 * HOUR * IN_MILLISECONDS);
@@ -401,11 +412,13 @@ struct boss_majordomoAI : public CombatAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_majordomo
 UnitAI* GetAI_boss_majordomo(Creature* creature)
 {
     return new boss_majordomoAI(creature);
 }
 
+// NPC 对话交互入口函数：boss_majordomo
 bool GossipHello_boss_majordomo(Player* player, Creature* creature)
 {
     if (instance_molten_core* pInstance = (instance_molten_core*)creature->GetInstanceData())
@@ -441,6 +454,7 @@ bool GossipSelect_boss_majordomo(Player* player, Creature* creature, uint32 /*se
     return true;
 }
 
+// 注册并载入脚本模块：boss_majordomo
 void AddSC_boss_majordomo()
 {
     Script* pNewScript = new Script;

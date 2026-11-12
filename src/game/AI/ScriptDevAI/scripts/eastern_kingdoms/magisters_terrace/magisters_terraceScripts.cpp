@@ -21,6 +21,8 @@ SDComment: Quest support: 11490(post-event)
 SDCategory: Magisters Terrace
 EndScriptData */
 
+// 魔导师平台（Magisters' Terrace）日蚀卫士与魔能斥候技能脚本
+
 /* ContentData
 npc_kalecgos
 EndContentData */
@@ -33,20 +35,21 @@ EndContentData */
 ## npc_kalecgos
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_CAMERA_SHAKE_MED      = 44762,
-    SPELL_TRANSFORM_VISUAL      = 24085,
-    SPELL_ORB_KILL_CREDIT       = 46307,
+    SPELL_CAMERA_SHAKE_MED      = 44762,                    // camerashakemed 法术 ID
+    SPELL_TRANSFORM_VISUAL      = 24085,                    // 变形视觉特效 法术 ID
+    SPELL_ORB_KILL_CREDIT       = 46307,                    // orb击杀credit 法术 ID
     NPC_KALECGOS                = 24848,                    // human form entry
 
-    MAP_ID_MAGISTER             = 585,
+    MAP_ID_MAGISTER             = 585,                      // IDmagister 标识 ID
 
-    SAY_SPAWN                   = -1585032,
+    SAY_SPAWN                   = -1585032,                 // 生成 台词广播 ID
 
-    POINT_FINAL                 = 7,
+    POINT_FINAL                 = 7,                        // final 路径点 ID
 
-    ACTION_TRANSFORM            = 1,
+    ACTION_TRANSFORM            = 1,                        // 变形 动作指令 ID
 };
 
 static const float afKaelLandPoint[4] = {200.36f, -270.77f, -8.73f, 0.01f};
@@ -62,6 +65,7 @@ struct npc_kalecgosAI : public CombatAI
 
     uint32 m_transformStage;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         // Check the map id because the same creature entry is involved in other scripted event in other instance
@@ -122,6 +126,7 @@ struct npc_kalecgosAI : public CombatAI
         DoScriptText(SAY_SPAWN, m_creature);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 type, uint32 pointId) override
     {
         if (type != PATH_MOTION_TYPE)
@@ -148,6 +153,7 @@ bool ProcessEventId_event_go_scrying_orb(uint32 /*eventId*/, Object* source, Obj
     return false;
 }
 
+// 注册并载入脚本模块：magisters_terrace
 void AddSC_magisters_terrace()
 {
     Script* pNewScript = new Script;

@@ -21,54 +21,59 @@ SDComment: Missing vipers emerge effect, Naralex doesn't fly at exit(Core issue)
 SDCategory: Wailing Caverns
 EndScriptData */
 
+/**
+ * 哀嚎洞穴：毒蛇花与相关任务游戏对象脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "wailing_caverns.h"
 #include "AI/ScriptDevAI/base/escort_ai.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_FIRST_CORNER        = 1256,
-    SAY_CONTINUE            = 1257,
-    SAY_CIRCLE_BANISH       = 1258,
-    SAY_PURIFIED            = 1259,
-    SAY_NARALEX_CHAMBER     = 1263,
-    SAY_BEGIN_RITUAL        = 1264,
-    SAY_MUTANUS             = 1276,
-    SAY_NARALEX_AWAKE       = 1271,
-    SAY_AWAKE               = 2101,
-    SAY_NARALEX_THANKYOU    = 1272,
-    SAY_FAREWELL            = 2103,
-    SAY_AGGRO_1             = 1273,                     // Random between the first 2
-    SAY_AGGRO_2             = 1277,
-    SAY_AGGRO_3             = 1274,                     // During the awakening ritual
+    SAY_FIRST_CORNER        = 1256,                         // 剧情台词/喊话文本 ID
+    SAY_CONTINUE            = 1257,                         // 剧情台词/喊话文本 ID
+    SAY_CIRCLE_BANISH       = 1258,                         // 剧情台词/喊话文本 ID
+    SAY_PURIFIED            = 1259,                         // 剧情台词/喊话文本 ID
+    SAY_NARALEX_CHAMBER     = 1263,                         // 剧情台词/喊话文本 ID
+    SAY_BEGIN_RITUAL        = 1264,                         // 剧情台词/喊话文本 ID
+    SAY_MUTANUS             = 1276,                         // 剧情台词/喊话文本 ID
+    SAY_NARALEX_AWAKE       = 1271,                         // 剧情台词/喊话文本 ID
+    SAY_AWAKE               = 2101,                         // 剧情台词/喊话文本 ID
+    SAY_NARALEX_THANKYOU    = 1272,                         // 剧情台词/喊话文本 ID
+    SAY_FAREWELL            = 2103,                         // 剧情台词/喊话文本 ID
+    SAY_AGGRO_1             = 1273,                     // Random between the first 2 (说明)
+    SAY_AGGRO_2             = 1277,                         // 剧情台词/喊话文本 ID
+    SAY_AGGRO_3             = 1274,                     // During the awakening ritual (说明)
 
-    EMOTE_RITUAL_BEGIN      = 1265,
-    EMOTE_NARALEX_AWAKE     = 1268,
-    EMOTE_BREAK_THROUGH     = 1269,
-    EMOTE_VISION            = 1270,
+    EMOTE_RITUAL_BEGIN      = 1265,                         // 剧情台词/喊话文本 ID
+    EMOTE_NARALEX_AWAKE     = 1268,                         // 剧情台词/喊话文本 ID
+    EMOTE_BREAK_THROUGH     = 1269,                         // 剧情台词/喊话文本 ID
+    EMOTE_VISION            = 1270,                         // 剧情台词/喊话文本 ID
 
     GOSSIP_ITEM_BEGIN       = -3043000,
-    TEXT_ID_BEGIN           = 699,
-    TEXT_ID_DISCIPLE        = 698,
+    TEXT_ID_BEGIN           = 699,                          // 剧情台词/喊话文本 ID
+    TEXT_ID_DISCIPLE        = 698,                          // 剧情台词/喊话文本 ID
 
-    SPELL_MARK              = 5232,                         // Buff before the fight. To be removed after 4.0.3
-    SPELL_SLEEP             = 1090,
-    SPELL_POTION            = 8141,
-    SPELL_CLEANSING         = 6270,
-    SPELL_AWAKENING         = 6271,
-    SPELL_SHAPESHIFT        = 8153,
+    SPELL_MARK              = 5232,                         // Buff before the fight. To be removed after 4.0.3 (说明)
+    SPELL_SLEEP             = 1090,                         // 技能法术 ID
+    SPELL_POTION            = 8141,                         // 技能法术 ID
+    SPELL_CLEANSING         = 6270,                         // 技能法术 ID
+    SPELL_AWAKENING         = 6271,                         // 技能法术 ID
+    SPELL_SHAPESHIFT        = 8153,                         // 技能法术 ID
 
-    NPC_DEVIATE_RAPTOR      = 3636,                         // 2 of them at the first stop
-    NPC_DEVIATE_VIPER       = 5755,                         // 3 RND at the circle
-    NPC_DEVIATE_ADDER       = 5048,                         // 3 RND at the circle
-    NPC_DEVIATE_MOCCASIN    = 5762,                         // 6 of them at Naralex chamber
-    NPC_NIGHTMARE_ECTOPLASM = 5763,                         // 10 of them at Naralex chamber
-    NPC_MUTANUS             = 3654,
+    NPC_DEVIATE_RAPTOR      = 3636,                         // 2 of them at the first stop (说明)
+    NPC_DEVIATE_VIPER       = 5755,                         // 3 RND at the circle (说明)
+    NPC_DEVIATE_ADDER       = 5048,                         // 3 RND at the circle (说明)
+    NPC_DEVIATE_MOCCASIN    = 5762,                         // 6 of them at Naralex chamber (说明)
+    NPC_NIGHTMARE_ECTOPLASM = 5763,                         // 10 of them at Naralex chamber (说明)
+    NPC_MUTANUS             = 3654,                         // NPC 条目 ID
 
-    PATH_ID_NARALEX         = 3678,                      // Sniffed Waypoints for Escort Event
+    PATH_ID_NARALEX         = 3678,                      // Sniffed Waypoints for Escort Event (路径点护送事件)
 };
 
-// Raptor spawns
+// Raptor spawns (刷新)
 static const WaveLocation raptorLocations[2] =
 {
     { NPC_DEVIATE_RAPTOR , -67.44779f, 214.5348f, -93.42037f, 1 },
@@ -82,7 +87,7 @@ static const float circleLocations[3][4] =
     { -57.5452f, 280.2068f, -92.7608f, 5.0789f}
 };
 
-// Todo: have more then 3 spawn points, but always spawn 3
+// Todo: have more then 3 spawn points, but always spawn 3 (说明)
 static const WaveLocation moccasinLocations[3] =
 {
     { NPC_DEVIATE_MOCCASIN, 171.39545f, 213.76605f, -105.50746f, 1},
@@ -90,7 +95,7 @@ static const WaveLocation moccasinLocations[3] =
     { NPC_DEVIATE_MOCCASIN, 121.39977f, 166.31746f, -105.54061f, 3}
 };
 
-// Todo: have more then 7 spawn points, but always spawn 7
+// Todo: have more then 7 spawn points, but always spawn 7 (说明)
 static const WaveLocation ectoplasmLocations[7] =
 {
     { NPC_NIGHTMARE_ECTOPLASM, 162.06705f, 218.71494f, -105.36240f, 1},
@@ -104,6 +109,7 @@ static const WaveLocation ectoplasmLocations[7] =
 
 float  mutanosLocations[4] = { 150.94276f, 262.79715f, -103.90348f, 1 };
 
+// npc_disciple_of_naralexAI NPC 脚本 AI
 struct npc_disciple_of_naralexAI : public npc_escortAI
 {
     npc_disciple_of_naralexAI(Creature* creature) : npc_escortAI(creature), m_instance(static_cast<instance_wailing_caverns*>(creature->GetInstanceData()))
@@ -123,12 +129,12 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
     uint32 m_uiPoint;
     uint8 m_uiSubeventPhase;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiSleepTimer      = 5000;
         m_uiPotionTimer     = 5000;
         m_uiCleansingTimer  = 0;
-        m_bIsFirstHit       = false;                        // Used to trigger the combat yell; reset at every evade
+        m_bIsFirstHit       = false;                        // Used to trigger the combat yell; reset at every evade (说明)
 
         // Don't reset mob counter during the event
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
@@ -146,7 +152,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
     {
         npc_escortAI::JustRespawned();
 
-        // Reset event if can
+        // Reset event if can (重置事件)
         if (m_instance && m_instance->GetData(TYPE_DISCIPLE) != DONE)
             m_instance->SetData(TYPE_DISCIPLE, FAIL);
     }
@@ -157,21 +163,21 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
         {
             if (pAttacker->GetEntry() == NPC_MUTANUS)
                 DoBroadcastText(SAY_MUTANUS, m_creature, pAttacker);
-            // Check if already in ritual
+            // Check if already in ritual (说明)
             else if (m_uiPoint >= 30)
                 DoBroadcastText(SAY_AGGRO_3, m_creature, pAttacker);
             else
-                // Aggro 1 should be in 90% of the cases
+                // Aggro 1 should be in 90% of the cases (说明)
                 DoBroadcastText(roll_chance_i(90) ? SAY_AGGRO_1 : SAY_AGGRO_2, m_creature, pAttacker);
 
             m_bIsFirstHit = true;
         }
     }
 
-    // Overwrite the evade function, to change the combat stop function (keep casting some spells)
-    void EnterEvadeMode() override
+    // Overwrite the evade function, to change the combat stop function (keep casting some spells) (说明)
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
-        // Do not stop casting at these points
+        // Do not stop casting at these points (说明)
         if (m_uiPoint == 30)
         {
             m_creature->SetLootRecipient(nullptr);
@@ -182,7 +188,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
 
             Reset();
 
-            // Remove running
+            // Remove running (说明)
             m_creature->SetWalk(true);
         }
         else
@@ -195,7 +201,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
             m_instance->SetData(TYPE_DISCIPLE, IN_PROGRESS);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -229,16 +235,16 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
     void SummonedCreatureJustDied(Creature* /*pSummoned*/) override
     {
         if (m_uiSummonedAlive == 0)
-            return;                                         // Actually if this happens, something went wrong before
+            return;                                         // Actually if this happens, something went wrong before (说明)
 
         --m_uiSummonedAlive;
 
-        // Continue Event if all are dead and we are in a stopped subevent
+        // Continue Event if all are dead and we are in a stopped subevent (说明)
         if (m_uiSummonedAlive == 0 && m_uiEventTimer == 0)
             m_uiEventTimer = 2000;
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         if (m_uiEventTimer)
         {
@@ -246,25 +252,25 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
             {
                 switch (m_uiPoint)
                 {
-                    // Corner stop -> raptors
+                    // Corner stop -> raptors (说明)
                     case 12:
                         switch (m_uiSubeventPhase)
                         {
                             case 0:
-                                // Summon raptors at first stop
+                                // Summon raptors at first stop (召唤)
                                 for (auto& i : raptorLocations)
                                     m_creature->SummonCreature(i.uiEntry, i.m_fx, i.m_fy, i.m_fz, 0.0f, TEMPSPAWN_DEAD_DESPAWN, 20000, true, true, i.uiPathId);
                                 m_uiEventTimer = 0;
                                 ++m_uiSubeventPhase;
                                 break;
                             case 1:
-                                // After the summoned mobs are killed continue                                
+                                // After the summoned mobs are killed continue (说明)
                                 SetEscortPaused(false);
                                 m_uiEventTimer = 0;
                                 break;
                         }
                         break;
-                    // Circle stop -> vipers
+                    // Circle stop -> vipers (说明)
                     case 30:
                         switch (m_uiSubeventPhase)
                         {
@@ -275,14 +281,14 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 1:
-                                // Summon vipers at the first circle
+                                // Summon vipers at the first circle (召唤)
                                 for (uint8 i = 0; i < 3; ++i)
                                     m_creature->SummonCreature(urand(0, 1) ? NPC_DEVIATE_ADDER : NPC_DEVIATE_VIPER, circleLocations[i][0], circleLocations[i][1], circleLocations[i][2], circleLocations[i][3], TEMPSPAWN_TIMED_OOC_DESPAWN, 20000, true);
                                 m_uiEventTimer = 0;
                                 ++m_uiSubeventPhase;
                                 break;
                             case 2:
-                                // Wait for casting to be complete - TODO, if spawned creatures are dead and cast finished we continue without any waiting
+                                // Wait for casting to be complete - TODO, if spawned creatures are dead and cast finished we continue without any waiting (说明)
                                 ++m_uiSubeventPhase;
                                 m_uiEventTimer = 10000;
                                 break;
@@ -290,12 +296,12 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 m_creature->HandleEmote(EMOTE_ONESHOT_TALK);
                                 DoBroadcastText(SAY_PURIFIED, m_creature);
                                 m_uiEventTimer = 0;
-                                ++m_uiPoint;             // Increment this in order to avoid the special case evade
+                                ++m_uiPoint;             // Increment this in order to avoid the special case evade (说明)
                                 SetEscortPaused(false);
                                 break;
                         }
                         break;
-                    // Chamber stop -> ritual and final boss
+                    // Chamber stop -> ritual and final boss (说明)
                     case 70:
                         switch (m_uiSubeventPhase)
                         {
@@ -314,7 +320,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 2:
-                                // First set of mobs
+                                // First set of mobs (说明)
                                 for (auto& i : moccasinLocations)
                                     m_creature->SummonCreature(i.uiEntry, i.m_fx, i.m_fy, i.m_fz, 0.0f, TEMPSPAWN_DEAD_DESPAWN, 20000, false, false, i.uiPathId);
                                 m_uiEventTimer = 5000;
@@ -327,21 +333,21 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 4:
-                                // Second set of mobs
+                                // Second set of mobs (说明)
                                 for (auto& i : ectoplasmLocations)
                                     m_creature->SummonCreature(i.uiEntry, i.m_fx, i.m_fy, i.m_fz, 0.0f, TEMPSPAWN_DEAD_DESPAWN, 20000, true, false, i.uiPathId);
                                 m_uiEventTimer = 20000;
                                 ++m_uiSubeventPhase;
                                 break;
                             case 5:
-                                // Advance only when all mobs are dead
+                                // Advance only when all mobs are dead (说明)
                                 if (Creature* pNaralex = m_instance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                     DoBroadcastText(EMOTE_BREAK_THROUGH, pNaralex);
                                 ++m_uiSubeventPhase;
                                 m_uiEventTimer = 0;
                                 break;
                             case 6:
-                                // Mutanus
+                                // Mutanus (说明)
                                 if (Creature* pNaralex = m_instance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                     DoBroadcastText(EMOTE_VISION, pNaralex);
 
@@ -350,7 +356,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 7:
-                                // Awaken Naralex after mutanus is defeated
+                                // Awaken Naralex after mutanus is defeated (说明)
                                 if (Creature* pNaralex = m_instance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                 {
                                     pNaralex->SetStandState(UNIT_STAND_STATE_STAND);
@@ -378,7 +384,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 10:
-                                // Say Farewell
+                                // Say Farewell (说明)
                                 if (Creature* pNaralex = m_instance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                 {
                                     pNaralex->HandleEmote(EMOTE_ONESHOT_TALK);
@@ -388,7 +394,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 11:
-                                // Shapeshift into a bird
+                                // Shapeshift into a bird (说明)
                                 if (Creature* pNaralex = m_instance->GetSingleCreatureFromStorage(NPC_NARALEX))                                
                                     pNaralex->CastSpell(pNaralex, SPELL_SHAPESHIFT, TRIGGERED_NONE);                                
                                 DoCastSpellIfCan(m_creature, SPELL_SHAPESHIFT);
@@ -400,24 +406,24 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
                                 m_creature->SetLevitate(true);
                                 m_creature->SetHover(true);
                                 SetRun();
-                                // Send them flying somewhere outside of the room
+                                // Send them flying somewhere outside of the room (说明)
                                 if (Creature* pNaralex = m_instance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                 {
-                                    // Set to flying
+                                    // Set to flying (说明)
                                     pNaralex->SetLevitate(true);
                                     pNaralex->SetHover(true);
                                     pNaralex->SetWalk(false);
 
-                                    // Set following
+                                    // Set following (说明)
                                     pNaralex->GetMotionMaster()->MoveFollow(m_creature, 5.0f, 0);
                                 }
                                 m_uiEventTimer = 30000;
                                 break;
                             case 13:
                                 if (Creature* pNaralex = m_instance->GetSingleCreatureFromStorage(NPC_NARALEX))
-                                    pNaralex->ForcedDespawn(1000); // Despawn after some time
+                                    pNaralex->ForcedDespawn(1000); // Despawn after some time (消失)
                                 m_creature->ForcedDespawn(1000);
-                                m_instance->DespawnAll(); // whole instance despawns
+                                m_instance->DespawnAll(); // whole instance despawns (说明)
                                 break;
                         }
                         break;
@@ -429,7 +435,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
 
         if (m_uiPotionTimer < uiDiff)
         {
-            // if health lower than 80%, cast heal
+            // if health lower than 80%, cast heal (说明)
             if (m_creature->GetHealthPercent() < 80.0f)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_POTION) == CAST_OK)
@@ -459,14 +465,14 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
     }
 };
 
-bool GossipHello_npc_disciple_of_naralex(Player* player, Creature* creature)
+bool GossipHello_npc_disciple_of_naralex(Player* player, Creature* creature) // 对话交互问候处理
 {
     ScriptedInstance* m_pInstance = (ScriptedInstance*)creature->GetInstanceData();
 
     if (creature->isQuestGiver())
         player->PrepareQuestMenu(creature->GetObjectGuid());
 
-    // Buff the players
+    // Buff the players (说明)
     creature->CastSpell(player, SPELL_MARK, TRIGGERED_NONE);
     
     if (m_pInstance && m_pInstance->GetData(TYPE_DISCIPLE) == SPECIAL || player->IsGameMaster())
@@ -491,7 +497,7 @@ bool GossipSelect_npc_disciple_of_naralex(Player* player, Creature* creature, ui
     {
         if (npc_disciple_of_naralexAI* escortAI = dynamic_cast<npc_disciple_of_naralexAI*>(creature->AI()))
         {
-            escortAI->Start(false, player, nullptr, false, false, PATH_ID_NARALEX);               // Note: after 4.0.3 set him run = true
+            escortAI->Start(false, player, nullptr, false, false, PATH_ID_NARALEX);               // Note: after 4.0.3 set him run = true (说明)
             creature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
         }
         player->CLOSE_GOSSIP_MENU();
@@ -499,7 +505,7 @@ bool GossipSelect_npc_disciple_of_naralex(Player* player, Creature* creature, ui
     return true;
 }
 
-void AddSC_wailing_caverns()
+void AddSC_wailing_caverns() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_disciple_of_naralex";

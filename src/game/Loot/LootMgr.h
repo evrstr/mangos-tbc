@@ -26,7 +26,7 @@
 #include <vector>
 #include "Entities/Bag.h"
 
-#define LOOT_ROLL_TIMEOUT  (1*MINUTE*IN_MILLISECONDS)
+#define LOOT_ROLL_TIMEOUT  (1*MINUTE*IN_MILLISECONDS)       // 团队 Roll 点超时时间（1 分钟）
 
 class Player;
 class Group;
@@ -40,38 +40,41 @@ struct ItemPrototype;
 
 
 #define MAX_NR_LOOT_ITEMS 16
-// note: the client cannot show more than 16 items total
+// note: the client cannot show more than 16 items total (客户端拾取窗口单次最多显示 16 件物品)
 
+/// 拾取权限类型（全员、队伍、队长分配、单人归属、无权限）
 enum PermissionTypes
 {
     ALL_PERMISSION    = 0,
     GROUP_PERMISSION  = 1,
     MASTER_PERMISSION = 2,
-    OWNER_PERMISSION  = 3,                                  // for single player only loots
+    OWNER_PERMISSION  = 3,                                  // for single player only loots (仅单人拾取归属)
     NONE_PERMISSION   = 4
 };
 
+/// 单个拾取槽位对玩家呈现的交互类型
 enum LootSlotType
 {
-    LOOT_SLOT_NORMAL  = 0,                                  // can be looted
-    LOOT_SLOT_VIEW    = 1,                                  // can be only view (ignore any loot attempts)
-    LOOT_SLOT_MASTER  = 2,                                  // can be looted only master (error message)
-    LOOT_SLOT_REQS    = 3,                                  // can't be looted (error message about missing reqs)
-    LOOT_SLOT_OWNER   = 4,                                  // ignore binding confirmation and etc, for single player looting
-    MAX_LOOT_SLOT_TYPE                                      // custom, use for mark skipped from show items
+    LOOT_SLOT_NORMAL  = 0,                                  // can be looted (可直接拾取)
+    LOOT_SLOT_VIEW    = 1,                                  // can be only view (ignore any loot attempts) (仅可查看/正在 Roll 点中)
+    LOOT_SLOT_MASTER  = 2,                                  // can be looted only master (error message) (仅队长分配者可分配)
+    LOOT_SLOT_REQS    = 3,                                  // can't be looted (error message about missing reqs) (不满足条件不可拾取)
+    LOOT_SLOT_OWNER   = 4,                                  // ignore binding confirmation and etc, for single player looting (单人独占拾取，跳过绑定确认)
+    MAX_LOOT_SLOT_TYPE                                      // custom, use for mark skipped from show items (自定义标记：隐藏不显示)
 };
 
+/// 组队 Roll 点投票选择
 enum RollVote
 {
-    ROLL_PASS = 0,
-    ROLL_NEED = 1,
-    ROLL_GREED = 2,
-    ROLL_DISENCHANT = 3,
-    ROLL_NOT_EMITED_YET = 4,                             // send to client
-    ROLL_NOT_VALID = 5                                   // not send to client
+    ROLL_PASS = 0,                                          // 放弃
+    ROLL_NEED = 1,                                          // 需求
+    ROLL_GREED = 2,                                         // 贪婪
+    ROLL_DISENCHANT = 3,                                    // 分解
+    ROLL_NOT_EMITED_YET = 4,                             // send to client (尚未投票，用于发送包)
+    ROLL_NOT_VALID = 5                                   // not send to client (无效/不可参与)
 };
 
-// set what votes allowed
+// set what votes allowed (允许的 Roll 点按钮掩码)
 enum RollVoteMask
 {
     ROLL_VOTE_MASK_PASS = 0x01,
@@ -82,6 +85,7 @@ enum RollVoteMask
     ROLL_VOTE_MASK_ALL = 0x0F,
 };
 
+/// 掉落物品来源分类（普通/任务/条件掉落）
 enum LootItemType
 {
     LOOTITEM_TYPE_NORMAL        = 1,
@@ -89,13 +93,13 @@ enum LootItemType
     LOOTITEM_TYPE_CONDITIONNAL  = 3
 };
 
-// loot type sent to clients
+// loot type sent to clients (发往客户端的拾取动作动画类型)
 enum ClientLootType
 {
-    CLIENT_LOOT_CORPSE          = 1,
-    CLIENT_LOOT_PICKPOCKETING   = 2,
-    CLIENT_LOOT_FISHING         = 3,
-    CLIENT_LOOT_DISENCHANTING   = 4
+    CLIENT_LOOT_CORPSE          = 1,                        // 尸体/普通拾取
+    CLIENT_LOOT_PICKPOCKETING   = 2,                        // 偷窃
+    CLIENT_LOOT_FISHING         = 3,                        // 钓鱼
+    CLIENT_LOOT_DISENCHANTING   = 4                         // 分解/选矿
 };
 
 enum LootStatus
@@ -170,6 +174,7 @@ struct PlayerRollVote
     uint8    number;
 };
 
+/// 组队拾取掷骰（Roll 点）会话：跟踪符合条件的成员投票、超时判定与胜出者发放
 class GroupLootRoll
 {
     public:
@@ -179,8 +184,11 @@ class GroupLootRoll
         {}
         ~GroupLootRoll();
 
+        /// 尝试为指定掉落槽位启动一次组队 Roll 点
         bool TryToStart(Loot& loot, uint32 itemSlot);
+        /// 记录玩家投票，若全员投完则立即结算
         bool PlayerVote(Player* player, RollVote vote);
+        /// 周期检查 Roll 点是否超时，超时后自动按已投票结果结算
         bool UpdateRoll();
 
     private:
@@ -200,16 +208,17 @@ class GroupLootRoll
 };
 typedef std::unordered_map<uint32, GroupLootRoll> GroupLootRollMap;
 
+/// 单条数据库掉落模板配置项（对应 *_loot_template 表的一行）
 struct LootStoreItem
 {
-    uint32  itemIndex;                                      // index in loot store
-    uint32  itemid;                                         // id of the item
-    float   chance;                                         // always positive, chance to drop for both quest and non-quest items, chance to be used for refs
-    int32   mincountOrRef;                                  // mincount for drop items (positive) or minus referenced TemplateleId (negative)
-    uint8   group       : 7;
-    bool    needs_quest : 1;                                // quest drop (negative ChanceOrQuestChance in DB)
-    uint8   maxcount    : 8;                                // max drop count for the item (mincountOrRef positive) or Ref multiplicator (mincountOrRef negative)
-    uint16  conditionId : 16;                               // additional loot condition Id
+    uint32  itemIndex;                                      // index in loot store (在掉落存储中的索引)
+    uint32  itemid;                                         // id of the item (物品模板 ID 或引用模板 ID)
+    float   chance;                                         // always positive, chance to drop for both quest and non-quest items, chance to be used for refs (掉落概率百分比)
+    int32   mincountOrRef;                                  // mincount for drop items (positive) or minus referenced TemplateleId (negative) (正数为最小掉落数，负数为引用的 reference_loot_template ID)
+    uint8   group       : 7;                                // 互斥掉落组编号（0 表示独立判定）
+    bool    needs_quest : 1;                                // quest drop (negative ChanceOrQuestChance in DB) (是否仅接取对应任务时才可见)
+    uint8   maxcount    : 8;                                // max drop count for the item (mincountOrRef positive) or Ref multiplicator (mincountOrRef negative) (最大掉落数或引用循环次数)
+    uint16  conditionId : 16;                               // additional loot condition Id (附加掉落条件 ID)
 
     // Constructor, converting ChanceOrQuestChance -> (chance, needs_quest)
     // displayid is filled in IsValid() which must be called after
@@ -218,9 +227,11 @@ struct LootStoreItem
           group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId)
     {}
 
+    /// 按概率（结合服务器掉落倍率）判定该条目本次是否命中
     bool Roll(bool rate) const;                             // Checks if the entry takes it's chance (at loot generation)
 };
 
+/// 已生成的实体掉落物品实例（包含随机属性、归属权及 Roll 点阻塞状态）
 struct LootItem
 {
     uint32       itemId;
@@ -258,9 +269,11 @@ typedef std::vector<LootStoreItem> LootStoreItemList;
 typedef std::unordered_map<uint32, LootTemplate> LootTemplateMap;
 typedef std::set<uint32> LootIdSet;
 
+/// 单个掉落 ID 对应的掉落模板（含独立条目列表与互斥掉落组列表）
 class LootTemplate
 {
     private:
+        /// 互斥掉落组：同一组内最多仅随机产出一件物品
         class LootGroup                           // A set of loot definitions for items (refs are not allowed)
         {
             public:
@@ -306,6 +319,7 @@ class LootTemplate
         LootGroups        Groups;                           // groups have own (optimized) processing, grouped entries go there
 };
 
+/// 某一类掉落表存储容器（如生物、宝箱、钓鱼、分解、引用模板等）
 class LootStore
 {
     public:
@@ -349,6 +363,7 @@ class LootStore
 
 ByteBuffer& operator<<(ByteBuffer& b, LootItem const& li);
 
+/// 一次具体拾取实例：挂载于生物尸体、宝箱、物品或邮件，管理掉落物品、金币、归属权及 Roll 点队列
 class Loot
 {
     public:
@@ -488,6 +503,7 @@ inline void LoadLootTables(LootIdSet& ids_set)
     LoadLootTemplates_Reference(ids_set);
 }
 
+/// 全局拾取管理器：提供 Roll 点投票入口、拾取对象查询及 GM 掉率统计工具
 class LootMgr
 {
     public:

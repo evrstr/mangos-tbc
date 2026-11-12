@@ -1,32 +1,48 @@
 [Git GUIDE] Easy use
+[Git 指南] 简易用法
 ====================
 
 This assumes you have already cloned the SD2-repository.
+本文假设你已经克隆（clone）了 SD2 仓库。
 
 If not, please follow the _installation instructions_ how to do so:
+如果尚未克隆，请先按照_安装说明_操作：
 
 * link:How_to_install.html[Installation instructions]
+  （link:How_to_install.html[安装说明]）
 * http://www.scriptdev2.com/showthread.php?t=4[Installation instructions on SD2 Forum]
+  （http://www.scriptdev2.com/showthread.php?t=4[SD2 论坛上的安装说明]）
 
 Graphical user Interfaces for Windows
+Windows 图形界面客户端
 -------------------------------------
 
 * http://code.google.com/p/tortoisegit[TortoiseGIT] - Similar to TortoiseSVN Shell-Extention based GUI
+  （与 TortoiseSVN 类似的资源管理器右键扩展图形界面工具）
 * http://www.syntevo.com/smartgit/index.html[SmartGit]
 
 Updateting
+更新代码
 ----------
 
 The word to look for is "Pull", both GUIs have this option.
+在图形界面中查找 "Pull"（拉取）操作即可，上述两款 GUI 工具都提供该选项。
 
 For Command-line fans, simple right-click ScriptDev2-directory, choose "Git Bash here" and then type +
 `$ git pull` +
 to Update
+如果你偏好命令行操作，只需右键点击 ScriptDev2 目录，选择 "Git Bash here"，然后输入 +
+`$ git pull` +
+即可完成更新。
 
 Restoring
+还原工作区
 ---------
 
 In case you polluted something in your working directory open the Git bash, and type +
 `$ git reset --hard origin/master`
+如果你不小心弄乱了工作目录中的文件，可以打开 Git Bash 并输入 +
+`$ git reset --hard origin/master`
 
 Warning: This will remove *every* custom changes
+警告：此命令会清除*所有*本地自定义修改。

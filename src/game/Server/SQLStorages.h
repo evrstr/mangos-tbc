@@ -21,29 +21,31 @@
 
 #include "Database/SQLStorage.h"
 
-extern SQLStorage sCreatureStorage;
-extern SQLStorage sCreatureDataAddonStorage;
-extern SQLStorage sCreatureInfoAddonStorage;
-extern SQLStorage sCreatureModelStorage;
-extern SQLStorage sEquipmentStorage;
-extern SQLStorage sEquipmentStorageRaw;
-extern SQLStorage sPageTextStore;
-extern SQLStorage sItemStorage;
-extern SQLStorage sInstanceTemplate;
-extern SQLStorage sWorldTemplate;
-extern SQLStorage sConditionStorage;
-extern SQLStorage sSpellTemplate;
-extern SQLStorage sSpellCones;
-extern SQLStorage sDungeonEncounterStore;
-extern SQLStorage sFactionStore;
-extern SQLStorage sCreatureConditionalSpawnStore;
-extern SQLStorage sWorldSafeLocsStore;
+/// 全局静态 SQL 数据存储容器声明（对应 world 库各模板与配置表）
+extern SQLStorage sCreatureStorage;                         ///< creature_template 生物模板表
+extern SQLStorage sCreatureDataAddonStorage;                ///< creature_addon 生物实例附加表
+extern SQLStorage sCreatureInfoAddonStorage;                ///< creature_template_addon 生物模板附加表
+extern SQLStorage sCreatureModelStorage;                    ///< creature_model_info 生物模型信息表
+extern SQLStorage sEquipmentStorage;                        ///< creature_equip_template 生物装备模板表
+extern SQLStorage sEquipmentStorageRaw;                     ///< creature_equip_template_raw 原始装备模板表
+extern SQLStorage sPageTextStore;                           ///< page_text 书页文本表
+extern SQLStorage sItemStorage;                             ///< item_template 物品模板表
+extern SQLStorage sInstanceTemplate;                        ///< instance_template 副本模板表
+extern SQLStorage sWorldTemplate;                           ///< world_template 世界地图脚本模板表
+extern SQLStorage sConditionStorage;                        ///< conditions 通用条件表
+extern SQLStorage sSpellTemplate;                           ///< spell_template 法术模板表
+extern SQLStorage sSpellCones;                              ///< spell_cone 法术锥形角度表
+extern SQLStorage sDungeonEncounterStore;                   ///< instance_dungeon_encounters 地下城首领遭遇表
+extern SQLStorage sFactionStore;                            ///< faction_store 阵营扩展存储
+extern SQLStorage sCreatureConditionalSpawnStore;           ///< creature_conditional_spawn 条件刷怪表
+extern SQLStorage sWorldSafeLocsStore;                      ///< world_safe_locs 墓地安全点表
 
 
-extern SQLHashStorage sGOStorage;
+extern SQLHashStorage sGOStorage;                           ///< gameobject_template 游戏对象哈希存储
 
-extern SQLMultiStorage sSpellScriptTargetStorage;
+extern SQLMultiStorage sSpellScriptTargetStorage;           ///< spell_script_target 法术脚本目标一对多存储
 
+/// 获取只读法术模板存储指针
 SQLStorage                 const* GetSpellStore();
 
 #endif

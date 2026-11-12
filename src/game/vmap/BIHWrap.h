@@ -23,9 +23,11 @@
 #include <G3D/Set.h>
 #include "BIH.h"
 
+// 动态 BIH 封装类：支持增量插入/删除对象，并在查询前按需延迟重建平衡树 (lazy balance)
 template<class T, class BoundsFunc = BoundsTrait<T> >
 class BIHWrap
 {
+        // 内部桥接回调：将 BIH 的下标回调转发为对应对象指针的射线/点相交检测
         template<class RayCallback>
         struct MDLCallback
         {
@@ -57,22 +59,24 @@ class BIHWrap
 
         typedef G3D::Array<const T*> ObjArray;
 
-        BIH m_tree;
-        ObjArray m_objects;
-        G3D::Table<const T*, uint32> m_obj2Idx;
-        G3D::Set<const T*> m_objects_to_push;
-        int unbalanced_times;
+        BIH m_tree;                                                     // 底层 BIH 空间索引树
+        ObjArray m_objects;                                             // 参与当前树的线性对象指针数组
+        G3D::Table<const T*, uint32> m_obj2Idx;                         // 对象指针到数组下标映射
+        G3D::Set<const T*> m_objects_to_push;                           // 待推入重建的增量对象集合
+        int unbalanced_times;                                           // 自上次 balance 后的增删次数
 
     public:
 
         BIHWrap() : unbalanced_times(0) {}
 
+        // 插入对象到待构建集合（标记为未平衡）
         void insert(const T& obj)
         {
             ++unbalanced_times;
             m_objects_to_push.insert(&obj);
         }
 
+        // 移除对象（若已建树则置空槽位，否则从待构建集合移除）
         void remove(const T& obj)
         {
             ++unbalanced_times;
@@ -84,6 +88,7 @@ class BIHWrap
                 m_objects_to_push.remove(&obj);
         }
 
+        // 若存在未同步的增删变更，则重新收集所有活跃对象并重建 BIH 树
         void balance()
         {
             if (unbalanced_times == 0)
@@ -97,6 +102,7 @@ class BIHWrap
             m_tree.build(m_objects, BoundsFunc::getBounds2);
         }
 
+        // 射线相交查询（查询前自动触发 balance）
         template<typename RayCallback>
         void intersectRay(const Ray& r, RayCallback& intersectCallback, float& maxDist, bool ignoreM2Model)
         {
@@ -105,6 +111,7 @@ class BIHWrap
             m_tree.intersectRay(r, temp_cb, maxDist, true, ignoreM2Model);
         }
 
+        // 空间点相交查询（查询前自动触发 balance）
         template<typename IsectCallback>
         void intersectPoint(const Vector3& p, IsectCallback& intersectCallback)
         {

@@ -21,11 +21,19 @@ SDComment:
 SDCategory: Black Temple
 EndScriptData */
 
+// 塔隆·血魔（黑暗神殿四号首领）
+/* 遭遇战概述：
+ * 塔隆·血魔是历史上第一位死亡骑士，被困于黑暗神殿中；
+ * 核心机制为死亡阴影：点名玩家在倒计时后死亡并转化为复仇幽魂；
+ * 转化为幽魂的玩家需使用特定灵魂技能迅速拦截击杀从尸体中涌出的末日之影，阻止其消灭团队。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // Speech'n'sound
@@ -74,6 +82,7 @@ enum
     // NPC_VENGEFUL_SPIRIT         = 23109,                 // npc controlled by the dead player
 };
 
+// GorefiendActions 相关枚举
 enum GorefiendActions
 {
     GOREFIEND_ACTION_BERSERK,
@@ -84,6 +93,7 @@ enum GorefiendActions
     GOREFIEND_ACTION_MAX,
 };
 
+// boss_teron_gorefiendAI 逻辑实现
 struct boss_teron_gorefiendAI : public CombatAI
 {
     boss_teron_gorefiendAI(Creature* creature) : CombatAI(creature, GOREFIEND_ACTION_MAX), m_introDone(false)
@@ -108,6 +118,7 @@ struct boss_teron_gorefiendAI : public CombatAI
 
     GuidVector m_blossoms;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -157,6 +168,7 @@ struct boss_teron_gorefiendAI : public CombatAI
             m_instance->SetData(TYPE_GOREFIEND, IN_PROGRESS);
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         switch (eventType)
@@ -183,6 +195,7 @@ struct boss_teron_gorefiendAI : public CombatAI
         DespawnSummons();
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_DOOM_BLOSSOM)
@@ -202,6 +215,7 @@ struct boss_teron_gorefiendAI : public CombatAI
             ResetCombatAction(GOREFIEND_ACTION_SHADOW_OF_DEATH, GetSubsequentActionTimer(GorefiendActions(GOREFIEND_ACTION_SHADOW_OF_DEATH)));
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -261,6 +275,7 @@ struct boss_teron_gorefiendAI : public CombatAI
     }
 };
 
+// npc_doom_blossomAI 逻辑实现
 struct npc_doom_blossomAI : public ScriptedAI
 {
     npc_doom_blossomAI(Creature* creature) : ScriptedAI(creature)
@@ -275,6 +290,7 @@ struct npc_doom_blossomAI : public ScriptedAI
         SetCombatMovement(false);
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
 
@@ -286,6 +302,7 @@ struct npc_doom_blossomAI : public ScriptedAI
         m_creature->SetInCombatWithZone(true);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         m_creature->GetMotionMaster()->MovePoint(1, summoned->GetPositionX(), summoned->GetPositionY(), summoned->GetPositionZ());
@@ -300,6 +317,7 @@ struct npc_doom_blossomAI : public ScriptedAI
     }
 };
 
+// npc_shadow_constructAI 逻辑实现
 struct npc_shadow_constructAI : public ScriptedAI
 {
     npc_shadow_constructAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_black_temple*>(creature->GetMap()->GetInstanceData()))
@@ -325,6 +343,7 @@ struct npc_shadow_constructAI : public ScriptedAI
     uint32 m_atrophyTimer;
     instance_black_temple* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_atrophyTimer = 2500;
@@ -340,6 +359,7 @@ struct npc_shadow_constructAI : public ScriptedAI
         ResetTimer(1, 1500);
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         UpdateTimers(diff, m_creature->IsInCombat());
@@ -373,6 +393,7 @@ bool AreaTrigger_at_teron_gorefiend(Player* player, AreaTriggerEntry const* /*at
 }
 
 // 40251 - Shadow of Death
+// ShadowOfDeath 光环脚本
 struct ShadowOfDeath : public AuraScript
 {
     void OnAbsorb(Aura* /*aura*/, int32& currentAbsorb, int32& /*remainingDamage*/, uint32& /*reflectedSpellId*/, int32& /*reflectDamage*/, bool& preventedDeath, bool& /*dropCharge*/, DamageEffectType /*damageType*/) const override
@@ -391,6 +412,7 @@ struct ShadowOfDeath : public AuraScript
         }
     }
 
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply && aura->GetEffIndex() == EFFECT_INDEX_0 && aura->GetTarget()->IsInWorld()) // login safeguard
@@ -411,6 +433,7 @@ struct ShadowOfDeath : public AuraScript
 };
 
 // 41999 - Shadow of Death Remove
+// ShadowOfDeathRemove 光环脚本
 struct ShadowOfDeathRemove : public AuraScript
 {
     void OnApply(Aura* aura, bool /*apply*/) const override
@@ -420,6 +443,7 @@ struct ShadowOfDeathRemove : public AuraScript
 };
 
 // 40186 - Summon Blossom Move Target
+// SummonBlossomMoveTarget 法术脚本
 struct SummonBlossomMoveTarget : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -428,6 +452,7 @@ struct SummonBlossomMoveTarget : public SpellScript
     }
 };
 
+// 注册 boss_teron_gorefiend 脚本
 void AddSC_boss_teron_gorefiend()
 {
     Script* pNewScript = new Script;

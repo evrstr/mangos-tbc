@@ -30,6 +30,7 @@ struct GameObjectInfo;
 typedef std::map<uint32, TransportAnimationEntry const*> TransportPathContainer;
 // typedef std::map<uint32, TransportRotationEntry const*> TransportPathRotationContainer;
 
+// 运输工具动画路径数据，存储基于时间轴的动画节点与总周期
 struct TransportAnimation
 {
     TransportAnimation() : TotalTime(0) { }
@@ -40,13 +41,14 @@ struct TransportAnimation
 
     TransportAnimationEntry const* GetPrevAnimNode(uint32 time) const;
     TransportAnimationEntry const* GetNextAnimNode(uint32 time) const;
-    // TransportRotationEntry const* GetAnimRotation(uint32 time) const; - wotlk onwards
+    // TransportRotationEntry const* GetAnimRotation(uint32 time) const; - wotlk onwards (WLK 及以后版本启用)
 };
 
 typedef std::map<uint32, TransportAnimation> TransportAnimationContainer;
 
 typedef Movement::Spline<double>                 TransportSpline;
 
+// 跨地图/长距离运输载具的关键帧节点，记录航线节点、加减速距离、样条与到达/离港时间
 struct KeyFrame
 {
     explicit KeyFrame(TaxiPathNodeEntry const& _node) : Index(0), Node(&_node), InitialOrientation(0.0f),
@@ -69,7 +71,7 @@ struct KeyFrame
     uint32 DepartureTime;
     TransportSpline* Spline;
 
-    // Data needed for next frame
+    // Data needed for next frame (下一帧插值所需数据)
     float NextDistFromPrev;
     uint32 NextArriveTime;
 
@@ -80,6 +82,7 @@ struct KeyFrame
 
 typedef std::vector<KeyFrame>  KeyFrameVec;
 
+// 运输载具模板：包含经过的地图集合、航线总时长、关键帧序列及加减速参数
 struct TransportTemplate
 {
     TransportTemplate() : inInstance(false), pathTime(0), accelTime(0.0f), accelDist(0.0f), entry(0) { }
@@ -94,6 +97,7 @@ struct TransportTemplate
     uint32 entry;
 };
 
+// 运输系统资源管理器，负责加载运输载具的动画路径与航线关键帧模板
 class TransportMgr
 {
     public:

@@ -21,49 +21,52 @@ SDComment: The Stadium event is missing some yells. Seal of Ascension related ev
 SDCategory: Blackrock Spire
 EndScriptData */
 
+// 黑石塔（Blackrock Spire）副本进度状态机与黑龙之门控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackrock_spire.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    AREATRIGGER_ENTER_UBRS      = 2046,
-    AREATRIGGER_STADIUM         = 2026,
-    AREATRIGGER_BEAST_AGGRO     = 2066,
-    AREATRIGGER_BEAST_INTRO     = 2067,
+    AREATRIGGER_ENTER_UBRS      = 2046,                     // enterubrs 标识 ID
+    AREATRIGGER_STADIUM         = 2026,                     // stadium 标识 ID
+    AREATRIGGER_BEAST_AGGRO     = 2066,                     // beast开战 标识 ID
+    AREATRIGGER_BEAST_INTRO     = 2067,                     // beast开场 标识 ID
 
     // Arena event dialogue intro and outro - handled by instance
-    SAY_NEFARIUS_INTRO_1        = -1229004,
-    SAY_NEFARIUS_INTRO_2        = -1229005,
-    SAY_NEFARIUS_LOSE1          = -1229014,
-    SAY_REND_ATTACK             = -1229015,
-    SAY_NEFARIUS_WARCHIEF       = -1229016,
-    SAY_NEFARIUS_VICTORY        = -1229018,
+    SAY_NEFARIUS_INTRO_1        = -1229004,                 // 奈法利奥斯开场1 台词广播 ID
+    SAY_NEFARIUS_INTRO_2        = -1229005,                 // 奈法利奥斯开场2 台词广播 ID
+    SAY_NEFARIUS_LOSE1          = -1229014,                 // 奈法利奥斯lose1 台词广播 ID
+    SAY_REND_ATTACK             = -1229015,                 // 雷德攻击 台词广播 ID
+    SAY_NEFARIUS_WARCHIEF       = -1229016,                 // 奈法利奥斯warchief 台词广播 ID
+    SAY_NEFARIUS_VICTORY        = -1229018,                 // 奈法利奥斯victory 台词广播 ID
 
     // Arena event random taunt - handled on creature death
-    SAY_NEFARIUS_TAUNT1         = -1229006,
-    SAY_NEFARIUS_TAUNT2         = -1229008,
-    SAY_NEFARIUS_TAUNT3         = -1229009,
-    SAY_NEFARIUS_TAUNT4         = -1229010,
-    SAY_NEFARIUS_TAUNT5         = -1229013,
-    SAY_NEFARIUS_TAUNT6         = -1229021,
-    SAY_NEFARIUS_TAUNT7         = -1229022,
-    SAY_NEFARIUS_TAUNT8         = -1229023,
-    SAY_REND_TAUNT1             = -1229007,
-    SAY_REND_TAUNT2             = -1229011,
-    SAY_REND_TAUNT3             = -1229012,
-    SAY_REND_TAUNT4             = -1229024,
+    SAY_NEFARIUS_TAUNT1         = -1229006,                 // 奈法利奥斯taunt1 台词广播 ID
+    SAY_NEFARIUS_TAUNT2         = -1229008,                 // 奈法利奥斯taunt2 台词广播 ID
+    SAY_NEFARIUS_TAUNT3         = -1229009,                 // 奈法利奥斯taunt3 台词广播 ID
+    SAY_NEFARIUS_TAUNT4         = -1229010,                 // 奈法利奥斯taunt4 台词广播 ID
+    SAY_NEFARIUS_TAUNT5         = -1229013,                 // 奈法利奥斯taunt5 台词广播 ID
+    SAY_NEFARIUS_TAUNT6         = -1229021,                 // 奈法利奥斯taunt6 台词广播 ID
+    SAY_NEFARIUS_TAUNT7         = -1229022,                 // 奈法利奥斯taunt7 台词广播 ID
+    SAY_NEFARIUS_TAUNT8         = -1229023,                 // 奈法利奥斯taunt8 台词广播 ID
+    SAY_REND_TAUNT1             = -1229007,                 // 雷德taunt1 台词广播 ID
+    SAY_REND_TAUNT2             = -1229011,                 // 雷德taunt2 台词广播 ID
+    SAY_REND_TAUNT3             = -1229012,                 // 雷德taunt3 台词广播 ID
+    SAY_REND_TAUNT4             = -1229024,                 // 雷德taunt4 台词广播 ID
 
-    // Emberseer event
-    EMOTE_BEGIN                 = -1229000,
-    SPELL_EMBERSEER_GROWING     = 16048,
+    // Emberseer event (艾博希尔事件)
+    EMOTE_BEGIN                 = -1229000,                 // begin 表情动作 ID
+    SPELL_EMBERSEER_GROWING     = 16048,                    // 艾博希尔growing 法术 ID
 
     // Solakar Flamewreath Event
-    SAY_ROOKERY_EVENT_START     = -1229020,
-    NPC_ROOKERY_GUARDIAN        = 10258,
-    NPC_ROOKERY_HATCHER         = 10683,
+    SAY_ROOKERY_EVENT_START     = -1229020,                 // rookery事件开始 台词广播 ID
+    NPC_ROOKERY_GUARDIAN        = 10258,                    // rookeryguardian Entry ID
+    NPC_ROOKERY_HATCHER         = 10683,                    // rookeryhatcher Entry ID
 
     // Spells
-    SPELL_FINKLE_IS_EINHORN     = 16710,
+    SPELL_FINKLE_IS_EINHORN     = 16710,                    // finkleiseinhorn 法术 ID
 };
 
 /* Areatrigger
@@ -206,10 +209,10 @@ void instance_blackrock_spire::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_EMBERSEER:
-            // Don't set the same data twice
+            // Don't set the same data twice (避免重复设置相同数据)
             if (m_auiEncounter[uiType] == uiData)
                 break;
-            // Combat door
+            // Combat door (战斗大门)
             DoUseDoorOrButton(GO_DOORS);
             // Respawn all incarcerators and reset the runes on FAIL
             if (uiData == FAIL)
@@ -243,12 +246,12 @@ void instance_blackrock_spire::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_STADIUM:
-            // Don't set the same data twice
+            // Don't set the same data twice (避免重复设置相同数据)
             if (m_auiEncounter[uiType] == uiData)
                 break;
-            // Combat door
+            // Combat door (战斗大门)
             DoUseDoorOrButton(GO_GYTH_ENTRY_DOOR);
-            // Start event
+            // Start event (开始事件)
             if (uiData == IN_PROGRESS)
                 StartNextDialogueText(SAY_NEFARIUS_INTRO_1);
             else if (uiData == DONE)
@@ -361,7 +364,7 @@ void instance_blackrock_spire::OnCreatureDeath(Creature* pCreature)
     {
         case NPC_BLACKHAND_SUMMONER:
         case NPC_BLACKHAND_VETERAN:
-            // Handle Runes
+            // Handle Runes (Handle符文)
             if (m_auiEncounter[TYPE_ROOM_EVENT] == IN_PROGRESS)
             {
                 uint8 uiNotEmptyRoomsCount = 0;
@@ -394,7 +397,7 @@ void instance_blackrock_spire::OnCreatureDeath(Creature* pCreature)
         case NPC_CHROMATIC_WHELP:
         case NPC_CHROMATIC_DRAGON:
         case NPC_BLACKHAND_HANDLER:
-            // check if it's summoned - some npcs with the same entry are already spawned in the instance
+            // check if it's summoned - some npcs with the same entry are already spawned in the instance (检查是否为动态召唤生成（避免影响原生怪）)
             if (!pCreature->IsTemporarySummon())
                 break;
 
@@ -417,7 +420,7 @@ void instance_blackrock_spire::OnCreatureDeath(Creature* pCreature)
                     }
                 }
             }
-            // Warchief Rend Blackhand
+            // Warchief Rend Blackhand (Warchief雷德黑手)
             if (urand(0, 100) < 5)
             {
                 if (Creature* pRend = GetSingleCreatureFromStorage(NPC_REND_BLACKHAND))
@@ -463,7 +466,7 @@ void instance_blackrock_spire::OnCreatureEvade(Creature* pCreature)
         case NPC_BLACKHAND_HANDLER:
         case NPC_GYTH:
         case NPC_REND_BLACKHAND:
-            // check if it's summoned - some npcs with the same entry are already spawned in the instance
+            // check if it's summoned - some npcs with the same entry are already spawned in the instance (检查是否为动态召唤生成（避免影响原生怪）)
             if (!pCreature->IsTemporarySummon())
                 break;
             SetData(TYPE_STADIUM, FAIL);
@@ -568,7 +571,7 @@ void instance_blackrock_spire::JustDidDialogueStep(int32 iEntry)
             if (Creature* pNefarius = GetSingleCreatureFromStorage(NPC_LORD_VICTOR_NEFARIUS))
             {
                 pNefarius->GetMotionMaster()->MovePoint(0, aStadiumLocs[5].x, aStadiumLocs[5].y, aStadiumLocs[5].z);
-                // Summon the spectators and move them to the western balcony
+                // Summon the spectators and move them to the western balcony (召唤 the spectators and move them to the western balcony)
                 for (uint8 i = 0; i < 12; i++)
                 {
                     Creature* pSpectator = pNefarius->SummonCreature(aStadiumSpectators[i], aSpectatorsSpawnLocs[i].x, aSpectatorsSpawnLocs[i].y, aSpectatorsSpawnLocs[i].z, aSpectatorsSpawnLocs[i].o, TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -600,7 +603,7 @@ void instance_blackrock_spire::JustDidDialogueStep(int32 iEntry)
             SetData(TYPE_STADIUM, DONE);
             break;
         case NPC_REND_BLACKHAND:
-            // Despawn Nefarius
+            // Despawn Nefarius (消除奈法里奥斯)
             if (Creature* pNefarius = GetSingleCreatureFromStorage(NPC_LORD_VICTOR_NEFARIUS))
             {
                 pNefarius->ForcedDespawn(5000);
@@ -624,12 +627,12 @@ void instance_blackrock_spire::DoSendNextStadiumWave()
                     continue;
 
                 pNefarius->GetRandomPoint(aStadiumLocs[0].x, aStadiumLocs[0].y, aStadiumLocs[0].z, 7.0f, fX, fY, fZ);
-                fX = std::min(aStadiumLocs[0].x, fX);    // Halfcircle - suits better the rectangular form
+                fX = std::min(aStadiumLocs[0].x, fX);    // Halfcircle - suits better the rectangular form (半圆形站位分布)
                 if (Creature* pTemp = pNefarius->SummonCreature(aStadiumEventNpcs[m_uiStadiumWaves][i], fX, fY, fZ, 0.0f, TEMPSPAWN_DEAD_DESPAWN, 0))
                 {
                     // Get some point in the center of the stadium
                     pTemp->GetRandomPoint(aStadiumLocs[2].x, aStadiumLocs[2].y, aStadiumLocs[2].z, 5.0f, fX, fY, fZ);
-                    fX = std::min(aStadiumLocs[2].x, fX);// Halfcircle - suits better the rectangular form
+                    fX = std::min(aStadiumLocs[2].x, fX);// Halfcircle - suits better the rectangular form (半圆形站位分布)
 
                     pTemp->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
                     ++m_uiStadiumMobsAlive;
@@ -644,7 +647,7 @@ void instance_blackrock_spire::DoSendNextStadiumWave()
         StartNextDialogueText(SAY_NEFARIUS_LOSE1);
     else
     {
-        // Send Gyth
+        // Send Gyth (Send盖斯)
         if (Creature* pNefarius = GetSingleCreatureFromStorage(NPC_LORD_VICTOR_NEFARIUS))
         {
             // Stop Lord Nefarius from moving and put him back in place
@@ -685,7 +688,7 @@ void instance_blackrock_spire::DoSendNextFlamewreathWave()
         {
             float fX, fY, fZ;
             pSummoner->GetRandomPoint(rookeryEventSpawnPos[0], rookeryEventSpawnPos[1], rookeryEventSpawnPos[2], 2.5f, fX, fY, fZ);
-            // Summon Rookery Hatchers in first wave, else random
+            // Summon Rookery Hatchers in first wave, else random (召唤 Rookery Hatchers in first wave, else random)
             pSummoned = pSummoner->SummonCreature(urand(0, 1) && m_uiFlamewreathWaveCount ? NPC_ROOKERY_GUARDIAN : NPC_ROOKERY_HATCHER, fX, fY, fZ, 0.0, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 300000);
             if (pSummoned)
             {
@@ -734,7 +737,7 @@ void instance_blackrock_spire::Update(uint32 uiDiff)
             m_uiFlamewreathEventTimer -= uiDiff;
     }
 
-    // unlock dragon spine door
+    // unlock dragon spine door (unlock巨龙spine门)
     if (m_uiDragonspineDoorTimer)
     {
         if (m_uiDragonspineDoorTimer <= uiDiff)
@@ -809,7 +812,7 @@ bool AreaTrigger_at_blackrock_spire(Player* pPlayer, AreaTriggerEntry const* pAt
                 if (pInstance->GetData(TYPE_STADIUM) == IN_PROGRESS || pInstance->GetData(TYPE_STADIUM) == DONE)
                     return false;
 
-                // Summon Nefarius and Rend for the dialogue event
+                // Summon Nefarius and Rend for the dialogue event (召唤 Nefarius and Rend for the dialogue event)
                 // Note: Nefarius and Rend need to be hostile and not attackable
                 if (Creature* pNefarius = pPlayer->SummonCreature(NPC_LORD_VICTOR_NEFARIUS, aStadiumLocs[3].x, aStadiumLocs[3].y, aStadiumLocs[3].z, aStadiumLocs[3].o, TEMPSPAWN_CORPSE_DESPAWN, 0))
                     pNefarius->SetFactionTemporary(FACTION_BLACK_DRAGON, TEMPFACTION_NONE);
@@ -890,13 +893,15 @@ bool GOUse_go_father_flame(Player* /*pPlayer*/, GameObject* pGo)
     return true;
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_STRIKE            = 15580,
-    SPELL_SUNDER_ARMOR      = 15572,
-    SPELL_DISTURB_EGGS      = 15746,
+    SPELL_STRIKE            = 15580,                        // 打击 法术 ID
+    SPELL_SUNDER_ARMOR      = 15572,                        // sunderarmor 法术 ID
+    SPELL_DISTURB_EGGS      = 15746,                        // disturbeggs 法术 ID
 };
 
+// 随从/NPC AI：hatcher（rookery_hatcher）
 struct npc_rookery_hatcherAI : public ScriptedAI
 {
     npc_rookery_hatcherAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -912,8 +917,9 @@ struct npc_rookery_hatcherAI : public ScriptedAI
     uint32 uiDisturbEggsTimer;
     uint32 uiWaitTimer;
 
-    bool m_bIsMovementActive;
+    bool m_bIsMovementActive;                               // IsMovementActive 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         uiStrikeTimer           = urand(5000, 7000);
@@ -924,6 +930,7 @@ struct npc_rookery_hatcherAI : public ScriptedAI
         m_bIsMovementActive     = false;
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
     {
         if (uiMoveType != POINT_MOTION_TYPE || !uiPointId)
@@ -969,6 +976,7 @@ struct npc_rookery_hatcherAI : public ScriptedAI
         m_bIsMovementActive = true;
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         // Return since we have no target or are disturbing an egg
@@ -986,7 +994,7 @@ struct npc_rookery_hatcherAI : public ScriptedAI
                 uiWaitTimer -= uiDiff;
         }
 
-        //  Strike Timer
+        // Strike Timer (打击计时器)
         if (uiStrikeTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_STRIKE) == CAST_OK)
@@ -1013,15 +1021,17 @@ struct npc_rookery_hatcherAI : public ScriptedAI
         else
             uiDisturbEggsTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_rookery_hatcher
 UnitAI* GetAI_npc_rookery_hatcher(Creature* pCreature)
 {
     return new npc_rookery_hatcherAI(pCreature);
 }
 
+// 注册并载入脚本模块：instance_blackrock_spire
 void AddSC_instance_blackrock_spire()
 {
     Script* pNewScript = new Script;

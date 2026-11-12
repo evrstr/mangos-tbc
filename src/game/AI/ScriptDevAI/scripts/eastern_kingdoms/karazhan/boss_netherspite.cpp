@@ -21,24 +21,27 @@ SDComment:
 SDCategory: Karazhan
 EndScriptData */
 
+// 虚空幽龙（Netherspite）首领战 AI（红/绿/蓝三色虚空光线门与狂暴阶段循环）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // netherspite spells
-    SPELL_NETHERBURN            = 30522,
+    // netherspite spells (虚空幽龙spells)
+    SPELL_NETHERBURN            = 30522,                    // netherburn 法术 ID
     SPELL_VOID_ZONE             = 37063,                // NOTE: all void zone spells have Consumption spell associated with them
-    SPELL_NETHERBREATH          = 38523,
-    SPELL_EMPOWERMENT           = 38549,
-    SPELL_NETHER_INFUSION       = 38688,                // hard enrage spell
+    SPELL_NETHERBREATH          = 38523,                    // netherbreath 法术 ID
+    SPELL_EMPOWERMENT           = 38549,                    // empowerment 法术 ID
+    SPELL_NETHER_INFUSION       = 38688,                // hard enrage spell (hard狂暴法术)
     SPELL_NETHERSPITE_ROAR      = 38684,                // on banish phase begin
-    SPELL_SHADOWFORM            = 38542,                // banish visual spell
+    SPELL_SHADOWFORM            = 38542,                // banish visual spell (banish视觉特效法术)
     SPELL_FACE_RANDOM_TARGET    = 38546,                // triggered by spell 38684 - currently not used
-    SPELL_PORTAL_ATTUNEMENT     = 30425,
-    SPELL_DUMMY_NUKE            = 21912,
+    SPELL_PORTAL_ATTUNEMENT     = 30425,                    // 传送门attunement 法术 ID
+    SPELL_DUMMY_NUKE            = 21912,                    // dummynuke 法术 ID
 
     // void zone spells
     SPELL_CONSUMPTION           = 28865,                // Has serverside timer in TBC
@@ -47,50 +50,50 @@ enum
 
     // ***** Netherspite portals spells ***** //
     // beam buffs
-    SPELL_SERENITY_NS           = 30467,
-    SPELL_SERENITY_PLR          = 30422,
-    SPELL_DOMINANCE_NS          = 30468,
-    SPELL_DOMINANCE_PLR         = 30423,
-    SPELL_PERSEVERENCE_NS       = 30466,
-    SPELL_PERSEVERENCE_PLR      = 30421,
+    SPELL_SERENITY_NS           = 30467,                    // serenityns 法术 ID
+    SPELL_SERENITY_PLR          = 30422,                    // serenityplr 法术 ID
+    SPELL_DOMINANCE_NS          = 30468,                    // dominancens 法术 ID
+    SPELL_DOMINANCE_PLR         = 30423,                    // dominanceplr 法术 ID
+    SPELL_PERSEVERENCE_NS       = 30466,                    // perseverencens 法术 ID
+    SPELL_PERSEVERENCE_PLR      = 30421,                    // perseverenceplr 法术 ID
 
     // beam debuffs (player with this aura cannot gain the same color buff)
-    SPELL_EXHAUSTION_PER        = 38637,
-    SPELL_EXHAUSTION_SER        = 38638,
-    SPELL_EXHAUSTION_DOM        = 38639,
+    SPELL_EXHAUSTION_PER        = 38637,                    // exhaustionper 法术 ID
+    SPELL_EXHAUSTION_SER        = 38638,                    // exhaustionser 法术 ID
+    SPELL_EXHAUSTION_DOM        = 38639,                    // exhaustiondom 法术 ID
 
     // spells which hit players (used only for visual - as seen from spell description)
-    SPELL_BEAM_PER              = 30400,
-    SPELL_BEAM_SER              = 30401,
-    SPELL_BEAM_DOM              = 30402,
+    SPELL_BEAM_PER              = 30400,                    // beamper 法术 ID
+    SPELL_BEAM_SER              = 30401,                    // beamser 法术 ID
+    SPELL_BEAM_DOM              = 30402,                    // beamdom 法术 ID
 
     // spells which hit Netherspite
-    SPELL_BEAM_GREEN            = 30464,
-    SPELL_BEAM_BLUE             = 30463,
-    SPELL_BEAM_RED              = 30465,
+    SPELL_BEAM_GREEN            = 30464,                    // beamgreen 法术 ID
+    SPELL_BEAM_BLUE             = 30463,                    // beamblue 法术 ID
+    SPELL_BEAM_RED              = 30465,                    // beamred 法术 ID
 
-    // portal visual spells
-    SPELL_GREEN_PORTAL          = 30490,
-    SPELL_BLUE_PORTAL           = 30491,
-    SPELL_RED_PORTAL            = 30487,
+    // portal visual spells (传送门视觉特效spells)
+    SPELL_GREEN_PORTAL          = 30490,                    // green传送门 法术 ID
+    SPELL_BLUE_PORTAL           = 30491,                    // blue传送门 法术 ID
+    SPELL_RED_PORTAL            = 30487,                    // red传送门 法术 ID
 
     // passive auras
-    SPELL_PERSEVERANCE_PASSIVE  = 30396,
-    SPELL_SERENITY_PASSIVE      = 30397,
-    SPELL_DOMINANCE_PASSIVE     = 30398,
+    SPELL_PERSEVERANCE_PASSIVE  = 30396,                    // perseverancepassive 法术 ID
+    SPELL_SERENITY_PASSIVE      = 30397,                    // serenitypassive 法术 ID
+    SPELL_DOMINANCE_PASSIVE     = 30398,                    // dominancepassive 法术 ID
     // SPELL_CLEAR_NETHER_BEAM  = 37072,                // not clear how to use this
 
     // emotes
-    EMOTE_PHASE_BEAM            = -1532089,
-    EMOTE_PHASE_BANISH          = -1532090,
+    EMOTE_PHASE_BEAM            = -1532089,                 // 阶段beam 表情动作 ID
+    EMOTE_PHASE_BANISH          = -1532090,                 // 阶段banish 表情动作 ID
 
-    // npcs
-    NPC_PORTAL_GREEN            = 17367,
-    NPC_PORTAL_BLUE             = 17368,
-    NPC_PORTAL_RED              = 17369,
-    NPC_VOID_ZONE               = 16697,
+    // npcs (相关 NPC)
+    NPC_PORTAL_GREEN            = 17367,                    // 传送门green Entry ID
+    NPC_PORTAL_BLUE             = 17368,                    // 传送门blue Entry ID
+    NPC_PORTAL_RED              = 17369,                    // 传送门red Entry ID
+    NPC_VOID_ZONE               = 16697,                    // voidzone Entry ID
 
-    MAX_PORTALS                 = 3,
+    MAX_PORTALS                 = 3,                        // portals 标识 ID
 };
 
 // at first spawn portals got fixed coords, should be shuffled in subsequent beam phases
@@ -101,10 +104,11 @@ static const Position aPortalCoordinates[MAX_PORTALS] =
     { -11139.78f, -1681.278f, 278.3217f, 1.396263f},
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum NetherspitePhases
 {
-    BEAM_PHASE   = 0,
-    BANISH_PHASE = 1,
+    BEAM_PHASE   = 0,                                       // 阶段 标识 ID
+    BANISH_PHASE = 1,                                       // 阶段 标识 ID
 };
 
 static const uint32 auiPortals[MAX_PORTALS] =
@@ -118,6 +122,7 @@ static const uint32 auiPortals[MAX_PORTALS] =
 ## boss_netherspite
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum NetherspiteActions
 {
     NETHERSPITE_PHASE_CHANGE,
@@ -157,6 +162,7 @@ struct boss_netherspiteAI : public CombatAI
 
     std::vector<ObjectGuid> m_vPortalGuidList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -201,6 +207,7 @@ struct boss_netherspiteAI : public CombatAI
         m_vPortalGuidList.clear();
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         ScriptedAI::EnterEvadeMode();
@@ -221,7 +228,7 @@ struct boss_netherspiteAI : public CombatAI
 #ifdef PRENERF_2_0_3
 #else
                 m_creature->RemoveAurasDueToSpell(SPELL_NETHERBURN);
-#endif
+#endif                                                      // 结束头文件防重复包含宏
                 DoCastSpellIfCan(m_creature, SPELL_NETHERSPITE_ROAR);
 
                 SetCombatMovement(false);
@@ -245,7 +252,7 @@ struct boss_netherspiteAI : public CombatAI
 #ifdef PRENERF_2_0_3
 #else
             DoCastSpellIfCan(m_creature, SPELL_NETHERBURN, CAST_TRIGGERED);
-#endif
+#endif                                                      // 结束头文件防重复包含宏
             m_creature->RemoveAurasDueToSpell(SPELL_SHADOWFORM);
             DoCastSpellIfCan(m_creature, SPELL_NETHERSPITE_ROAR);
             SetCombatMovement(true);
@@ -283,6 +290,7 @@ struct boss_netherspiteAI : public CombatAI
         std::shuffle(m_vPortalEntryList.begin(), m_vPortalEntryList.end(), *GetRandomGenerator());
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         m_vPortalGuidList.push_back(summoned->GetObjectGuid());
@@ -360,6 +368,7 @@ struct boss_netherspiteAI : public CombatAI
 ## npc_netherspite_portal
 ######*/
 
+// 随从/NPC AI：传送门（netherspite_portal）
 struct npc_netherspite_portalAI : public Scripted_NoMovementAI
 {
     npc_netherspite_portalAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
@@ -370,12 +379,13 @@ struct npc_netherspite_portalAI : public Scripted_NoMovementAI
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_pInstance;                          // 副本数据实例指针
 
-    uint32 m_uiOrientationTimer;
+    uint32 m_uiOrientationTimer;                            // Orientation 技能计时器
 
     ObjectGuid m_uiCurrentBeamTarget;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiCurrentBeamTarget = ObjectGuid();
@@ -431,6 +441,7 @@ struct npc_netherspite_portalAI : public Scripted_NoMovementAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiOrientationTimer)
@@ -454,6 +465,7 @@ struct npc_netherspite_portalAI : public Scripted_NoMovementAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（PortalAttunement）
 struct PortalAttunement : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -471,6 +483,7 @@ struct PortalAttunement : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（NetherBeam）
 struct NetherBeam : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -517,7 +530,7 @@ struct NetherBeam : public SpellScript
                     break;
             }
         }
-        // target boss
+        // target boss (目标boss)
         else if (unitTarget->GetEntry() == 15689)
         {
             switch (caster->GetEntry())
@@ -566,6 +579,7 @@ struct NetherBeam : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（FaceRandomTarget）
 struct FaceRandomTarget : public SpellScript
 {
     void OnCast(Spell* spell) const override
@@ -582,6 +596,7 @@ struct FaceRandomTarget : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_netherspite
 void AddSC_boss_netherspite()
 {
     Script* pNewScript = new Script;

@@ -27,6 +27,7 @@
 
 class PathFinder;
 
+/// 目标跟踪移动生成器基类：持有对目标 Unit 的 FollowerReference 弱引用
 class TargetedMovementGeneratorBase
 {
     public:
@@ -34,9 +35,10 @@ class TargetedMovementGeneratorBase
         void stopFollowing() { }
         void SetNewTarget(Unit& target) { i_target.link(&target, this); }
     protected:
-        FollowerReference i_target;
+        FollowerReference i_target; // 关联目标单位的引用节点
 };
 
+/// 目标移动生成器通用中间模板（由 Chase / Follow / Formation 继承）：封装重算检测、距离判断与路径器
 template<class T, typename D>
 class TargetedMovementGeneratorMedium
     : public MovementGeneratorMedium< T, D >, public TargetedMovementGeneratorBase
@@ -66,8 +68,11 @@ class TargetedMovementGeneratorMedium
         virtual bool RemoveOnInvalid() const { return true; };
 
     protected:
+        /// 判断目标是否移动或距离变化到需要重新规划位置
         virtual bool RequiresNewPosition(T& owner, Position pos) const;
+        /// 获取当前动态目标距离（如含包络半径、近战追击偏移等）
         virtual float GetDynamicTargetDistance(T& /*owner*/, bool /*forRangeCheck*/) const { return i_offset; }
+        /// 到达后是否需要自动转向面对目标
         virtual bool ShouldFaceTarget() const { return i_faceTarget; }
         virtual void HandleTargetedMovement(T& owner, const uint32& time_diff) = 0;
         virtual void HandleFinalizedMovement(T& owner) = 0;
@@ -77,15 +82,15 @@ class TargetedMovementGeneratorMedium
         virtual void _clearUnitStateMove(Unit& owner) = 0;
         virtual void _addUnitStateMove(Unit& owner) = 0;
 
-        ShortTimeTracker i_recheckDistance;
-        float i_offset;
-        float i_angle;
-        G3D::Vector3 i_lastTargetPos;
+        ShortTimeTracker i_recheckDistance; // 周期性距离重检计时器
+        float i_offset;                     // 与目标的期望距离偏移
+        float i_angle;                      // 相对目标的期望角度偏移
+        G3D::Vector3 i_lastTargetPos;       // 上次计算路径时目标所处坐标
         bool i_speedChanged : 1;
         bool i_targetReached : 1;
         bool i_faceTarget : 1;
 
-        PathFinder* i_path;
+        PathFinder* i_path;                 // 寻路器实例（按需延迟创建）
 };
 
 /*
@@ -94,17 +99,21 @@ Has these custom features:
 Backpedaling - when player is standing inside model, mob backs away with 2 second delay, likely for smoothness
 Fanning - likewise after 2 seconds, all mobs spread out at a given target - has to be coordinated with all targets which attack same victim
 TODO: Implement variable chase speed for pet chase
+目标追击生成器：
+- 退步（Backpedaling）：玩家站进怪物模型内部时，怪物在约 2 秒延迟后小幅后退以保持攻击距离与视觉平滑
+- 扇形散开（Fanning）：多个怪物攻击同一目标时，经 2 秒后按占用扇区散开站位，避免完全重叠
 */
 enum ChaseMovementMode
 {
-    CHASE_MODE_NORMAL, // chasing target
-    CHASE_MODE_BACKPEDAL, // collision movement
-    CHASE_MODE_DISTANCING, // running away from melee
-    CHASE_MODE_FANNING, // mob collision movement
+    CHASE_MODE_NORMAL, // chasing target (正常追击目标)
+    CHASE_MODE_BACKPEDAL, // collision movement (模型重叠后退避让)
+    CHASE_MODE_DISTANCING, // running away from melee (远程拉距后撤)
+    CHASE_MODE_FANNING, // mob collision movement (多怪围绕目标扇形散开)
 };
 
 extern const char* ChaseModes[];
 
+/// 追击移动生成器（CHASE_MOTION_TYPE）：用于战斗追击、后退避让、拉距与多怪散开
 class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, ChaseMovementGenerator >
 {
     using TargetedMovementGeneratorMedium<Unit, ChaseMovementGenerator>::i_offset;
@@ -177,6 +186,7 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
         GuidVector m_spawns;
 };
 
+/// 跟随移动生成器（FOLLOW_MOTION_TYPE）：用于宠物、护送 NPC 等按距离与夹角持续跟随领队
 class FollowMovementGenerator : public TargetedMovementGeneratorMedium<Unit, FollowMovementGenerator>
 {
     public:
@@ -244,8 +254,10 @@ class FollowMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Fol
 };
 
 // to be able to compute new path before the end of the current path (in milliseconds)
+// 编队移动提前预判重算路径的时间窗口（毫秒）
 #define FORMATION_FOLLOWERS_CHECK_OVERRIDE 400
 
+/// 编队移动生成器（FORMATION_MOTION_TYPE）：继承跟随生成器，按编队槽位与预测位置平滑同步移动
 class FormationMovementGenerator : public FollowMovementGenerator
 {
     public:

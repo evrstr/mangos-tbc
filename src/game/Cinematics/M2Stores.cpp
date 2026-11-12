@@ -27,7 +27,7 @@
 
 std::unordered_map<uint32, FlyByCameraCollection> sFlyByCameraStore;
 
-// Convert the geomoetry from a spline value, to an actual world XYZ
+// Convert the geomoetry from a spline value, to an actual world XYZ (将 M2 样条局部坐标经 DBC 原点与旋转角转换为实际世界 XYZ 坐标)
 G3D::Vector3 TranslateLocation(G3D::Vector4 const* DBCPosition, G3D::Vector3 const* basePosition, G3D::Vector3 const* splineVector)
 {
     G3D::Vector3 work;
@@ -46,7 +46,7 @@ G3D::Vector3 TranslateLocation(G3D::Vector4 const* DBCPosition, G3D::Vector3 con
     return work;
 }
 
-// Number of cameras not used. Multiple cameras never used
+// Number of cameras not used. Multiple cameras never used (从 M2 缓冲区解析镜头位置与注视目标路径并存入全局镜头表)
 bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, CinematicCameraEntry const* dbcentry)
 {
     char const* buffer = reinterpret_cast<char const*>(header);
@@ -60,22 +60,22 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
     DBCData.z = dbcentry->Origin.Z;
     DBCData.w = dbcentry->OriginFacing;
 
-    // Extract Target positions
+    // Extract Target positions (提取镜头注视目标的位置关键帧序列)
     if (cam->target_positions.timestamps.offset_elements + sizeof(M2Array) > buffSize)
         return false;
     uint32 const* targTimestamps = reinterpret_cast<uint32 const*>(buffer + cam->target_positions.timestamps.offset_elements);
     M2SplineKey<G3D::Vector3> const* targPositions = reinterpret_cast<M2SplineKey<G3D::Vector3> const*>(buffer + cam->target_positions.values.offset_elements);
 
-    // Read the data for this set
+    // Read the data for this set (遍历并转换目标位置关键帧)
     uint32 currPos = cam->target_positions.values.offset_elements;
     for (uint32 i = 0; i < cam->target_positions.timestamps.number; ++i)
     {
         if (currPos + sizeof(M2SplineKey<G3D::Vector3>) > buffSize)
             return false;
-        // Translate co-ordinates
+        // Translate co-ordinates (转换至世界坐标)
         G3D::Vector3 newPos = TranslateLocation(&DBCData, &cam->target_position_base, &targPositions->p0);
 
-        // Add to vector
+        // Add to vector (加入目标点集合)
         FlyByCamera thisCam;
         thisCam.timeStamp = targTimestamps[i];
         thisCam.locations.x = newPos.x;
@@ -87,22 +87,22 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
         currPos += sizeof(M2SplineKey<G3D::Vector3>);
     }
 
-    // Extract Camera positions for this set
+    // Extract Camera positions for this set (提取镜头自身的位置关键帧序列)
     if (cam->positions.timestamps.offset_elements + sizeof(M2Array) > buffSize)
         return false;
     uint32 const* posTimestamps = reinterpret_cast<uint32 const*>(buffer + cam->positions.timestamps.offset_elements);
     M2SplineKey<G3D::Vector3> const* positions = reinterpret_cast<M2SplineKey<G3D::Vector3> const*>(buffer + cam->positions.values.offset_elements);
 
-    // Read the data for this set
+    // Read the data for this set (遍历镜头位置并结合目标轨迹插值计算朝向角)
     currPos = cam->positions.values.offset_elements;
     for (uint32 i = 0; i < cam->positions.timestamps.number; ++i)
     {
         if (currPos + sizeof(M2SplineKey<G3D::Vector3>) > buffSize)
             return false;
-        // Translate co-ordinates
+        // Translate co-ordinates (转换至世界坐标)
         G3D::Vector3 newPos = TranslateLocation(&DBCData, &cam->position_base, &positions->p0);
 
-        // Add to vector
+        // Add to vector (构造镜头关键帧)
         FlyByCamera thisCam;
         thisCam.timeStamp = posTimestamps[i];
         thisCam.locations.x = newPos.x;
@@ -111,11 +111,11 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
 
         if (targetcam.size() > 0)
         {
-            // Find the target camera before and after this camera
+            // Find the target camera before and after this camera (查找当前时间点前后的目标点用于朝向计算)
             FlyByCamera lastTarget;
             FlyByCamera nextTarget;
 
-            // Pre-load first item
+            // Pre-load first item (预加载首个目标点作为默认值)
             lastTarget = targetcam[0];
             nextTarget = targetcam[0];
             for (uint32 j = 0; j < targetcam.size(); ++j)
@@ -131,7 +131,7 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
             float y = lastTarget.locations.y;
             float z = lastTarget.locations.z;
 
-            // Now, the timestamps for target cam and position can be different. So, if they differ we interpolate
+            // Now, the timestamps for target cam and position can be different. So, if they differ we interpolate (目标与镜头时间戳不一致时进行线性插值)
             if (lastTarget.timeStamp != posTimestamps[i])
             {
                 uint32 timeDiffTarget = nextTarget.timeStamp - lastTarget.timeStamp;
@@ -160,6 +160,7 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
     return true;
 }
 
+/// 遍历 CinematicCamera.dbc 读取对应 .m2 文件并构建全局过场镜头路径缓存
 void LoadM2Cameras(std::string const& dataPath)
 {
     sFlyByCameraStore.clear();

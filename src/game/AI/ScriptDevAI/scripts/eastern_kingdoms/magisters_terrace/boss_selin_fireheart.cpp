@@ -21,37 +21,41 @@ SDComment: Timers.
 SDCategory: Magister's Terrace
 EndScriptData */
 
+// 塞林·火心（Selin Fireheart）1号首领战 AI（吸收魔能水晶充能与魔能爆发）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "magisters_terrace.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                       = -1585000,
+    SAY_AGGRO                       = -1585000,             // 开战 台词广播 ID
     SAY_DRAIN_1                     = -1585001, // My hunger knows no bounds!
-    SAY_EMPOWERED                   = -1585002,
+    SAY_EMPOWERED                   = -1585002,             // empowered 台词广播 ID
     SAY_KILL_NORMAL                 = -1585003, // Enough distractions!
     SAY_KILL_EMPOWERED              = -1585004, // I am invincible!
     SAY_DRAIN_2                     = -1585005, // No! More... I must have more!
     EMOTE_CRYSTAL                   = -1585006, // %s begins to channel from the nearby Fel Crystal...
 
     // Selin's spells
-    SPELL_DRAIN_LIFE                = 44294,
-    SPELL_DRAIN_LIFE_H              = 46155,
-    SPELL_FEL_EXPLOSION             = 44314,
-    SPELL_DRAIN_MANA                = 46153,                // Heroic only
+    SPELL_DRAIN_LIFE                = 44294,                // 吸取生命 法术 ID
+    SPELL_DRAIN_LIFE_H              = 46155,                // 吸取生命h 法术 ID
+    SPELL_FEL_EXPLOSION             = 44314,                // 魔能爆炸 法术 ID
+    SPELL_DRAIN_MANA                = 46153,                // Heroic only (Heroic仅)
     SPELL_FEL_CRYSTAL_DUMMY         = 44329,                // used by Selin to select a nearby Crystal - not used in script
     SPELL_MANA_RAGE_CHANNEL         = 44320,                // This spell triggers 44321, which changes scale and regens mana Requires an entry in spell_script_target
     //SPELL_MANA_RAGE_POWER          = 44321,               // Triggered by the channel
-    SPELL_DUAL_WEILD                = 42459,
+    SPELL_DUAL_WEILD                = 42459,                // dualweild 法术 ID
 
     // Crystal spells
     //SPELL_FEL_CRYSTAL_VISUAL       = 44355,                // cosmetic - defined in instance header
-    SPELL_INSTAKILL_SELF            = 29878,
+    SPELL_INSTAKILL_SELF            = 29878,                // instakillself 法术 ID
 
-    POINT_CRYSTAL                   = 1,
+    POINT_CRYSTAL                   = 1,                    // crystal 路径点 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SelinActions
 {
     SELIN_ACTION_DRAIN_CRYSTAL,
@@ -61,6 +65,7 @@ enum SelinActions
     SELIN_ACTION_MAX,
 };
 
+// 首领战 AI：fireheart（selin_fireheart）
 struct boss_selin_fireheartAI : public CombatAI
 {
     boss_selin_fireheartAI(Creature* creature) : CombatAI(creature, SELIN_ACTION_MAX), m_instance(static_cast<instance_magisters_terrace*>(creature->GetInstanceData())),
@@ -88,10 +93,11 @@ struct boss_selin_fireheartAI : public CombatAI
     bool m_isRegularMode;
     bool m_empowered;
 
-    ObjectGuid m_crystalGuid;
+    ObjectGuid m_crystalGuid;                               // crystal 实体 GUID
 
     uint32 m_felExplosionCost;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -114,7 +120,7 @@ struct boss_selin_fireheartAI : public CombatAI
             case SELIN_ACTION_DRAIN_LIFE: return urand(12000, 22000);
             case SELIN_ACTION_DRAIN_MANA: return urand(17500, 25000);
             case SELIN_ACTION_DRAIN_CRYSTAL: return m_isRegularMode ? urand(40000, 55000) : urand(30000, 40000);
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
@@ -158,6 +164,7 @@ struct boss_selin_fireheartAI : public CombatAI
             m_instance->StartCrystalVisual();
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         m_creature->SetPower(POWER_MANA, 0);
@@ -171,6 +178,7 @@ struct boss_selin_fireheartAI : public CombatAI
         DoScriptText(m_empowered ? SAY_KILL_EMPOWERED : SAY_KILL_NORMAL, m_creature);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 moveType, uint32 pointId) override
     {
         if (moveType != POINT_MOTION_TYPE || pointId != POINT_CRYSTAL)
@@ -204,7 +212,7 @@ struct boss_selin_fireheartAI : public CombatAI
                 {
                     DoScriptText(SAY_EMPOWERED, m_creature);
                     m_empowered = true;
-                    if (invoker->IsAlive()) // Kill crystal
+                    if (invoker->IsAlive()) // Kill crystal (击杀crystal)
                         invoker->CastSpell(nullptr, SPELL_INSTAKILL_SELF, TRIGGERED_OLD_TRIGGERED);
                 }
                 ResetCombatAction(SELIN_ACTION_DRAIN_CRYSTAL, GetSubsequentActionTimer(SELIN_ACTION_DRAIN_CRYSTAL));
@@ -253,10 +261,12 @@ struct boss_selin_fireheartAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：crystal（fel_crystal）
 struct mob_fel_crystalAI : public ScriptedAI
 {
     mob_fel_crystalAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
 
+    // 重置战斗状态与技能计时器
     void Reset() override 
     {
         SetReactState(REACT_PASSIVE);
@@ -276,6 +286,7 @@ struct mob_fel_crystalAI : public ScriptedAI
     }
 };
 
+// 法术脚本逻辑实现：魔能crystaldummy 法术 ID（spell_fel_crystal_dummy）
 struct spell_fel_crystal_dummy : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -298,6 +309,7 @@ struct spell_mana_rage_selin : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_selin_fireheart
 void AddSC_boss_selin_fireheart()
 {
     Script* pNewScript = new Script;

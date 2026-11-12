@@ -60,6 +60,7 @@ enum
 };
 
 // 29866 - Cast Fishing Net
+// 投掷渔网法术脚本
 struct CastFishingNet : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -116,6 +117,7 @@ struct MelodiousRapture : public SpellScript
 };
 
 // 16380, 32811, 32943 - Invisibility
+// 怪物反隐形/反潜行光环脚本
 struct DetectThroughInvisibilityMob : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -148,6 +150,7 @@ struct DetectThroughInvisibilityMob : public AuraScript
 
 // 29690 - Drunken Skull Crack
 // 37591 - Drunken Haze
+// 移除醉酒状态光环脚本
 struct InebriateRemoval : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -268,6 +271,7 @@ enum
 };
 
 // 34011, 34012, 34019, 41071 - Raise Dead
+// 亡者复生法术脚本：消耗尸体召唤食尸鬼
 struct RaiseDead : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -285,6 +289,7 @@ struct RaiseDead : public SpellScript
 };
 
 // 33985 - Use Corpse
+// 食尸/使用尸体技能法术脚本
 struct UseCorpse : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -298,6 +303,7 @@ struct UseCorpse : public SpellScript
 };
 
 // 45150 - Meteor Slash
+// 分摊伤害法术脚本：将伤害平均分摊给有效目标
 struct SplitDamage : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -346,6 +352,7 @@ enum SeedOfCorruptionNpcData
 };
 
 // 32863, 36123, 38252, 39367, 44141 - Seed of Corruption
+// 腐蚀之种 (NPC版本) 光环脚本
 struct SeedOfCorruptionNpc : public AuraScript
 {
     SpellAuraProcResult OnProc(Aura* aura, ProcExecutionData& procData) const override
@@ -441,6 +448,7 @@ enum SpellVisualKitFoodOrDrink
     SPELL_VISUAL_KIT_DRINK = 438
 };
 
+// 进食动画光环脚本
 struct FoodAnimation : public AuraScript
 {
     void OnHeartbeat(Aura* aura) const override
@@ -449,6 +457,7 @@ struct FoodAnimation : public AuraScript
     }
 };
 
+// 喝水动画光环脚本
 struct DrinkAnimation : public AuraScript
 {
     void OnHeartbeat(Aura* aura) const override
@@ -622,6 +631,7 @@ struct TribalDeath : public SpellScript
 };
 
 // 22858 - Retaliation
+// 生物反击风暴法术脚本
 struct RetaliationCreature : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -634,6 +644,7 @@ struct RetaliationCreature : public SpellScript
 };
 
 // 11920 - Net Guard
+// 卫兵撒网缠绕法术脚本
 struct NetGuard : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -646,6 +657,7 @@ struct NetGuard : public SpellScript
 };
 
 // 19707 - Hate to 50%
+// 仇恨减半法术脚本
 struct HateToHalf : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -658,6 +670,7 @@ struct HateToHalf : public SpellScript
 };
 
 // 9204, 20538, 26569, 26637 - Hate to Zero
+// 仇恨清零法术脚本
 struct HateToZero : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -789,6 +802,7 @@ struct MaximizePetLoyalty : public SpellScript
 
 
 // 36435 - Forget                                                               // Unlearn Armorsmith specialization
+// 遗忘防具大师锻造专精法术脚本
 struct ForgetArmorsmith : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -811,6 +825,7 @@ struct ForgetArmorsmith : public SpellScript
 };
 
 // 36436 - Forget                                                               // Unlearn Weaponsmith specialization
+// 遗忘武器大师锻造专精法术脚本
 struct ForgetWeaponsmith : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -850,6 +865,7 @@ struct ForgetWeaponsmith : public SpellScript
 };
 
 // 36438 - Forget                                                               // Unlearn Swordsmith specialization
+// 遗忘铸剑大师锻造专精法术脚本
 struct ForgetSwordsmith : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -870,6 +886,7 @@ struct ForgetSwordsmith : public SpellScript
 };
 
 // 36439 - Forget                                                               // Unlearn Axesmith specialization
+// 遗忘铸斧大师锻造专精法术脚本
 struct ForgetAxesmith : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -890,6 +907,7 @@ struct ForgetAxesmith : public SpellScript
 };
 
 // 36441 - Forget                                                               // Unlearn Hammersmith specialization
+// 遗忘铸锤大师锻造专精法术脚本
 struct ForgetHammersmith : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -909,6 +927,7 @@ struct ForgetHammersmith : public SpellScript
     }
 };
 
+// 使用游戏对象触发卫兵呼救法术脚本
 struct GameobjectCallForHelpOnUsage : public SpellScript
 {
     void OnSuccessfulStart(Spell* spell) const
@@ -931,6 +950,7 @@ struct GameobjectCallForHelpOnUsage : public SpellScript
     }
 };
 
+// 潜伏/潜水状态转换法术脚本
 struct Submerged : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -944,6 +964,7 @@ struct Submerged : public SpellScript
     }
 };
 
+// 起立站姿法术脚本
 struct Stand : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -1016,6 +1037,7 @@ struct InvisibleForAlive : public AuraScript
 };
 
 // 17162 - Summon Water Elemental
+// 召唤水元素法术脚本
 struct SummonWaterElemental : public SpellScript
 {
     void OnSummon(Spell* spell, Creature* summon) const override
@@ -1033,6 +1055,7 @@ struct SummonPedestalNpc : public SpellScript
     }
 };
 
+// 注册世界通用法术脚本
 void AddSC_spell_scripts()
 {
     RegisterSpellScript<CastFishingNet>("spell_cast_fishing_net");

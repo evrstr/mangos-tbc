@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
+// 毒蛇神殿团队副本数据脚本实现
+/* 遭遇战概述：
+ * 管理毒蛇神殿排水抽水控制系统与通往瓦丝琪中央控制台的水闸。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
 
@@ -394,6 +399,7 @@ void instance_serpentshrine_cavern::EngageBossConsole(uint32 uiType, GameObject*
 #endif
 }
 
+// 游戏对象使用交互回调
 bool GOUse_go_ssc_boss_consoles(Player* /*pPlayer*/, GameObject* pGo)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
@@ -415,10 +421,12 @@ bool GOUse_go_ssc_boss_consoles(Player* /*pPlayer*/, GameObject* pGo)
     return false;
 }
 
+// npc_serpentshrine_parasiteAI 逻辑实现
 struct npc_serpentshrine_parasiteAI : public ScriptedAI
 {
     npc_serpentshrine_parasiteAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
     void DamageDeal(Unit* /*pDoneTo*/, uint32& /*damage*/, DamageEffectType /*damagetype*/, SpellEntry const* /*spellInfo*/) override
@@ -449,6 +457,7 @@ void instance_serpentshrine_cavern::ExecuteChatCommand(ChatHandler* handler, cha
         SetData(TYPE_THELURKER_EVENT, IN_PROGRESS);
 }
 
+// 注册 instance_serpentshrine_cavern 脚本
 void AddSC_instance_serpentshrine_cavern()
 {
     Script* pNewScript = new Script;

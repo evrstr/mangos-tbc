@@ -21,6 +21,8 @@ SDComment: Hakkar Summon Event needs more sources to improve
 SDCategory: Sunken Temple
 EndScriptData */
 
+// 阿塔哈卡神庙（Sunken Temple）底层巨魔六祭司封印与哈卡祭坛召唤仪式
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunken_temple.h"
 
@@ -165,7 +167,7 @@ void instance_sunken_temple::SetData(uint32 uiType, uint32 uiData)
                 {
                     m_auiEncounter[uiType] = uiData;
                     DoUseDoorOrButton(GO_JAMMALAN_BARRIER);
-                    // Intro yell
+                    // Intro yell (开场大喊)
                     DoOrSimulateScriptTextForThisInstance(SAY_JAMMALAN_INTRO, NPC_JAMMALAN);
 
                     if (Creature* jammalan = GetSingleCreatureFromStorage(NPC_JAMMALAN))
@@ -210,7 +212,7 @@ void instance_sunken_temple::SetData(uint32 uiType, uint32 uiData)
                     case 1: DoScriptText(SAY_AVATAR_BRAZIER_1, shadeofHakkar); break;
                     case 2: DoScriptText(SAY_AVATAR_BRAZIER_2, shadeofHakkar); break;
                     case 3: DoScriptText(SAY_AVATAR_BRAZIER_3, shadeofHakkar); break;
-                    // Summon the avatar when all flames are used
+                    // Summon the avatar when all flames are used (召唤 the avatar when all flames are used)
                     case MAX_FLAMES:
                         DoScriptText(SAY_AVATAR_BRAZIER_4, shadeofHakkar);
                         shadeofHakkar->CastSpell(shadeofHakkar, SPELL_SUMMON_AVATAR, TRIGGERED_OLD_TRIGGERED);
@@ -219,8 +221,8 @@ void instance_sunken_temple::SetData(uint32 uiType, uint32 uiData)
                         break;
                 }
 
-                // Summon the suppressors only after the flames are doused
-                // Summon timer is confusing random; timers were: 13, 39 and 52 secs;
+                // Summon the suppressors only after the flames are doused (召唤 the suppressors only after the flames are doused)
+                // Summon timer is confusing random; timers were: 13, 39 and 52 secs; (召唤 timer is confusing random; timers were: 13, 39 and 52 secs;)
                 if (m_uiFlameCounter != MAX_FLAMES)
                     m_uiSupressorTimer = urand(15000, 45000);
 
@@ -236,11 +238,11 @@ void instance_sunken_temple::SetData(uint32 uiType, uint32 uiData)
                 m_uiSupressorTimer = 0;
                 DoUpdateFlamesFlags(false);
 
-                // Summon timer; use a small delay
+                // Summon timer; use a small delay (召唤 timer; use a small delay)
                 m_uiAvatarSummonTimer = 3000;
                 m_bIsFirstHakkarWave = true;
 
-                // Summon the shade
+                // Summon the shade (召唤 the shade)
                 Player* pPlayer = GetPlayerInMap();
                 if (!pPlayer)
                     return;
@@ -412,7 +414,7 @@ void instance_sunken_temple::Update(uint32 uiDiff)
             m_suppressionTimer -= uiDiff;
     }
 
-    // Summon random mobs around the circles
+    // Summon random mobs around the circles (召唤 random mobs around the circles)
     if (m_uiAvatarSummonTimer)
     {
         if (m_uiAvatarSummonTimer <= uiDiff)
@@ -427,14 +429,14 @@ void instance_sunken_temple::Update(uint32 uiDiff)
 
             if (m_bIsFirstHakkarWave)                       // First wave summoned
             {
-                // Summon at all circles
+                // Summon at all circles (召唤 at all circles)
                 for (GuidVector::const_iterator itr = m_evilCircleGuidList.begin(); itr != m_evilCircleGuidList.end(); ++itr)
                 {
                     if (GameObject* pCircle = instance->GetGameObject(*itr))
                         pShade->SummonCreature(NPC_HAKKARI_MINION, pCircle->GetPositionX(), pCircle->GetPositionY(), pCircle->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
                 }
 
-                // Summon Bloodkeeper at random circle
+                // Summon Bloodkeeper at random circle (召唤 Bloodkeeper at random circle)
                 if (GameObject* pCircle = instance->GetGameObject(m_evilCircleGuidList[urand(0, m_evilCircleGuidList.size() - 1)]))
                     pShade->SummonCreature(NPC_BLOODKEEPER, pCircle->GetPositionX(), pCircle->GetPositionY(), pCircle->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
 
@@ -449,7 +451,7 @@ void instance_sunken_temple::Update(uint32 uiDiff)
 
                 if (m_bCanSummonBloodkeeper && roll_chance_i(30))
                 {
-                    // Summon a Bloodkeeper
+                    // Summon a Bloodkeeper (召唤 a Bloodkeeper)
                     if (GameObject* pCircle = instance->GetGameObject(m_evilCircleGuidList[urand(0, m_evilCircleGuidList.size() - 1)]))
                         pShade->SummonCreature(NPC_BLOODKEEPER, pCircle->GetPositionX(), pCircle->GetPositionY(), pCircle->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
 
@@ -469,7 +471,7 @@ void instance_sunken_temple::Update(uint32 uiDiff)
             m_uiAvatarSummonTimer -= uiDiff;
     }
 
-    // Summon nightmare suppressor after flame used
+    // Summon nightmare suppressor after flame used (召唤 nightmare suppressor after flame used)
     if (m_uiSupressorTimer)
     {
         if (m_uiSupressorTimer <= uiDiff)
@@ -481,7 +483,7 @@ void instance_sunken_temple::Update(uint32 uiDiff)
                 return;
             }
 
-            // Summon npc at random door; movement and script handled in DB
+            // Summon npc at random door; movement and script handled in DB (召唤 npc at random door; movement and script handled in DB)
             uint8 uiSummonLoc = urand(0, 1);
             if (Creature* suppressor = pShade->SummonCreature(NPC_SUPPRESSOR, aHakkariDoorLocations[uiSummonLoc].m_fX, aHakkariDoorLocations[uiSummonLoc].m_fY, aHakkariDoorLocations[uiSummonLoc].m_fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0))
             {
@@ -518,6 +520,7 @@ InstanceData* GetInstanceData_instance_sunken_temple(Map* pMap)
     return new instance_sunken_temple(pMap);
 }
 
+// 注册并载入脚本模块：instance_sunken_temple
 void AddSC_instance_sunken_temple()
 {
     Script* pNewScript = new Script;

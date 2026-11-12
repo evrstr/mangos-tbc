@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Molten Core
 EndScriptData */
 
+// 熔火之心（Molten Core）巡逻熔岩奔腾者与火誓者技能 AI
+
 /* ContentData
 EndContentData */
 
@@ -57,18 +59,19 @@ bool GOUse_go_molten_core_rune(Player* /*pPlayer*/, GameObject* pGo)
 
 struct npc_core_hound : public CreatureEventAI
 {
+    // 枚举定义：法术技能、生物与环境事件标识
     enum CoreHoundMoltenCore
     {
-        REIGNITE_TIMER          = 0,
+        REIGNITE_TIMER          = 0,                        // 计时器 标识 ID
 
-        SPELL_FULL_HEAL         = 17683,
-        SPELL_FIRE_NOVA_VISUAL  = 19823,
-        SPELL_PACIFY_SELF       = 19951,
+        SPELL_FULL_HEAL         = 17683,                    // full治疗 法术 ID
+        SPELL_FIRE_NOVA_VISUAL  = 19823,                    // 火焰新星视觉特效 法术 ID
+        SPELL_PACIFY_SELF       = 19951,                    // pacifyself 法术 ID
 
-        NPC_CORE_HOUND = 11671,
+        NPC_CORE_HOUND = 11671,                             // corehound Entry ID
 
-        EMOTE_SMOLDER   = 7866,
-        EMOTE_REIGNITE  = 7867,
+        EMOTE_SMOLDER   = 7866,                             // smolder 表情动作 ID
+        EMOTE_REIGNITE  = 7867,                             // reignite 表情动作 ID
     };
 
     npc_core_hound(Creature* creature) : CreatureEventAI(creature)
@@ -77,6 +80,7 @@ struct npc_core_hound : public CreatureEventAI
         AddCustomAction(REIGNITE_TIMER, true, [this] { HandleReigniteTimer(); });
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CreatureEventAI::Reset();
@@ -102,7 +106,7 @@ struct npc_core_hound : public CreatureEventAI
     // * You can still target a collapsed Core Hound.
     // * You can still damage a collapsed Core Hound.
     // * They keep debuffs (Curse of the Elements, Sunders, etc).
-    // To do:
+    // To do: (通往 do:)
     // * Confirm they keep combo points.
     void Collapse()
     {
@@ -144,6 +148,7 @@ struct npc_core_hound : public CreatureEventAI
     }
 };
 
+// 注册并载入脚本模块：molten_core
 void AddSC_molten_core()
 {
     Script* pNewScript;

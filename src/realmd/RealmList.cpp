@@ -34,10 +34,11 @@ extern DatabaseType LoginDatabase;
 // will only support 1.12.1/1.12.2/1.12.3, TBC 2.4.3 and official release for WotLK and later, client builds 10505, 8606, 6141, 6005, 5875
 // if you need more from old build then add it in cases in realmd sources code
 // list sorted from high to low build and first build used as low bound for accepted by default range (any > it will accepted by realmd at least)
+// 仅内置支持经典旧世 1.12.x、TBC 2.4.3 及 WotLK 3.x 官方客户端版本；按版本号从高到低排列，首项同时作为默认接受的高版本下界
 
 static const RealmBuildInfo ExpectedRealmdClientBuilds[] =
 {
-    {13930, 3, 3, 5, 'a', {{}}, {{}}},                      // 3.3.5a China Mainland build
+    {13930, 3, 3, 5, 'a', {{}}, {{}}},                      // 3.3.5a China Mainland build | 3.3.5a 国服版本
     {12340, 3, 3, 5, 'a',
         {{ 0xCD, 0xCB, 0xBD, 0x51, 0x88, 0x31, 0x5E, 0x6B, 0x4D, 0x19, 0x44, 0x9D, 0x49, 0x2D, 0xBC, 0xFA, 0xF1, 0x56, 0xA3, 0x47 }},
         {{ 0xB7, 0x06, 0xD1, 0x3F, 0xF2, 0xF4, 0x01, 0x88, 0x39, 0x72, 0x94, 0x61, 0xE3, 0xF8, 0xA0, 0xE2, 0xB5, 0xFD, 0xC0, 0x34 }},
@@ -63,21 +64,21 @@ static const RealmBuildInfo ExpectedRealmdClientBuilds[] =
         {{ 0x95, 0xED, 0xB2, 0x7C, 0x78, 0x23, 0xB3, 0x63, 0xCB, 0xDD, 0xAB, 0x56, 0xA3, 0x92, 0xE7, 0xCB, 0x73, 0xFC, 0xCA, 0x20 }},
         {{ 0x8D, 0x17, 0x3C, 0xC3, 0x81, 0x96, 0x1E, 0xEB, 0xAB, 0xF3, 0x36, 0xF5, 0xE6, 0x67, 0x5B, 0x10, 0x1B, 0xB5, 0x13, 0xE5 }},
     },
-    {0,     0, 0, 0, ' ', {{}}, {{}}}                       // terminator
+    {0,     0, 0, 0, ' ', {{}}, {{}}}                       // terminator | 结束哨兵项
 };
 
 RealmBuildInfo const* FindBuildInfo(uint16 _build)
 {
-    // first build is low bound of always accepted range
+    // first build is low bound of always accepted range | 首项为默认始终接受的高版本号下界
     if (_build >= ExpectedRealmdClientBuilds[0].build)
         return &ExpectedRealmdClientBuilds[0];
 
-    // continue from 1 with explicit equal check
+    // continue from 1 with explicit equal check | 从索引 1 开始精确匹配已知版本
     for (int i = 1; ExpectedRealmdClientBuilds[i].build; ++i)
         if (_build == ExpectedRealmdClientBuilds[i].build)
             return &ExpectedRealmdClientBuilds[i];
 
-    // none appropriate build
+    // none appropriate build | 未找到匹配版本
     return nullptr;
 }
 
@@ -110,18 +111,18 @@ RealmList& sRealmList
     return realmlist;
 }
 
-/// Load the realm list from the database
+/// Load the realm list from the database | 从数据库初始化加载服务器列表
 void RealmList::Initialize(uint32 updateInterval)
 {
     m_UpdateInterval = updateInterval;
 
-    ///- Get the content of the realmlist table in the database
+    ///- Get the content of the realmlist table in the database | 读取数据库中 realmlist 表的数据
     UpdateRealms(true);
 }
 
 void RealmList::UpdateRealm(uint32 ID, const std::string& name, const std::string& address, uint32 port, uint8 icon, RealmFlags realmflags, uint8 timezone, AccountTypes allowedSecurityLevel, float popu, const std::string& builds)
 {
-    ///- Create new if not exist or update existed
+    ///- Create new if not exist or update existed | 若不存在则新建条目，否则更新已有条目
     Realm& realm = m_realms[name];
 
     realm.m_ID       = ID;
@@ -152,7 +153,7 @@ void RealmList::UpdateRealm(uint32 ID, const std::string& name, const std::strin
             if (bInfo->build == first_build)
                 realm.realmBuildInfo = *bInfo;
 
-    ///- Append port to IP address.
+    ///- Append port to IP address. | 将端口号拼接到 IP 地址后
     std::ostringstream ss;
     ss << address << ":" << port;
     realm.address   = ss.str();
@@ -160,16 +161,16 @@ void RealmList::UpdateRealm(uint32 ID, const std::string& name, const std::strin
 
 void RealmList::UpdateIfNeed()
 {
-    // maybe disabled or updated recently
+    // maybe disabled or updated recently | 若禁用自动刷新或未到刷新周期则直接返回
     if (!m_UpdateInterval || m_NextUpdateTime > time(nullptr))
         return;
 
     m_NextUpdateTime = time(nullptr) + m_UpdateInterval;
 
-    // Clears Realm list
+    // Clears Realm list | 清空旧服务器列表缓存
     m_realms.clear();
 
-    // Get the content of the realmlist table in the database
+    // Get the content of the realmlist table in the database | 从数据库重新拉取服务器列表
     UpdateRealms(false);
 }
 
@@ -180,7 +181,7 @@ void RealmList::UpdateRealms(bool init)
     ////                                           0   1     2        3     4     5           6         7                     8           9
     auto queryResult = LoginDatabase.Query("SELECT id, name, address, port, icon, realmflags, timezone, allowedSecurityLevel, population, realmbuilds FROM realmlist WHERE (realmflags & 1) = 0 ORDER BY name");
 
-    ///- Circle through results and add them to the realm map
+    ///- Circle through results and add them to the realm map | 遍历查询结果并将有效服务器添加到内存映射表
     if (queryResult)
     {
         do

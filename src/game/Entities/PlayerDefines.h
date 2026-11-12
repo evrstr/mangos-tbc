@@ -30,17 +30,20 @@
 class Aura;
 
 // Note: SPELLMOD_* values is aura types in fact
+// 注意：SPELLMOD_* 值实际上对应光环类型（AuraType）
 enum SpellModType
 {
-    SPELLMOD_FLAT = 107,                      // SPELL_AURA_ADD_FLAT_MODIFIER
-    SPELLMOD_PCT  = 108                       // SPELL_AURA_ADD_PCT_MODIFIER
+    SPELLMOD_FLAT = 107,                      // SPELL_AURA_ADD_FLAT_MODIFIER (固定值法术修正)
+    SPELLMOD_PCT  = 108                       // SPELL_AURA_ADD_PCT_MODIFIER (百分比法术修正)
 };
 
 // Spell modifier (used for modify other spells)
+// 法术修正器结构（用于修改其他法术的属性或效果）
 struct SpellModifier
 {
-    static uint64 modCounter;
+    static uint64 modCounter;                 // 全局修正器唯一 ID 自增计数器
 
+    // 分配并返回下一个唯一的修正器 ID
     uint64 GetModId() { return modCounter++; }
 
     SpellModifier() : charges(0), priority(0), isFinite(false) {}
@@ -57,19 +60,21 @@ struct SpellModifier
 
     SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, Aura const* aura, int32 _priority = 0, int16 _charges = 0);
 
+    // 判断指定法术是否受此修正器影响
     bool isAffectedOnSpell(SpellEntry const* spell) const;
 
-    SpellModOp   op : 8;
-    SpellModType type : 8;
-    int16 charges : 16;
-    int32 value;
-    ClassFamilyMask mask;
-    uint32 spellId;
-    int32 priority;
-    bool isFinite;
-    uint64 modId;
+    SpellModOp   op : 8;                      // 修正操作类型
+    SpellModType type : 8;                    // 修正方式（固定值或百分比）
+    int16 charges : 16;                       // 剩余可用次数（0 表示无限制或已耗尽）
+    int32 value;                              // 修正数值
+    ClassFamilyMask mask;                     // 职业技能族掩码（匹配受影响法术）
+    uint32 spellId;                           // 提供该修正的光环/天赋法术 ID
+    int32 priority;                           // 优先级（用于排序应用顺序）
+    bool isFinite;                            // 是否为有限次数修正器
+    uint64 modId;                             // 修正器实例唯一标识
 };
 
+// 法术修正器优先级降序比较器
 struct SpellModifierComparator
 {
     bool operator() (SpellModifier* a, SpellModifier* b) { return (a->priority > b->priority); }
@@ -78,10 +83,11 @@ struct SpellModifierComparator
 typedef std::list<SpellModifier*> SpellModList;
 typedef std::vector<SpellModifier*> SpellModVector;
 
+// 已消耗法术修正器标识对（法术 ID + 修正器 ID）
 struct SpellModifierPair
 {
-    uint32 spellId;
-    uint64 modId;
+    uint32 spellId;                           // 关联法术 ID
+    uint64 modId;                             // 修正器唯一 ID
     SpellModifierPair() : spellId(0), modId(0) {}
     SpellModifierPair(uint32 _spellId, uint64 _modifierId) : spellId(_spellId), modId(_modifierId) {}
     bool operator<(const SpellModifierPair &rhs) const
@@ -94,6 +100,6 @@ struct SpellModifierPair
     }
 };
 
-// typedef std::set<SpellModifierPair>  ConsumedSpellModifiers;
+// typedef std::set<SpellModifierPair>  ConsumedSpellModifiers; (已注释：原已消耗修正器集合类型定义)
 
 #endif

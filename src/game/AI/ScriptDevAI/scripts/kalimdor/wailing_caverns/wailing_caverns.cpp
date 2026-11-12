@@ -21,6 +21,10 @@ SDComment:
 SDCategory: Wailing Caverns
 EndScriptData */
 
+/**
+ * 哀嚎洞穴：纳拉雷克斯信徒唤醒仪式与首领战斗脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "wailing_caverns.h"
 
@@ -36,7 +40,7 @@ void instance_wailing_caverns::Initialize()
 
 void instance_wailing_caverns::OnPlayerEnter(Player* pPlayer)
 {
-    // Respawn the Mysterious chest if one of the players who enter the instance has the quest in his log
+    // Respawn the Mysterious chest if one of the players who enter the instance has the quest in his log (说明)
     if (pPlayer->GetQuestStatus(QUEST_FORTUNE_AWAITS) == QUEST_STATUS_COMPLETE &&
             !pPlayer->GetQuestRewardStatus(QUEST_FORTUNE_AWAITS))
         DoRespawnGameObject(GO_MYSTERIOUS_CHEST, HOUR);
@@ -85,10 +89,10 @@ void instance_wailing_caverns::SetData(uint32 uiType, uint32 uiData)
             break;
     }
 
-    // Set to special in order to start the escort event; only if all four bosses are done
+    // Set to special in order to start the escort event; only if all four bosses are done (说明)
     if (m_auiEncounter[0] == DONE && m_auiEncounter[1] == DONE && m_auiEncounter[2] == DONE && m_auiEncounter[3] == DONE && (m_auiEncounter[4] == NOT_STARTED || m_auiEncounter[4] == FAIL))
     {
-        // Yell intro text; only the first time
+        // Yell intro text; only the first time (说明)
         if (m_auiEncounter[4] == NOT_STARTED)
         {
             if (Creature* pDisciple = GetSingleCreatureFromStorage(NPC_DISCIPLE))
@@ -156,7 +160,7 @@ uint32 instance_wailing_caverns::GetData(uint32 uiType) const
     return 0;
 }
 
-void AddSC_instance_wailing_caverns()
+void AddSC_instance_wailing_caverns() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_wailing_caverns";

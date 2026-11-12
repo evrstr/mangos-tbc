@@ -9,7 +9,7 @@
 #include "Grids/GridNotifiers.h"
 #include "Grids/GridNotifiersImpl.h"
 
-// return closest GO in grid, with range from pSource
+// return closest GO in grid, with range from pSource (获取以 source 为中心、指定范围内最近的特定 Entry 游戏对象)
 GameObject* GetClosestGameObjectWithEntry(WorldObject* source, uint32 entry, float maxSearchRange)
 {
     GameObject* go = nullptr;
@@ -22,7 +22,7 @@ GameObject* GetClosestGameObjectWithEntry(WorldObject* source, uint32 entry, flo
     return go;
 }
 
-// return closest creature alive in grid, with range from pSource
+// return closest creature alive in grid, with range from pSource (获取指定范围内最近的特定 Entry 生物)
 Creature* GetClosestCreatureWithEntry(WorldObject* source, uint32 entry, float maxSearchRange, bool onlyAlive/*=true*/, bool onlyDead/*=false*/, bool excludeSelf/*=false*/)
 {
     Creature* creature = nullptr;
@@ -35,6 +35,7 @@ Creature* GetClosestCreatureWithEntry(WorldObject* source, uint32 entry, float m
     return creature;
 }
 
+// 收集指定范围内所有匹配特定 Entry 的游戏对象列表
 void GetGameObjectListWithEntryInGrid(GameObjectList& goList, WorldObject* source, uint32 entry, float maxSearchRange)
 {
     MaNGOS::GameObjectEntryInPosRangeCheck check(*source, entry, source->GetPositionX(), source->GetPositionY(), source->GetPositionZ(), maxSearchRange);
@@ -43,6 +44,7 @@ void GetGameObjectListWithEntryInGrid(GameObjectList& goList, WorldObject* sourc
     Cell::VisitGridObjects(source, searcher, maxSearchRange);
 }
 
+// 收集指定范围内匹配多个 Entry 之一的所有游戏对象列表
 void GetGameObjectListWithEntryInGrid(GameObjectList& goList, WorldObject* source, std::vector<uint32> const& entries, float maxSearchRange)
 {
     MaNGOS::AllGameObjectsMatchingOneEntryInRange check(source, entries, maxSearchRange);
@@ -51,6 +53,7 @@ void GetGameObjectListWithEntryInGrid(GameObjectList& goList, WorldObject* sourc
     Cell::VisitGridObjects(source, searcher, maxSearchRange);
 }
 
+// 收集指定范围内所有匹配特定 Entry 的生物列表
 void GetCreatureListWithEntryInGrid(CreatureList& creatureList, WorldObject* source, uint32 entry, float maxSearchRange)
 {
     MaNGOS::AllCreaturesOfEntryInRangeCheck check(source, entry, maxSearchRange);
@@ -59,6 +62,7 @@ void GetCreatureListWithEntryInGrid(CreatureList& creatureList, WorldObject* sou
     Cell::VisitGridObjects(source, searcher, maxSearchRange);
 }
 
+// 收集指定范围内匹配多个 Entry 之一的所有生物列表
 void GetCreatureListWithEntryInGrid(CreatureList& creatureList, WorldObject* source, std::vector<uint32> const& entries, float maxSearchRange)
 {
     MaNGOS::AllCreaturesMatchingOneEntryInRange check(source, entries, maxSearchRange);
@@ -67,6 +71,7 @@ void GetCreatureListWithEntryInGrid(CreatureList& creatureList, WorldObject* sou
     Cell::VisitGridObjects(source, searcher, maxSearchRange);
 }
 
+// 收集指定距离内的所有玩家列表
 void GetPlayerListWithEntryInWorld(PlayerList& playerList, WorldObject* source, float maxSearchRange)
 {
     MaNGOS::AnyPlayerInObjectRangeCheck check(source, maxSearchRange);

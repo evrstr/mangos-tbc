@@ -25,8 +25,10 @@
 #include <map>
 #include <set>
 
+// 载具上的乘客对象集合类型
 typedef std::set<WorldObject*> PassengerSet;
 
+// 通用运输载具基类（提供乘客上下船、相对坐标与世界坐标换算等公共能力）
 class GenericTransport : public GameObject
 {
     public:
@@ -40,13 +42,13 @@ class GenericTransport : public GameObject
 
         PassengerSet& GetPassengers() { return m_passengers; }
 
-        /// This method transforms supplied transport offsets into global coordinates
+        /// This method transforms supplied transport offsets into global coordinates (将载具局部偏移坐标转换为全局世界坐标)
         void CalculatePassengerPosition(float& x, float& y, float& z, float* o = nullptr) const
         {
             CalculatePassengerPosition(x, y, z, o, GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation());
         }
 
-        /// This method transforms supplied global coordinates into local offsets
+        /// This method transforms supplied global coordinates into local offsets (将全局世界坐标转换为载具局部偏移坐标)
         void CalculatePassengerOffset(float& x, float& y, float& z, float* o = nullptr) const
         {
             CalculatePassengerOffset(x, y, z, o, GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation());
@@ -61,13 +63,14 @@ class GenericTransport : public GameObject
     protected:
         void UpdatePassengerPositions(PassengerSet& passengers);
 
-        PassengerSet m_passengers;
-        PassengerSet::iterator m_passengerTeleportIterator;
+        PassengerSet m_passengers;                          // 当前乘坐在载具上的单位集合
+        PassengerSet::iterator m_passengerTeleportIterator; // 跨地图传送乘客时使用的安全迭代器
 
-        uint32 m_pathProgress; // for MO transport its full time since start for normal time in cycle
-        uint32 m_movementStarted;
+        uint32 m_pathProgress; // for MO transport its full time since start for normal time in cycle (路径时间进度：MO 运输载具为启动后累计时间，电梯为周期内时间)
+        uint32 m_movementStarted;                           // 运动起始时间戳（毫秒）
 };
 
+// 升降梯/局部往复运输工具类（基于 TransportAnimation 关键帧插值移动）
 class ElevatorTransport : public GenericTransport
 {
     public:
@@ -76,10 +79,11 @@ class ElevatorTransport : public GenericTransport
         void Update(const uint32 diff) override;
 
     private:
-        TransportAnimation const* m_animationInfo;
-        uint32 m_currentSeg;
+        TransportAnimation const* m_animationInfo;          // 动画轨迹数据指针
+        uint32 m_currentSeg;                                // 当前动画时间段起始偏移
 };
 
+// 跨地图大型运输工具类（如船只、飞艇，按关键帧样条航行并支持跨地图传送）
 class Transport : public GenericTransport
 {
     public:
@@ -97,22 +101,22 @@ class Transport : public GenericTransport
         void TeleportTransport(uint32 newMapid, float x, float y, float z, float o);
         void UpdateForMap(Map const* targetMap, bool newMap);
         void DoEventIfAny(TaxiPathNodeEntry const& node, bool departure);
-        void MoveToNextWayPoint();                          // move m_next/m_cur to next points
+        void MoveToNextWayPoint();                          // move m_next/m_cur to next points (推进当前与下一关键帧迭代器)
         float CalculateSegmentPos(float perc);
 
         bool IsMoving() const { return m_isMoving; }
         void SetMoving(bool val) { m_isMoving = val; }
 
-        ShortTimeTracker m_positionChangeTimer;
-        bool m_isMoving;
-        bool m_pendingStop;
+        ShortTimeTracker m_positionChangeTimer;             // 位置更新节流计时器
+        bool m_isMoving;                                    // 当前是否处于航行状态
+        bool m_pendingStop;                                 // 是否存在待处理的停靠请求
 
-        KeyFrameVec::const_iterator m_currentFrame;
-        KeyFrameVec::const_iterator m_nextFrame;
-        uint32 m_pathTime;
+        KeyFrameVec::const_iterator m_currentFrame;         // 当前所在路径关键帧迭代器
+        KeyFrameVec::const_iterator m_nextFrame;            // 下一路径关键帧迭代器
+        uint32 m_pathTime;                                  // 路径总时间
 
-        uint32 m_period;
+        uint32 m_period;                                    // 完整循环周期（毫秒）
 
-        TransportTemplate const& m_transportTemplate;
+        TransportTemplate const& m_transportTemplate;       // 运输载具模板引用
 };
 #endif

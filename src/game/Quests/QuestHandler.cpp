@@ -31,6 +31,7 @@
 #include "Groups/Group.h"
 #include "Tools/Formulas.h"
 
+// 处理查询单个任务发布者状态请求（CMSG_QUESTGIVER_STATUS_QUERY）
 void WorldSession::HandleQuestgiverStatusQueryOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -52,7 +53,7 @@ void WorldSession::HandleQuestgiverStatusQueryOpcode(WorldPacket& recv_data)
         {
             Creature* cr_questgiver = (Creature*)questgiver;
 
-            if (_player->CanInteract(static_cast<Unit*>(questgiver)))       // not show quest status to enemies
+            if (_player->CanInteract(static_cast<Unit*>(questgiver)))       // not show quest status to enemies (不向敌对单位显示任务状态)
             {
                 dialogStatus = sScriptDevAIMgr.GetDialogStatus(_player, cr_questgiver);
 
@@ -79,10 +80,11 @@ void WorldSession::HandleQuestgiverStatusQueryOpcode(WorldPacket& recv_data)
             break;
     }
 
-    // inform client about status of quest
+    // inform client about status of quest (向客户端下发任务发布者头顶标记状态)
     _player->GetPlayerMenu()->SendQuestGiverStatus(dialogStatus, guid);
 }
 
+// 处理与任务 NPC 对话问候请求（CMSG_QUESTGIVER_HELLO）
 void WorldSession::HandleQuestgiverHelloOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -97,7 +99,7 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // Stop the npc if moving
+    // Stop the npc if moving (交互时暂停 NPC 的路径移动)
     if (uint32 pauseTimer = pCreature->GetInteractionPauseTimer())
         pCreature->GetMotionMaster()->PauseWaypoints(pauseTimer);
 
@@ -108,6 +110,7 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPacket& recv_data)
     _player->SendPreparedGossip(pCreature);
 }
 
+// 处理玩家接取任务请求（CMSG_QUESTGIVER_ACCEPT_QUEST）：校验给予者、前置条件、队友共享确认与触发法术
 void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -121,7 +124,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
 
     Object* pObject = _player->GetObjectByTypeMask(guid, TYPEMASK_CREATURE_GAMEOBJECT_PLAYER_OR_ITEM);
 
-    // no or incorrect quest giver
+    // no or incorrect quest giver (校验给予者是否合法且确实提供或可共享该任务)
     if (!pObject
             || (pObject->GetTypeId() != TYPEID_PLAYER && !pObject->HasQuest(quest))
             || (pObject->GetTypeId() == TYPEID_PLAYER && !((Player*)pObject)->CanShareQuest(quest))
@@ -135,7 +138,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
     Quest const* qInfo = sObjectMgr.GetQuestTemplate(quest);
     if (qInfo)
     {
-        // prevent cheating
+        // prevent cheating (防作弊检查：确认玩家满足接取条件)
         if (!GetPlayer()->CanTakeQuest(qInfo, true))
         {
             _player->GetPlayerMenu()->CloseGossip();
@@ -151,7 +154,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
 
         if (_player->CanAddQuest(qInfo, true))
         {
-            _player->AddQuest(qInfo, pObject);              // pObject (if it item) can be destroyed at call
+            _player->AddQuest(qInfo, pObject);              // pObject (if it item) can be destroyed at call (若由物品触发接取，AddQuest 可能销毁该物品)
 
             if (qInfo->HasQuestFlag(QUEST_FLAGS_PARTY_ACCEPT))
             {
@@ -161,14 +164,14 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
                     {
                         Player* pPlayer = itr->getSource();
 
-                        if (!pPlayer || pPlayer == _player || !pPlayer->IsInWorld()) // not self
+                        if (!pPlayer || pPlayer == _player || !pPlayer->IsInWorld()) // not self (跳过自己及不在线队员)
                             continue;
 
                         if (pPlayer->CanTakeQuest(qInfo, true))
                         {
                             pPlayer->SetDividerGuid(_player->GetObjectGuid());
 
-                            // need confirmation that any gossip window will close
+                            // need confirmation that any gossip window will close (关闭队员当前对话窗口后弹出任务确认框)
                             pPlayer->GetPlayerMenu()->CloseGossip();
 
                             _player->SendQuestConfirmAccept(qInfo, pPlayer);
@@ -192,6 +195,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
     _player->GetPlayerMenu()->CloseGossip();
 }
 
+// 处理查询任务详情请求（CMSG_QUESTGIVER_QUERY_QUEST）
 void WorldSession::HandleQuestgiverQueryQuestOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -201,6 +205,7 @@ void WorldSession::HandleQuestgiverQueryQuestOpcode(WorldPacket& recv_data)
     DEBUG_LOG("WORLD: Received opcode CMSG_QUESTGIVER_QUERY_QUEST - for %s to %s, quest = %u", _player->GetGuidStr().c_str(), guid.GetString().c_str(), quest);
 
     // Verify that the guid is valid and is a questgiver or involved in the requested quest
+    // 校验目标对象存在且与所请求的任务存在发布或交付关系
     Object* pObject = _player->GetObjectByTypeMask(guid, TYPEMASK_CREATURE_GAMEOBJECT_OR_ITEM);
     if (!pObject || (!pObject->HasQuest(quest) && !pObject->HasInvolvedQuest(quest)))
     {
@@ -212,6 +217,7 @@ void WorldSession::HandleQuestgiverQueryQuestOpcode(WorldPacket& recv_data)
         _player->GetPlayerMenu()->SendQuestGiverQuestDetails(pQuest, pObject->GetObjectGuid(), true);
 }
 
+// 处理客户端查询任务模板信息请求（CMSG_QUEST_QUERY），按会话语言返回 SMSG_QUEST_QUERY_RESPONSE
 void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
 {
     uint32 quest;
@@ -250,38 +256,38 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
             }
         }
 
-        WorldPacket data(SMSG_QUEST_QUERY_RESPONSE, 100);       // guess size
+        WorldPacket data(SMSG_QUEST_QUERY_RESPONSE, 100);       // guess size (预估包长)
 
-        data << uint32(pQuest->GetQuestId());                   // quest id
-        data << uint32(pQuest->GetQuestMethod());               // Accepted values: 0, 1 or 2. 0==IsAutoComplete() (skip objectives/details)
-        data << int32(pQuest->GetQuestLevel());                 // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client)
-        data << uint32(pQuest->GetZoneOrSort());                // zone or sort to display in quest log
+        data << uint32(pQuest->GetQuestId());                   // quest id (任务 ID)
+        data << uint32(pQuest->GetQuestMethod());               // Accepted values: 0, 1 or 2. 0==IsAutoComplete() (skip objectives/details) (接取方式：0 表示自动完成，跳过详情/目标)
+        data << int32(pQuest->GetQuestLevel());                 // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client) (静态任务等级，-1 表示随玩家等级动态计算)
+        data << uint32(pQuest->GetZoneOrSort());                // zone or sort to display in quest log (任务日志中的区域或分类排序 ID)
 
-        data << uint32(pQuest->GetType());                      // quest type
-        data << uint32(pQuest->GetSuggestedPlayers());          // suggested players count
+        data << uint32(pQuest->GetType());                      // quest type (任务类型)
+        data << uint32(pQuest->GetSuggestedPlayers());          // suggested players count (建议人数)
 
-        data << uint32(pQuest->GetRepObjectiveFaction());       // shown in quest log as part of quest objective
-        data << uint32(pQuest->GetRepObjectiveValue());         // shown in quest log as part of quest objective
+        data << uint32(pQuest->GetRepObjectiveFaction());       // shown in quest log as part of quest objective (任务目标要求声望阵营)
+        data << uint32(pQuest->GetRepObjectiveValue());         // shown in quest log as part of quest objective (任务目标要求声望值)
 
-        data << uint32(0);                                      // RequiredOpositeRepFaction
+        data << uint32(0);                                      // RequiredOpositeRepFaction (对立阵营声望需求，未使用)
         data << uint32(0);                                      // RequiredOpositeRepValue, required faction value with another (oposite) faction (objective)
 
-        data << uint32(pQuest->GetNextQuestInChain());          // client will request this quest from NPC, if not 0
+        data << uint32(pQuest->GetNextQuestInChain());          // client will request this quest from NPC, if not 0 (任务链中的后续任务 ID)
 
         if (pQuest->HasQuestFlag(QUEST_FLAGS_HIDDEN_REWARDS))
-            data << uint32(0);                                  // Hide money rewarded
+            data << uint32(0);                                  // Hide money rewarded (隐藏奖励金币)
         else
-            data << uint32(pQuest->GetRewOrReqMoney());         // reward money (below max lvl)
+            data << uint32(pQuest->GetRewOrReqMoney());         // reward money (below max lvl) (奖励或需求金币)
 
-        data << uint32(pQuest->GetRewMoneyMaxLevel());          // used in XP calculation at client
-        data << uint32(pQuest->GetRewSpell());                  // reward spell, this spell will display (icon) (casted if RewSpellCast==0)
-        data << uint32(pQuest->GetRewSpellCast());              // casted spell
+        data << uint32(pQuest->GetRewMoneyMaxLevel());          // used in XP calculation at client (满级折算金币，客户端也据此推算经验)
+        data << uint32(pQuest->GetRewSpell());                  // reward spell, this spell will display (icon) (casted if RewSpellCast==0) (展示用奖励法术图标)
+        data << uint32(pQuest->GetRewSpellCast());              // casted spell (交任务时实际施放的奖励法术)
 
-        // rewarded honor points
+        // rewarded honor points (奖励荣誉点数)
         data << uint32(MaNGOS::Honor::hk_honor_at_level(GetCurrentPlayerLevel(), pQuest->GetRewHonorableKills()));
-        data << uint32(pQuest->GetSrcItemId());                 // source item id
-        data << uint32(pQuest->GetQuestFlags());                // quest flags
-        data << uint32(pQuest->GetCharTitleId());               // CharTitleId, new 2.4.0, player gets this title (id from CharTitles)
+        data << uint32(pQuest->GetSrcItemId());                 // source item id (接取附带物品 ID)
+        data << uint32(pQuest->GetQuestFlags());                // quest flags (任务标志位)
+        data << uint32(pQuest->GetCharTitleId());               // CharTitleId, new 2.4.0, player gets this title (id from CharTitles) (2.4.0 新增奖励头衔 ID)
 
         uint32 iI;
 
@@ -320,7 +326,7 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
         {
             if (pQuest->ReqCreatureOrGOId[iI] < 0)
             {
-                // client expected gameobject template id in form (id|0x80000000)
+                // client expected gameobject template id in form (id|0x80000000) (负值表示游戏对象，客户端要求最高位置 1)
                 data << uint32((pQuest->ReqCreatureOrGOId[iI] * (-1)) | 0x80000000);
             }
             else
@@ -341,6 +347,7 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
     }
 }
 
+// 处理玩家选择任务奖励并交付任务请求（CMSG_QUESTGIVER_CHOOSE_REWARD）
 void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPacket& recv_data)
 {
     uint32 quest, reward;
@@ -372,7 +379,7 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPacket& recv_data)
         {
             _player->RewardQuest(pQuest, reward, pObject);
 
-            // Send next quest
+            // Send next quest (若存在后续连锁任务，立即推送给客户端)
             if (Quest const* nextquest = _player->GetNextQuest(guid, pQuest))
                 _player->GetPlayerMenu()->SendQuestGiverQuestDetails(nextquest, guid, true);
         }
@@ -381,6 +388,7 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPacket& recv_data)
     }
 }
 
+// 处理玩家请求展示任务奖励界面（CMSG_QUESTGIVER_REQUEST_REWARD）
 void WorldSession::HandleQuestgiverRequestRewardOpcode(WorldPacket& recv_data)
 {
     uint32 quest;
@@ -406,6 +414,7 @@ void WorldSession::HandleQuestgiverRequestRewardOpcode(WorldPacket& recv_data)
         _player->GetPlayerMenu()->SendQuestGiverOfferReward(pQuest, guid, true);
 }
 
+// 处理取消任务对话界面（CMSG_QUESTGIVER_CANCEL）
 void WorldSession::HandleQuestgiverCancel(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_QUESTGIVER_CANCEL");
@@ -413,6 +422,7 @@ void WorldSession::HandleQuestgiverCancel(WorldPacket& /*recv_data*/)
     _player->GetPlayerMenu()->CloseGossip();
 }
 
+// 处理交换任务日志槽位请求（CMSG_QUESTLOG_SWAP_QUEST）
 void WorldSession::HandleQuestLogSwapQuest(WorldPacket& recv_data)
 {
     uint8 slot1, slot2;
@@ -426,6 +436,7 @@ void WorldSession::HandleQuestLogSwapQuest(WorldPacket& recv_data)
     GetPlayer()->SwapQuestSlot(slot1, slot2);
 }
 
+// 处理玩家放弃任务请求（CMSG_QUESTLOG_REMOVE_QUEST）：回收任务起始物品、移除限时任务并重置状态
 void WorldSession::HandleQuestLogRemoveQuest(WorldPacket& recv_data)
 {
     uint8 slot;
@@ -438,7 +449,7 @@ void WorldSession::HandleQuestLogRemoveQuest(WorldPacket& recv_data)
         if (uint32 quest = _player->GetQuestSlotQuestId(slot))
         {
             if (!_player->TakeQuestSourceItem(quest, true))
-                return;                                     // can't un-equip some items, reject quest cancel
+                return;                                     // can't un-equip some items, reject quest cancel (部分任务物品无法卸下时拒绝放弃)
 
             if (const Quest* pQuest = sObjectMgr.GetQuestTemplate(quest))
             {
@@ -463,6 +474,7 @@ void WorldSession::HandleQuestLogRemoveQuest(WorldPacket& recv_data)
     }
 }
 
+// 处理队员确认接取全队共享任务请求（CMSG_QUEST_CONFIRM_ACCEPT）
 void WorldSession::HandleQuestConfirmAccept(WorldPacket& recv_data)
 {
     uint32 quest;
@@ -492,12 +504,13 @@ void WorldSession::HandleQuestConfirmAccept(WorldPacket& recv_data)
         }
 
         if (_player->CanAddQuest(pQuest, true))
-            _player->AddQuest(pQuest, nullptr);                // nullptr, this prevent DB script from duplicate running
+            _player->AddQuest(pQuest, nullptr);                // nullptr, this prevent DB script from duplicate running (传入 nullptr 避免重复触发任务接取脚本)
 
         _player->ClearDividerGuid();
     }
 }
 
+// 处理请求交付任务物品界面（CMSG_QUESTGIVER_COMPLETE_QUEST）
 void WorldSession::HandleQuestgiverCompleteQuest(WorldPacket& recv_data)
 {
     uint32 quest;
@@ -524,11 +537,13 @@ void WorldSession::HandleQuestgiverCompleteQuest(WorldPacket& recv_data)
     }
 }
 
+// 处理任务自动弹出通知（CMSG_QUESTGIVER_QUEST_AUTOLAUNCH）
 void WorldSession::HandleQuestgiverQuestAutoLaunch(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_QUESTGIVER_QUEST_AUTOLAUNCH");
 }
 
+// 处理将任务推送分享给小队/团队成员（CMSG_PUSHQUESTTOPARTY）
 void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
 {
     uint32 questId;
@@ -550,7 +565,7 @@ void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
             {
                 Player* pPlayer = itr->getSource();
 
-                if (!pPlayer || pPlayer == _player || !pPlayer->IsInWorld())         // skip self
+                if (!pPlayer || pPlayer == _player || !pPlayer->IsInWorld())         // skip self (跳过自己与未进入世界的队员)
                     continue;
 
                 _player->SendPushToPartyResponse(pPlayer, QUEST_PARTY_MSG_SHARING_QUEST);
@@ -598,6 +613,7 @@ void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
     }
 }
 
+// 处理任务分享结果回执并转发给发起分享的玩家（MSG_QUEST_PUSH_RESULT）
 void WorldSession::HandleQuestPushResult(WorldPacket& recvPacket)
 {
     ObjectGuid guid;
@@ -610,7 +626,7 @@ void WorldSession::HandleQuestPushResult(WorldPacket& recvPacket)
     {
         WorldPacket data(MSG_QUEST_PUSH_RESULT, (8 + 1));
         data << ObjectGuid(guid);
-        data << uint8(msg);                             // valid values: 0-8
+        data << uint8(msg);                             // valid values: 0-8 (有效枚举值 0~8)
         pPlayer->GetSession()->SendPacket(data);
         _player->ClearDividerGuid();
     }
@@ -618,9 +634,10 @@ void WorldSession::HandleQuestPushResult(WorldPacket& recvPacket)
 
 /**
  * What - if any - kind of explanation mark or question-mark should a quest-giver display for a player
- * @param pPlayer - for whom
- * @param questgiver - from whom
- * @param defstatus - initial set status (usually it will be called with DIALOG_STATUS_NONE) - must not be DIALOG_STATUS_UNDEFINED
+ * 计算任务发布者（NPC 或游戏对象）应对指定玩家显示的感叹号/问号标记状态
+ * @param pPlayer - for whom (目标玩家)
+ * @param questgiver - from whom (任务发布者)
+ * @param defstatus - initial set status (usually it will be called with DIALOG_STATUS_NONE) - must not be DIALOG_STATUS_UNDEFINED (初始默认状态，不能为 DIALOG_STATUS_UNDEFINED)
  */
 uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questgiver, uint32 defstatus) const
 {
@@ -628,8 +645,8 @@ uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questg
 
     uint32 dialogStatus = defstatus;
 
-    QuestRelationsMapBounds rbounds;                        // QuestRelations (quest-giver)
-    QuestRelationsMapBounds irbounds;                       // InvolvedRelations (quest-finisher)
+    QuestRelationsMapBounds rbounds;                        // QuestRelations (quest-giver) (任务发布关系)
+    QuestRelationsMapBounds irbounds;                       // InvolvedRelations (quest-finisher) (任务交付关系)
 
     switch (questgiver->GetTypeId())
     {
@@ -646,12 +663,12 @@ uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questg
             break;
         }
         default:
-            // it's impossible, but check ^)
+            // it's impossible, but check ^) (理论上不会出现的对象类型，防御性日志)
             sLog.outError("Warning: GetDialogStatus called for unexpected type %u", questgiver->GetTypeId());
             return DIALOG_STATUS_NONE;
     }
 
-    // Check markings for quest-finisher
+    // Check markings for quest-finisher (先检查作为交付者的可交/进行中任务标记)
     for (QuestRelationsMap::const_iterator itr = irbounds.first; itr != irbounds.second; ++itr)
     {
         uint32 dialogStatusNew = DIALOG_STATUS_NONE;
@@ -674,7 +691,7 @@ uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questg
             dialogStatus = dialogStatusNew;
     }
 
-    // check markings for quest-giver
+    // check markings for quest-giver (再检查作为发布者的可接/不可接任务标记，取最高优先级)
     for (QuestRelationsMap::const_iterator itr = rbounds.first; itr != rbounds.second; ++itr)
     {
         uint32 dialogStatusNew = DIALOG_STATUS_NONE;
@@ -687,6 +704,7 @@ uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questg
         QuestStatus status = pPlayer->GetQuestStatus(quest_id);
 
         // A failed quest is offered again. For all other cases the mark is handled either at some place else, or with involved-relations already
+        // 已失败任务允许重新接取；其余状态已在交付关系或其它分支处理
         if (status == QUEST_STATUS_NONE || status == QUEST_STATUS_FAILED)
         {
             if (pPlayer->CanSeeStartQuest(pQuest))
@@ -721,6 +739,7 @@ uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questg
     return dialogStatus;
 }
 
+// 处理批量查询附近 NPC 任务状态请求（CMSG_QUESTGIVER_STATUS_MULTIPLE_QUERY）
 void WorldSession::HandleQuestgiverStatusMultipleQuery(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_QUESTGIVER_STATUS_MULTIPLE_QUERY");
@@ -729,6 +748,7 @@ void WorldSession::HandleQuestgiverStatusMultipleQuery(WorldPacket& /*recvPacket
     _player->SendQuestGiverStatusMultiple();
 }
 
+// 校验玩家当前是否可与指定任务发布者（NPC、游戏对象或任务物品）安全交互
 bool WorldSession::CanInteractWithQuestGiver(ObjectGuid guid, char const* descr) const
 {
     if (guid.IsCreature())

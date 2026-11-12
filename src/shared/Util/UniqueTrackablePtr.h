@@ -22,7 +22,7 @@
 
 namespace MaNGOS
 {
-// C++20 utilities
+// C++20 utilities | C++20 数组类型特征辅助模板
 template <typename T>
 inline constexpr bool is_bounded_array_v = std::is_array_v<T> && std::extent_v<T> != 0;
 
@@ -42,6 +42,7 @@ class unique_strong_ref_ptr;
  * \brief Specialized variant of std::shared_ptr that enforces unique ownership and/or std::unique_ptr with std::weak_ptr capabilities
  * Implementation has the same overhead as a std::shared_ptr, that is, a separate allocation for control block that holds use counters
  * \tparam T Type of held object
+ * 强制独占所有权且支持弱引用追踪的智能指针（基于 std::shared_ptr 控制块实现，兼具 unique_ptr 语义与 weak_ptr 观察能力）
  */
 template <typename T>
 class unique_trackable_ptr
@@ -161,6 +162,7 @@ private:
 /**
  * \brief Trinity::unique_trackable_ptr companion class, replicating what std::weak_ptr is to std::shared_ptr
  * \tparam T Type of held object
+ * 与 unique_trackable_ptr 配套的弱引用观察指针（类似 std::weak_ptr）
  */
 template <typename T>
 class unique_weak_ptr
@@ -248,6 +250,7 @@ private:
  * to prevent it from being deallocated by another thread while it is being actively accessed.
  * This class is non-movable and non-copypable and is intended only for short lived local variables
  * \tparam T Type of held object
+ * unique_weak_ptr::lock() 返回的临时强引用守卫对象：在作用域内防止被其他线程释放，不可拷贝或移动，仅限局部短生命周期使用
  */
 template <typename T>
 class unique_strong_ref_ptr
@@ -323,7 +326,7 @@ private:
     std::shared_ptr<element_type> _ptr;
 };
 
-// Ugly macros that will become unneccessary with C++20 operator<=>
+// Ugly macros that will become unneccessary with C++20 operator<=> | 比较运算符批量生成宏（C++20 引入 <=> 后可简化）
 #define UNIQUE_TRACKABLE_COMPARISON_OPERATOR(cls, op) \
 template <typename T1, typename T2> \
 bool operator op (cls <T1> const& left, cls <T2> const& right) { return left.get() op right.get(); }
@@ -346,7 +349,7 @@ bool operator op (std::nullptr_t, cls <T1> const& right) { return static_cast<ty
     UNIQUE_TRACKABLE_COMPARISON_OPERATORS(UNIQUE_TRACKABLE_COMPARISON_OPERATOR, cls) \
     UNIQUE_TRACKABLE_COMPARISON_OPERATORS(UNIQUE_TRACKABLE_COMPARISON_OPERATOR_NULLPTR, cls)
 
-// unique_trackable_ptr funcions
+// unique_trackable_ptr funcions | unique_trackable_ptr 比较运算符及工厂函数
 UNIQUE_TRACKABLE_COMPARISON_OPERATORS_FOR_CLASS(unique_trackable_ptr)
 
 template <typename T, typename... Args>
@@ -389,7 +392,7 @@ std::enable_if_t<is_bounded_array_v<T>, unique_trackable_ptr<T>> make_unique_tra
     return ptr;
 }
 
-// unique_weak_ptr funcions
+// unique_weak_ptr funcions | unique_weak_ptr 指针类型转换辅助函数
 
 template <class To, class From>
 unique_weak_ptr<To> static_pointer_cast(unique_weak_ptr<From> const& other)
@@ -423,7 +426,7 @@ unique_weak_ptr<To> dynamic_pointer_cast(unique_weak_ptr<From> const& other)
     return to;
 }
 
-// unique_strong_ref_ptr funcions
+// unique_strong_ref_ptr funcions | unique_strong_ref_ptr 比较运算符与指针转换函数
 UNIQUE_TRACKABLE_COMPARISON_OPERATORS_FOR_CLASS(unique_strong_ref_ptr)
 
 template <class To, class From>

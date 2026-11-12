@@ -23,6 +23,7 @@
 #include "LFG/LFGDefines.h"
 #include "LFG/LFGQueue.h"
 
+/// 处理开启 LFG 自动入队选项
 void WorldSession::HandleLfgSetAutoJoinOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("CMSG_LFG_SET_AUTOJOIN");
@@ -44,6 +45,7 @@ void WorldSession::HandleLfgSetAutoJoinOpcode(WorldPacket& /*recv_data*/)
     SendPacket(data);
 }
 
+/// 处理关闭 LFG 自动入队选项
 void WorldSession::HandleLfgClearAutoJoinOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("CMSG_LFG_CLEAR_AUTOJOIN");
@@ -59,6 +61,7 @@ void WorldSession::HandleLfgClearAutoJoinOpcode(WorldPacket& /*recv_data*/)
     }
 }
 
+/// 处理开启 LFM 自动补员选项（校验非团本且为队长）
 void WorldSession::HandleLfmSetAutoFillOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("CMSG_LFM_SET_AUTOFILL");
@@ -94,6 +97,7 @@ void WorldSession::HandleLfmSetAutoFillOpcode(WorldPacket& /*recv_data*/)
     SendPacket(data);
 }
 
+/// 处理关闭 LFM 自动补员选项
 void WorldSession::HandleLfmClearAutoFillOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("CMSG_LFM_CLEAR_AUTOFILL");
@@ -109,6 +113,7 @@ void WorldSession::HandleLfmClearAutoFillOpcode(WorldPacket& /*recv_data*/)
     }
 }
 
+/// 处理清空寻找队伍（LFG）状态
 void WorldSession::HandleLfgClearOpcode(WorldPacket& /*recv_data */)
 {
     DEBUG_LOG("CMSG_CLEAR_LOOKING_FOR_GROUP");
@@ -123,6 +128,7 @@ void WorldSession::HandleLfgClearOpcode(WorldPacket& /*recv_data */)
     });
 }
 
+/// 处理设置寻找队伍（LFG）指定槽位的活动/副本
 void WorldSession::HandleSetLfgOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("CMSG_SET_LOOKING_FOR_GROUP");
@@ -184,6 +190,7 @@ void WorldSession::HandleSetLfgOpcode(WorldPacket& recv_data)
     });
 }
 
+/// 处理清空寻求队员（LFM）状态
 void WorldSession::HandleLfmClearOpcode(WorldPacket& /*recv_data */)
 {
     DEBUG_LOG("CMSG_CLEAR_LOOKING_FOR_MORE");
@@ -194,6 +201,7 @@ void WorldSession::HandleLfmClearOpcode(WorldPacket& /*recv_data */)
     });
 }
 
+/// 处理设置寻求队员（LFM）目标副本/活动
 void WorldSession::HandleSetLfmOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("CMSG_SET_LOOKING_FOR_MORE");
@@ -257,6 +265,7 @@ void WorldSession::HandleSetLfmOpcode(WorldPacket& recv_data)
     });
 }
 
+/// 处理设置 LFG/LFM 附带说明文本
 void WorldSession::HandleSetLfgCommentOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("CMSG_SET_LFG_COMMENT");
@@ -273,6 +282,7 @@ void WorldSession::HandleSetLfgCommentOpcode(WorldPacket& recv_data)
     DEBUG_LOG("LFG comment %s", comment.c_str());
 }
 
+/// 处理查询指定副本/活动下的在线求组与招募列表
 void WorldSession::HandleLFGListQuery(WorldPacket& recv_data)
 {
     DEBUG_LOG("MSG_LOOKING_FOR_GROUP");
@@ -328,6 +338,7 @@ void WorldSession::SendLFGUpdateLFM()
     });
 }
 
+/// 处理玩家确认或拒绝 LFG 匹配组队请求
 void WorldSession::HandleLfgAcceptLfgMatch(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("CMSG_ACCEPT_LFG_MATCH");

@@ -21,10 +21,18 @@ SDComment:
 SDCategory: Black Temple
 EndScriptData */
 
+// 阿卡玛之影（黑暗神殿三号首领）
+/* 遭遇战概述：
+ * 阿卡玛之影是阿卡玛被邪能剥离的堕落灵魂；
+ * 战斗中阿卡玛引导者和通灵者会持续束缚影子，召唤大量的暗影构装体和灰舌防御者向阿卡玛进军；
+ * 玩家需击杀所有引导者打破束缚，协助阿卡玛战胜影子夺回灵魂。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // yells
@@ -152,6 +160,7 @@ static const Position brokenDestinationLocations[] =
     {478.1014f, 433.3450f, 112.7839f},
 };
 
+// AkamaActions 相关枚举
 enum AkamaActions
 {
     AKAMA_ACTION_LOW_HEALTH,
@@ -164,6 +173,7 @@ enum AkamaActions
 ## npc_akama
 ######*/
 
+// npc_akamaAI 逻辑实现
 struct npc_akamaAI : public CombatAI, private DialogueHelper
 {
     npc_akamaAI(Creature* creature) : CombatAI(creature, AKAMA_ACTION_MAX),
@@ -182,6 +192,7 @@ struct npc_akamaAI : public CombatAI, private DialogueHelper
 
     GuidList m_lBrokenGUIDList;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -287,6 +298,7 @@ struct npc_akamaAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -401,6 +413,7 @@ struct npc_akamaAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -429,6 +442,7 @@ struct npc_akamaAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         UpdateTimers(diff, m_creature->IsInCombat());
@@ -453,6 +467,7 @@ struct npc_akamaAI : public CombatAI, private DialogueHelper
     }
 };
 
+// NPC 对话开始交互回调
 bool GossipHello_npc_akama(Player* pPlayer, Creature* pCreature)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
@@ -465,6 +480,7 @@ bool GossipHello_npc_akama(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
+// NPC 对话选项选择回调
 bool GossipSelect_npc_akama(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)             // Fight time
@@ -482,6 +498,7 @@ bool GossipSelect_npc_akama(Player* pPlayer, Creature* pCreature, uint32 /*uiSen
 ## boss_shade_of_akama
 ######*/
 
+// boss_shade_of_akamaAI 逻辑实现
 struct boss_shade_of_akamaAI : public ScriptedAI
 {
     boss_shade_of_akamaAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_black_temple*>(creature->GetInstanceData()))
@@ -491,6 +508,7 @@ struct boss_shade_of_akamaAI : public ScriptedAI
 
     instance_black_temple* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         SetCombatMovement(false);
@@ -567,6 +585,7 @@ struct boss_shade_of_akamaAI : public ScriptedAI
 ## mob_ashtongue_channeler
 ######*/
 
+// mob_ashtongue_channelerAI 逻辑实现
 struct mob_ashtongue_channelerAI : public ScriptedAI
 {
     mob_ashtongue_channelerAI(Creature* creature) : ScriptedAI(creature)
@@ -580,6 +599,7 @@ struct mob_ashtongue_channelerAI : public ScriptedAI
 
     uint32 m_uiBanishTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiBanishTimer = 5000;
@@ -616,6 +636,7 @@ struct mob_ashtongue_channelerAI : public ScriptedAI
 ## mob_ashtongue_sorcerer
 ######*/
 
+// mob_ashtongue_sorcererAI 逻辑实现
 struct mob_ashtongue_sorcererAI : public ScriptedAI
 {
     mob_ashtongue_sorcererAI(Creature* creature) : ScriptedAI(creature)
@@ -626,8 +647,10 @@ struct mob_ashtongue_sorcererAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (!m_instance)
@@ -654,6 +677,7 @@ struct mob_ashtongue_sorcererAI : public ScriptedAI
     void UpdateAI(const uint32 /*uiDiff*/) override {}
 };
 
+// npc_creature_generatorAI 逻辑实现
 struct npc_creature_generatorAI : public ScriptedAI
 {
     npc_creature_generatorAI(Creature* creature) : ScriptedAI(creature), m_spawn(false), m_left(creature->GetPositionY() > 400.f)
@@ -667,11 +691,13 @@ struct npc_creature_generatorAI : public ScriptedAI
     GuidVector m_summoned;
     instance_black_temple* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
 
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -712,6 +738,7 @@ struct npc_creature_generatorAI : public ScriptedAI
                     return;
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         m_summoned.push_back(summoned->GetObjectGuid());
@@ -767,6 +794,7 @@ struct npc_creature_generatorAI : public ScriptedAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         ScriptedAI::UpdateAI(diff);
@@ -776,6 +804,7 @@ struct npc_creature_generatorAI : public ScriptedAI
     }
 };
 
+// 注册 boss_shade_of_akama 脚本
 void AddSC_boss_shade_of_akama()
 {
     Script* pNewScript = new Script;

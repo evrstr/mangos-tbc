@@ -26,23 +26,26 @@
 
 class Map;
 
+/// 世界状态表达式操作数类型
 enum class WorldStateExpressionValueType : uint8
 {
-    CONSTANT    = 1,
-    WORLDSTATE  = 2,
-    FUNCTION    = 3
+    CONSTANT    = 1,                                        ///< 整型常量
+    WORLDSTATE  = 2,                                        ///< 读取指定 ID 的世界状态变量
+    FUNCTION    = 3                                         ///< 调用内置求值函数
 };
 
+/// 世界状态表达式二元算术运算符
 enum class WorldStateExpressionOperatorType : uint8
 {
     NONE            = 0,
-    SUM             = 1,
-    SUBTRACTION     = 2,
-    MULTIPLICATION  = 3,
-    DIVISION        = 4,
-    REMAINDER       = 5,
+    SUM             = 1,                                    ///< 加法
+    SUBTRACTION     = 2,                                    ///< 减法
+    MULTIPLICATION  = 3,                                    ///< 乘法
+    DIVISION        = 4,                                    ///< 整除（除数为 0 返回 0）
+    REMAINDER       = 5,                                    ///< 取余（除数为 0 返回 0）
 };
 
+/// 世界状态表达式内置求值函数编号
 enum WorldStateExpressionFunctions
 {
     WSE_FUNCTION_NONE = 0,
@@ -88,19 +91,24 @@ enum WorldStateExpressionFunctions
     WSE_FUNCTION_MAX,
 };
 
+/// 世界状态表达式数据库条目（十六进制字节码表达式）
 struct WorldStateExpressionEntry
 {
     uint32 Id;
     std::string Expression;
 };
 
+/// 世界状态表达式管理器：负责从 worldstate_expression 表加载并按地图上下文求值
 class WorldStateExpressionMgr
 {
     public:
+        /// 从数据库加载全部世界状态表达式定义
         std::shared_ptr<std::map<int32, WorldStateExpressionEntry>> Load();
 
+        /// 在指定地图上下文中求值判断表达式 Id 是否满足条件
         bool Meets(Map const* map, int32 Id);
 
+        /// 检查指定 ID 的世界状态表达式是否存在
         bool Exists(int32 Id);
 
         std::shared_ptr<std::map<int32, WorldStateExpressionEntry>> Get() { return m_expressions; }

@@ -24,6 +24,7 @@
 Measurement::Measurement(std::string measurement, std::map<std::string, std::string> tags, std::map<std::string, boost::any> fields,uint64 timestamp)
     : _measurement(measurement), _tags(tags), _fields(fields)
 {
+    // 未显式传入时间戳时，取当前系统时钟的纳秒级纪元时间
     if (!timestamp)
     {
         auto now = std::chrono::system_clock::now();
@@ -35,6 +36,7 @@ Measurement::Measurement(std::string measurement, std::map<std::string, std::str
 
 std::stringstream& operator<<(std::stringstream& out, const Measurement& measurement)
 {
+    // 按 InfluxDB 行协议格式输出：<measurement>,<tags> <fields> <timestamp>
     out << measurement._measurement;
 
     for (const auto& tag : measurement._tags)

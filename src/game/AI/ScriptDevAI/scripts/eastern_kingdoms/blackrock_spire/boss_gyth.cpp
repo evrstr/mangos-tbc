@@ -21,23 +21,27 @@ SDComment: Timers may need adjustments
 SDCategory: Blackrock Spire
 EndScriptData */
 
+// 盖斯与雷德·黑手（Gyth & Rend Blackhand）首领战 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackrock_spire.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_NEFARIUS_BUFF_GYTH  = -1229017,
-    EMOTE_KNOCKED_OFF       = -1229019,
+    SAY_NEFARIUS_BUFF_GYTH  = -1229017,                     // 奈法利奥斯增益盖斯 台词广播 ID
+    EMOTE_KNOCKED_OFF       = -1229019,                     // knockedoff 表情动作 ID
 
     SPELL_CHROMATIC_CHAOS   = 16337,                // casted by Nefarius at 50%
-    SPELL_REND_MOUNTS       = 16167,
-    SPELL_SUMMON_REND       = 16328,
-    SPELL_CORROSIVE_ACID    = 16359,
-    SPELL_FREEZE            = 16350,
-    SPELL_FLAME_BREATH      = 16390,
-    SPELL_KNOCK_AWAY        = 10101,
+    SPELL_REND_MOUNTS       = 16167,                        // 雷德mounts 法术 ID
+    SPELL_SUMMON_REND       = 16328,                        // 召唤雷德 法术 ID
+    SPELL_CORROSIVE_ACID    = 16359,                        // 腐蚀性酸液 法术 ID
+    SPELL_FREEZE            = 16350,                        // freeze 法术 ID
+    SPELL_FLAME_BREATH      = 16390,                        // 烈焰吐息 法术 ID
+    SPELL_KNOCK_AWAY        = 10101,                        // knockaway 法术 ID
 };
 
+// 首领战 AI：标识 ID（gyth）
 struct boss_gythAI : public ScriptedAI
 {
     boss_gythAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -53,9 +57,10 @@ struct boss_gythAI : public ScriptedAI
     uint32 uiFlamebreathTimer;
     uint32 uiKnockAwayTimer;
 
-    bool m_bSummonedRend;
-    bool m_bHasChromaticChaos;
+    bool m_bSummonedRend;                                   // SummonedRend 状态标记
+    bool m_bHasChromaticChaos;                              // HasChromaticChaos 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         uiCorrosiveAcidTimer = 8000;
@@ -68,14 +73,16 @@ struct boss_gythAI : public ScriptedAI
         DoCastSpellIfCan(m_creature, SPELL_REND_MOUNTS);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         DoScriptText(EMOTE_KNOCKED_OFF, pSummoned);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -128,7 +135,7 @@ struct boss_gythAI : public ScriptedAI
         else
             uiKnockAwayTimer -= uiDiff;
 
-        // Summon Rend
+        // Summon Rend (召唤 Rend)
         if (!m_bSummonedRend && m_creature->GetHealthPercent() < 11.0f)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_REND) == CAST_OK)
@@ -139,15 +146,17 @@ struct boss_gythAI : public ScriptedAI
             }
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_gyth
 UnitAI* GetAI_boss_gyth(Creature* pCreature)
 {
     return new boss_gythAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_gyth
 void AddSC_boss_gyth()
 {
     Script* pNewScript = new Script;

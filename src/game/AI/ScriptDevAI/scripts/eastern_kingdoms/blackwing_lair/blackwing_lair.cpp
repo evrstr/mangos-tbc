@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 黑翼之巢（Blackwing Lair）镇压房陷阱与地精技师 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 
@@ -71,7 +73,7 @@ void instance_blackwing_lair::OnCreatureCreate(Creature* pCreature)
             // Egg room defenders attack players and Razorgore on spawn
             m_lDefendersGuids.push_back(pCreature->GetObjectGuid());
             break;
-        // Nefarian encounter
+        // Nefarian encounter (奈法利安遭遇战)
         case NPC_BLACK_SPAWNER:
         case NPC_RED_SPAWNER:
         case NPC_GREEN_SPAWNER:
@@ -192,7 +194,7 @@ void instance_blackwing_lair::SetData(uint32 uiType, uint32 uiData)
                         pOrb->AI()->EnterEvadeMode();
                 }
 
-                // Reset defenders
+                // Reset defenders (重置defenders)
                 for (GuidList::const_iterator itr = m_lDefendersGuids.begin(); itr != m_lDefendersGuids.end(); ++itr)
                 {
                     if (Creature* pDefender = instance->GetCreature(*itr))
@@ -259,7 +261,7 @@ void instance_blackwing_lair::SetData(uint32 uiType, uint32 uiData)
                 m_uiScepterEpicTimer = 2000;
                 m_uiScepterQuestStep = 0;
             }
-            // Stop timer
+            // Stop timer (Stop计时器)
             if (uiData == DONE)
                 m_uiScepterEpicTimer = 0;
             break;
@@ -449,9 +451,9 @@ bool instance_blackwing_lair::CheckConditionCriteriaMeet(Player const* pPlayer, 
 {
     switch (uiInstanceConditionId)
     {
-        case INSTANCE_CONDITION_ID_HARD_MODE:               // Event failed
+        case INSTANCE_CONDITION_ID_HARD_MODE:               // Event failed (事件failed)
             return (GetData(TYPE_QUEST_SCEPTER) == FAIL);
-        case INSTANCE_CONDITION_ID_HARD_MODE_2:             // Event succeeded
+        case INSTANCE_CONDITION_ID_HARD_MODE_2:             // Event succeeded (事件succeeded)
             return (GetData(TYPE_QUEST_SCEPTER) == DONE);
     }
 
@@ -519,7 +521,7 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
         else
             m_uiScepterEpicTimer -= uiDiff;
     }
-    // Spawn Nefarian
+    // Spawn Nefarian (生成奈法利安)
     if (m_uiNefarianSpawnTimer)
     {
         if (m_uiNefarianSpawnTimer <= uiDiff)
@@ -527,7 +529,7 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
             if (Creature* nefarius = GetSingleCreatureFromStorage(NPC_LORD_VICTOR_NEFARIUS))
             {
                 nefarius->SummonCreature(NPC_NEFARIAN, aNefarianLocs[2].x, aNefarianLocs[2].y, aNefarianLocs[2].z, 0, TEMPSPAWN_DEAD_DESPAWN, 0, true);
-                // Despawn Nefarius
+                // Despawn Nefarius (消除奈法里奥斯)
                 if (!nefarius->IsDespawned() && GetData(TYPE_NEFARIAN) == SPECIAL)
                 {
                     nefarius->CastSpell(nullptr, SPELL_SHADOWBLINK_OUTRO, TRIGGERED_OLD_TRIGGERED);
@@ -546,14 +548,14 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
     {
         if (m_uiResetTimer <= uiDiff)
         {
-            // Respawn Razorgore
+            // Respawn Razorgore (刷新拉佐格尔)
             if (Creature* pRazorgore = GetSingleCreatureFromStorage(NPC_RAZORGORE))
             {
                 if (!pRazorgore->IsAlive())
                     pRazorgore->Respawn();
             }
 
-            // Respawn the Dragon Eggs
+            // Respawn the Dragon Eggs (刷新the巨龙Eggs)
             for (GuidList::const_iterator itr = m_lDragonEggsGuids.begin(); itr != m_lDragonEggsGuids.end(); ++itr)
             {
                 if (GameObject* pEgg = instance->GetGameObject(*itr))
@@ -623,18 +625,18 @@ void instance_blackwing_lair::InitiateBreath(uint32 uiEventId)
     uint32 rightBreath = 0;
     switch (uiEventId)
     {
-        // Left Chromaggus breath
-        case 8446: leftBreath = 23187; break;  // Frost Burn
-        case 8447: leftBreath = 23308; break;  // Incinerate
-        case 8448: leftBreath = 23310; break;  // Time Lapse
-        case 8449: leftBreath = 23313; break;  // Corrosive Acid
-        case 8450: leftBreath = 23315; break;  // Ignite Flesh
-        // Right Chromaggus breath
-        case 8451: rightBreath = 23189; break;  // Frost Burn
-        case 8452: rightBreath = 23309; break;  // Incinerate
-        case 8453: rightBreath = 23312; break;  // Time Lapse
-        case 8454: rightBreath = 23314; break;  // Corrosive Acid
-        case 8455: rightBreath = 23316; break;  // Ignite Flesh
+        // Left Chromaggus breath (克洛玛古斯左头吐息)
+        case 8446: leftBreath = 23187; break;  // Frost Burn (霜燃)
+        case 8447: leftBreath = 23308; break;  // Incinerate (焚化)
+        case 8448: leftBreath = 23310; break;  // Time Lapse (时光流逝)
+        case 8449: leftBreath = 23313; break;  // Corrosive Acid (腐蚀酸液)
+        case 8450: leftBreath = 23315; break;  // Ignite Flesh (点燃肉身)
+        // Right Chromaggus breath (克洛玛古斯右头吐息)
+        case 8451: rightBreath = 23189; break;  // Frost Burn (霜燃)
+        case 8452: rightBreath = 23309; break;  // Incinerate (焚化)
+        case 8453: rightBreath = 23312; break;  // Time Lapse (时光流逝)
+        case 8454: rightBreath = 23314; break;  // Corrosive Acid (腐蚀酸液)
+        case 8455: rightBreath = 23316; break;  // Ignite Flesh (点燃肉身)
     }
     if (leftBreath)
     {
@@ -735,7 +737,7 @@ struct go_ai_suppression : public GameObjectAI
 {
     go_ai_suppression(GameObject* go) : GameObjectAI(go), m_uiFumeTimer(urand(0, 5 * IN_MILLISECONDS)) {}
 
-    uint32 m_uiFumeTimer;
+    uint32 m_uiFumeTimer;                                   // Fume 技能计时器
 
     void OnLootStateChange(Unit* /*user*/) override
     {
@@ -794,13 +796,13 @@ bool ProcessEventId_event_weekly_chromatic_selection(uint32 uiEventId, Object* p
         {
             switch (uiEventId)
             {
-                // Left Chromaggus breath
+                // Left Chromaggus breath (克洛玛古斯左头吐息)
                 case 8446:
                 case 8447:
                 case 8448:
                 case 8449:
                 case 8450:
-                // Right Chromaggus breath
+                // Right Chromaggus breath (克洛玛古斯右头吐息)
                 case 8451:
                 case 8452:
                 case 8453:
@@ -828,6 +830,7 @@ bool ProcessEventId_event_weekly_chromatic_selection(uint32 uiEventId, Object* p
     return false;
 }
 
+// 注册并载入脚本模块：instance_blackwing_lair
 void AddSC_instance_blackwing_lair()
 {
     Script* pNewScript = new Script;

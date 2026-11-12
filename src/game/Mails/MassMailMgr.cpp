@@ -35,6 +35,7 @@
 
 INSTANTIATE_SINGLETON_1(MassMailMgr);
 
+/// 按种族掩码过滤角色并提交异步群发邮件任务
 void MassMailMgr::AddMassMailTask(std::unique_ptr<MailDraft> mailProto, const MailSender& sender, uint32 raceMask)
 {
     if (RACEMASK_ALL_PLAYABLE & ~raceMask)                  // have races not included in mask
@@ -47,6 +48,7 @@ void MassMailMgr::AddMassMailTask(std::unique_ptr<MailDraft> mailProto, const Ma
         AddMassMailTask(std::move(mailProto), sender, "SELECT guid FROM characters WHERE deleteDate IS NULL");
 }
 
+/// 异步查询回调：将收件人 GUID 集合写入群发任务队列
 void HandleQueryCallback(std::unique_ptr<QueryResult> queryResult, std::unique_ptr<MailDraft> mailProto, MailSender sender)
 {
     if (!queryResult)
@@ -64,6 +66,7 @@ void HandleQueryCallback(std::unique_ptr<QueryResult> queryResult, std::unique_p
     while (queryResult->NextRow());
 }
 
+/// 执行 SQL 查询获取收件人 GUID 列表后创建群发任务（可在地图线程安全调用）
 void MassMailMgr::AddMassMailTask(std::unique_ptr<MailDraft> mailProto, const MailSender& sender, char const* query)
 {
     auto callback = [mailProto = std::move(mailProto), sender](std::unique_ptr<QueryResult> queryResult) mutable
@@ -73,6 +76,7 @@ void MassMailMgr::AddMassMailTask(std::unique_ptr<MailDraft> mailProto, const Ma
     CharacterDatabase.AsyncPQuery(std::move(callback), "%s", query);
 }
 
+/// 每次心跳按配额发送一定数量的群发邮件（sendall=true 时一次性发完）
 void MassMailMgr::Update(bool sendall /*= false*/)
 {
     if (m_massMails.empty())
@@ -120,6 +124,7 @@ void MassMailMgr::Update(bool sendall /*= false*/)
     while (!m_massMails.empty() && (sendall || maxcount > 0));
 }
 
+/// 统计当前待处理群发任务数、剩余邮件数及预计耗时（秒）
 void MassMailMgr::GetStatistic(uint32& tasks, uint32& mails, uint32& needTime) const
 {
     tasks = m_massMails.size();

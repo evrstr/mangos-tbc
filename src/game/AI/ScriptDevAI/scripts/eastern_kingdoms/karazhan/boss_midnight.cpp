@@ -21,51 +21,56 @@ SDComment:
 SDCategory: Karazhan
 EndScriptData */
 
+// 午夜与猎手阿图门（Midnight & Attumen the Huntsman）首领战 AI（人马合一多阶段）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_MIDNIGHT_KILL            = 15334,
-    SAY_APPEAR_1                 = 13459,
-    SAY_APPEAR_2                 = 15378,
-    SAY_APPEAR_3                 = 15379,
-    SAY_MOUNT                    = 13456,
-    SAY_KILL_1                   = 13460,
-    SAY_KILL_2                   = 15333,
-    SAY_DISARMED                 = 13490,
-    SAY_DEATH                    = 13462,
-    SAY_MIDNIGHT_CALL            = 13439,
+    SAY_MIDNIGHT_KILL            = 15334,                   // 午夜击杀 台词广播 ID
+    SAY_APPEAR_1                 = 13459,                   // 登场1 台词广播 ID
+    SAY_APPEAR_2                 = 15378,                   // 登场2 台词广播 ID
+    SAY_APPEAR_3                 = 15379,                   // 登场3 台词广播 ID
+    SAY_MOUNT                    = 13456,                   // 坐骑 台词广播 ID
+    SAY_KILL_1                   = 13460,                   // 击杀1 台词广播 ID
+    SAY_KILL_2                   = 15333,                   // 击杀2 台词广播 ID
+    SAY_DISARMED                 = 13490,                   // disarmed 台词广播 ID
+    SAY_DEATH                    = 13462,                   // 死亡 台词广播 ID
+    SAY_MIDNIGHT_CALL            = 13439,                   // 午夜呼唤 台词广播 ID
 
-    // Midnight					 
-    SPELL_MOUNT                  = 29770,
-    SPELL_KNOCKDOWN              = 29711,
-    SPELL_SUMMON_ATTUMEN         = 29714,
-    SPELL_SUMMON_ATTUMEN_MOUNTED = 29799,
+    // Midnight (午夜)
+    SPELL_MOUNT                  = 29770,                   // 坐骑 法术 ID
+    SPELL_KNOCKDOWN              = 29711,                   // 击倒 法术 ID
+    SPELL_SUMMON_ATTUMEN         = 29714,                   // 召唤阿图门 法术 ID
+    SPELL_SUMMON_ATTUMEN_MOUNTED = 29799,                   // 召唤阿图门骑乘形态 法术 ID
 
-    SPELL_SET_PHASE_1            = 1615101,
-    SPELL_SET_PHASE_2            = 1615102,
+    SPELL_SET_PHASE_1            = 1615101,                 // set阶段1 法术 ID
+    SPELL_SET_PHASE_2            = 1615102,                 // set阶段2 法术 ID
 
-    // Attumen
-    SPELL_SHADOWCLEAVE          = 29832,
-    SPELL_INTANGIBLE_PRESENCE   = 29833,
-    SPELL_UPPERCUT              = 29850,
-    SPELL_CHARGE                = 29847,                    // Only when mounted
+    // Attumen (阿图门)
+    SPELL_SHADOWCLEAVE          = 29832,                    // shadowcleave 法术 ID
+    SPELL_INTANGIBLE_PRESENCE   = 29833,                    // intangible存在 法术 ID
+    SPELL_UPPERCUT              = 29850,                    // 上勾拳 法术 ID
+    SPELL_CHARGE                = 29847,                    // Only when mounted (仅when骑乘形态)
 
-    // Extra
-    SPELL_SPAWN_SMOKE_1         = 10389,
-    SPELL_SPAWN_SMOKE_2         = 29802,
+    // Extra (额外技能)
+    SPELL_SPAWN_SMOKE_1         = 10389,                    // 生成smoke1 法术 ID
+    SPELL_SPAWN_SMOKE_2         = 29802,                    // 生成smoke2 法术 ID
     
-    NPC_ATTUMEN_MOUNTED         = 16152,
+    NPC_ATTUMEN_MOUNTED         = 16152,                    // 阿图门骑乘形态 Entry ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MidnightActions
 {
     MIDNIGHT_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（midnight）
 struct boss_midnightAI : public CombatAI
 {
     boss_midnightAI(Creature* creature) : CombatAI(creature, MIDNIGHT_ACTION_MAX), m_instance(static_cast<instance_karazhan*>(creature->GetInstanceData()))
@@ -80,6 +85,7 @@ struct boss_midnightAI : public CombatAI
     instance_karazhan* m_instance;
     bool m_Phase2 = false;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -89,6 +95,7 @@ struct boss_midnightAI : public CombatAI
         m_creature->SetSpellList(m_creature->GetCreatureInfo()->SpellList);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         ScriptedAI::EnterEvadeMode();
@@ -119,12 +126,14 @@ struct boss_midnightAI : public CombatAI
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_ATTUMEN, FAIL);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (m_creature->GetVictim())
@@ -135,7 +144,7 @@ struct boss_midnightAI : public CombatAI
             m_creature->SetSpellList(SPELL_SET_PHASE_2);
             m_Phase2 = true;
             DoBroadcastText(SAY_MIDNIGHT_CALL, m_creature);
-            // Smoke effect
+            // Smoke effect (烟雾视觉特效)
             summoned->CastSpell(summoned, SPELL_SPAWN_SMOKE_2, TRIGGERED_NONE);
             // Attumen yells when spawned
             switch (urand(0, 2))
@@ -147,6 +156,7 @@ struct boss_midnightAI : public CombatAI
         }  
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != POINT_MOTION_TYPE || !pointId || !m_instance)
@@ -178,6 +188,7 @@ struct boss_midnightAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum AttumenActions
 {
     ATTUMEN_MOUNT,
@@ -185,6 +196,7 @@ enum AttumenActions
     ATTUMEN_ATTACK_DELAY
 };
 
+// 首领战 AI：标识 ID（attumen）
 struct boss_attumenAI : public CombatAI
 {
     boss_attumenAI(Creature* creature) : CombatAI(creature, ATTUMEN_ACTION_MAX), m_instance(static_cast<instance_karazhan*>(creature->GetInstanceData()))
@@ -229,6 +241,7 @@ struct boss_attumenAI : public CombatAI
         }
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         ScriptedAI::EnterEvadeMode();
@@ -255,15 +268,17 @@ struct boss_attumenAI : public CombatAI
             m_instance->SetData(TYPE_ATTUMEN, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_ATTUMEN, FAIL);
 
-        // Despawn Attumen on fail
+        // Despawn Attumen on fail (消除阿图门onfail)
         m_creature->ForcedDespawn();
     }
     
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_ATTUMEN_MOUNTED)
@@ -271,7 +286,7 @@ struct boss_attumenAI : public CombatAI
             if (!m_instance)
                 return;
 
-            // Smoke effect
+            // Smoke effect (烟雾视觉特效)
             summoned->CastSpell(nullptr, SPELL_SPAWN_SMOKE_1, TRIGGERED_NONE);
 
             // The summoned has the health equal to the one which has the higher HP percentage of both
@@ -288,6 +303,7 @@ struct boss_attumenAI : public CombatAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（MidnightMount）
 struct MidnightMount : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const
@@ -313,6 +329,7 @@ struct MidnightMount : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_attumen
 void AddSC_boss_attumen()
 {
     Script* pNewScript = new Script;

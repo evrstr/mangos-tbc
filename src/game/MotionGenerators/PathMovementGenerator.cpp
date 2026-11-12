@@ -44,6 +44,7 @@ AbstractPathMovementGenerator::AbstractPathMovementGenerator(const WaypointPath*
     // NOTE:
     // Data in WaypointManager can be removed at run time, we cant really reference it and have to make a copy just in case
     // Possibly remake storage in WaypointManager with smart pointers so we can reference it instead
+    // WaypointManager 中的数据可能在运行时被重载/删除，因此此处做深拷贝；若任一节点有延迟等待则自动禁用循环模式
     m_path = *path;
     for (auto& data : m_path)
     {
@@ -58,9 +59,10 @@ AbstractPathMovementGenerator::AbstractPathMovementGenerator(const WaypointPath*
     m_spline.reserve(m_path.size());
 }
 
+/// 初始化分段样条：停止旧移动，按是否循环抽取从 m_pathIndex 到下一个停顿点（或全程闭环）的控制点
 void AbstractPathMovementGenerator::Initialize(Unit& unit)
 {
-    // Stop any previously dispatched splines no matter the source
+    // Stop any previously dispatched splines no matter the source (先中止之前的残余样条)
     if (!unit.movespline->Finalized())
     {
         if (unit.IsClientControlled())
@@ -75,9 +77,9 @@ void AbstractPathMovementGenerator::Initialize(Unit& unit)
         return;
     }
 
-    // Reload current spline points array and end orientation from path:
+    // Reload current spline points array and end orientation from path: (重新填充当前分段控制点及终点朝向)
     m_spline.clear();
-    m_spline.push_back(Vector3()); // will be set to current position
+    m_spline.push_back(Vector3()); // will be set to current position (索引 0 留作起点，Launch 时自动填为单位当前坐标)
 
     if (!m_cyclic)
     {
@@ -94,7 +96,7 @@ void AbstractPathMovementGenerator::Initialize(Unit& unit)
             }
         }
     }
-    else // start at last point and cycle through it all
+    else // start at last point and cycle through it all (循环模式：从当前偏移开始绕行整条闭合路径)
     {
         uint32 count = 0;
         for (auto itr = std::next(m_path.begin(), m_pathIndex); itr != m_path.end(); ++itr, ++count)
@@ -137,11 +139,13 @@ void AbstractPathMovementGenerator::Reset(Unit& unit)
     Initialize(unit);
 }
 
+/// 驱动路径推进：逐个派发已跨越路点的通知，并在段末等待结束后切入下一段
 bool AbstractPathMovementGenerator::Update(Unit& unit, const uint32& diff)
 {
     if (!m_spline.empty())
     {
         // Foolproofing if current spline was tampered with or ran out of splines in the path:
+        // 防呆检查：若当前样条被外部篡改或提前终止，尝试重新初始化或退出生成器
         if (unit.movespline->FinalDestination() != m_spline.back())
         {
             if (unit.movespline->Finalized()) // stopped movement evidence
@@ -180,11 +184,11 @@ bool AbstractPathMovementGenerator::Update(Unit& unit, const uint32& diff)
 
     m_timer.Update(diff);
 
-    // Wait for timer:
+    // Wait for timer: (节点停顿计时未到，继续原地等待)
     if (!m_timer.Passed())
         return true;
 
-    // Load next spline from the path if still needed
+    // Load next spline from the path if still needed (停顿结束且仍有后续路点时加载下一段样条)
     if (size_t(m_pathIndex) < m_path.size())
     {
         Initialize(unit);
@@ -269,6 +273,7 @@ void FixedPathMovementGenerator::Reset(Unit& unit)
     AbstractPathMovementGenerator::Reset(unit);
 }
 
+/// 构造并启动固定路径的 MoveSplineInit（非飞行模式下校验 11-bit 偏移边界）
 bool FixedPathMovementGenerator::Move(Unit& unit) const
 {
     Movement::MoveSplineInit init(unit);
@@ -283,7 +288,7 @@ bool FixedPathMovementGenerator::Move(Unit& unit) const
         init.SetFly();
     else
     {
-        // non catmullrom
+        // non catmullrom (非平滑模式使用 11-bit 压缩偏移，需先更新当前样条位置并检查封包边界)
         if (!unit.movespline->Finalized())
             unit.UpdateSplinePosition(true);
         Position pos = unit.GetPosition(unit.GetTransport());
@@ -312,17 +317,19 @@ void FixedPathMovementGenerator::AddToPathPauseTime(int32 waitTimeDiff, bool for
     {
         // creature is stopped already
         // Prevent <= 0, the code in Update requires to catch the change from moving to not moving
+        // 避免等待时间归零或为负，确保 Update 能捕获到等待结束的状态转换
         int32 newWaitTime = m_timer.GetExpiry() + waitTimeDiff;
         m_timer.Reset(newWaitTime > 0 ? newWaitTime : 1);
     }
     // TODO: Add AI delay future support
 }
 
+/// 初始化航线飞行：剥夺客户端移动控制权并标记 TAXI_FLIGHT 状态
 void TaxiMovementGenerator::Initialize(Unit& unit)
 {
     AbstractPathMovementGenerator::Initialize(unit);
 
-    // Client-controlled unit should have control removed
+    // Client-controlled unit should have control removed (飞行过程中临时接管玩家控制权)
     if (const Player* controllingClientPlayer = unit.GetClientControlling())
         controllingClientPlayer->UpdateClientControl(&unit, false);
 
@@ -330,6 +337,7 @@ void TaxiMovementGenerator::Initialize(Unit& unit)
     unit.SetFlag(UNIT_FIELD_FLAGS, (UNIT_FLAG_CLIENT_CONTROL_LOST | UNIT_FLAG_TAXI_FLIGHT));
 }
 
+/// 结束航线飞行：清除状态标志并归还客户端控制权
 void TaxiMovementGenerator::Finalize(Unit& unit)
 {
     unit.clearUnitState(UNIT_STAT_TAXI_FLIGHT);
@@ -338,7 +346,7 @@ void TaxiMovementGenerator::Finalize(Unit& unit)
     if (unit.GetTypeId() == TYPEID_PLAYER)
         unit.RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_TAXI_BENCHMARK);
 
-    // Client-controlled unit should have control restored
+    // Client-controlled unit should have control restored (归还玩家客户端控制权)
     if (const Player* controllingClientPlayer = unit.GetClientControlling())
         controllingClientPlayer->UpdateClientControl(&unit, true);
 
@@ -351,6 +359,7 @@ void TaxiMovementGenerator::Interrupt(Unit& unit)
     AbstractPathMovementGenerator::Interrupt(unit);
 }
 
+/// 更新航线飞行进度，并在当前样条走完时切入下一段航线
 bool TaxiMovementGenerator::Update(Unit& unit, const uint32& diff)
 {
     if (unit.GetTypeId() != TYPEID_PLAYER)
@@ -364,6 +373,7 @@ bool TaxiMovementGenerator::Update(Unit& unit, const uint32& diff)
     if (!player.OnTaxiFlightUpdate(size_t(spline->currentPathIdx()), movement))
     {
         // Some other code messed with our spline before it was completed. Have it your way, no taxi for you!
+        // 若飞行样条在未完成前被其他逻辑意外打断，直接弹出坐骑结束飞行
         player.OnTaxiFlightEject();
         return false;
     }
@@ -371,7 +381,7 @@ bool TaxiMovementGenerator::Update(Unit& unit, const uint32& diff)
     return (movement || Resume(player));
 }
 
-#define TAXI_FLIGHT_SPEED        32.0f
+#define TAXI_FLIGHT_SPEED        32.0f // 飞行坐骑固定飞行速度（码/秒）
 
 bool TaxiMovementGenerator::Move(Unit& unit)
 {
@@ -384,6 +394,7 @@ bool TaxiMovementGenerator::Move(Unit& unit)
     return bool(init.Launch());
 }
 
+/// 从 PlayerTaxi 中加载下一段跨地图/多跳航线节点并续飞
 bool TaxiMovementGenerator::Resume(Unit& unit)
 {
     if (unit.GetTypeId() == TYPEID_PLAYER)

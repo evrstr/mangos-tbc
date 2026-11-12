@@ -52,6 +52,7 @@
 #include "Policies/Singleton.h"
 
 
+// 按法术 ID 在训练师法术列表中查找对应条目
 TrainerSpell const* TrainerSpellData::Find(uint32 spell_id) const
 {
     TrainerSpellMap::const_iterator itr = spellList.find(spell_id);
@@ -61,6 +62,7 @@ TrainerSpell const* TrainerSpellData::Find(uint32 spell_id) const
     return nullptr;
 }
 
+// 从商人出售列表中移除指定物品条目
 bool VendorItemData::RemoveItem(uint32 item_id)
 {
     for (VendorItemList::iterator i = m_items.begin(); i != m_items.end(); ++i)
@@ -74,6 +76,7 @@ bool VendorItemData::RemoveItem(uint32 item_id)
     return false;
 }
 
+// 查找指定物品在商人出售列表中的槽位索引
 size_t VendorItemData::FindItemSlot(uint32 item_id) const
 {
     for (size_t i = 0; i < m_items.size(); ++i)
@@ -82,6 +85,7 @@ size_t VendorItemData::FindItemSlot(uint32 item_id) const
     return m_items.size();
 }
 
+// 在商人出售列表中查找指定物品配置指针
 VendorItem const* VendorItemData::FindItem(uint32 item_id) const
 {
     for (auto m_item : m_items)
@@ -93,6 +97,7 @@ VendorItem const* VendorItemData::FindItem(uint32 item_id) const
     return nullptr;
 }
 
+// 延迟强制消失事件回调：触发目标生物 ForcedDespawn
 bool ForcedDespawnDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
 {
     if (m_onlyAlive && !m_owner.IsAlive())
@@ -102,6 +107,7 @@ bool ForcedDespawnDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
     return true;
 }
 
+// 计算生物最终生成坐标（若基于参照物则取贴近点，动态刷怪则贴合地面允许高度）
 void CreatureCreatePos::SelectFinalPoint(Creature* cr, bool staticSpawn)
 {
     // if object provided then selected point at specific dist/angle from object forward look
@@ -120,6 +126,7 @@ void CreatureCreatePos::SelectFinalPoint(Creature* cr, bool staticSpawn)
         cr->UpdateAllowedPositionZ(m_pos.x, m_pos.y, m_pos.z);
 }
 
+// 将生物重定位到计算出的生成点并校验地图坐标合法性
 bool CreatureCreatePos::Relocate(Creature* cr) const
 {
     cr->Relocate(m_pos.x, m_pos.y, m_pos.z, m_pos.o);
@@ -133,6 +140,7 @@ bool CreatureCreatePos::Relocate(Creature* cr) const
     return true;
 }
 
+// 构造函数：初始化生物子类型、属性默认值与默认移动速度模式
 Creature::Creature(CreatureSubtype subtype) : Unit(),
     m_gossipMenuId(0), m_lootMoney(0), m_lootGroupRecipientId(0),
     m_lootStatus(CREATURE_LOOT_STATUS_NONE),
@@ -155,6 +163,7 @@ Creature::Creature(CreatureSubtype subtype) : Unit(),
     SetWalk(true, true);
 }
 
+// 析构函数：执行删除前关联引用清理
 Creature::~Creature()
 {
     if (GetVisibilityData().IsLargeVisibility())
@@ -162,6 +171,7 @@ Creature::~Creature()
     CleanupsBeforeDelete();
 }
 
+// 删除前清理：解除阵营编队站位数据、基类引用及商人限量库存计数
 void Creature::CleanupsBeforeDelete()
 {
 
@@ -172,6 +182,7 @@ void Creature::CleanupsBeforeDelete()
     m_vendorItemCounts.clear();
 }
 
+// 将生物加入地图对象存储、统计临时召唤计数并按需设为活跃对象
 void Creature::AddToWorld()
 {
     ///- Register the creature for guid lookup
@@ -211,6 +222,7 @@ void Creature::AddToWorld()
         GetMap()->AddToSpawnCount(GetObjectGuid());
 }
 
+// 将生物从地图对象存储注销、扣减临时召唤计数、触发召唤法术冷却并脱离编队
 void Creature::RemoveFromWorld()
 {
     ///- Remove the creature from the accessor
@@ -261,6 +273,7 @@ void Creature::RemoveFromWorld()
     Unit::RemoveFromWorld();
 }
 
+// 移除生物尸体并转入 DEAD 状态：清理掉落、触发尸体消失事件与联动事件、复位至重生坐标
 void Creature::RemoveCorpse(bool inPlace)
 {
     if (!inPlace && !IsInWorld())
@@ -319,7 +332,7 @@ void Creature::RemoveCorpse(bool inPlace)
 }
 
 /**
- * change the entry of creature until respawn
+ * change the entry of creature until respawn (按 Entry 与当前副本难度初始化生物模板、模型、职业能量类型、装备及行为参数)
  */
 bool Creature::InitEntry(uint32 Entry, CreatureData const* data /*=nullptr*/, GameEventCreatureData const* eventData /*=nullptr*/)
 {
@@ -527,6 +540,7 @@ bool Creature::InitEntry(uint32 Entry, CreatureData const* data /*=nullptr*/, Ga
     return true;
 }
 
+// 更新生物模板 Entry 并应用血量/蓝量、阵营、NPC/Unit 标志、抗性、技能列表与静态标志
 bool Creature::UpdateEntry(uint32 Entry, const CreatureData* data /*=nullptr*/, GameEventCreatureData const* eventData /*=nullptr*/, bool preserveHPAndPower /*=true*/)
 {
     if (!InitEntry(Entry, data, eventData))
@@ -660,6 +674,7 @@ bool Creature::UpdateEntry(uint32 Entry, const CreatureData* data /*=nullptr*/, 
     return true;
 }
 
+// 将生物 Entry 还原为原始模板（重生时若配置随机 Entry 则重新抽取）
 void Creature::ResetEntry(bool respawn)
 {
     bool isPet = GetObjectGuid().GetHigh() == HIGHGUID_PET;
@@ -681,6 +696,7 @@ void Creature::ResetEntry(bool respawn)
         UpdateEntry(m_originalEntry, data, eventData, false);
 }
 
+// 按事件覆写、刷怪点覆写与模板概率权重选择生物的显示模型 ID
 uint32 Creature::ChooseDisplayId(const CreatureInfo* cinfo, const CreatureData* data /*= nullptr*/, GameEventCreatureData const* eventData /*=nullptr*/)
 {
     // Use creature event model explicit, override any other static models
@@ -729,6 +745,7 @@ uint32 Creature::ChooseDisplayId(const CreatureInfo* cinfo, const CreatureData* 
     return display_id;
 }
 
+// 生物每帧主更新：按死亡状态（DEAD 待重生 / CORPSE 尸体腐烂 / ALIVE 存活回复）驱动生命周期
 void Creature::Update(const uint32 diff)
 {
     switch (m_deathState)
@@ -814,6 +831,7 @@ void Creature::Update(const uint32 diff)
     }
 }
 
+// 生物周期性生命与能量回复入口
 void Creature::RegenerateAll(uint32 diff)
 {
     m_regenTimer += diff;
@@ -828,6 +846,7 @@ void Creature::RegenerateAll(uint32 diff)
     m_regenTimer -= REGEN_TIME_FULL_UNIT;
 }
 
+// 按职业能量类型（法力/能量/集中值）及光环加成回复生物能量
 void Creature::RegeneratePower(float timerMultiplier)
 {
     if (!IsRegeneratingPower())
@@ -891,6 +910,7 @@ void Creature::RegeneratePower(float timerMultiplier)
     ModifyPower(powerType, int32(addValue));
 }
 
+// 脱战/逃脱状态下按比例回复生物生命值
 void Creature::RegenerateHealth()
 {
     if (!IsRegeneratingHealth())
@@ -908,6 +928,7 @@ void Creature::RegenerateHealth()
     ModifyHealth(addvalue);
 }
 
+// 初始化生物运动控制器与 AI 实例，并触发技能列表与出生回调
 bool Creature::AIM_Initialize()
 {
     i_motionMaster.Initialize();
@@ -926,6 +947,7 @@ bool Creature::AIM_Initialize()
     return true;
 }
 
+// 创建生物实体并注册 PvP/副本回调、生物联动及附加光环数据
 bool Creature::Create(uint32 dbGuid, uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* cinfo, const CreatureData* data /*= nullptr*/, GameEventCreatureData const* eventData /*= nullptr*/)
 {
     SetMap(cPos.GetMap());
@@ -965,6 +987,7 @@ bool Creature::Create(uint32 dbGuid, uint32 guidlow, CreatureCreatePos& cPos, Cr
     return true;
 }
 
+// 判断该 NPC 是否能作为指定玩家的训练师（校验职业/宠物/骑术声望/商业技能条件并按需提示对话）
 bool Creature::IsTrainerOf(Player* pPlayer, bool msg) const
 {
     if (!isTrainer())
@@ -1063,6 +1086,7 @@ bool Creature::IsTrainerOf(Player* pPlayer, bool msg) const
     return true;
 }
 
+// 判断玩家等级是否达到与该战场军官交互的最低战场准入要求
 bool Creature::CanInteractWithBattleMaster(Player* pPlayer, bool msg) const
 {
     if (!isBattleMaster())
@@ -1095,6 +1119,7 @@ bool Creature::CanInteractWithBattleMaster(Player* pPlayer, bool msg) const
     return true;
 }
 
+// 判断玩家是否满足找该职业训练师学习技能及重置天赋的条件（>=10 级且同职业）
 bool Creature::CanTrainAndResetTalentsOf(Player* pPlayer) const
 {
     return pPlayer->GetLevel() >= 10
@@ -1102,6 +1127,7 @@ bool Creature::CanTrainAndResetTalentsOf(Player* pPlayer) const
            && pPlayer->getClass() == GetCreatureInfo()->TrainerClass;
 }
 
+// 生物死亡时准备尸体掉落物（处理多人共享拾取、自带武器掉落及无掉落加速腐烂）
 void Creature::PrepareBodyLootState(Unit* killer)
 {
     // if can weild loot - already generated on spawn
@@ -1134,7 +1160,7 @@ void Creature::PrepareBodyLootState(Unit* killer)
 }
 
 /**
- * Return original player who tap creature, it can be different from player/group allowed to loot so not use it for loot code
+ * Return original player who tap creature, it can be different from player/group allowed to loot so not use it for loot code (获取最初开怪标记该生物的玩家指针)
  */
 Player* Creature::GetOriginalLootRecipient() const
 {
@@ -1142,7 +1168,7 @@ Player* Creature::GetOriginalLootRecipient() const
 }
 
 /**
- * Return group if player tap creature as group member, independent is player after leave group or stil be group member
+ * Return group if player tap creature as group member, independent is player after leave group or stil be group member (获取拥有该生物拾取权的队伍指针)
  */
 Group* Creature::GetGroupLootRecipient() const
 {
@@ -1151,7 +1177,7 @@ Group* Creature::GetGroupLootRecipient() const
 }
 
 /**
- * Return player who can loot tapped creature (member of group or single player)
+ * Return player who can loot tapped creature (member of group or single player) (获取当前实际有权拾取该生物的玩家，优先检查归属队伍)
  *
  * In case when original player tap creature as group member then group tap prefered.
  * This is for example important if player after tap leave group.
@@ -1184,7 +1210,7 @@ Player* Creature::GetLootRecipient() const
 }
 
 /**
- * Set player and group (if player group member) who tap creature
+ * Set player and group (if player group member) who tap creature (设置生物拾取归属玩家及所属队伍，并强制刷新客户端拾取归属标志)
  */
 void Creature::SetLootRecipient(Unit* unit)
 {
@@ -1217,6 +1243,7 @@ void Creature::SetLootRecipient(Unit* unit)
     ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);           // needed to be sure tapping status is updated
 }
 
+// 将已加载的生物坐标与刷怪配置保存回 world.creature 表
 void Creature::SaveToDB()
 {
     // this should only be used when the creature has already been loaded
@@ -1300,6 +1327,7 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask)
     WorldDatabase.CommitTransaction();
 }
 
+// 根据指定等级或数据库等级区间计算生物基础血量、法力、护甲、攻击强度及武器伤害
 void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
 {
     CreatureInfo const* cinfo = GetCreatureInfo();
@@ -1533,6 +1561,7 @@ void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
         SetPower(Powers(i), GetMaxPower(Powers(i)));
 }
 
+// 按生物精英等级（普通/精英/稀有精英/世界首领/稀有）获取配置生命倍率
 float Creature::_GetHealthMod(int32 Rank)
 {
     switch (Rank)                                           // define rates for each elite rank
@@ -1552,6 +1581,7 @@ float Creature::_GetHealthMod(int32 Rank)
     }
 }
 
+// 按生物精英等级获取配置物理伤害倍率
 float Creature::_GetDamageMod(int32 Rank)
 {
     switch (Rank)                                           // define rates for each elite rank
@@ -1571,6 +1601,7 @@ float Creature::_GetDamageMod(int32 Rank)
     }
 }
 
+// 按生物精英等级获取配置法术伤害倍率
 float Creature::_GetSpellDamageMod(int32 Rank)
 {
     switch (Rank)                                           // define rates for each elite rank
@@ -1692,6 +1723,7 @@ bool Creature::CreateFromProto(uint32 dbGuid, uint32 guidlow, CreatureInfo const
     return UpdateEntry(newEntry, data, eventData, false);
 }
 
+// 从数据库静态刷怪表加载生物，处理 SpawnGroup、阵营条件刷怪、随机 Entry、动态 GUID 与持久化重生时间
 bool Creature::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, uint32 forcedEntry, GenericTransport* /*transport*/)
 {
     CreatureData const* data = sObjectMgr.GetCreatureData(dbGuid);
@@ -1850,6 +1882,7 @@ bool Creature::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, uint32 forced
     return true;
 }
 
+// 为生物加载三槽位虚拟武器装备（主手/副手/远程）
 void Creature::LoadEquipment(uint32 equip_entry, bool force)
 {
     if (equip_entry == 0)
@@ -1919,6 +1952,7 @@ struct CreatureRespawnDeleteWorker
     uint32 i_guid;
 };
 
+// 从数据库与各持久化副本状态中彻底删除静态生物刷怪点及相关附加/路径/事件记录
 void Creature::DeleteFromDB()
 {
     CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow());
@@ -1949,6 +1983,7 @@ void Creature::DeleteFromDB(uint32 lowguid, CreatureData const* data)
     WorldDatabase.CommitTransaction();
 }
 
+// 切换生物死亡状态（JUST_DIED 计算重生与尸体时间并进 CORPSE；JUST_ALIVED 重置属性与状态并进 ALIVE）
 void Creature::SetDeathState(DeathState s)
 {
     if (s == JUST_DIED)
@@ -2033,6 +2068,7 @@ void Creature::SetDeathState(DeathState s)
     }
 }
 
+// 立即清理尸体并调度下一次更新周期重生
 void Creature::Respawn()
 {
     RemoveCorpse();
@@ -2047,6 +2083,7 @@ void Creature::Respawn()
     }
 }
 
+// 强制立即或延迟使生物死亡并移除尸体（用于脚本或 GM 指令清理）
 void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
 {
     if (timeMSToDespawn)
@@ -2068,6 +2105,7 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
     SetHealth(0);                                           // just for nice GM-mode view
 }
 
+// 检查生物对法术机制、学派及单个效果的免疫掩码
 bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf, uint8 effectMask, WorldObject const* caster)
 {
     if (!spellInfo)
@@ -2101,6 +2139,7 @@ bool Creature::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectInd
     return Unit::IsImmuneToSpellEffect(spellInfo, index, castOnSelf);
 }
 
+// 在生物技能列表中查找当前射程与法力满足条件的可施放攻击法术
 SpellEntry const* Creature::ReachWithSpellAttack(Unit* pVictim)
 {
     if (!pVictim)
@@ -2154,6 +2193,7 @@ SpellEntry const* Creature::ReachWithSpellAttack(Unit* pVictim)
     return nullptr;
 }
 
+// 在生物技能列表中查找当前射程与法力满足条件的可施放治疗法术
 SpellEntry const* Creature::ReachWithSpellCure(Unit* pVictim)
 {
     if (!pVictim)
@@ -2204,6 +2244,7 @@ SpellEntry const* Creature::ReachWithSpellCure(Unit* pVictim)
     return nullptr;
 }
 
+// 判断生物对指定玩家是否可见（处理 GM、隐身、活体/尸体以及灵魂状态玩家对尸体附近或幽灵可见生物的判定）
 bool Creature::IsVisibleInGridForPlayer(Player* pl) const
 {
     // gamemaster in GM mode see all, including ghosts
@@ -2244,6 +2285,7 @@ void Creature::CallAssistance()
     CallAssistance(GetVictim());
 }
 
+// 向周围同族/可协助友军广播呼救事件以协助攻击当前目标
 void Creature::CallAssistance(Unit* enemy)
 {
     // FIXME: should player pets call for assistance?
@@ -2317,7 +2359,7 @@ void Creature::CallForHelp(float radius)
     Cell::VisitGridObjects(this, worker, radius);
 }
 
-/// if enemy provided, check for initial combat help against enemy
+// if enemy provided, check for initial combat help against enemy (判断当前生物是否愿意响应友方呼救并协助攻击指定敌人)
 bool Creature::CanAssistTo(const Unit* u, const Unit* enemy, bool checkfaction /*= true*/) const
 {
     // we don't need help from zombies :)
@@ -2358,6 +2400,7 @@ bool Creature::CanAssistTo(const Unit* u, const Unit* enemy, bool checkfaction /
     return true;
 }
 
+// 判断生物当前是否具备主动发起攻击的条件
 bool Creature::CanInitiateAttack() const
 {
     if (hasUnitState(UNIT_STAT_STUNNED | UNIT_STAT_FEIGN_DEATH))
@@ -2372,6 +2415,7 @@ bool Creature::CanInitiateAttack() const
     return true;
 }
 
+// 将静态生物剩余重生时间或尸体过期时间保存到地图持久化状态
 void Creature::SaveRespawnTime()
 {
     if (IsPet() || !HasStaticDBSpawnData())
@@ -2401,7 +2445,7 @@ CreatureDataAddon const* Creature::GetCreatureAddon() const
     return ObjectMgr::GetCreatureTemplateAddon(GetEntry());
 }
 
-// creature_addon table
+// creature_addon table (应用 creature_addon/creature_template_addon 中的坐骑、站姿、武器拔出、表情及常驻光环)
 bool Creature::LoadCreatureAddon(bool reload)
 {
     CreatureDataAddon const* cainfo = GetCreatureAddon();
@@ -2454,6 +2498,7 @@ void Creature::SendZoneUnderAttackMessage(Player* attacker) const
     sWorld.SendZoneUnderAttackMessage(GetZoneId(), attacker->GetTeam() == ALLIANCE ? HORDE : ALLIANCE);
 }
 
+// 使副本内所有存活可攻击玩家与该生物进入战斗（常用于 Boss 开战拉全团）
 void Creature::SetInCombatWithZone(bool checkAttackability)
 {
     if (!CanHaveThreatList())
@@ -2520,6 +2565,7 @@ void Creature::UpdateSpell(int32 index, int32 newSpellId)
     }
 }
 
+// 为生物加载指定技能列表（按可用概率随机剔除部分技能）并通知 AI
 void Creature::SetSpellList(uint32 spellSet)
 {
     if (spellSet == 0)
@@ -2556,6 +2602,7 @@ void Creature::SetSpellList(uint32 spellSet)
         AI()->SpellListChanged();
 }
 
+// 切换生物免疫集合（移除旧集合免疫条目并应用新集合）
 void Creature::UpdateImmunitiesSet(uint32 immunitySet)
 {
     if (m_immunitySet == immunitySet)
@@ -2656,6 +2703,7 @@ VendorItemData const* Creature::GetVendorTemplateItems() const
     return vendorId ? sObjectMgr.GetNpcVendorTemplateItemList(vendorId) : nullptr;
 }
 
+// 计算并更新商人限量物品的当前剩余可购买库存（按刷新周期恢复）
 uint32 Creature::GetVendorItemCurrentCount(VendorItem const* vItem)
 {
     if (!vItem->maxcount)
@@ -2739,7 +2787,7 @@ TrainerSpellData const* Creature::GetTrainerSpells() const
     return sObjectMgr.GetNpcTrainerSpells(GetEntry());
 }
 
-// overwrite WorldObject function for proper name localization
+// overwrite WorldObject function for proper name localization (按客户端语言索引返回本地化生物名称)
 const char* Creature::GetNameForLocaleIdx(int32 loc_idx) const
 {
     char const* name = GetName();
@@ -2747,6 +2795,7 @@ const char* Creature::GetNameForLocaleIdx(int32 loc_idx) const
     return name;
 }
 
+// 临时更改生物阵营并按标志位解除不可攻击、免疫或不可选中限制
 void Creature::SetFactionTemporary(uint32 factionId, uint32 tempFactionFlags)
 {
     m_temporaryFactionFlags = tempFactionFlags;
@@ -2764,6 +2813,7 @@ void Creature::SetFactionTemporary(uint32 factionId, uint32 tempFactionFlags)
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE);
 }
 
+// 清除临时阵营变更并还原生物模板原始阵营及各项免疫/不可交互标志
 void Creature::ClearTemporaryFaction()
 {
     // No restore if creature is charmed/possessed.
@@ -2836,6 +2886,7 @@ bool Creature::HasStaticDBSpawnData() const
     return sObjectMgr.GetCreatureData(GetDbGuid()) != nullptr;
 }
 
+// 根据物品原型或原始参数设置生物虚拟装备槽位显示与武器类型信息
 void Creature::SetVirtualItem(VirtualItemSlot slot, uint32 item_id)
 {
     if (item_id == 0)
@@ -2877,6 +2928,7 @@ bool Creature::hasWeapon(WeaponAttackType type) const
     return ((itemClass == ITEM_CLASS_WEAPON) || (type == OFF_ATTACK && CanDualWield()));
 }
 
+// 切换生物步行/奔跑移动标志并向周围广播样条移动速度模式包
 void Creature::SetWalk(bool enable, bool asDefault)
 {
     if (asDefault)
@@ -2926,7 +2978,7 @@ void Creature::ReduceCorpseDecayTimer()
         m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(m_corpseAccelerationDecayDelay);  // 2 minutes for a creature
 }
 
-// Set loot status. Also handle remove corpse timer
+// Set loot status. Also handle remove corpse timer (更新尸体拾取/剥皮/偷窃状态并同步刷新尸体标志与腐烂计时)
 void Creature::SetLootStatus(CreatureLootStatus status, bool forced)
 {
     if (!forced && status <= m_lootStatus)
@@ -2984,6 +3036,7 @@ bool Creature::IsTappedBy(Player* plr) const
     return false;
 }
 
+// 更新生物基础步行与奔跑速度（受坐骑与模板速度覆写）
 void Creature::SetBaseWalkSpeed(float speed)
 {
     float newSpeed = speed;
@@ -3134,6 +3187,7 @@ bool Creature::IsCorpseExpired() const
     return false;
 }
 
+// 生物消失/强制移除前清理战斗、光环、控制关系、召唤物与图腾
 void Creature::UnsummonCleanup()
 {
     CombatStop();
@@ -3146,6 +3200,7 @@ void Creature::UnsummonCleanup()
     InterruptNonMeleeSpells(false);
 }
 
+// 为副本内按联盟/部落阵营条件刷新的生物选择对应 Entry
 uint32 Creature::GetCreatureConditionalSpawnEntry(uint32 guidlow, Map* map) const
 {
     uint32 entry = 0;
@@ -3243,6 +3298,7 @@ void Creature::Heartbeat()
         ScheduleAINotify(0);
 }
 
+// 添加生物法术冷却（优先采用技能列表或生物冷却表配置）并在受玩家控制时下发冷却包
 void Creature::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* /*itemProto*/, bool permanent, uint32 forcedDuration, bool ignoreCat /*= false*/)
 {
     uint32 recTime = forcedDuration ? forcedDuration : spellEntry.RecoveryTime;
@@ -3299,6 +3355,7 @@ void Creature::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* /*
     }
 }
 
+// 召唤生物销毁或移除时为带有事件冷却属性的召唤法术触发拥有者冷却
 void Creature::StartCooldown(Unit* owner)
 {
     if (!m_imposedCooldown)

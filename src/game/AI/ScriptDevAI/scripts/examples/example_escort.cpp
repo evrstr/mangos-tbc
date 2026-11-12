@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Example_Escort
 SD%Complete: 100
-SDComment: Script used for testing escortAI
+SDComment: Script used for testing escortAI (用于测试 escortAI 护送基类的示例脚本)
 SDCategory: Script Examples
 EndScriptData */
 
@@ -26,51 +26,55 @@ EndScriptData */
 
 enum
 {
-    NPC_FELBOAR                 = 21878,
+    NPC_FELBOAR                 = 21878,                    // 邪能野猪 NPC ID
 
-    SPELL_DEATH_COIL            = 33130,
-    SPELL_ELIXIR_OF_FORTITUDE   = 3593,
-    SPELL_BLUE_FIREWORK         = 11540,
+    SPELL_DEATH_COIL            = 33130,                    // 死亡缠绕法术 ID
+    SPELL_ELIXIR_OF_FORTITUDE   = 3593,                     // 坚韧药剂法术 ID
+    SPELL_BLUE_FIREWORK         = 11540,                    // 蓝色烟花法术 ID
 
-    SAY_AGGRO1                  = -1999910,
-    SAY_AGGRO2                  = -1999911,
-    SAY_WP_1                    = -1999912,
-    SAY_WP_2                    = -1999913,
-    SAY_WP_3                    = -1999914,
-    SAY_WP_4                    = -1999915,
-    SAY_DEATH_1                 = -1999916,
-    SAY_DEATH_2                 = -1999917,
-    SAY_DEATH_3                 = -1999918,
-    SAY_SPELL                   = -1999919,
-    SAY_RAND_1                  = -1999920,
-    SAY_RAND_2                  = -1999921
+    SAY_AGGRO1                  = -1999910,                 // 进战台词 1 (护送中)
+    SAY_AGGRO2                  = -1999911,                 // 进战台词 2 (非护送)
+    SAY_WP_1                    = -1999912,                 // 到达路径点 1 台词
+    SAY_WP_2                    = -1999913,                 // 到达路径点 3 台词
+    SAY_WP_3                    = -1999914,                 // 到达路径点 4 NPC 台词
+    SAY_WP_4                    = -1999915,                 // 到达路径点 4 玩家台词
+    SAY_DEATH_1                 = -1999916,                 // 死亡台词 1 (自杀时耳语)
+    SAY_DEATH_2                 = -1999917,                 // 死亡台词 2 (护送中被击杀)
+    SAY_DEATH_3                 = -1999918,                 // 死亡台词 3 (非护送中死亡)
+    SAY_SPELL                   = -1999919,                 // 施法台词
+    SAY_RAND_1                  = -1999920,                 // 脱战随机台词 1 (放烟花)
+    SAY_RAND_2                  = -1999921                  // 脱战随机台词 2 (喝药剂)
 };
 
 #define GOSSIP_ITEM_1   "Click to Test Escort(Attack, Run)"
 #define GOSSIP_ITEM_2   "Click to Test Escort(NoAttack, Walk)"
 #define GOSSIP_ITEM_3   "Click to Test Escort(NoAttack, Run)"
 
+// 护送 AI 示例结构体 (example_escortAI)
 struct example_escortAI : public npc_escortAI
 {
     // UnitAI functions
     example_escortAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    uint32 m_uiDeathCoilTimer;
-    uint32 m_uiChatTimer;
+    uint32 m_uiDeathCoilTimer;                              // 死亡缠绕施法倒计时
+    uint32 m_uiChatTimer;                                   // 脱战闲聊倒计时
 
     // Is called after each combat, so usally only reset combat-stuff here
+    // 每次战斗结束后调用，重置战斗计时器
     void Reset() override
     {
         m_uiDeathCoilTimer = 4000;
         m_uiChatTimer = 4000;
     }
 
+    // 召唤出生物后的回调：令召唤物攻击自身
     void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->AI()->AttackStart(m_creature);
     }
 
     // Pure Virtual Functions (Have to be implemented)
+    // 纯虚函数实现：到达指定路径点时触发事件
     void WaypointReached(uint32 uiWP) override
     {
         switch (uiWP)
@@ -94,6 +98,7 @@ struct example_escortAI : public npc_escortAI
         }
     }
 
+    // 进入战斗回调：区分是否处于护送状态播放对应台词
     void Aggro(Unit* /*pWho*/) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
@@ -106,6 +111,7 @@ struct example_escortAI : public npc_escortAI
     }
 
     // Only overwrite if there is something special
+    // 死亡回调：播放遗言并触发护送失败处理
     void JustDied(Unit* pKiller) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
@@ -126,12 +132,14 @@ struct example_escortAI : public npc_escortAI
             DoScriptText(SAY_DEATH_3, m_creature);
 
         // Fail quest for group - if you don't implement JustDied in your script, this will automatically work
+        // 护送任务对小队标记失败
         npc_escortAI::JustDied(pKiller);
     }
 
+    // 护送 AI 每帧更新
     void UpdateEscortAI(const uint32 uiDiff) override
     {
-        // Combat check
+        // Combat check (战斗状态检查)
         if (m_creature->SelectHostileTarget() && m_creature->GetVictim())
         {
             if (m_uiDeathCoilTimer < uiDiff)
@@ -147,7 +155,7 @@ struct example_escortAI : public npc_escortAI
         }
         else
         {
-            // Out of combat but being escorted
+            // Out of combat but being escorted (脱战但正在被护送中)
             if (HasEscortState(STATE_ESCORT_ESCORTING))
             {
                 if (m_uiChatTimer < uiDiff)
@@ -172,11 +180,13 @@ struct example_escortAI : public npc_escortAI
     }
 };
 
+// 获取护送 AI 实例函数
 UnitAI* GetAI_example_escort(Creature* pCreature)
 {
     return new example_escortAI(pCreature);
 }
 
+// 对话菜单问候：展示护送测试选项
 bool GossipHello_example_escort(Player* pPlayer, Creature* pCreature)
 {
     pPlayer->TalkedToCreature(pCreature->GetEntry(), pCreature->GetObjectGuid());
@@ -191,6 +201,7 @@ bool GossipHello_example_escort(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
+// 选择对话选项：启动不同模式的护送
 bool GossipSelect_example_escort(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     example_escortAI* pEscortAI = dynamic_cast<example_escortAI*>(pCreature->AI());
@@ -222,6 +233,7 @@ bool GossipSelect_example_escort(Player* pPlayer, Creature* pCreature, uint32 /*
     return true;                                            // no default handling  -> prevent mangos core handling
 }
 
+// 注册护送示例脚本
 void AddSC_example_escort()
 {
     Script* pNewScript = new Script;

@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Hellfire Citadel, Shattered Halls
 EndScriptData */
 
+// 酋长卡加斯·刃拳（破碎大厅最终首领）
+/* 遭遇战概述：
+ * 酋长卡加斯·刃拳是碎手氏族领袖，双臂接装利刃；核心技能为利刃乱舞（穿行刺穿全团多名玩家）并持续召唤碎手刺客与步兵参战。
+ */
+
 /* ContentData
 boss_warchief_kargath_bladefist
 EndContentData */
@@ -29,6 +34,7 @@ EndContentData */
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "shattered_halls.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO1                      = 17614,
@@ -58,6 +64,7 @@ float AssassEntrance[3] = {275.136f, -84.29f, 2.3f};        // y -8
 float AssassExit[3] = {184.233f, -84.29f, 2.3f};            // y -8
 float AddsEntrance[3] = {306.036f, -84.29f, 1.93f};
 
+// WarchiefKargathActions 相关枚举
 enum WarchiefKargathActions
 {
     WARCHIEF_KARGATH_BLADE_DANCE,
@@ -68,6 +75,7 @@ enum WarchiefKargathActions
     WARCHIEF_KARGATH_COMBAT_BLADE_DANCE,
 };
 
+// boss_warchief_kargath_bladefistAI 逻辑实现
 struct boss_warchief_kargath_bladefistAI : public CombatAI
 {
     boss_warchief_kargath_bladefistAI(Creature* creature) : CombatAI(creature, WARCHIEF_KARGATH_ACTIONS_MAX),
@@ -97,6 +105,7 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
 
     uint32 m_bladeDanceTargetCount;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -110,6 +119,7 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_DOUBLE_ATTACK, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 2))
@@ -123,6 +133,7 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
             m_instance->SetData(TYPE_BLADEFIST, IN_PROGRESS);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -141,6 +152,7 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -150,6 +162,7 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
             m_instance->SetData(TYPE_BLADEFIST, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         DoDespawnAdds();
@@ -255,6 +268,7 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -282,9 +296,11 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
     }
 };
 
+// npc_blade_dance_targetAI 逻辑实现
 struct npc_blade_dance_targetAI : public ScriptedAI
 {
     npc_blade_dance_targetAI(Creature* creature) : ScriptedAI(creature) {}
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         SetReactState(REACT_PASSIVE);
@@ -298,6 +314,7 @@ struct npc_blade_dance_targetAI : public ScriptedAI
     }
 };
 
+// 注册 boss_warchief_kargath_bladefist 脚本
 void AddSC_boss_warchief_kargath_bladefist()
 {
     Script* pNewScript = new Script;

@@ -22,10 +22,12 @@
 
 static_assert(std::is_enum_v<CreatureStaticFlags>, "Not enum type");
 
+// 构造函数：将四组静态标志清零并绑定所属 Creature
 CreatureSettings::CreatureSettings(Creature* owner) : m_flags(CreatureStaticFlags(0)), m_flags2(CreatureStaticFlags2(0)), m_flags3(CreatureStaticFlags3(0)), m_flags4(CreatureStaticFlags4(0)), m_owner(owner)
 {
 }
 
+// 批量重置生物静态标志，并同步视野距离、仇恨传播、UnitFlags 等初始效果
 void CreatureSettings::ResetStaticFlags(CreatureStaticFlags staticFlags, CreatureStaticFlags2 staticFlags2, CreatureStaticFlags3 staticFlags3, CreatureStaticFlags4 staticFlags4)
 {
     m_flags = staticFlags;
@@ -33,7 +35,7 @@ void CreatureSettings::ResetStaticFlags(CreatureStaticFlags staticFlags, Creatur
     m_flags3 = staticFlags3;
     m_flags4 = staticFlags4;
 
-    // Check if visibility distance different
+    // Check if visibility distance different (根据 AOI 标志覆盖生物可见距离)
     if (HasFlag(CreatureStaticFlags::LARGE_AOI))
         m_owner->GetVisibilityData().SetVisibilityDistanceOverride(VisibilityDistanceType::Large);
     if (HasFlag(CreatureStaticFlags3::GIGANTIC_AOI))
@@ -56,74 +58,87 @@ void CreatureSettings::ResetStaticFlags(CreatureStaticFlags staticFlags, Creatur
         m_owner->SetImmuneToNPC(true);
 }
 
+// 设置第 1 组静态标志并触发运行时同步
 void CreatureSettings::SetFlag(CreatureStaticFlags flag)
 {
     m_flags |= flag;
     updateFlag(flag, true);
 }
 
+// 设置第 2 组静态标志并触发运行时同步
 void CreatureSettings::SetFlag(CreatureStaticFlags2 flag)
 {
     m_flags2 |= flag;
     updateFlag(flag, true);
 }
 
+// 设置第 3 组静态标志并触发运行时同步
 void CreatureSettings::SetFlag(CreatureStaticFlags3 flag)
 {
     m_flags3 |= flag;
     updateFlag(flag, true);
 }
 
+// 设置第 4 组静态标志并触发运行时同步
 void CreatureSettings::SetFlag(CreatureStaticFlags4 flag)
 {
     m_flags4 |= flag;
     updateFlag(flag, true);
 }
 
+// 移除第 1 组静态标志并触发运行时同步
 void CreatureSettings::RemoveFlag(CreatureStaticFlags flag)
 {
     m_flags &= ~flag;
     updateFlag(flag, false);
 }
 
+// 移除第 2 组静态标志并触发运行时同步
 void CreatureSettings::RemoveFlag(CreatureStaticFlags2 flag)
 {
     m_flags2 &= ~flag;
     updateFlag(flag, false);
 }
 
+// 移除第 3 组静态标志并触发运行时同步
 void CreatureSettings::RemoveFlag(CreatureStaticFlags3 flag)
 {
     m_flags3 &= ~flag;
     updateFlag(flag, false);
 }
 
+// 移除第 4 组静态标志并触发运行时同步
 void CreatureSettings::RemoveFlag(CreatureStaticFlags4 flag)
 {
     m_flags4 &= ~flag;
     updateFlag(flag, false);
 }
 
+// 查询第 1 组静态标志
 bool CreatureSettings::HasFlag(CreatureStaticFlags flag) const
 {
     return bool(m_flags & flag);
 }
 
+// 查询第 2 组静态标志
 bool CreatureSettings::HasFlag(CreatureStaticFlags2 flag) const
 {
     return bool(m_flags2 & flag);
 }
 
+// 查询第 3 组静态标志
 bool CreatureSettings::HasFlag(CreatureStaticFlags3 flag) const
 {
     return bool(m_flags3 & flag);
 }
 
+// 查询第 4 组静态标志
 bool CreatureSettings::HasFlag(CreatureStaticFlags4 flag) const
 {
     return bool(m_flags4 & flag);
 }
 
+// 响应第 1 组关键静态标志的动态变化（不可击杀、禁止近战、定身）
 void CreatureSettings::updateFlag(CreatureStaticFlags flag, bool apply)
 {
     switch (flag)
@@ -144,14 +159,17 @@ void CreatureSettings::updateFlag(CreatureStaticFlags flag, bool apply)
     }
 }
 
+// 第 2 组标志动态更新预留钩子
 void CreatureSettings::updateFlag(CreatureStaticFlags2 /*flag*/, bool /*apply*/)
 {
 }
 
+// 第 3 组标志动态更新预留钩子
 void CreatureSettings::updateFlag(CreatureStaticFlags3 /*flag*/, bool /*apply*/)
 {
 }
 
+// 第 4 组标志动态更新预留钩子
 void CreatureSettings::updateFlag(CreatureStaticFlags4 /*flag*/, bool /*apply*/)
 {
 }

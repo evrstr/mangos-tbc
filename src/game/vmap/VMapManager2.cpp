@@ -37,7 +37,7 @@ namespace VMAP
     }
 
     //=========================================================
-
+    // 析构时释放全部地图碰撞树与共享模型资源
     VMapManager2::~VMapManager2(void)
     {
         for (auto& iInstanceMapTree : iInstanceMapTrees)
@@ -50,6 +50,7 @@ namespace VMAP
         }
     }
 
+    // 启动期单线程预创建所有地图 ID 哈希桶，保证运行期多线程只读查询时无需对 map 桶结构加锁
     void VMapManager2::InitializeThreadUnsafe(const std::vector<uint32>& mapIds)
     {
         // the caller must pass the list of all mapIds that will be used in the VMapManager2 lifetime
@@ -60,7 +61,7 @@ namespace VMAP
     }
 
     //=========================================================
-
+    // 将游戏世界坐标转换为 VMAP 内部坐标系（以地图中心 32*533.3333 码为对称基准）
     Vector3 VMapManager2::convertPositionToInternalRep(float x, float y, float z) const
     {
         Vector3 pos;
@@ -72,6 +73,7 @@ namespace VMAP
         return pos;
     }
 
+    // 查找指定地图的已初始化 StaticMapTree（未加载则返回 cend）
     InstanceTreeMap::const_iterator VMapManager2::GetMapTree(uint32 mapId) const
     {
         // return the iterator if found or end() if not found/NULL
@@ -83,6 +85,7 @@ namespace VMAP
     }
 
     // move to MapTree too?
+    // 构造地图 .vmtree 文件名（3 位补零）
     std::string VMapManager2::getMapFileName(unsigned int pMapId)
     {
         std::stringstream fname;
@@ -92,7 +95,7 @@ namespace VMAP
     }
 
     //=========================================================
-
+    // 公共入口：按开关状态加载指定地图及图块
     VMAPLoadResult VMapManager2::loadMap(const char* pBasePath, unsigned int pMapId, int x, int y)
     {
         VMAPLoadResult result = VMAP_LOAD_RESULT_IGNORED;
@@ -107,7 +110,7 @@ namespace VMAP
     }
 
     //=========================================================
-    // Check if specified map have tile loaded
+    // Check if specified map have tile loaded (检查指定地图的指定图块是否已加载)
     bool VMapManager2::IsTileLoaded(uint32 mapId, uint32 x, uint32 y) const
     {
         InstanceTreeMap::const_iterator instanceTree = iInstanceMapTrees.find(mapId);
@@ -117,7 +120,7 @@ namespace VMAP
     }
 
     //=========================================================
-    // load one tile (internal use only)
+    // load one tile (internal use only) (内部加载地图树并按需加载单个 .vmtile 图块)
 
     bool VMapManager2::_loadMap(unsigned int mapId, const std::string& basePath, uint32 tileX, uint32 tileY)
     {
@@ -140,7 +143,7 @@ namespace VMAP
                 return false;
             }
 
-            // insert new data
+            // insert new data (加锁写入新创建的地图树指针)
             {
                 std::lock_guard<std::mutex> lock(m_vmStaticMapMutex);
                 instanceTree->second = newTree;
@@ -150,6 +153,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 卸载整张地图的所有资源并在无剩余图块时销毁 StaticMapTree
 
     void VMapManager2::unloadMap(unsigned int pMapId)
     {
@@ -166,6 +170,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 卸载指定地图单个图块，若该图块是最后一块则同步释放 StaticMapTree
 
     void VMapManager2::unloadMap(unsigned int  pMapId, int x, int y)
     {
@@ -182,6 +187,7 @@ namespace VMAP
     }
 
     //==========================================================
+    // 判断指定地图上两点间是否存在静态模型遮挡（可选忽略 M2 小型模型）
 
     bool VMapManager2::isInLineOfSight(unsigned int mapId, float x1, float y1, float z1, float x2, float y2, float z2, bool ignoreM2Model)
     {
@@ -203,6 +209,7 @@ namespace VMAP
     /**
     get the hit position and return true if we hit something
     otherwise the result pos will be the dest pos
+    检测两点间静态模型碰撞点并将结果转换回游戏世界坐标
     */
     bool VMapManager2::getObjectHitPos(unsigned int mapId, float x1, float y1, float z1, float x2, float y2, float z2, float& rx, float& ry, float& rz, float pModifyDist)
     {
@@ -231,6 +238,7 @@ namespace VMAP
     //=========================================================
     /**
     get height or INVALID_HEIGHT if no height available
+    查询坐标处的静态模型表面高度，未命中模型时返回 VMAP_INVALID_HEIGHT_VALUE
     */
 
     float VMapManager2::getHeight(unsigned int mapId, float x, float y, float z, float maxSearchDist)
@@ -253,6 +261,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 查询坐标所在的 WMO 区域标志、ADT/Root/Group ID 与地面高度
 
     bool VMapManager2::getAreaInfo(unsigned int mapId, float x, float y, float& z, uint32& flags, int32& adtId, int32& rootId, int32& groupId) const
     {
@@ -268,6 +277,7 @@ namespace VMAP
         return result;
     }
 
+    // 将 WMO 液体类型编号映射为核心液体类型位掩码
     uint8 GetLiquidMask(uint32 type) // wotlk uses dbc
     {
         switch (type)
@@ -284,6 +294,7 @@ namespace VMAP
         }
     }
 
+    // 查询世界坐标所在 WMO 建筑内部的液体高度、地面高度与液体类型
     bool VMapManager2::GetLiquidLevel(uint32 pMapId, float x, float y, float z, uint8 ReqLiquidTypeMask, float& level, float& floor, uint32& type) const
     {
         InstanceTreeMap::const_iterator instanceTree = iInstanceMapTrees.find(pMapId);
@@ -305,6 +316,7 @@ namespace VMAP
     }
 
     //=========================================================
+    // 线程安全地获取（或从磁盘加载）共享 WorldModel 实例并递增引用计数
 
     WorldModel* VMapManager2::acquireModelInstance(const std::string& basepath, const std::string& filename)
     {
@@ -329,6 +341,7 @@ namespace VMAP
         return model->second.getModel();
     }
 
+    // 递减共享 WorldModel 引用计数，当引用归零时释放内存并移出缓存表
     void VMapManager2::releaseModelInstance(const std::string& filename)
     {
         ModelFileMap::iterator model = iLoadedModelFiles.find(filename);

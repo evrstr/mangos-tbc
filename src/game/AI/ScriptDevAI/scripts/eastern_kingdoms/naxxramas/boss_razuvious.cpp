@@ -21,39 +21,44 @@ SDComment: TODO: Deathknight Understudy are supposed to gain Mind Exhaustion deb
 SDCategory: Naxxramas
 EndScriptData */
 
+// 教官拉苏维奥斯（Instructor Razuvious）军事区1号首领战 AI（瓦解怒吼、心控死亡骑士学员盾墙抗怪）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SOUND_AGGRO1             = 8855,
-    SOUND_AGGRO2             = 8856,
-    SOUND_AGGRO3             = 8859,
-    SOUND_AGGRO4             = 8861,
+    SOUND_AGGRO1             = 8855,                        // aggro1 音效 ID
+    SOUND_AGGRO2             = 8856,                        // aggro2 音效 ID
+    SOUND_AGGRO3             = 8859,                        // aggro3 音效 ID
+    SOUND_AGGRO4             = 8861,                        // aggro4 音效 ID
 
-    SAY_SLAY                 = 13081,
-    SAY_UNDERSTUDY_TAUNT_1   = 13077,
-    SAY_UNDERSTUDY_TAUNT_2   = 13072,
-    SAY_UNDERSTUDY_TAUNT_3   = 13073,
-    SAY_UNDERSTUDY_TAUNT_4   = 13074,
-    SAY_DEATH                = 13079,
-    EMOTE_TRIUMPHANT_SHOOT   = 13082,
+    SAY_SLAY                 = 13081,                       // 击杀 台词广播 ID
+    SAY_UNDERSTUDY_TAUNT_1   = 13077,                       // understudy嘲讽1 台词广播 ID
+    SAY_UNDERSTUDY_TAUNT_2   = 13072,                       // understudy嘲讽2 台词广播 ID
+    SAY_UNDERSTUDY_TAUNT_3   = 13073,                       // understudy嘲讽3 台词广播 ID
+    SAY_UNDERSTUDY_TAUNT_4   = 13074,                       // understudy嘲讽4 台词广播 ID
+    SAY_DEATH                = 13079,                       // 死亡 台词广播 ID
+    EMOTE_TRIUMPHANT_SHOOT   = 13082,                       // triumphantshoot 表情动作 ID
 
-    SPELL_UNBALANCING_STRIKE = 26613,
-    SPELL_DISRUPTING_SHOUT   = 29107,
-    SPELL_HOPELESS           = 29125,
+    SPELL_UNBALANCING_STRIKE = 26613,                       // unbalancing打击 法术 ID
+    SPELL_DISRUPTING_SHOUT   = 29107,                       // disruptingshout 法术 ID
+    SPELL_HOPELESS           = 29125,                       // hopeless 法术 ID
 
     SPELL_TAUNT              = 29060        // Used by Deathknight Understudy
 };
 
 static const float resetZ = 285.0f;         // Above this altitude, Razuvious is outside his combat area (in the stairs) and should reset (leashing)
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum RazuviousActions
 {
     RAZUVIOUS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（razuvious）
 struct boss_razuviousAI : public BossAI
 {
     boss_razuviousAI(Creature* creature) : BossAI(creature, RAZUVIOUS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_oneHit(false)
@@ -121,6 +126,7 @@ struct boss_razuviousAI : public BossAI
     }
 };
 
+// 注册并载入脚本模块：boss_razuvious
 void AddSC_boss_razuvious()
 {
     Script* newScript = new Script;

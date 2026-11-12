@@ -21,6 +21,11 @@ SDComment: Instance script and access panel GO
 SDCategory: Coilfang Resevoir, The Steamvault
 EndScriptData */
 
+// 蒸汽地窟副本数据脚本实现
+/* 遭遇战概述：
+ * 管理蒸汽地窟三大水闸控制开关与首领击杀进度。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "steam_vault.h"
 
@@ -30,6 +35,7 @@ EndScriptData */
 3 - Warlord Kalithresh Event
 */
 
+// 游戏对象使用交互回调
 bool GOUse_go_main_chambers_access_panel(Player* /*pPlayer*/, GameObject* pGo)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
@@ -187,11 +193,13 @@ void instance_steam_vault::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
+// 获取副本数据脚本实例函数
 InstanceData* GetInstanceData_instance_steam_vault(Map* pMap)
 {
     return new instance_steam_vault(pMap);
 }
 
+// 注册 instance_steam_vault 脚本
 void AddSC_instance_steam_vault()
 {
     Script* pNewScript = new Script;

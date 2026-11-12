@@ -23,10 +23,12 @@
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
 #include "Maps/Map.h"
 
+// 构造函数
 HostileRefManager::HostileRefManager(Unit* owner) : iOwner(owner)
 {
 }
 
+// 析构时移除所有反向仇恨引用
 HostileRefManager::~HostileRefManager()
 {
     deleteReferences();
@@ -36,6 +38,7 @@ HostileRefManager::~HostileRefManager()
 // send threat to all my haters for the pVictim
 // The pVictim is hated than by them as well
 // use for buffs and healing threat functionality
+// 向所有仇恨本单位的敌人广播协助仇恨（常用于治疗/增益法术对施法者产生仇恨）
 
 void HostileRefManager::threatAssist(Unit* victim, float threat, SpellEntry const* threatSpell, bool singleTarget, bool ignoreTimer)
 {
@@ -49,6 +52,7 @@ void HostileRefManager::threatAssist(Unit* victim, float threat, SpellEntry cons
     if (!ref)
         return;
 
+    // 收集当前未受控且可攻击 victim 的敌对来源
     std::vector<HostileReference*> validRefs;
     while (ref)
     {
@@ -58,7 +62,7 @@ void HostileRefManager::threatAssist(Unit* victim, float threat, SpellEntry cons
         ref = ref->next();
     }
 
-    uint32 size = singleTarget ? 1 : validRefs.size();            // if singleTarget do not devide threat
+    uint32 size = singleTarget ? 1 : validRefs.size();            // if singleTarget do not devide threat (单体直接仇恨不均分，否则按有效仇恨源数量均分)
     float threatPerTarget = threat / size;
     for (HostileReference* validReference : validRefs)
     {
@@ -69,7 +73,7 @@ void HostileRefManager::threatAssist(Unit* victim, float threat, SpellEntry cons
 }
 
 //=================================================
-
+// 对所有仇恨本单位的敌对列表按百分比增减仇恨
 void HostileRefManager::addThreatPercent(int32 threatPercent)
 {
     HostileReference* ref = getFirst();
@@ -80,6 +84,7 @@ void HostileRefManager::addThreatPercent(int32 threatPercent)
     }
 }
 
+// 临时仇恨消退处理（apply=true 时暂扣仇恨，false 时恢复）
 void HostileRefManager::threatTemporaryFade(Unit* /*victim*/, float threat, bool apply)
 {
     HostileReference* ref = getFirst();
@@ -101,6 +106,7 @@ void HostileRefManager::threatTemporaryFade(Unit* /*victim*/, float threat, bool
 
 //=================================================
 // The online / offline status is given to the method. The calculation has to be done before
+// 批量设置所有敌对引用的在线/离线状态
 
 void HostileRefManager::setOnlineOfflineState(bool isOnline)
 {
@@ -112,11 +118,12 @@ void HostileRefManager::setOnlineOfflineState(bool isOnline)
     }
 }
 
+// 更新在线/离线状态（战斗中假死成功时阻止恢复在线状态）
 void HostileRefManager::updateOnlineOfflineState(bool pIsOnline)
 {
     if (pIsOnline && iOwner)
     {
-        // Do not set online while feigning death in combat
+        // Do not set online while feigning death in combat (战斗中处于假死成功状态时保持离线仇恨状态)
         if (iOwner->IsFeigningDeathSuccessfully() && iOwner->IsInCombat())
             return;
     }
@@ -125,6 +132,7 @@ void HostileRefManager::updateOnlineOfflineState(bool pIsOnline)
 
 //=================================================
 // The online / offline status is calculated and set
+// 遍历并重新计算所有仇恨表引用的在线状态
 
 void HostileRefManager::updateThreatTables()
 {
@@ -139,6 +147,7 @@ void HostileRefManager::updateThreatTables()
 //=================================================
 // The references are not needed anymore
 // tell the source to remove them from the list and free the mem
+// 移除并释放全部敌对引用
 
 void HostileRefManager::deleteReferences()
 {
@@ -154,6 +163,7 @@ void HostileRefManager::deleteReferences()
 
 //=================================================
 // delete one reference, defined by faction
+// 移除来自指定阵营的所有敌对引用
 
 void HostileRefManager::deleteReferencesForFaction(uint32 faction)
 {
@@ -172,6 +182,7 @@ void HostileRefManager::deleteReferencesForFaction(uint32 faction)
 
 //=================================================
 // delete one reference, defined by Unit
+// 移除指定敌对单位的引用
 
 void HostileRefManager::deleteReference(Unit* victim)
 {
@@ -191,6 +202,7 @@ void HostileRefManager::deleteReference(Unit* victim)
 
 //=================================================
 // set state for one reference, defined by Unit
+// 更新指定敌对单位引用的在线/离线状态
 
 void HostileRefManager::setOnlineOfflineState(Unit* victim, bool isOnline)
 {
@@ -207,16 +219,19 @@ void HostileRefManager::setOnlineOfflineState(Unit* victim, bool isOnline)
     }
 }
 
+// 解析当前仇恨误导目标单位
 Unit* HostileRefManager::GetThreatRedirectionTarget() const
 {
     return m_redirectionTargetGuid ? iOwner->GetMap()->GetUnit(m_redirectionTargetGuid) : nullptr;
 }
 
+// 获取链表中首个敌对引用
 HostileReference* HostileRefManager::getFirst()
 {
     return static_cast<HostileReference*>(RefManager<Unit, ThreatManager>::getFirst());
 }
 
+// 更新目标压制状态（例如本单位无敌或对敌方主要攻击学派免疫时降低仇恨优先级）
 void HostileRefManager::HandleSuppressed(bool apply, bool immunity)
 {
     if (apply)

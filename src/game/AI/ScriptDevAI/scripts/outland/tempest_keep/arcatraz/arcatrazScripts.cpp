@@ -21,6 +21,11 @@ SDComment: Warden Mellichar, event controller for Skyriss event. Millhouse Manas
 SDCategory: Tempest Keep, The Arcatraz
 EndScriptData */
 
+// 禁魔监狱通用与杂项脚本
+/* 遭遇战概述：
+ * 封装禁魔监狱牢房看守、米尔菲斯·法力风暴与召唤事件。
+ */
+
 /* ContentData
 npc_millhouse_manastorm
 npc_warden_mellichar
@@ -35,6 +40,7 @@ EndContentData */
 # npc_millhouse_manastorm
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_INTRO_1                     = 19108,
@@ -83,6 +89,7 @@ static const DialogueEntry aIntroDialogue[] =
 
 static const float fRoomCenterCoords[3] = {445.8804f, -158.7055f, 43.06898f};
 
+// npc_millhouse_manastormAI 逻辑实现
 struct npc_millhouse_manastormAI : public CombatAI, private DialogueHelper
 {
     npc_millhouse_manastormAI(Creature* creature) : CombatAI(creature, 0),
@@ -106,6 +113,7 @@ struct npc_millhouse_manastormAI : public CombatAI, private DialogueHelper
     uint32 m_uiConeColtTimer;
     uint32 m_uiArcaneMissileTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -240,12 +248,14 @@ struct npc_millhouse_manastormAI : public CombatAI, private DialogueHelper
 # npc_warden_mellichar
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_BUBBLE_VISUAL     = 36849,
     SPELL_SIMPLE_TELEPORT   = 12980,
 };
 
+// npc_warden_mellicharAI 逻辑实现
 struct npc_warden_mellicharAI : public CombatAI
 {
     npc_warden_mellicharAI(Creature* creature) : CombatAI(creature, 0),
@@ -259,6 +269,7 @@ struct npc_warden_mellicharAI : public CombatAI
     uint32 m_uiIntroTimer;
     ObjectGuid m_targetPlayerGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -269,6 +280,7 @@ struct npc_warden_mellicharAI : public CombatAI
 
     void AttackStart(Unit* /*who*/) override {}
 
+    // 进入战斗回调
     void Aggro(Unit* who) override
     {
         m_creature->InterruptNonMeleeSpells(false);
@@ -285,6 +297,7 @@ struct npc_warden_mellicharAI : public CombatAI
             m_instance->SetData(TYPE_HARBINGERSKYRISS, IN_PROGRESS);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->CastSpell(summoned, SPELL_SIMPLE_TELEPORT, TRIGGERED_NONE);
@@ -296,6 +309,7 @@ struct npc_warden_mellicharAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
@@ -329,6 +343,7 @@ struct npc_warden_mellicharAI : public CombatAI
 ## npc_arcatraz_defender
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_FLAMING_WEAPON    = 36601,
@@ -337,6 +352,7 @@ enum
     SPELL_PROTEAN_SUBDUAL_H = 40449,
 };
 
+// npc_arcatraz_defenderAI 逻辑实现
 struct npc_arcatraz_defenderAI : public CombatAI
 {
     npc_arcatraz_defenderAI(Creature* creature) : CombatAI(creature, 0), m_isRegularMode(creature->GetMap()->IsRegularDifficulty())
@@ -347,6 +363,7 @@ struct npc_arcatraz_defenderAI : public CombatAI
     uint32 m_uiFlamingWeaponTimer;
     uint32 m_uiProteanSubdualTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -383,6 +400,7 @@ struct npc_arcatraz_defenderAI : public CombatAI
     }
 };
 
+// 注册 arcatraz 脚本
 void AddSC_arcatraz()
 {
     Script* pNewScript = new Script;

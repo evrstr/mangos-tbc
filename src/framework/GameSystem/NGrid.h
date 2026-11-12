@@ -20,6 +20,7 @@
 #define MANGOS_NGRID_H
 
 /** NGrid is nothing more than a wrapper of the Grid with an NxN cells
+ * NGrid 是包含 N×N 个 Grid 单元格的二维大网格封装
  */
 
 #include "GameSystem/Grid.h"
@@ -28,6 +29,7 @@
 
 #include <cassert>
 
+/// 网格元信息：维护卸载超时计时器与卸载锁定状态
 class GridInfo
 {
     public:
@@ -44,6 +46,7 @@ class GridInfo
 
         const TimeTracker& getTimeTracker() const { return i_timer; }
 
+        /// 判断当前是否被锁定而禁止卸载
         bool getUnloadLock() const
         {
             return i_unloadActiveLockCount || i_unloadExplicitLock;
@@ -60,10 +63,11 @@ class GridInfo
     private:
 
         TimeTracker i_timer;
-        uint16 i_unloadActiveLockCount : 16;                // lock from active object spawn points (prevent clone loading)
-        bool i_unloadExplicitLock      : 1;                 // explicit manual lock or config setting
+        uint16 i_unloadActiveLockCount : 16;                // lock from active object spawn points (prevent clone loading) | 来自活跃对象刷新点的卸载锁计数（防止重复加载）
+        bool i_unloadExplicitLock      : 1;                 // explicit manual lock or config setting | 显式手动锁定或配置禁卸标志
 };
 
+/// 网格生命周期状态枚举
 typedef enum
 {
     GRID_STATE_INVALID = 0,
@@ -73,6 +77,7 @@ typedef enum
     MAX_GRID_STATE = 4
 } grid_state_t;
 
+/// 包含 N×N 单元格的大网格模板类
 template
 <
     uint32 N,
@@ -92,6 +97,7 @@ class NGrid
             i_GridInfo = GridInfo(expiry, unload);
         }
 
+        /// 按单元格坐标 (x, y) 只读访问子 Grid
         const GridType& operator()(uint32 x, uint32 y) const
         {
             assert(x < N);
@@ -99,6 +105,7 @@ class NGrid
             return i_cells[x][y];
         }
 
+        /// 按单元格坐标 (x, y) 可写访问子 Grid
         GridType& operator()(uint32 x, uint32 y)
         {
             assert(x < N);
@@ -112,6 +119,7 @@ class NGrid
         uint32 getX() const { return i_x; }
         uint32 getY() const { return i_y; }
 
+        /// 将当前 NGrid 链接到地图的网格引用管理器中
         void link(GridRefManager<NGrid<N, ACTIVE_OBJECT, WORLD_OBJECT_TYPES, GRID_OBJECT_TYPES> >* pTo)
         {
             i_Reference.link(pTo, this);
@@ -129,18 +137,21 @@ class NGrid
         void ResetTimeTracker(time_t interval) { i_GridInfo.ResetTimeTracker(interval); }
         void UpdateTimeTracker(time_t diff) { i_GridInfo.UpdateTimeTracker(diff); }
 
+        /// 向指定单元格添加世界对象
         template<class SPECIFIC_OBJECT>
         void AddWorldObject(const uint32 x, const uint32 y, SPECIFIC_OBJECT* obj)
         {
             getGridType(x, y).AddWorldObject(obj);
         }
 
+        /// 从指定单元格移除世界对象
         template<class SPECIFIC_OBJECT>
         void RemoveWorldObject(const uint32 x, const uint32 y, SPECIFIC_OBJECT* obj)
         {
             getGridType(x, y).RemoveWorldObject(obj);
         }
 
+        /// 遍历整个 N×N 网格的所有单元格并应用访问者
         template<class T, class TT>
         void Visit(TypeContainerVisitor<T, TypeMapContainer<TT> >& visitor)
         {
@@ -149,12 +160,14 @@ class NGrid
                     i_cells[x][y].Visit(visitor);
         }
 
+        /// 对单个指定单元格应用访问者
         template<class T, class TT>
         void Visit(const uint32& x, const uint32& y, TypeContainerVisitor<T, TypeMapContainer<TT> >& visitor)
         {
             getGridType(x, y).Visit(visitor);
         }
 
+        /// 统计整个 NGrid 中所有活跃对象数量
         uint32 ActiveObjectsInGrid() const
         {
             uint32 count = 0;
@@ -165,12 +178,14 @@ class NGrid
             return count;
         }
 
+        /// 向指定单元格添加网格对象
         template<class SPECIFIC_OBJECT>
         bool AddGridObject(const uint32 x, const uint32 y, SPECIFIC_OBJECT* obj)
         {
             return getGridType(x, y).AddGridObject(obj);
         }
 
+        /// 从指定单元格移除网格对象
         template<class SPECIFIC_OBJECT>
         bool RemoveGridObject(const uint32 x, const uint32 y, SPECIFIC_OBJECT* obj)
         {

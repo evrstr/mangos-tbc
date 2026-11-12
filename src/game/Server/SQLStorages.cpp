@@ -18,6 +18,7 @@
 
 #include "Server/SQLStorages.h"
 
+/// 数据库表字段加载格式串（i=int32, s=string, f=float, b=uint8, l=uint64, L=uint64/string转ID, x=跳过）
 const char CreatureInfosrcfmt[] = "isssiiiiiiiiiiiifiiiiliiiiiiiiiffiiiiiiiifffffffffffiiiiffffiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiissff";
 const char CreatureInfodstfmt[] = "isssiiiiiiiiiiiifiiiiliiiiiiiiiffiiiiiiiifffffffffffiiiiffffiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiisiff";
 const char CreatureDataAddonInfofmt[] = "iibbiis";
@@ -44,6 +45,7 @@ const char DungeonEncounterFmt[] = "iiiiiissssssssssssssssii";
 const char FactionEntryfmt[] = "iiiiiiiiiiiiiiiiiiiffiissssssssssssssss";
 const char WorldSafeLocsFmt[] = "iiffffs";
 
+/// 实例化全局 SQLStorage / SQLHashStorage / SQLMultiStorage 存储对象
 SQLStorage sCreatureStorage(CreatureInfosrcfmt, CreatureInfodstfmt, "Entry", "creature_template");
 SQLStorage sCreatureDataAddonStorage(CreatureDataAddonInfofmt, "guid", "creature_addon");
 SQLStorage sCreatureModelStorage(CreatureModelfmt, "modelid", "creature_model_info");

@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Coilfang Resevoir, The Underbog
 EndScriptData */
 
+// 幽暗沼泽副本数据脚本实现
+/* 遭遇战概述：
+ * 维护幽暗沼泽地下城进度。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "underbog.h"
 #include "World/WorldStateDefines.h"
@@ -120,6 +125,7 @@ bool AreaTrigger_at_earthbinder_rayge(Player* player, AreaTriggerEntry const* /*
     return true;
 }
 
+// 注册 instance_underbog 脚本
 void AddSC_instance_underbog()
 {
     Script* pNewScript = new Script;

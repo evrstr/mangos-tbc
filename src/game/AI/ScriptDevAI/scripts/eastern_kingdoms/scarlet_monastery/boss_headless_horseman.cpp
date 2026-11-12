@@ -21,21 +21,24 @@
  SDCategory: Scarlet Monastery
  EndScriptData */
 
+// 无头骑士（Headless Horseman）墓地节日首领战 AI（身体与南瓜飞头阶段转换、救火灭火事件）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "Entities/TemporarySpawn.h"
 #include "Spells/Scripts/SpellScript.h"
 #include "AI/ScriptDevAI/scripts/eastern_kingdoms/scarlet_monastery/scarlet_monastery.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // horseman yells
-    SAY_REJOINED = -1189023,
-    SAY_BODY_DEFEAT = -1189024,
-    SAY_LOST_HEAD = -1189025,
-    SAY_CONFLAGRATION = -1189026,
-    SAY_SPROUTING_PUMPKINS = -1189027,
-    SAY_SLAY = -1189028,
-    SAY_DEATH = -1189029,
+    // horseman yells (骑士yells)
+    SAY_REJOINED = -1189023,                                // rejoined 台词广播 ID
+    SAY_BODY_DEFEAT = -1189024,                             // bodydefeat 台词广播 ID
+    SAY_LOST_HEAD = -1189025,                               // losthead 台词广播 ID
+    SAY_CONFLAGRATION = -1189026,                           // conflagration 台词广播 ID
+    SAY_SPROUTING_PUMPKINS = -1189027,                      // sproutingpumpkins 台词广播 ID
+    SAY_SLAY = -1189028,                                    // 击杀 台词广播 ID
+    SAY_DEATH = -1189029,                                   // 死亡 台词广播 ID
 
     // event start yells - handled by dbscripts
     // SAY_ENTRANCE             = -1189022,
@@ -46,39 +49,39 @@ enum
     // SAY_PLAYER4              = -1189034,
 
     // normal phase spells
-    SPELL_BODY_HEAD_VISUAL = 42413,            // head visual
+    SPELL_BODY_HEAD_VISUAL = 42413,            // head visual (head视觉特效)
     SPELL_JACK_LANTERNED = 44185,            // on killed player
-    SPELL_HORSEMAN_CLEAVE = 42587,
+    SPELL_HORSEMAN_CLEAVE = 42587,                          // 骑士顺劈斩 法术 ID
     SPELL_CONFLAGRATION = 45342,            // triggers 42381
     SPELL_SUMMON_PUMPKIN = 52236,            // triggers 42394
     SPELL_HORSEMAN_SUMMON = 42394,            // triggered spell - used to do the text
-    SPELL_CONFLAGRATION_SOUND = 48149,
+    SPELL_CONFLAGRATION_SOUND = 48149,                      // conflagrationsound 法术 ID
     SPELL_BODY_STAGE_1 = 42547,            // phase control spells
-    SPELL_BODY_STAGE_2 = 42548,
-    SPELL_BODY_STAGE_3 = 42549,
+    SPELL_BODY_STAGE_2 = 42548,                             // bodystage2 法术 ID
+    SPELL_BODY_STAGE_3 = 42549,                             // bodystage3 法术 ID
 
     // headless body spells
     SPELL_SEND_HEAD = 42399,            // send event 15394 - toss head
     SPELL_WHIRLWIND = 43116,            // triggers 43118
     SPELL_BODY_REGEN_PROC = 42556,            // procs 42587; also adds immunity
     SPELL_BODY_REGEN = 42403,            // change model to headless
-    SPELL_BODY_REGEN_CONFUSE = 43105,            // confuse spell
+    SPELL_BODY_REGEN_CONFUSE = 43105,            // confuse spell (confuse法术)
 
     // head spells
-    SPELL_HEAD_VISUAL = 44241,
+    SPELL_HEAD_VISUAL = 44241,                              // head视觉特效 法术 ID
     SPELL_HEAL_BODY = 43306,            // heal body to 100% on rejoin
-    SPELL_REQUEST_BODY = 43101,
+    SPELL_REQUEST_BODY = 43101,                             // requestbody 法术 ID
     SPELL_HORSEMAN_HEAD_LANDS = 42400,            // head land visual
     // SPELL_HEAD_INVISIBLE     = 44312,            // purpose unk
     // SPELL_HEADS_BREATH       = 43207,            // purpose unk
 
     // pumpkin spells
-    SPELL_PUMPKIN_LIFE_CYCLE = 42280,            // visual root aura
-    SPELL_PUMPKIN_AURA = 42294,            // visual green aura
+    SPELL_PUMPKIN_LIFE_CYCLE = 42280,            // visual root aura (视觉特效缠绕光环)
+    SPELL_PUMPKIN_AURA = 42294,            // visual green aura (视觉特效green光环)
     SPELL_SPROUTING = 42281,            // sprout delay
     SPELL_PUMPKIN_DEATH = 42291,            // visual on sprout
-    SPELL_SPROUT_BODY = 42285,            // visual moving aura
-    SPELL_SQUASH_SOUL = 42514,
+    SPELL_SPROUT_BODY = 42285,            // visual moving aura (视觉特效moving光环)
+    SPELL_SQUASH_SOUL = 42514,                              // squash灵魂 法术 ID
 
     // event end spells
     SPELL_HEAD_IS_DEAD = 42428,            // send event 15407; triggers 42566
@@ -96,32 +99,34 @@ enum
     // SPELL_WISP_INVISIBLE        = 42823,
     SPELL_ON_KILL_PROC = 43877,            // procs 13567 - use unk
     // SPELL_ENRAGE_VISUAL         = 42438,         // use unk
-    SPELL_YELL_TIMER = 42432,
-    SPELL_MANIACAL_LAUGHT_DELAYED_9 = 43893,
-    SPELL_HORSEMAN_SPEAKS = 43129,
-    SPELL_HEAD_STUN = 42408,
+    SPELL_YELL_TIMER = 42432,                               // 大喊计时器 法术 ID
+    SPELL_MANIACAL_LAUGHT_DELAYED_9 = 43893,                // maniacallaughtdelayed9 法术 ID
+    SPELL_HORSEMAN_SPEAKS = 43129,                          // 骑士speaks 法术 ID
+    SPELL_HEAD_STUN = 42408,                                // head击晕 法术 ID
     SPELL_RHYME_AURA = 42879,            // Used for rhymes at start
-    SPELL_COMMAND_HEAD_REPOSITIONS = 42410,         // cast by horseman on head
-    SPELL_HEAD_REPOSITIONS = 42409,
-    SPELL_HEAD_PERIODIC = 42603,
-    SPELL_RAIN_OF_TREATS = 43344,
-    SPELL_EARTH_EXPLOSION = 42373,
+    SPELL_COMMAND_HEAD_REPOSITIONS = 42410,         // cast by horseman on head (由 horseman on head 施放)
+    SPELL_HEAD_REPOSITIONS = 42409,                         // headrepositions 法术 ID
+    SPELL_HEAD_PERIODIC = 42603,                            // headperiodic 法术 ID
+    SPELL_RAIN_OF_TREATS = 43344,                           // rainoftreats 法术 ID
+    SPELL_EARTH_EXPLOSION = 42373,                          // 大地爆炸 法术 ID
 
     // creatures
-    NPC_HEADLESS_HORSEMAN = 23682,
-    NPC_HEAD_OF_HORSEMAN = 23775,
+    NPC_HEADLESS_HORSEMAN = 23682,                          // 无头骑士 Entry ID
+    NPC_HEAD_OF_HORSEMAN = 23775,                           // headof骑士 Entry ID
     NPC_PULSING_PUMPKIN = 23694,            // summoned by spell 42277
     // NPC_HORSEMAN_WISP_INV    = 24034,            // probably used for the epilog
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum HorsemanPhase
 {
-    PHASE_HORSEMAN = 1,
-    PHASE_CONFLAGRATION = 2,
-    PHASE_PUMPKINS = 3,
-    PHASE_HEAD_TOSS = 4,
+    PHASE_HORSEMAN = 1,                                     // 骑士 阶段 ID
+    PHASE_CONFLAGRATION = 2,                                // conflagration 阶段 ID
+    PHASE_PUMPKINS = 3,                                     // pumpkins 阶段 ID
+    PHASE_HEAD_TOSS = 4,                                    // headtoss 阶段 ID
 };
 
+// 首领战 AI：骑士（headless_horseman）
 struct boss_headless_horsemanAI : public ScriptedAI
 {
     boss_headless_horsemanAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -133,19 +138,20 @@ struct boss_headless_horsemanAI : public ScriptedAI
         m_bHorsemanLanded = false;
     }
 
-    bool m_bHorsemanLanded;
-    bool m_bHeadRequested;
+    bool m_bHorsemanLanded;                                 // HorsemanLanded 状态标记
+    bool m_bHeadRequested;                                  // HeadRequested 状态标记
 
     HorsemanPhase m_fightPhase;
 
-    ObjectGuid m_headGuid;
+    ObjectGuid m_headGuid;                                  // head 实体 GUID
 
-    uint32 m_uiCleaveTimer;
-    uint32 m_uiConflagrationTimer;
-    uint32 m_uiPumpkinTimer;
+    uint32 m_uiCleaveTimer;                                 // Cleave 技能计时器
+    uint32 m_uiConflagrationTimer;                          // Conflagration 技能计时器
+    uint32 m_uiPumpkinTimer;                                // Pumpkin 技能计时器
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         DoCastSpellIfCan(m_creature, SPELL_BODY_STAGE_1, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
@@ -167,6 +173,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
             ScriptedAI::MoveInLineOfSight(pWho);
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* pVictim) override
     {
         if (pVictim->GetTypeId() == TYPEID_PLAYER)
@@ -176,6 +183,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_HEAD_OF_HORSEMAN)
@@ -211,6 +219,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
             head->ForcedDespawn();
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         // cleanup
@@ -228,6 +237,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
                 bunny->CastSpell(nullptr, SPELL_EARTH_EXPLOSION, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 uiType, uint32 uiPointId) override
     {
         // allow attacking
@@ -244,7 +254,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 /*uiMiscValue*/) override
     {
-        // rejoin head on request
+        // rejoin head on request (响应请求头部回归身体)
         if (eventType == AI_EVENT_CUSTOM_A && pInvoker->GetEntry() == NPC_HEAD_OF_HORSEMAN)
         {
             DoRejoinHead();
@@ -309,6 +319,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -326,7 +337,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
                 else
                     m_uiPumpkinTimer -= uiDiff;
 
-                // no break;
+                // no break; (穿透执行，无需 break)
             case PHASE_CONFLAGRATION:
 
                 // conflagration not happening during pumpkin phase
@@ -347,7 +358,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
                         m_uiConflagrationTimer -= uiDiff;
                 }
 
-                // no break;
+                // no break; (穿透执行，无需 break)
             case PHASE_HORSEMAN:
 
                 // cleave - all phases
@@ -359,7 +370,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
                 else
                     m_uiCleaveTimer -= uiDiff;
 
-                DoMeleeAttackIfReady();
+                DoMeleeAttackIfReady();                     // 近战普通攻击判定
                 break;
             case PHASE_HEAD_TOSS:
                 // rejoin head by force at 100% hp
@@ -375,6 +386,7 @@ struct boss_headless_horsemanAI : public ScriptedAI
     }
 };
 
+// 首领战 AI：of骑士（head_of_horseman）
 struct boss_head_of_horsemanAI : public ScriptedAI
 {
     boss_head_of_horsemanAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -386,11 +398,13 @@ struct boss_head_of_horsemanAI : public ScriptedAI
 
     uint8 m_uiHeadPhase;
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
     void AttackStart(Unit* /*pWho*/) override { }
     void MoveInLineOfSight(Unit* /*pWho*/) override { }
 
+    // 受到伤害回调：阶段血量阈值检测
     void DamageTaken(Unit* dealer, uint32& damage, DamageEffectType damagetype, SpellEntry const* spellInfo) override
     {
         // allow him to die the last phase
@@ -475,6 +489,7 @@ struct boss_head_of_horsemanAI : public ScriptedAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
+// 法术脚本逻辑实现：标识 ID（SendHead）
 struct SendHead : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -490,6 +505,7 @@ struct SendHead : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（HeadRequestsBody）
 struct HeadRequestsBody : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -505,6 +521,7 @@ struct HeadRequestsBody : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_headless_horseman
 void AddSC_boss_headless_horseman()
 {
     Script* pNewScript = new Script;

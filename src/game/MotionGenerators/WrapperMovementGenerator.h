@@ -22,6 +22,7 @@
 #include "MotionGenerators/MovementGenerator.h"
 #include "Movement/MoveSplineInit.h"
 
+/// 样条包装移动生成器基类：直接封装一个预构造好的 MoveSplineInit（支持延迟启动、驻留及 AI 通知）
 class AbstractWrapperMovementGenerator : virtual public MovementGenerator
 {
     public:
@@ -38,17 +39,19 @@ class AbstractWrapperMovementGenerator : virtual public MovementGenerator
 
         MovementGeneratorType GetMovementGeneratorType() const override = 0;
 
+        /// 派发样条完成通知（自身 AI、召唤者 AI 及 Relay 脚本）
         void Inform(Unit& owner);
 
     protected:
-        Movement::MoveSplineInit i_spline;
-        uint32 i_id;
+        Movement::MoveSplineInit i_spline; // 预构建的样条初始化器
+        uint32 i_id;                       // 移动事件 ID（如 EVENT_CHARGE / EVENT_JUMP）
         bool i_delayed, i_resident, i_dispatched, i_informed, i_useTimer, i_timerSet;
-        ShortTimeTracker m_delayTimer;
+        ShortTimeTracker m_delayTimer;     // NPC 落地/抵达后的短暂保护延迟计时器
         ObjectGuid m_guid;
         uint32 m_relayId;
 };
 
+/// 效果位移生成器：用于法术冲锋、击退、跳跃等非驻留一次性位移（添加 UNIT_STAT_PROPELLED）
 class EffectMovementGenerator : public AbstractWrapperMovementGenerator
 {
     public:
@@ -65,6 +68,7 @@ class EffectMovementGenerator : public AbstractWrapperMovementGenerator
         MovementGeneratorType GetMovementGeneratorType() const override { return EFFECT_MOTION_TYPE; }
 };
 
+/// 坠落移动生成器：复用 EffectMovementGenerator 逻辑，仅区分 FALL_MOTION_TYPE 类型标识
 class FallMovementGenerator : public EffectMovementGenerator
 {
     public:

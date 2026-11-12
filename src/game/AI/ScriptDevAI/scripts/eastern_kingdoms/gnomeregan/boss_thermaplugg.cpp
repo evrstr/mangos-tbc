@@ -21,15 +21,18 @@ SDComment: Timer need improvement, especially for bomb-spawning, s.9204
 SDCategory: Gnomeregan
 EndScriptData */
 
+// 麦克尼尔·瑟玛普拉格（Mekgineer Thermaplugg）首领战 AI（炸弹发射器与辐射防护按钮）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "gnomeregan.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                           = -1090024,
-    SAY_PHASE                           = -1090025,
-    SAY_BOMB                            = -1090026,
-    SAY_SLAY                            = -1090027,
+    SAY_AGGRO                           = -1090024,         // 开战 台词广播 ID
+    SAY_PHASE                           = -1090025,         // 阶段 台词广播 ID
+    SAY_BOMB                            = -1090026,         // 炸弹 台词广播 ID
+    SAY_SLAY                            = -1090027,         // 击杀 台词广播 ID
 
     SPELL_ACTIVATE_BOMB_A               = 11511,            // Target Dest = -530.754 670.571 -313.784
     //SPELL_ACTIVATE_BOMB_01              = 11518,            // Activate Bomb 01
@@ -45,15 +48,16 @@ enum
     //SPELL_ACTIVATE_BOMB_04B              = 11799,            // Activate Bomb 04B
     //SPELL_ACTIVATE_BOMB_05B              = 11800,            // Activate Bomb 05B
     //SPELL_ACTIVATE_BOMB_06B              = 11801,            // Activate Bomb 06B
-    SPELL_KNOCK_AWAY                    = 10101,
-    SPELL_KNOCK_AWAY_AOE                = 11130,
-    SPELL_WALKING_BOMB_EFFECT           = 11504,
+    SPELL_KNOCK_AWAY                    = 10101,            // knockaway 法术 ID
+    SPELL_KNOCK_AWAY_AOE                = 11130,            // knockawayaoe 法术 ID
+    SPELL_WALKING_BOMB_EFFECT           = 11504,            // walking炸弹效果 法术 ID
 
-    NPC_WALKING_BOMB                    = 7915,
+    NPC_WALKING_BOMB                    = 7915,             // walking炸弹 Entry ID
 };
 
 static const float fBombSpawnZ  = -316.2625f;
 
+// 首领战 AI：标识 ID（thermaplugg）
 struct boss_thermapluggAI : public ScriptedAI
 {
     boss_thermapluggAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -63,10 +67,10 @@ struct boss_thermapluggAI : public ScriptedAI
     }
 
     instance_gnomeregan* m_pInstance;
-    bool m_bIsPhaseTwo;
+    bool m_bIsPhaseTwo;                                     // IsPhaseTwo 状态标记
 
-    uint32 m_uiKnockAwayTimer;
-    uint32 m_uiActivateBombTimer;
+    uint32 m_uiKnockAwayTimer;                              // KnockAway 技能计时器
+    uint32 m_uiActivateBombTimer;                           // ActivateBomb 技能计时器
 
     sBombFace* m_asBombFaces;
     float m_afSpawnPos[3];
@@ -74,6 +78,7 @@ struct boss_thermapluggAI : public ScriptedAI
     GuidList m_lSummonedBombGUIDs;
     GuidList m_lLandedBombGUIDs;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiKnockAwayTimer = urand(12000, 20000);
@@ -124,6 +129,7 @@ struct boss_thermapluggAI : public ScriptedAI
         m_afSpawnPos[2] = m_creature->GetPositionZ();
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_pInstance)
@@ -138,6 +144,7 @@ struct boss_thermapluggAI : public ScriptedAI
         m_lSummonedBombGUIDs.clear();
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_WALKING_BOMB)
@@ -160,6 +167,7 @@ struct boss_thermapluggAI : public ScriptedAI
         m_lSummonedBombGUIDs.remove(pSummoned->GetObjectGuid());
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -210,7 +218,7 @@ struct boss_thermapluggAI : public ScriptedAI
         else
             m_uiActivateBombTimer -= uiDiff;
 
-        // Spawn bombs
+        // Spawn bombs (生成bombs)
         if (m_asBombFaces)
         {
             for (uint8 i = 0; i < MAX_GNOME_FACES; ++i)
@@ -235,17 +243,18 @@ struct boss_thermapluggAI : public ScriptedAI
             }
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_thermaplugg
 UnitAI* GetAI_boss_thermaplugg(Creature* pCreature)
 {
     return new boss_thermapluggAI(pCreature);
 }
 
-// 11511 - Activate Bomb A
-// 11795 - Activate Bomb B
+// 11511 - Activate Bomb A (11511 - 激活 炸弹 A)
+// 11795 - Activate Bomb B (11795 - 激活 炸弹 B)
 struct ActivateBombThermaplugg : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -260,6 +269,7 @@ struct ActivateBombThermaplugg : public SpellScript
     }
 };
 
+// 游戏对象使用交互回调：go_gnomeface_button
 bool GOUse_go_gnomeface_button(Player* pPlayer, GameObject* pGo)
 {
     instance_gnomeregan* pInstance = (instance_gnomeregan*)pPlayer->GetInstanceData();
@@ -280,6 +290,7 @@ bool GOUse_go_gnomeface_button(Player* pPlayer, GameObject* pGo)
     return false;
 }
 
+// 注册并载入脚本模块：boss_thermaplugg
 void AddSC_boss_thermaplugg()
 {
     Script* pNewScript = new Script;

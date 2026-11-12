@@ -23,31 +23,35 @@ SDComment: Though gameplay is Blizzlike, logic in Zombie Chow Search and Call Al
 SDCategory: Naxxramas
 EndScriptData */
 
+// 格拉斯（Gluth）构造区3号首领战 AI（重伤致死打击、十恶不赦残杀全团残血与僵尸吞噬回血）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_BOSS_GENERIC_ENRAGED      = 2384,
-    EMOTE_DEVOURS_ZOMBIE_CHOW       = 12242,
+    EMOTE_BOSS_GENERIC_ENRAGED      = 2384,                 // bossgenericenraged 表情动作 ID
+    EMOTE_DEVOURS_ZOMBIE_CHOW       = 12242,                // devours僵尸食物 表情动作 ID
 
-    SPELL_DOUBLE_ATTACK             = 19818,
-    SPELL_MORTALWOUND               = 25646,
-    SPELL_DECIMATE                  = 28374,
-    SPELL_DECIMATE_DAMAGE           = 28375,
-    SPELL_FRENZY                    = 28371,
-    SPELL_BERSERK                   = 26662,
-    SPELL_TERRIFYING_ROAR           = 29685,
+    SPELL_DOUBLE_ATTACK             = 19818,                // 双重攻击 法术 ID
+    SPELL_MORTALWOUND               = 25646,                // mortalwound 法术 ID
+    SPELL_DECIMATE                  = 28374,                // 残杀 法术 ID
+    SPELL_DECIMATE_DAMAGE           = 28375,                // 残杀伤害 法术 ID
+    SPELL_FRENZY                    = 28371,                // 狂乱 法术 ID
+    SPELL_BERSERK                   = 26662,                // 狂暴 法术 ID
+    SPELL_TERRIFYING_ROAR           = 29685,                // terrifyingroar 法术 ID
     SPELL_SUMMON_ZOMBIE_CHOW        = 28216,                // Triggers 28217 every 6 secs
     SPELL_CALL_ALL_ZOMBIE_CHOW      = 29681,                // Triggers 29682
     SPELL_ZOMBIE_CHOW_SEARCH        = 28235,                // Triggers 28236 every 3 secs
-    SPELL_ZOMBIE_CHOW_SEARCH_HEAL   = 28238,                // Healing effect
-    SPELL_ZOMBIE_CHOW_SEARCH_KILL   = 28239,                // Zombie Chow Suicide effect
+    SPELL_ZOMBIE_CHOW_SEARCH_HEAL   = 28238,                // Healing effect (治疗效果)
+    SPELL_ZOMBIE_CHOW_SEARCH_KILL   = 28239,                // Zombie Chow Suicide effect (僵尸食物自杀效果)
 
     NPC_WORLD_TRIGGER               = 15384,                // Handle the summoning of the zombie chow NPCs
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GluthActions
 {
     GLUTH_CHOW_DELAY,
@@ -59,6 +63,7 @@ enum GluthActions
     GLUTH_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（gluth）
 struct boss_gluthAI : public BossAI
 {
     boss_gluthAI(Creature* creature) : BossAI(creature, GLUTH_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -85,7 +90,7 @@ struct boss_gluthAI : public BossAI
             case GLUTH_ROAR: return 20u * IN_MILLISECONDS;
             case GLUTH_DECIMATE: return urand(100, 110) * IN_MILLISECONDS;
             case GLUTH_BERSERK: return 5 * MINUTE * IN_MILLISECONDS;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
@@ -99,12 +104,14 @@ struct boss_gluthAI : public BossAI
         }
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         BossAI::JustDied(killer);
         StopSummoning();
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         BossAI::Aggro(who);
@@ -120,6 +127,7 @@ struct boss_gluthAI : public BossAI
                 trigger->CastSpell(trigger, SPELL_SUMMON_ZOMBIE_CHOW, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         BossAI::EnterEvadeMode();
@@ -159,7 +167,7 @@ struct boss_gluthAI : public BossAI
     }
 };
 
-// 28374 - Decimate
+// 28374 - Decimate (28374 - 残杀)
 struct Decimate : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx ) const override
@@ -181,7 +189,7 @@ struct Decimate : public SpellScript
     }
 };
 
-// 29682 - Call All Zombie Chow
+// 29682 - Call All Zombie Chow (29682 - 呼唤 All 僵尸 食物)
 struct CallAllZombies : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx ) const override
@@ -200,7 +208,7 @@ struct CallAllZombies : public SpellScript
     }
 };
 
-// 28236 - Zombie Chow Search
+// 28236 - Zombie Chow Search (28236 - 僵尸 食物 搜寻)
 struct ZombieChowSearch : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx ) const override
@@ -220,7 +228,7 @@ struct ZombieChowSearch : public SpellScript
     }
 };
 
-// 28238 - Zombie Chow Search
+// 28238 - Zombie Chow Search (28238 - 僵尸 食物 搜寻)
 struct ZombieChowSearchHeal : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -231,7 +239,7 @@ struct ZombieChowSearchHeal : public SpellScript
     }
 };
 
-// 28239 - Zombie Chow Search
+// 28239 - Zombie Chow Search (28239 - 僵尸 食物 搜寻)
 struct ZombieChowSingleTargetInstakill : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -242,6 +250,7 @@ struct ZombieChowSingleTargetInstakill : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_gluth
 void AddSC_boss_gluth()
 {
     Script* newScript = new Script;

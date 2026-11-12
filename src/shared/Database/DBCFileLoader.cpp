@@ -28,6 +28,7 @@ DBCFileLoader::DBCFileLoader()
     fieldsOffset = nullptr;
 }
 
+// 读取并校验 WDBC 文件头、字段偏移表与原始数据/字符串表 | Load and validate WDBC header, field offsets, record data, and string table
 bool DBCFileLoader::Load(const char* filename, const char* fmt)
 {
     uint32 header;
@@ -37,7 +38,7 @@ bool DBCFileLoader::Load(const char* filename, const char* fmt)
     if (!f)
         return false;
 
-    if (fread(&header, 4, 1, f) != 1)                       // Number of records
+    if (fread(&header, 4, 1, f) != 1)                       // Number of records | 读取文件头魔数
     {
         fclose(f);
         return false;
@@ -46,13 +47,13 @@ bool DBCFileLoader::Load(const char* filename, const char* fmt)
 
     EndianConvert(header);
 
-    if (header != 0x43424457)                               //'WDBC'
+    if (header != 0x43424457)                               //'WDBC' | 校验 WDBC 魔数标识
     {
         fclose(f);
         return false;
     }
 
-    if (fread(&recordCount, 4, 1, f) != 1)                  // Number of records
+    if (fread(&recordCount, 4, 1, f) != 1)                  // Number of records | 记录行数
     {
         fclose(f);
         return false;
@@ -60,7 +61,7 @@ bool DBCFileLoader::Load(const char* filename, const char* fmt)
 
     EndianConvert(recordCount);
 
-    if (fread(&fieldCount, 4, 1, f) != 1)                   // Number of fields
+    if (fread(&fieldCount, 4, 1, f) != 1)                   // Number of fields | 每条记录字段数
     {
         fclose(f);
         return false;
@@ -68,7 +69,7 @@ bool DBCFileLoader::Load(const char* filename, const char* fmt)
 
     EndianConvert(fieldCount);
 
-    if (fread(&recordSize, 4, 1, f) != 1)                   // Size of a record
+    if (fread(&recordSize, 4, 1, f) != 1)                   // Size of a record | 单条记录字节大小
     {
         fclose(f);
         return false;
@@ -76,7 +77,7 @@ bool DBCFileLoader::Load(const char* filename, const char* fmt)
 
     EndianConvert(recordSize);
 
-    if (fread(&stringSize, 4, 1, f) != 1)                   // String size
+    if (fread(&stringSize, 4, 1, f) != 1)                   // String size | 字符串表总字节大小
     {
         fclose(f);
         return false;
@@ -89,9 +90,9 @@ bool DBCFileLoader::Load(const char* filename, const char* fmt)
     for (uint32 i = 1; i < fieldCount; ++i)
     {
         fieldsOffset[i] = fieldsOffset[i - 1];
-        if (fmt[i - 1] == 'b' || fmt[i - 1] == 'X')         // byte fields
+        if (fmt[i - 1] == 'b' || fmt[i - 1] == 'X')         // byte fields | 单字节字段
             fieldsOffset[i] += 1;
-        else                                                // 4 byte fields (int32/float/strings)
+        else                                                // 4 byte fields (int32/float/strings) | 4 字节字段（int32/float/字符串偏移）
             fieldsOffset[i] += 4;
     }
 
@@ -114,12 +115,14 @@ DBCFileLoader::~DBCFileLoader()
     delete[] fieldsOffset;
 }
 
+// 按顺序行号获取记录对象 | Get record wrapper by sequential row index
 DBCFileLoader::Record DBCFileLoader::getRecord(size_t id)
 {
     assert(data);
     return Record(*this, data + id * recordSize);
 }
 
+// 根据格式字符串统计结构大小并返回索引字段下标 | Compute record struct size from format string and return index field position
 uint32 DBCFileLoader::GetFormatRecordSize(const char* format, int32* index_pos)
 {
     uint32 recordsize = 0;
@@ -165,6 +168,7 @@ uint32 DBCFileLoader::GetFormatRecordSize(const char* format, int32* index_pos)
     return recordsize;
 }
 
+// 按格式解析并生成记录数据块与索引表 | Parse records into contiguous data table and build index table
 char* DBCFileLoader::AutoProduceData(const char* format, uint32& records, char**& indexTable)
 {
     /*
@@ -176,20 +180,21 @@ char* DBCFileLoader::AutoProduceData(const char* format, uint32& records, char**
     }entry;
 
     this func will generate  entry[rows] data;
+    按格式字符串布局生成紧凑的结构体数组 dataTable
     */
 
     typedef char* ptr;
     if (strlen(format) != fieldCount)
         return nullptr;
 
-    // get struct size and index pos
+    // get struct size and index pos | 获取结构体大小及索引字段位置
     int32 i;
     uint32 recordsize = GetFormatRecordSize(format, &i);
 
     if (i >= 0)
     {
         uint32 maxi = 0;
-        // find max index
+        // find max index | 查找最大索引 ID 以分配稀疏索引表
         for (uint32 y = 0; y < recordCount; ++y)
         {
             uint32 ind = getRecord(y).getUInt(i);
@@ -239,7 +244,7 @@ char* DBCFileLoader::AutoProduceData(const char* format, uint32& records, char**
                     offset += sizeof(uint8);
                     break;
                 case FT_STRING:
-                    *((char**)(&dataTable[offset])) = nullptr; // will replace non-empty or "" strings in AutoProduceStrings
+                    *((char**)(&dataTable[offset])) = nullptr; // will replace non-empty or "" strings in AutoProduceStrings | 将在 AutoProduceStrings 中替换为字符串池指针
                     offset += sizeof(char*);
                     break;
                 case FT_LOGIC:
@@ -259,6 +264,7 @@ char* DBCFileLoader::AutoProduceData(const char* format, uint32& records, char**
     return dataTable;
 }
 
+// 复制字符串表到独立字符串池，并填充数据表中的空字符串指针 | Copy string table to pool and fill unfilled string pointers in dataTable
 char* DBCFileLoader::AutoProduceStrings(const char* format, char* dataTable)
 {
     if (strlen(format) != fieldCount)
@@ -287,7 +293,7 @@ char* DBCFileLoader::AutoProduceStrings(const char* format, char* dataTable)
                     break;
                 case FT_STRING:
                 {
-                    // fill only not filled entries
+                    // fill only not filled entries | 仅填充尚未填充（为空或空串）的字符串槽位（支持多语言回退）
                     char** slot = (char**)(&dataTable[offset]);
                     if (!*slot || !** slot)
                     {

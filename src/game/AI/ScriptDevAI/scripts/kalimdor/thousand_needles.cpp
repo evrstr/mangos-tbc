@@ -22,6 +22,10 @@ SDCategory: Thousand Needles
 EndScriptData
 */
 
+/**
+ * 千针石林 (Thousand Needles) 赛车场与任务脚本
+ */
+
 /* ContentData
 npc_kanati
 npc_lakota_windsong
@@ -36,27 +40,29 @@ EndContentData */
 # npc_kanati
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_KAN_START               = 6149,
+    SAY_KAN_START               = 6149,                     // 剧情台词/喊话文本 ID
 
-    QUEST_PROTECT_KANATI        = 4966,
-    NPC_GALAK_ASS               = 10720,
+    QUEST_PROTECT_KANATI        = 4966,                     // 任务 ID
+    NPC_GALAK_ASS               = 10720,                    // NPC 条目 ID
 
-    FACTION_KANATI_ESCORT       = 232,
+    FACTION_KANATI_ESCORT       = 232,                      // 阵营 ID
 
     PATH_ID_KANATI              = 10638,
 };
 
 const float m_afGalakLoc[] = { -4867.387695f, -1357.353760f, -48.226f};
 
+// npc_kanatiAI NPC 脚本 AI
 struct npc_kanatiAI : public npc_escortAI
 {
     npc_kanatiAI(Creature* creature) : npc_escortAI(creature) { Reset(); }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -81,13 +87,13 @@ struct npc_kanatiAI : public npc_escortAI
             m_creature->SummonCreature(NPC_GALAK_ASS, m_afGalakLoc[0], m_afGalakLoc[1], m_afGalakLoc[2], 0.0f, TEMPSPAWN_TIMED_OOC_DESPAWN, 25000);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         summoned->AI()->AttackStart(m_creature);
     }
 };
 
-bool QuestAccept_npc_kanati(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_kanati(Player* player, Creature* creature, const Quest* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_PROTECT_KANATI)
     {
@@ -104,16 +110,17 @@ bool QuestAccept_npc_kanati(Player* player, Creature* creature, const Quest* que
 # npc_lakota_windsong
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_LAKO_START              = -1000365,
-    SAY_LAKO_LOOK_OUT           = -1000366,
-    SAY_LAKO_HERE_COME          = -1000367,
-    SAY_LAKO_MORE               = -1000368,
-    SAY_LAKO_END                = -1000369,
+    SAY_LAKO_START              = -1000365,                 // 剧情台词/喊话文本 ID
+    SAY_LAKO_LOOK_OUT           = -1000366,                 // 剧情台词/喊话文本 ID
+    SAY_LAKO_HERE_COME          = -1000367,                 // 剧情台词/喊话文本 ID
+    SAY_LAKO_MORE               = -1000368,                 // 剧情台词/喊话文本 ID
+    SAY_LAKO_END                = -1000369,                 // 剧情台词/喊话文本 ID
 
-    QUEST_FREE_AT_LAST          = 4904,
-    NPC_GRIM_BANDIT             = 10758,
+    QUEST_FREE_AT_LAST          = 4904,                     // 任务 ID
+    NPC_GRIM_BANDIT             = 10758,                    // NPC 条目 ID
 
     ID_AMBUSH_1                 = 0,
     ID_AMBUSH_2                 = 2,
@@ -130,6 +137,7 @@ float m_afBanditLoc[6][6] =
     { -4788.861328f, -1888.007813f, 89.888f}
 };
 
+// npc_lakota_windsongAI NPC 脚本 AI
 struct npc_lakota_windsongAI : public npc_escortAI
 {
     npc_lakota_windsongAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -138,9 +146,9 @@ struct npc_lakota_windsongAI : public npc_escortAI
         Reset();
     }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -172,18 +180,18 @@ struct npc_lakota_windsongAI : public npc_escortAI
                                        TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         pSummoned->AI()->AttackStart(m_creature);
     }
 };
 
-UnitAI* GetAI_npc_lakota_windsong(Creature* pCreature)
+UnitAI* GetAI_npc_lakota_windsong(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_lakota_windsongAI(pCreature);
 }
 
-bool QuestAccept_npc_lakota_windsong(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_lakota_windsong(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_FREE_AT_LAST)
     {
@@ -200,13 +208,14 @@ bool QuestAccept_npc_lakota_windsong(Player* pPlayer, Creature* pCreature, const
 # npc_paoka_swiftmountain
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_START           = -1000362,
-    SAY_WYVERN          = -1000363,
-    SAY_COMPLETE        = -1000364,
+    SAY_START           = -1000362,                         // 剧情台词/喊话文本 ID
+    SAY_WYVERN          = -1000363,                         // 剧情台词/喊话文本 ID
+    SAY_COMPLETE        = -1000364,                         // 剧情台词/喊话文本 ID
 
-    QUEST_HOMEWARD      = 4770,
+    QUEST_HOMEWARD      = 4770,                             // 任务 ID
     NPC_WYVERN          = 4107
 };
 
@@ -217,6 +226,7 @@ float m_afWyvernLoc[3][3] =
     { -4985.364f, -952.528f, -5.199f}
 };
 
+// npc_paoka_swiftmountainAI NPC 脚本 AI
 struct npc_paoka_swiftmountainAI : public npc_escortAI
 {
     npc_paoka_swiftmountainAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -225,9 +235,9 @@ struct npc_paoka_swiftmountainAI : public npc_escortAI
         Reset();
     }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -254,12 +264,12 @@ struct npc_paoka_swiftmountainAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_paoka_swiftmountain(Creature* pCreature)
+UnitAI* GetAI_npc_paoka_swiftmountain(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_paoka_swiftmountainAI(pCreature);
 }
 
-bool QuestAccept_npc_paoka_swiftmountain(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_paoka_swiftmountain(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_HOMEWARD)
     {
@@ -276,16 +286,18 @@ bool QuestAccept_npc_paoka_swiftmountain(Player* pPlayer, Creature* pCreature, c
 # "Plucky" Johnson
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    FACTION_FRIENDLY        = 35,
-    QUEST_SCOOP             = 1950,
-    SPELL_PLUCKY_HUMAN      = 9192,
+    FACTION_FRIENDLY        = 35,                           // 阵营 ID
+    QUEST_SCOOP             = 1950,                         // 任务 ID
+    SPELL_PLUCKY_HUMAN      = 9192,                         // 技能法术 ID
     SPELL_PLUCKY_CHICKEN    = 9220
 };
 
 #define GOSSIP_ITEM_QUEST   "Please tell me the Phrase.."
 
+// npc_plucky_johnsonAI NPC 脚本 AI
 struct npc_plucky_johnsonAI : public ScriptedAI
 {
     npc_plucky_johnsonAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -295,7 +307,7 @@ struct npc_plucky_johnsonAI : public ScriptedAI
 
     uint32 m_uiResetTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiResetTimer = 120000;
 
@@ -328,7 +340,7 @@ struct npc_plucky_johnsonAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
         {
@@ -351,12 +363,12 @@ struct npc_plucky_johnsonAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_plucky_johnson(Creature* pCreature)
+UnitAI* GetAI_npc_plucky_johnson(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_plucky_johnsonAI(pCreature);
 }
 
-bool GossipHello_npc_plucky_johnson(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_plucky_johnson(Player* pPlayer, Creature* pCreature) // 对话交互问候处理
 {
     if (pPlayer->GetQuestStatus(QUEST_SCOOP) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_QUEST, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
@@ -376,7 +388,7 @@ bool GossipSelect_npc_plucky_johnson(Player* pPlayer, Creature* pCreature, uint3
     return true;
 }
 
-void AddSC_thousand_needles()
+void AddSC_thousand_needles() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_kanati";

@@ -21,6 +21,7 @@
 
 /** ByteConverter reverse your byte order.  This is use
     for cross platform where they have different endians.
+    | 字节序转换器：用于跨不同大小端平台时按类型字节宽度翻转字节顺序。
  */
 
 #include <Platform/Define.h>
@@ -28,6 +29,7 @@
 
 namespace ByteConverter
 {
+    /// 递归首尾交换字节实现任意整数/浮点类型的字节序翻转
     template<size_t T>
     inline void convert(char* val)
     {
@@ -36,7 +38,7 @@ namespace ByteConverter
     }
 
     template<> inline void convert<0>(char*) {}
-    template<> inline void convert<1>(char*) {}             // ignore central byte
+    template<> inline void convert<1>(char*) {}             // ignore central byte | 忽略单字节或奇数长度的中心字节
 
     template<typename T>
     inline void apply(T* val)
@@ -53,8 +55,8 @@ template<typename T> inline void EndianConvert(T&) { }
 template<typename T> inline void EndianConvertReverse(T& val) { ByteConverter::apply<T>(&val); }
 #endif
 
-template<typename T> void EndianConvert(T*);         // will generate link error
-template<typename T> void EndianConvertReverse(T*);  // will generate link error
+template<typename T> void EndianConvert(T*);         // will generate link error | 禁止传入指针类型（故意不实现以触发链接期报错）
+template<typename T> void EndianConvertReverse(T*);  // will generate link error | 禁止传入指针类型（故意不实现以触发链接期报错）
 
 inline void EndianConvert(uint8&) { }
 inline void EndianConvert(int8&)  { }

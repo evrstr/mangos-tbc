@@ -20,16 +20,19 @@
 #include "MotionGenerators/TargetedMovementGenerator.h"
 #include "MotionGenerators/FollowerReference.h"
 
+/// 将跟随者引用挂载到被跟随目标 Unit 上
 void FollowerReference::targetObjectBuildLink()
 {
     getTarget()->addFollower(this);
 }
 
+/// 从被跟随目标 Unit 上摘除当前跟随者引用
 void FollowerReference::targetObjectDestroyLink()
 {
     getTarget()->removeFollower(this);
 }
 
+/// 通知源移动生成器停止跟随已失效的目标
 void FollowerReference::sourceObjectDestroyLink()
 {
     getSource()->stopFollowing();

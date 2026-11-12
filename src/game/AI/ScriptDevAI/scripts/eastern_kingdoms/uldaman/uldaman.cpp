@@ -21,9 +21,13 @@ SDComment: Placeholder
 SDCategory: Uldaman
 EndScriptData */
 
+// 奥达曼（Uldaman）杂项 NPC 交互脚本
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "uldaman.h"
 
+// 注册并载入脚本模块：uldaman
 void AddSC_uldaman()
 {
+    // 占位函数：当前该区域暂无特殊脚本逻辑
 }

@@ -1,3 +1,5 @@
+[中文说明] 本文件为 GNU 通用公共许可证第 2 版（GNU General Public License v2）英文原文。以下中文提示仅作说明，不构成对原许可证条款的修改，所有条款及法律效力均以英文原文为准。
+
 		    GNU GENERAL PUBLIC LICENSE
 		       Version 2, June 1991
 

@@ -23,20 +23,22 @@
 
 /**
 This is the access point to the VMapManager.
+VMAP 全局管理器工厂访问入口
 */
 
 namespace VMAP
 {
     //===========================================================
 
+    // VMapManager 全局单例访问与字符串解析工具类
     class VMapFactory
     {
         public:
-            static IVMapManager* createOrGetVMapManager();
-            static void clear();
+            static IVMapManager* createOrGetVMapManager();      // 创建或获取全局唯一的 IVMapManager 实例
+            static void clear();                                // 关服时释放全局 VMapManager 实例
 
-            static void chompAndTrim(std::string& str);
-            static bool getNextId(const std::string& pString, unsigned int& pStartPos, unsigned int& pId);
+            static void chompAndTrim(std::string& str);         // 去除字符串首尾空白、换行及引号
+            static bool getNextId(const std::string& pString, unsigned int& pStartPos, unsigned int& pId); // 按逗号分隔依次解析整数 ID
     };
 }
 #endif

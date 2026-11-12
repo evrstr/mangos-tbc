@@ -21,9 +21,15 @@ SDComment: Timers may need some fine adjustments
 SDCategory: Tempest Keep, The Botanica
 EndScriptData */
 
+// 高级植物学家弗雷温（生态船二号首领）
+/* 遭遇战概述：
+ * 高级植物学家弗雷温在幼苗环绕下战斗，受到一定伤害后扎根进入无敌幼苗孵化阶段。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                   = 19944,
@@ -51,11 +57,13 @@ enum
     SPELL_LIST_TREE_FORM_H      = 2155802,
 };
 
+// FreywinnActions 相关枚举
 enum FreywinnActions
 {
     FREYWINN_ACTION_MAX,
 };
 
+// boss_high_botanist_freywinnAI 逻辑实现
 struct boss_high_botanist_freywinnAI : public CombatAI
 {
     boss_high_botanist_freywinnAI(Creature* creature) : CombatAI(creature, FREYWINN_ACTION_MAX),
@@ -67,6 +75,7 @@ struct boss_high_botanist_freywinnAI : public CombatAI
     uint8 m_uiFrayerAddsCount;
     bool m_isRegularMode;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -74,11 +83,13 @@ struct boss_high_botanist_freywinnAI : public CombatAI
         m_uiFrayerAddsCount = 0;
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->SetInCombatWithZone();
@@ -92,6 +103,7 @@ struct boss_high_botanist_freywinnAI : public CombatAI
             summoned->CastSpell(nullptr, SPELL_PLANT_SPAWN_EFFECT, TRIGGERED_NONE);
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_FRAYER_PROTECTOR)
@@ -118,11 +130,13 @@ struct boss_high_botanist_freywinnAI : public CombatAI
             m_creature->AddCooldown(*sSpellTemplate.LookupEntry<SpellEntry>(SPELL_PLANT_RED), nullptr, false, 5000);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -147,6 +161,7 @@ struct boss_high_botanist_freywinnAI : public CombatAI
     }
 };
 
+// 注册 boss_high_botanist_freywinn 脚本
 void AddSC_boss_high_botanist_freywinn()
 {
     Script* pNewScript = new Script;

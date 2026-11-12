@@ -26,6 +26,7 @@
 
 namespace MaNGOS
 {
+    /// 线程局部存储指针模板类（继承 boost::thread_specific_ptr，支持自定义延迟初始化生成器与清理器）
     template <typename T>
     class thread_local_ptr : public boost::thread_specific_ptr<T>
     {
@@ -33,16 +34,17 @@ namespace MaNGOS
             typedef std::function<T* ()> Generate;
             typedef std::function<void(T*)> Cleanup;
 
-            Generate m_generator;
+            Generate m_generator;   ///< 当前线程首次访问时的实例生成回调
 
         public:
             thread_local_ptr() : m_generator([]() { return new T; }) {}
             thread_local_ptr(Generate generator) : m_generator(generator) {}
             thread_local_ptr(Generate generator, Cleanup cleanup) : m_generator(generator), boost::thread_specific_ptr<T>(cleanup) {}
 
-            // this get allows for a nullptr return value
+            // this get allows for a nullptr return value | 直接返回底层线程局部指针（未初始化时允许返回 nullptr）
             T* get_value() { return boost::thread_specific_ptr<T>::get(); }
 
+            /// 获取当前线程实例指针；若尚未创建则调用 m_generator 生成并注册
             T* get()
             {
                 T* ret = get_value();

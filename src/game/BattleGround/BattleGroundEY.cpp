@@ -31,13 +31,14 @@
 
 BattleGroundEY::BattleGroundEY(): m_flagState(), m_honorTicks(0), m_flagRespawnTimer(0), m_resourceUpdateTimer(0)
 {
-    // set battleground start message id
+    // set battleground start message id (配置风暴之眼开战前各阶段倒计时公告文本 ID)
     m_startMessageIds[BG_STARTING_EVENT_FIRST]  = 0;
     m_startMessageIds[BG_STARTING_EVENT_SECOND] = LANG_BG_EY_START_ONE_MINUTE;
     m_startMessageIds[BG_STARTING_EVENT_THIRD]  = LANG_BG_EY_START_HALF_MINUTE;
     m_startMessageIds[BG_STARTING_EVENT_FOURTH] = LANG_BG_EY_HAS_BEGUN;
 }
 
+// 每帧驱动资源每 2 秒跳分及中央战旗等待/掉落归位计时
 void BattleGroundEY::Update(uint32 diff)
 {
     BattleGround::Update(diff);
@@ -45,7 +46,7 @@ void BattleGroundEY::Update(uint32 diff)
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
-    // resource counter
+    // resource counter (每 2 秒按控制哨塔数量结算双方资源增长)
     if (m_resourceUpdateTimer < diff)
     {
         UpdateResources();
@@ -54,7 +55,7 @@ void BattleGroundEY::Update(uint32 diff)
     else
         m_resourceUpdateTimer -= diff;
 
-    // flag respawn
+    // flag respawn (中央虚空风暴战旗重刷或地面掉落 10 秒超时归位)
     if (m_flagState == EY_FLAG_STATE_WAIT_RESPAWN || m_flagState == EY_FLAG_STATE_ON_GROUND)
     {
         if (m_flagRespawnTimer < diff)
@@ -71,16 +72,18 @@ void BattleGroundEY::Update(uint32 diff)
     }
 }
 
+// 开战时开启双方出生台能量罩大门并绑定主复活点墓地
 void BattleGroundEY::StartingEventOpenDoors()
 {
-    // eye-doors have a despawn animation
+    // eye-doors have a despawn animation (风暴之眼准备室能量罩通过消散动画开启)
     OpenDoorEvent(BG_EVENT_DOOR);
 
-    // setup graveyards
+    // setup graveyards (初始化双方主基地墓地链接)
     GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(GRAVEYARD_EY_MAIN_ALLIANCE, EY_ZONE_ID_MAIN, ALLIANCE);
     GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(GRAVEYARD_EY_MAIN_HORDE, EY_ZONE_ID_MAIN, HORDE);
 }
 
+// 为指定阵营增加资源点数并累计荣誉发放阈值
 void BattleGroundEY::AddPoints(Team team, uint32 points)
 {
     PvpTeamIndex team_index = GetTeamIndexByTeamId(team);
@@ -95,6 +98,7 @@ void BattleGroundEY::AddPoints(Team team, uint32 points)
     }
 }
 
+// 更新战旗状态并同步顶部 HUD 战旗就绪及双方持旗显示变量
 void BattleGroundEY::SetFlagState(EYFlagState state)
 {
     m_flagState = state;
@@ -104,6 +108,7 @@ void BattleGroundEY::SetFlagState(EYFlagState state)
     GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_EY_NETHERSTORM_FLAG_STATE_HORDE, m_flagState == EY_FLAG_STATE_ON_HORDE_PLAYER ? 2 : 1);
 }
 
+// 设置四座哨塔之一的占领阵营并更新客户端地图图标世界状态
 void BattleGroundEY::SetTowerOwner(EYNodes node, Team team)
 {
     m_towerOwner[node] = team;
@@ -141,7 +146,7 @@ void BattleGroundEY::SetTowerOwner(EYNodes node, Team team)
     }
 }
 
-// Update resources by team based on the owned towers
+// Update resources by team based on the owned towers (根据双方当前控制哨塔数周期性增加资源并检查胜利)
 void BattleGroundEY::UpdateResources()
 {
     if (GetBgMap()->GetVariableManager().GetVariable(WORLD_STATE_EY_TOWER_COUNT_ALLIANCE) > 0)
@@ -157,7 +162,7 @@ void BattleGroundEY::UpdateResources()
     }
 }
 
-// Update team score
+// Update team score (检查阵营是否达到 2000 资源胜利线)
 void BattleGroundEY::CheckVictory(Team team)
 {
     uint32 score = GetBgMap()->GetVariableManager().GetVariable(team == ALLIANCE ? WORLD_STATE_EY_RESOURCES_ALLIANCE : WORLD_STATE_EY_RESOURCES_HORDE);
@@ -169,17 +174,17 @@ void BattleGroundEY::CheckVictory(Team team)
     }
 }
 
-// Handle battleground end
+// Handle battleground end (结束风暴之眼：发放荣誉并锁定四座占领点)
 void BattleGroundEY::EndBattleGround(Team winner)
 {
-    // win reward
+    // win reward (胜方额外荣誉)
     RewardHonorToTeam(GetBonusHonorFromKill(1), winner);
 
-    // complete map reward
+    // complete map reward (双方完赛荣誉)
     RewardHonorToTeam(GetBonusHonorFromKill(1), ALLIANCE);
     RewardHonorToTeam(GetBonusHonorFromKill(1), HORDE);
 
-    // disable capture points
+    // disable capture points (停用四座哨塔占领点)
     for (auto m_tower : m_towers)
         if (GameObject* go = GetBgMap()->GetGameObject(m_tower))
             go->SetLootState(GO_JUST_DEACTIVATED);
@@ -191,15 +196,16 @@ void BattleGroundEY::AddPlayer(Player* player)
 {
     BattleGround::AddPlayer(player);
 
-    // create score and add it to map
+    // create score and add it to map (创建风暴之眼个人战绩条目)
     BattleGroundEYScore* score = new BattleGroundEYScore;
 
     m_playerScores[player->GetObjectGuid()] = score;
 }
 
+// 玩家离场或掉线时若携带中央战旗则立即触发掉落或归位
 void BattleGroundEY::RemovePlayer(Player* player, ObjectGuid guid)
 {
-    // sometimes flag aura not removed :(
+    // sometimes flag aura not removed :( (防止持旗者离开时旗帜状态卡死)
     if (IsFlagPickedUp())
     {
         if (m_flagCarrier == guid)
@@ -217,9 +223,10 @@ void BattleGroundEY::RemovePlayer(Player* player, ObjectGuid guid)
     }
 }
 
+// 游戏对象创建时记录四座占领点、地面掉落战旗及主战旗 DB GUID
 void BattleGroundEY::HandleGameObjectCreate(GameObject* go)
 {
-    // set initial data and activate capture points
+    // set initial data and activate capture points (初始化占领点滑块为中立并缓存 GUID)
     switch (go->GetEntry())
     {
         case GO_CAPTURE_POINT_BLOOD_ELF_TOWER:
@@ -247,10 +254,10 @@ void BattleGroundEY::HandleGameObjectCreate(GameObject* go)
     }
 }
 
-// process the capture events
+// process the capture events (分发拾取战旗事件及四座占领点的控制权变更事件)
 bool BattleGroundEY::HandleEvent(uint32 eventId, Object* source, Object* target)
 {
-    // event called when player picks up a dropped flag
+    // event called when player picks up a dropped flag (玩家施放拾取战旗法术触发事件)
     if (eventId == EVENT_NETHERSTORM_FLAG_SPELL && target && target->IsPlayer() && source->IsGameObject())
     {
         DEBUG_LOG("BattleGroundEY: Handle flag pickup event id %u", eventId);
@@ -260,10 +267,10 @@ bool BattleGroundEY::HandleEvent(uint32 eventId, Object* source, Object* target)
     }
 
     GameObject* go = dynamic_cast<GameObject*>(source);
-    if (!go) // people can misuse various effects in bgs, need a whitelist not a blacklist - this fits the bill nicely
+    if (!go) // people can misuse various effects in bgs, need a whitelist not a blacklist - this fits the bill nicely (非游戏对象触发的事件直接忽略)
         return true;
 
-    // events called from the capture points
+    // events called from the capture points (匹配四座哨塔占领/中立化事件)
     for (uint8 i = 0; i < EY_MAX_NODES; ++i)
     {
         if (eyTowers[i] == go->GetEntry())
@@ -274,7 +281,7 @@ bool BattleGroundEY::HandleEvent(uint32 eventId, Object* source, Object* target)
                 {
                     ProcessCaptureEvent(go, i, eyTowerEvents[i][j].team, eyTowerEvents[i][j].worldState, eyTowerEvents[i][j].message);
 
-                    // no need to iterate other events or towers
+                    // no need to iterate other events or towers (已匹配处理，提前返回)
                     return false;
                 }
             }
@@ -286,14 +293,14 @@ bool BattleGroundEY::HandleEvent(uint32 eventId, Object* source, Object* target)
     return false;
 }
 
-// Method that handles the capture point capture events
+// Method that handles the capture point capture events (处理防卫塔占领/失守：更新计数、墓地链接、传送走失守墓地幽灵玩家并切换视觉旗帜)
 void BattleGroundEY::ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team, uint32 /*newWorldState*/, uint32 message)
 {
     DEBUG_LOG("BattleGroundEY: Process capture point event from gameobject entry %u, captured by team %u", go->GetEntry(), team);
 
     if (team == ALLIANCE)
     {
-        // update counter
+        // update counter (联盟占塔数 +1，并绑定该塔墓地给联盟)
         GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_EY_TOWER_COUNT_ALLIANCE, GetBgMap()->GetVariableManager().GetVariable(WORLD_STATE_EY_TOWER_COUNT_ALLIANCE) + 1);
 
         SendMessageToAll(message, CHAT_MSG_BG_SYSTEM_ALLIANCE);
@@ -302,7 +309,7 @@ void BattleGroundEY::ProcessCaptureEvent(GameObject* go, uint32 towerId, Team te
     }
     else if (team == HORDE)
     {
-        // update counter
+        // update counter (部落占塔数 +1，并绑定该塔墓地给部落)
         GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_EY_TOWER_COUNT_HORDE, GetBgMap()->GetVariableManager().GetVariable(WORLD_STATE_EY_TOWER_COUNT_HORDE) + 1);
 
         SendMessageToAll(message, CHAT_MSG_BG_SYSTEM_HORDE);
@@ -313,14 +320,14 @@ void BattleGroundEY::ProcessCaptureEvent(GameObject* go, uint32 towerId, Team te
     {
         if (m_towerOwner[towerId] == ALLIANCE)
         {
-            // update counter
+            // update counter (联盟占塔数 -1)
             GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_EY_TOWER_COUNT_ALLIANCE, GetBgMap()->GetVariableManager().GetVariable(WORLD_STATE_EY_TOWER_COUNT_ALLIANCE) - 1);
 
             SendMessageToAll(message, CHAT_MSG_BG_SYSTEM_ALLIANCE);
         }
         else
         {
-            // update counter
+            // update counter (部落占塔数 -1)
             GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_EY_TOWER_COUNT_HORDE, GetBgMap()->GetVariableManager().GetVariable(WORLD_STATE_EY_TOWER_COUNT_HORDE) - 1);
 
             SendMessageToAll(message, CHAT_MSG_BG_SYSTEM_HORDE);
@@ -329,20 +336,20 @@ void BattleGroundEY::ProcessCaptureEvent(GameObject* go, uint32 towerId, Team te
         GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(eyGraveyards[towerId], EY_ZONE_ID_MAIN, TEAM_INVALID);
     }
 
-    // update capture point owner
+    // update capture point owner (更新防御塔新控制阵营)
     Team oldTeam = m_towerOwner[towerId];
     SetTowerOwner(EYNodes(towerId), team);
 
-    if (oldTeam == ALLIANCE || oldTeam == HORDE) // only on going to grey
+    if (oldTeam == ALLIANCE || oldTeam == HORDE) // only on going to grey (防御塔变为中立时通知灵魂向导传送走等待复活的玩家)
     {
-        // teleport players off of GY
+        // teleport players off of GY (通知灵魂向导转移待复活玩家)
         Creature* spiritHealer = GetClosestCreatureWithEntry(go, oldTeam == ALLIANCE ? BG_NPC_SPIRIT_GUIDE_ALLIANCE : BG_NPC_SPIRIT_GUIDE_HORDE, 100.f);
 
         if (spiritHealer)
             spiritHealer->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, spiritHealer, spiritHealer);
     }
 
-    // replace the visual flags
+    // replace the visual flags (切换塔旁视觉旗帜事件)
     switch (team)
     {
         case ALLIANCE:  SpawnEvent(towerId, TEAM_INDEX_ALLIANCE, true); break;
@@ -352,7 +359,7 @@ void BattleGroundEY::ProcessCaptureEvent(GameObject* go, uint32 towerId, Team te
     }
 }
 
-// Function that handles area triggers; used to check for flag carriers
+// Function that handles area triggers; used to check for flag carriers (处理玩家携旗抵达己方控制哨塔区域触发器以完成交旗)
 bool BattleGroundEY::HandleAreaTrigger(Player* source, uint32 trigger)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -385,9 +392,10 @@ bool BattleGroundEY::HandleAreaTrigger(Player* source, uint32 trigger)
     return true;
 }
 
+// 重置风暴之眼所有世界状态、旗帜状态、防御塔归属与墓地链接
 void BattleGroundEY::Reset()
 {
-    // call parent's class reset
+    // call parent's class reset (调用基类重置)
     BattleGround::Reset();
 
     GetBgMap()->GetVariableManager().SetVariable(WORLD_STATE_EY_CAPTURE_POINT_SLIDER_DISPLAY, WORLD_STATE_REMOVE);
@@ -432,25 +440,25 @@ void BattleGroundEY::Reset()
         GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(eyGraveyards[i], EY_ZONE_ID_MAIN, TEAM_INVALID);
     }
 
-    // setup graveyards
+    // setup graveyards (初始化双方主出生台墓地)
     GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(GRAVEYARD_EY_MAIN_ALLIANCE, EY_ZONE_ID_MAIN, ALLIANCE);
     GetBgMap()->GetGraveyardManager().SetGraveYardLinkTeam(GRAVEYARD_EY_MAIN_HORDE, EY_ZONE_ID_MAIN, HORDE);
 
-    // the flag in the middle is spawned at beginning
+    // the flag in the middle is spawned at beginning (初始即在地图中央刷出虚空风暴战旗)
     m_activeEvents[EY_EVENT_CAPTURE_FLAG] = EY_EVENT2_FLAG_CENTER;
 }
 
-// Method that resets main flag at the center
+// Method that resets main flag at the center (在战场中央重新刷出虚空风暴战旗)
 void BattleGroundEY::RespawnFlagAtCenter(bool wasCaptured)
 {
     DEBUG_LOG("BattleGroundEY: Respawn flag at the center of the battleground.");
 
     SetFlagState(EY_FLAG_STATE_ON_BASE);
 
-    // will despawn captured flags at the node and spawn in center
+    // will despawn captured flags at the node and spawn in center (若由交旗得分触发，则切换回中央刷旗事件以清理塔下视觉旗帜)
     if (wasCaptured)
         SpawnEvent(EY_EVENT_CAPTURE_FLAG, EY_EVENT2_FLAG_CENTER, true);
-    // respawn because of flag drop has to be handled separately
+    // respawn because of flag drop has to be handled separately (若因掉落超时重置，则直接立即刷新主旗对象)
     else
         ChangeBgObjectSpawnState(m_mainFlagDbGuid, RESPAWN_IMMEDIATELY);
 
@@ -458,7 +466,7 @@ void BattleGroundEY::RespawnFlagAtCenter(bool wasCaptured)
     SendMessageToAll(LANG_BG_EY_RESETED_FLAG, CHAT_MSG_BG_SYSTEM_NEUTRAL);
 }
 
-// Method that respawns dropped flag; called if nobody picks the dropped flag after 10 seconds
+// Method that respawns dropped flag; called if nobody picks the dropped flag after 10 seconds (地面掉落战旗 10 秒无人拾取后强制归位中央)
 void BattleGroundEY::RespawnDroppedFlag()
 {
     RespawnFlagAtCenter(false);
@@ -476,11 +484,11 @@ void BattleGroundEY::HandleKillPlayer(Player* player, Player* killer)
 
     BattleGround::HandleKillPlayer(player, killer);
 
-    // handle flag drop if necessary
+    // handle flag drop if necessary (持旗者被击杀时掉落战旗)
     HandlePlayerDroppedFlag(player);
 }
 
-// Handle flag drop
+// Handle flag drop (处理玩家死亡或手动移除光环导致的掉旗：在原地召唤临时战旗并启动 10 秒重置计时)
 void BattleGroundEY::HandlePlayerDroppedFlag(Player* source)
 {
     if (!IsFlagPickedUp())
@@ -494,7 +502,7 @@ void BattleGroundEY::HandlePlayerDroppedFlag(Player* source)
     ClearFlagCarrier();
     source->RemoveAurasDueToSpell(EY_SPELL_NETHERSTORM_FLAG);
 
-    // do not cast auras or send messages after match has ended
+    // do not cast auras or send messages after match has ended (比赛结束后不再生成掉落旗帜或提示)
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
@@ -509,7 +517,7 @@ void BattleGroundEY::HandlePlayerDroppedFlag(Player* source)
     SendMessageToAll(LANG_BG_EY_DROPPED_FLAG, playerTeam == ALLIANCE ? CHAT_MSG_BG_SYSTEM_ALLIANCE : CHAT_MSG_BG_SYSTEM_HORDE, nullptr);
 }
 
-// Method that handles when a player clicks on the flag
+// Method that handles when a player clicks on the flag (处理玩家拾取中央或地面掉落的虚空风暴战旗)
 void BattleGroundEY::HandlePlayerClickedOnFlag(Player* source, GameObject* go)
 {
     if (GetStatus() != STATUS_IN_PROGRESS || IsFlagPickedUp() || !source->IsWithinDistInMap(go, 10))
@@ -517,7 +525,7 @@ void BattleGroundEY::HandlePlayerClickedOnFlag(Player* source, GameObject* go)
 
     DEBUG_LOG("BattleGroundEY: Team %u has taken the flag, gameobject entry %u.", source->GetTeam(), go->GetEntry());
 
-    // update for the team that picked up the flag
+    // update for the team that picked up the flag (根据拾旗者阵营更新战旗状态与音效)
     if (source->GetTeam() == ALLIANCE)
     {
         PlaySoundToAll(EY_SOUND_FLAG_PICKED_UP_ALLIANCE);
@@ -532,21 +540,22 @@ void BattleGroundEY::HandlePlayerClickedOnFlag(Player* source, GameObject* go)
     }
 
     // Note: flag despawn and spell cast are handled in GameObject code
-    // Set flag carrier and set right auras 
+    // Set flag carrier and set right auras (登记持旗者 GUID 并移除隐身等互斥光环)
     SetFlagCarrier(source->GetObjectGuid());
     source->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_PVP_ACTIVE_CANCELS);
 
-    // send message
+    // send message (全图广播持旗玩家姓名)
     if (source->GetTeam() == ALLIANCE)
         PSendMessageToAll(LANG_BG_EY_HAS_TAKEN_FLAG, CHAT_MSG_BG_SYSTEM_ALLIANCE, nullptr, source->GetName());
     else
         PSendMessageToAll(LANG_BG_EY_HAS_TAKEN_FLAG, CHAT_MSG_BG_SYSTEM_HORDE, nullptr, source->GetName());
 
-    // when clicked the flag despawns
+    // when clicked the flag despawns (交互后令战旗对象消失)
     go->SetLootState(GO_JUST_DEACTIVATED);
 }
 
 // Method that handles the player score when flag is captured at one of controlled nodes
+// (玩家将战旗送达己方控制的哨塔时按当前控制塔数发放 75/85/100/500 点资源分并启动 10 秒刷旗倒计时)
 void BattleGroundEY::ProcessPlayerFlagScoreEvent(Player* source, EYNodes node)
 {
     if (GetStatus() != STATUS_IN_PROGRESS || GetFlagCarrierGuid() != source->GetObjectGuid())
@@ -562,7 +571,7 @@ void BattleGroundEY::ProcessPlayerFlagScoreEvent(Player* source, EYNodes node)
     source->RemoveAurasDueToSpell(EY_SPELL_NETHERSTORM_FLAG);
     source->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_PVP_ACTIVE_CANCELS);
 
-    // process score actions by team
+    // process score actions by team (按控制塔数加分并播报交旗消息)
     if (source->GetTeam() == ALLIANCE)
     {
         PlaySoundToAll(EY_SOUND_FLAG_CAPTURED_ALLIANCE);
@@ -590,12 +599,12 @@ void BattleGroundEY::ProcessPlayerFlagScoreEvent(Player* source, EYNodes node)
 void BattleGroundEY::UpdatePlayerScore(Player* source, uint32 type, uint32 value)
 {
     BattleGroundScoreMap::iterator itr = m_playerScores.find(source->GetObjectGuid());
-    if (itr == m_playerScores.end())                        // player not found
+    if (itr == m_playerScores.end())                        // player not found (未找到玩家记分记录)
         return;
 
     switch (type)
     {
-        case SCORE_FLAG_CAPTURES:                           // flags captured
+        case SCORE_FLAG_CAPTURES:                           // flags captured (交旗次数)
             ((BattleGroundEYScore*)itr->second)->flagCaptures += value;
             break;
         default:
@@ -604,6 +613,7 @@ void BattleGroundEY::UpdatePlayerScore(Player* source, uint32 type, uint32 value
     }
 }
 
+// 人数不足提前结束时按当前资源分判定胜者，平分则回退基类按人数判定
 Team BattleGroundEY::GetPrematureWinner()
 {
     int32 hordeScore = GetBgMap()->GetVariableManager().GetVariable(WORLD_STATE_EY_RESOURCES_HORDE);
@@ -614,6 +624,6 @@ Team BattleGroundEY::GetPrematureWinner()
     if (allianceScore > hordeScore)
         return ALLIANCE;
 
-    // If the values are equal, fall back to number of players on each team
+    // If the values are equal, fall back to number of players on each team (资源相同时按双方在场人数判定)
     return BattleGround::GetPrematureWinner();
 }

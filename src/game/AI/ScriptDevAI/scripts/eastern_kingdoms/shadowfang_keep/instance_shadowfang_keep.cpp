@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Shadowfang Keep
 EndScriptData */
 
+// 影牙城堡（Shadowfang Keep）庭院与城门进度状态机
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "shadowfang_keep.h"
 
@@ -343,6 +345,7 @@ InstanceData* GetInstanceData_instance_shadowfang_keep(Map* map)
     return new instance_shadowfang_keep(map);
 }
 
+// 注册并载入脚本模块：instance_shadowfang_keep
 void AddSC_instance_shadowfang_keep()
 {
     Script* newScript = new Script;

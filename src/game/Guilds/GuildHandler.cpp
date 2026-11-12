@@ -27,6 +27,7 @@
 #include "Guilds/GuildMgr.h"
 #include "Social/SocialMgr.h"
 
+/// 响应客户端查询公会基本信息请求
 void WorldSession::HandleGuildQueryOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_QUERY");
@@ -43,6 +44,7 @@ void WorldSession::HandleGuildQueryOpcode(WorldPacket& recvPacket)
     SendGuildCommandResult(GUILD_CREATE_S, "", ERR_GUILD_PLAYER_NOT_IN_GUILD);
 }
 
+/// 处理创建公会请求
 void WorldSession::HandleGuildCreateOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_CREATE");
@@ -63,6 +65,7 @@ void WorldSession::HandleGuildCreateOpcode(WorldPacket& recvPacket)
     sGuildMgr.AddGuild(guild);
 }
 
+/// 处理公会邀请玩家入会请求（校验权限、阵营、屏蔽列表及已有公会状态）
 void WorldSession::HandleGuildInviteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_INVITE");
@@ -133,6 +136,7 @@ void WorldSession::HandleGuildInviteOpcode(WorldPacket& recvPacket)
     DEBUG_LOG("WORLD: Sent (SMSG_GUILD_INVITE)");
 }
 
+/// 处理将成员踢出公会请求
 void WorldSession::HandleGuildRemoveOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_REMOVE");
@@ -189,6 +193,7 @@ void WorldSession::HandleGuildRemoveOpcode(WorldPacket& recvPacket)
     guild->BroadcastEvent(GE_REMOVED, plName.c_str(), _player->GetName());
 }
 
+/// 处理玩家接受公会邀请请求
 void WorldSession::HandleGuildAcceptOpcode(WorldPacket& /*recvPacket*/)
 {
     Player* player = GetPlayer();
@@ -211,6 +216,7 @@ void WorldSession::HandleGuildAcceptOpcode(WorldPacket& /*recvPacket*/)
     guild->BroadcastEvent(GE_JOINED, player->GetObjectGuid(), player->GetName());
 }
 
+/// 处理玩家拒绝公会邀请请求
 void WorldSession::HandleGuildDeclineOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_DECLINE");
@@ -237,6 +243,7 @@ void WorldSession::HandleGuildDeclineOpcode(WorldPacket& /*recvPacket*/)
     GetPlayer()->SetGuildIdInvited(0);
 }
 
+/// 响应客户端请求公会创建日期与账号统计信息
 void WorldSession::HandleGuildInfoOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_INFO");
@@ -258,6 +265,7 @@ void WorldSession::HandleGuildInfoOpcode(WorldPacket& /*recvPacket*/)
     SendPacket(data);
 }
 
+/// 响应客户端请求公会花名册列表
 void WorldSession::HandleGuildRosterOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_ROSTER");
@@ -266,6 +274,7 @@ void WorldSession::HandleGuildRosterOpcode(WorldPacket& /*recvPacket*/)
         guild->Roster(this);
 }
 
+/// 处理晋升公会成员职级请求
 void WorldSession::HandleGuildPromoteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_PROMOTE");
@@ -319,6 +328,7 @@ void WorldSession::HandleGuildPromoteOpcode(WorldPacket& recvPacket)
     guild->BroadcastEvent(GE_PROMOTION, _player->GetName(), plName.c_str(), guild->GetRankName(newRankId).c_str());
 }
 
+/// 处理降级公会成员职级请求
 void WorldSession::HandleGuildDemoteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_DEMOTE");
@@ -380,6 +390,7 @@ void WorldSession::HandleGuildDemoteOpcode(WorldPacket& recvPacket)
     guild->BroadcastEvent(GE_DEMOTION, _player->GetName(), plName.c_str(), guild->GetRankName(slot->RankId).c_str());
 }
 
+/// 处理成员主动退出公会请求
 void WorldSession::HandleGuildLeaveOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_LEAVE");
@@ -417,6 +428,7 @@ void WorldSession::HandleGuildLeaveOpcode(WorldPacket& /*recvPacket*/)
     guild->BroadcastEvent(GE_LEFT, _player->GetObjectGuid(), _player->GetName());
 }
 
+/// 处理会长解散公会请求
 void WorldSession::HandleGuildDisbandOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_DISBAND");
@@ -439,6 +451,7 @@ void WorldSession::HandleGuildDisbandOpcode(WorldPacket& /*recvPacket*/)
     DEBUG_LOG("WORLD: Guild Successfully Disbanded");
 }
 
+/// 处理会长转让会长职位请求
 void WorldSession::HandleGuildLeaderOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_LEADER");
@@ -485,6 +498,7 @@ void WorldSession::HandleGuildLeaderOpcode(WorldPacket& recvPacket)
     guild->BroadcastEvent(GE_LEADER_CHANGED, oldLeader->GetName(), name.c_str());
 }
 
+/// 处理修改公会今日信息（MOTD）请求
 void WorldSession::HandleGuildMOTDOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_MOTD");
@@ -513,6 +527,7 @@ void WorldSession::HandleGuildMOTDOpcode(WorldPacket& recvPacket)
     guild->BroadcastEvent(GE_MOTD, MOTD.c_str());
 }
 
+/// 处理修改成员公共备注请求
 void WorldSession::HandleGuildSetPublicNoteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_SET_PUBLIC_NOTE");
@@ -551,6 +566,7 @@ void WorldSession::HandleGuildSetPublicNoteOpcode(WorldPacket& recvPacket)
     guild->Roster(this);
 }
 
+/// 处理修改成员官员备注请求
 void WorldSession::HandleGuildSetOfficerNoteOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_SET_OFFICER_NOTE");
@@ -588,6 +604,7 @@ void WorldSession::HandleGuildSetOfficerNoteOpcode(WorldPacket& recvPacket)
     guild->Roster(this);
 }
 
+/// 处理更新公会职级名称、权限与银行限额配置请求
 void WorldSession::HandleGuildRankOpcode(WorldPacket& recvPacket)
 {
     std::string rankname;
@@ -640,6 +657,7 @@ void WorldSession::HandleGuildRankOpcode(WorldPacket& recvPacket)
     guild->Roster();                                        // broadcast for tab rights update
 }
 
+/// 处理新增公会职级请求
 void WorldSession::HandleGuildAddRankOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_ADD_RANK");
@@ -669,6 +687,7 @@ void WorldSession::HandleGuildAddRankOpcode(WorldPacket& recvPacket)
     guild->Roster();                                        // broadcast for tab rights update
 }
 
+/// 处理删除最低公会职级请求
 void WorldSession::HandleGuildDelRankOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_DEL_RANK");
@@ -692,6 +711,7 @@ void WorldSession::HandleGuildDelRankOpcode(WorldPacket& /*recvPacket*/)
     guild->Roster();                                        // broadcast for tab rights update
 }
 
+/// 发送公会命令执行结果给客户端
 void WorldSession::SendGuildCommandResult(uint32 typecmd, const std::string& str, uint32 cmdresult) const
 {
     WorldPacket data(SMSG_GUILD_COMMAND_RESULT, (8 + str.size() + 1));
@@ -703,6 +723,7 @@ void WorldSession::SendGuildCommandResult(uint32 typecmd, const std::string& str
     DEBUG_LOG("WORLD: Sent (SMSG_GUILD_COMMAND_RESULT)");
 }
 
+/// 处理修改公会简介文本请求
 void WorldSession::HandleGuildChangeInfoTextOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_GUILD_INFO_TEXT");
@@ -726,6 +747,7 @@ void WorldSession::HandleGuildChangeInfoTextOpcode(WorldPacket& recvPacket)
     guild->SetGINFO(GINFO);
 }
 
+/// 处理保存公会战袍徽章样式并扣除金币请求
 void WorldSession::HandleSaveGuildEmblemOpcode(WorldPacket& recvPacket)
 {
     DEBUG_LOG("WORLD: Received opcode MSG_SAVE_GUILD_EMBLEM");
@@ -776,6 +798,7 @@ void WorldSession::HandleSaveGuildEmblemOpcode(WorldPacket& recvPacket)
     guild->Query(this);
 }
 
+/// 响应查询公会成员变动事件日志请求
 void WorldSession::HandleGuildEventLogQueryOpcode(WorldPacket& /* recvPacket */)
 {
     // empty
@@ -788,6 +811,7 @@ void WorldSession::HandleGuildEventLogQueryOpcode(WorldPacket& /* recvPacket */)
 
 /******  GUILD BANK  *******/
 
+/// 响应查询当前玩家当日剩余可提取公会银行金币额度
 void WorldSession::HandleGuildBankMoneyWithdrawn(WorldPacket& /* recv_data */)
 {
     DEBUG_LOG("WORLD: Received (MSG_GUILD_BANK_MONEY_WITHDRAWN)");
@@ -797,6 +821,7 @@ void WorldSession::HandleGuildBankMoneyWithdrawn(WorldPacket& /* recv_data */)
             pGuild->SendMoneyInfo(this, GetPlayer()->GetGUIDLow());
 }
 
+/// 下发玩家所在职级的公会及公会银行权限详情
 void WorldSession::HandleGuildPermissions(WorldPacket& /* recv_data */)
 {
     DEBUG_LOG("WORLD: Received (MSG_GUILD_PERMISSIONS)");
@@ -825,7 +850,7 @@ void WorldSession::HandleGuildPermissions(WorldPacket& /* recv_data */)
     }
 }
 
-/* Called when clicking on Guild bank gameobject */
+/* Called when clicking on Guild bank gameobject (点击公会银行对象时发送已购标签页信息) */
 void WorldSession::HandleGuildBankerActivate(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (CMSG_GUILD_BANKER_ACTIVATE)");
@@ -849,7 +874,7 @@ void WorldSession::HandleGuildBankerActivate(WorldPacket& recv_data)
     SendGuildCommandResult(GUILD_UNK1, "", ERR_GUILD_PLAYER_NOT_IN_GUILD);
 }
 
-/* Called when opening guild bank tab only (first one) */
+/* Called when opening guild bank tab only (first one) (查询并发送指定公会银行页内的物品列表) */
 void WorldSession::HandleGuildBankQueryTab(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (CMSG_GUILD_BANK_QUERY_TAB)");
@@ -878,6 +903,7 @@ void WorldSession::HandleGuildBankQueryTab(WorldPacket& recv_data)
     pGuild->DisplayGuildBankContent(this, TabId);
 }
 
+/// 处理向公会银行存入金币请求
 void WorldSession::HandleGuildBankDepositMoney(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (CMSG_GUILD_BANK_DEPOSIT_MONEY)");
@@ -929,6 +955,7 @@ void WorldSession::HandleGuildBankDepositMoney(WorldPacket& recv_data)
     pGuild->DisplayGuildBankMoneyUpdate(this);
 }
 
+/// 处理从公会银行提取金币请求（校验每日提取限额）
 void WorldSession::HandleGuildBankWithdrawMoney(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (CMSG_GUILD_BANK_WITHDRAW_MONEY)");
@@ -982,6 +1009,7 @@ void WorldSession::HandleGuildBankWithdrawMoney(WorldPacket& recv_data)
     pGuild->DisplayGuildBankMoneyUpdate(this);
 }
 
+/// 处理公会银行与玩家背包之间或银行页之间的物品存取、拆分与交换
 void WorldSession::HandleGuildBankSwapItems(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (CMSG_GUILD_BANK_SWAP_ITEMS)");
@@ -1089,6 +1117,7 @@ void WorldSession::HandleGuildBankSwapItems(WorldPacket& recv_data)
         pGuild->MoveFromCharToBank(_player, PlayerBag, PlayerSlot, BankTab, BankTabSlot, SplitedAmount);
 }
 
+/// 处理购买新的公会银行标签页请求
 void WorldSession::HandleGuildBankBuyTab(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (CMSG_GUILD_BANK_BUY_TAB)");
@@ -1129,6 +1158,7 @@ void WorldSession::HandleGuildBankBuyTab(WorldPacket& recv_data)
     pGuild->DisplayGuildBankTabsInfo(this);
 }
 
+/// 处理修改公会银行标签页名称与图标请求
 void WorldSession::HandleGuildBankUpdateTab(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (CMSG_GUILD_BANK_UPDATE_TAB)");
@@ -1168,6 +1198,7 @@ void WorldSession::HandleGuildBankUpdateTab(WorldPacket& recv_data)
     pGuild->DisplayGuildBankContent(this, TabId);
 }
 
+/// 响应查询公会银行物品/金币操作日志请求
 void WorldSession::HandleGuildBankLogQuery(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received (MSG_GUILD_BANK_LOG_QUERY)");
@@ -1190,6 +1221,7 @@ void WorldSession::HandleGuildBankLogQuery(WorldPacket& recv_data)
     pGuild->DisplayGuildBankLogs(this, TabId);
 }
 
+/// 响应查询公会银行标签页公告文本请求
 void WorldSession::HandleQueryGuildBankTabText(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode MSG_QUERY_GUILD_BANK_TEXT");
@@ -1211,6 +1243,7 @@ void WorldSession::HandleQueryGuildBankTabText(WorldPacket& recv_data)
     pGuild->SendGuildBankTabText(this, TabId);
 }
 
+/// 处理更新公会银行标签页公告文本请求
 void WorldSession::HandleSetGuildBankTabText(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_GUILD_BANK_TEXT");
@@ -1234,6 +1267,7 @@ void WorldSession::HandleSetGuildBankTabText(WorldPacket& recv_data)
     pGuild->SetGuildBankTabText(TabId, Text);
 }
 
+/// 发送保存公会战袍徽章的操作结果码
 void WorldSession::SendSaveGuildEmblem(uint32 msg) const
 {
     WorldPacket data(MSG_SAVE_GUILD_EMBLEM, 4);

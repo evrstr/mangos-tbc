@@ -21,6 +21,10 @@ SDComment: Quest support: 2767, 2845, 2969.
 SDCategory: Feralas
 EndScriptData */
 
+/**
+ * 菲拉斯 (Feralas) 任务、护送与野外 NPC 脚本
+ */
+
 
 /* ContentData
 npc_oox22fe
@@ -42,49 +46,51 @@ EndContentData */
 ## npc_oox22fe
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_OOX_START           = -1000287,
-    SAY_OOX_AGGRO1          = -1000288,
-    SAY_OOX_AGGRO2          = -1000289,
-    SAY_OOX_AMBUSH          = -1000290,
-    SAY_OOX_END             = -1000292,
+    SAY_OOX_START           = -1000287,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_AGGRO1          = -1000288,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_AGGRO2          = -1000289,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_AMBUSH          = -1000290,                     // 剧情台词/喊话文本 ID
+    SAY_OOX_END             = -1000292,                     // 剧情台词/喊话文本 ID
 
-    NPC_YETI                = 7848,
-    NPC_GORILLA             = 5260,
-    NPC_WOODPAW_REAVER      = 5255,
-    NPC_WOODPAW_BRUTE       = 5253,
-    NPC_WOODPAW_ALPHA       = 5258,
-    NPC_WOODPAW_MYSTIC      = 5254,
+    NPC_YETI                = 7848,                         // NPC 条目 ID
+    NPC_GORILLA             = 5260,                         // NPC 条目 ID
+    NPC_WOODPAW_REAVER      = 5255,                         // NPC 条目 ID
+    NPC_WOODPAW_BRUTE       = 5253,                         // NPC 条目 ID
+    NPC_WOODPAW_ALPHA       = 5258,                         // NPC 条目 ID
+    NPC_WOODPAW_MYSTIC      = 5254,                         // NPC 条目 ID
 
     QUEST_RESCUE_OOX22FE    = 2767
 };
 
+// npc_oox22feAI NPC 脚本 AI
 struct npc_oox22feAI : public npc_escortAI
 {
     npc_oox22feAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
     GuidList m_lSummonsList;
 
-    void WaypointReached(uint32 i) override
+    void WaypointReached(uint32 i) override                 // 到达指定路径点回调
     {
         switch (i)
         {
-            // First Ambush(3 Yetis)
+            // First Ambush(3 Yetis) (说明)
             case 12:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
                 m_creature->SummonCreature(NPC_YETI, -4841.01f, 1593.91f, 73.42f, 3.98f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 10000);
                 m_creature->SummonCreature(NPC_YETI, -4837.61f, 1568.58f, 78.21f, 3.13f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 10000);
                 m_creature->SummonCreature(NPC_YETI, -4841.89f, 1569.95f, 76.53f, 0.68f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 10000);
                 break;
-            // Second Ambush(3 Gorillas)
+            // Second Ambush(3 Gorillas) (说明)
             case 22:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
                 m_creature->SummonCreature(NPC_GORILLA, -4595.81f, 2005.99f, 53.08f, 3.74f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 10000);
                 m_creature->SummonCreature(NPC_GORILLA, -4597.53f, 2008.31f, 52.70f, 3.78f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 10000);
                 m_creature->SummonCreature(NPC_GORILLA, -4599.37f, 2010.59f, 52.77f, 3.84f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 10000);
                 break;
-            // Third Ambush(4 Gnolls)
+            // Third Ambush(4 Gnolls) (说明)
             case 31:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
                 m_creature->SummonCreature(NPC_WOODPAW_REAVER, -4425.14f, 2075.87f, 47.77f, 3.77f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 10000);
@@ -94,14 +100,14 @@ struct npc_oox22feAI : public npc_escortAI
                 break;
             case 38:
                 DoScriptText(SAY_OOX_END, m_creature);
-                // Award quest credit
+                // Award quest credit (给予任务完成进度)
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_RESCUE_OOX22FE, m_creature);
                 break;
         }
     }
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
             m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
@@ -109,7 +115,7 @@ struct npc_oox22feAI : public npc_escortAI
 
     void Aggro(Unit* /*who*/) override
     {
-        // For an small probability the npc says something when he get aggro
+        // For an small probability the npc says something when he get aggro (说明)
         switch (urand(0, 9))
         {
             case 0: DoScriptText(SAY_OOX_AGGRO1, m_creature); break;
@@ -117,13 +123,13 @@ struct npc_oox22feAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         summoned->AI()->AttackStart(m_creature);
         m_lSummonsList.push_back(summoned->GetObjectGuid());
     }
 
-    void JustDied(Unit* pKiller) override
+    void JustDied(Unit* pKiller) override                   // 死亡回调处理
     {
         for (GuidList::const_iterator itr = m_lSummonsList.begin(); itr != m_lSummonsList.end(); ++itr)
         {
@@ -135,12 +141,12 @@ struct npc_oox22feAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_oox22fe(Creature* pCreature)
+UnitAI* GetAI_npc_oox22fe(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_oox22feAI(pCreature);
 }
 
-bool QuestAccept_npc_oox22fe(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_oox22fe(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_RESCUE_OOX22FE)
     {
@@ -159,25 +165,27 @@ bool QuestAccept_npc_oox22fe(Player* pPlayer, Creature* pCreature, const Quest* 
 ## npc_shay_leafrunner
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_ESCORT_START                    = -1001106,
-    SAY_WANDER_1                        = -1001107,
-    SAY_WANDER_2                        = -1001108,
-    SAY_WANDER_3                        = -1001109,
-    SAY_WANDER_4                        = -1001110,
-    SAY_WANDER_DONE_1                   = -1001111,
-    SAY_WANDER_DONE_2                   = -1001112,
-    SAY_WANDER_DONE_3                   = -1001113,
-    EMOTE_WANDER                        = -1001114,
-    SAY_EVENT_COMPLETE_1                = -1001115,
-    SAY_EVENT_COMPLETE_2                = -1001116,
+    SAY_ESCORT_START                    = -1001106,         // 剧情台词/喊话文本 ID
+    SAY_WANDER_1                        = -1001107,         // 剧情台词/喊话文本 ID
+    SAY_WANDER_2                        = -1001108,         // 剧情台词/喊话文本 ID
+    SAY_WANDER_3                        = -1001109,         // 剧情台词/喊话文本 ID
+    SAY_WANDER_4                        = -1001110,         // 剧情台词/喊话文本 ID
+    SAY_WANDER_DONE_1                   = -1001111,         // 剧情台词/喊话文本 ID
+    SAY_WANDER_DONE_2                   = -1001112,         // 剧情台词/喊话文本 ID
+    SAY_WANDER_DONE_3                   = -1001113,         // 剧情台词/喊话文本 ID
+    EMOTE_WANDER                        = -1001114,         // 剧情台词/喊话文本 ID
+    SAY_EVENT_COMPLETE_1                = -1001115,         // 剧情台词/喊话文本 ID
+    SAY_EVENT_COMPLETE_2                = -1001116,         // 剧情台词/喊话文本 ID
 
-    SPELL_SHAYS_BELL                    = 11402,
-    NPC_ROCKBITER                       = 7765,
-    QUEST_ID_WANDERING_SHAY             = 2845,
+    SPELL_SHAYS_BELL                    = 11402,            // 技能法术 ID
+    NPC_ROCKBITER                       = 7765,             // NPC 条目 ID
+    QUEST_ID_WANDERING_SHAY             = 2845,             // 任务 ID
 };
 
+// npc_shay_leafrunnerAI NPC 脚本 AI
 struct npc_shay_leafrunnerAI : public FollowerAI
 {
     npc_shay_leafrunnerAI(Creature* pCreature) : FollowerAI(pCreature)
@@ -190,7 +198,7 @@ struct npc_shay_leafrunnerAI : public FollowerAI
     bool m_bIsRecalled;
     bool m_bIsComplete;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_bIsRecalled = false;
         m_bIsComplete = false;
@@ -209,14 +217,14 @@ struct npc_shay_leafrunnerAI : public FollowerAI
             DoScriptText(SAY_EVENT_COMPLETE_1, m_creature);
             DoScriptText(SAY_EVENT_COMPLETE_2, pWho);
 
-            // complete quest
+            // complete quest (完成任务)
             pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_ID_WANDERING_SHAY, m_creature);
             SetFollowComplete(true);
             m_creature->ForcedDespawn(30000);
             m_bIsComplete = true;
             m_uiWanderTimer = 0;
 
-            // move to Rockbiter
+            // move to Rockbiter (说明)
             float fX, fY, fZ;
             pWho->GetContactPoint(m_creature, fX, fY, fZ, INTERACTION_DISTANCE);
             m_creature->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
@@ -237,7 +245,7 @@ struct npc_shay_leafrunnerAI : public FollowerAI
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
     {
-        // start following
+        // start following (开始)
         if (eventType == AI_EVENT_START_EVENT && pInvoker->GetTypeId() == TYPEID_PLAYER)
         {
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
@@ -246,7 +254,7 @@ struct npc_shay_leafrunnerAI : public FollowerAI
         }
         else if (eventType == AI_EVENT_CUSTOM_A)
         {
-            // resume following
+            // resume following (说明)
             m_bIsRecalled = true;
             SetFollowPaused(false);
         }
@@ -260,7 +268,7 @@ struct npc_shay_leafrunnerAI : public FollowerAI
             {
                 if (m_uiWanderTimer <= uiDiff)
                 {
-                    // set follow paused and wander in a random point
+                    // set follow paused and wander in a random point (说明)
                     SetFollowPaused(true);
                     DoScriptText(EMOTE_WANDER, m_creature);
                     m_uiWanderTimer = 0;
@@ -288,12 +296,12 @@ struct npc_shay_leafrunnerAI : public FollowerAI
     }
 };
 
-UnitAI* GetAI_npc_shay_leafrunner(Creature* pCreature)
+UnitAI* GetAI_npc_shay_leafrunner(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_shay_leafrunnerAI(pCreature);
 }
 
-bool QuestAccept_npc_shay_leafrunner(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_shay_leafrunner(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_ID_WANDERING_SHAY)
     {
@@ -320,20 +328,21 @@ struct ShaysBell : public SpellScript
 ## Quest Freedom for all creatures
 ######*/
 
+// 常量与事件枚举
 enum {
-    SAY_KINDAL_QUEST_START      = -1010023,
-    SAY_KINDAL_INITIAL_AGGRO    = -1010024,
-    SAY_KINDAL_AGGRO            = -1010025,
-    SAY_KINDAL_QUEST_COMPLETE   = -1010026,
+    SAY_KINDAL_QUEST_START      = -1010023,                 // 剧情台词/喊话文本 ID
+    SAY_KINDAL_INITIAL_AGGRO    = -1010024,                 // 剧情台词/喊话文本 ID
+    SAY_KINDAL_AGGRO            = -1010025,                 // 剧情台词/喊话文本 ID
+    SAY_KINDAL_QUEST_COMPLETE   = -1010026,                 // 剧情台词/喊话文本 ID
 
-    NPC_CAPTURED_SPRITE_DARTER  = 7997,
-    NPC_GRIMTOTEM_RAIDER        = 7725,
-    NPC_KINDAL_MOONWEAVER       = 7956,
+    NPC_CAPTURED_SPRITE_DARTER  = 7997,                     // NPC 条目 ID
+    NPC_GRIMTOTEM_RAIDER        = 7725,                     // NPC 条目 ID
+    NPC_KINDAL_MOONWEAVER       = 7956,                     // NPC 条目 ID
 
-    QUEST_FREEDOM_ALL_CREATURES = 2969,
+    QUEST_FREEDOM_ALL_CREATURES = 2969,                     // 任务 ID
 
-    SPELL_MANA_BURN             = 11981,
-    SPELL_SHOOT                 = 14443,
+    SPELL_MANA_BURN             = 11981,                    // 技能法术 ID
+    SPELL_SHOOT                 = 14443,                    // 技能法术 ID
     SPELL_MULTI_SHOT            = 6660
 };
 
@@ -343,6 +352,7 @@ static const float raiderSpawnPos[4] = { -4515.35f, 811.36f, 62.99f, 3.60244f };
 ## npc_captured_sprite_darter
 ######*/
 
+// npc_captured_sprite_darterAI NPC 脚本 AI
 struct npc_captured_sprite_darterAI : public npc_escortAI
 {
     npc_captured_sprite_darterAI(Creature* creature) : npc_escortAI(creature)
@@ -354,16 +364,16 @@ struct npc_captured_sprite_darterAI : public npc_escortAI
     ScriptedMap* m_map;
     uint32 m_manaBurnTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_manaBurnTimer = urand(3, 6) * IN_MILLISECONDS;
-        // Randomly pick a pre-set flight path amongst 4
+        // Randomly pick a pre-set flight path amongst 4 (说明)
         SetEscortWaypoints(urand(0, 3));
     }
 
-    void WaypointReached(uint32 pointId) override
+    void WaypointReached(uint32 pointId) override           // 到达指定路径点回调
     {
-        // When we reach the end of the path, despawn and inform map script that we are free
+        // When we reach the end of the path, despawn and inform map script that we are free (说明)
         if (pointId == 8)
         {
             m_map->SetData(TYPE_FREEDOM_CREATURES, SPECIAL);
@@ -371,7 +381,7 @@ struct npc_captured_sprite_darterAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 diff) override
+    void UpdateEscortAI(const uint32 diff) override         // 护送 AI 帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
@@ -391,7 +401,7 @@ struct npc_captured_sprite_darterAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_captured_sprite_darter(Creature* pCreature)
+UnitAI* GetAI_npc_captured_sprite_darter(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_captured_sprite_darterAI(pCreature);
 }
@@ -407,11 +417,11 @@ bool GOUse_go_cage_door(Player* player, GameObject* go)
     if (!mapScript)
         return false;
 
-    // Omen encounter is set to NOT_STARTED every time the GO cluster is used
-    // This increases an internal counter that handles the event in the map script
+    // Omen encounter is set to NOT_STARTED every time the GO cluster is used (说明)
+    // This increases an internal counter that handles the event in the map script (说明)
     mapScript->SetData(TYPE_FREEDOM_CREATURES, IN_PROGRESS);
 
-    // Make all Captured Sprite Darters flee
+    // Make all Captured Sprite Darters flee (说明)
     CreatureList spriteDarts;
     MaNGOS::AllCreaturesOfEntryInRangeCheck checkerForWaypoint(go, NPC_CAPTURED_SPRITE_DARTER, 20.0f);
     MaNGOS::CreatureListSearcher<MaNGOS::AllCreaturesOfEntryInRangeCheck> searcher(spriteDarts, checkerForWaypoint);
@@ -423,7 +433,7 @@ bool GOUse_go_cage_door(Player* player, GameObject* go)
         if (auto* escortAI = dynamic_cast<npc_captured_sprite_darterAI*>(spriteDart->AI()))
             escortAI->Start(true, player, nullptr);
     }
-    // Spawn a Grimtotem Raider
+    // Spawn a Grimtotem Raider (刷新)
     if (Creature* grimtotemRaider = player->SummonCreature(NPC_GRIMTOTEM_RAIDER, raiderSpawnPos[0], raiderSpawnPos[1], raiderSpawnPos[2], raiderSpawnPos[3],TEMPSPAWN_DEAD_DESPAWN, 10 * MINUTE * IN_MILLISECONDS))
     {
         grimtotemRaider->AI()->AttackStart(player);
@@ -440,6 +450,7 @@ bool GOUse_go_cage_door(Player* player, GameObject* go)
 ## npc_kindal_moonweaver
 ######*/
 
+// npc_kindal_moonweaverAI NPC 脚本 AI
 struct npc_kindal_moonweaverAI : public FollowerAI
 {
     npc_kindal_moonweaverAI(Creature* creature) : FollowerAI(creature)
@@ -455,7 +466,7 @@ struct npc_kindal_moonweaverAI : public FollowerAI
     uint32 m_despawnTimer;
     bool m_hasFleed;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_checkCompletionTimer = 1 * IN_MILLISECONDS;
         m_despawnTimer = 0;
@@ -464,7 +475,7 @@ struct npc_kindal_moonweaverAI : public FollowerAI
         m_hasFleed = false;
     }
 
-    void Aggro(Unit* target) override
+    void Aggro(Unit* target) override                       // 进入战斗回调处理
     {
         if (!urand(0, 3))
             DoScriptText(SAY_KINDAL_AGGRO, m_creature, target);
@@ -474,7 +485,7 @@ struct npc_kindal_moonweaverAI : public FollowerAI
     {
         if (HasFollowState(STATE_FOLLOW_INPROGRESS))
         {
-            // Periodically ask map script if quest is completed or not
+            // Periodically ask map script if quest is completed or not (说明)
             if (m_checkCompletionTimer < diff)
             {
                 if (m_map->GetData(TYPE_FREEDOM_CREATURES) == DONE)
@@ -510,17 +521,17 @@ struct npc_kindal_moonweaverAI : public FollowerAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        // Flee at 15% HP
+        // Flee at 15% HP (说明)
         if (m_creature->GetHealthPercent() <= 15.0f && !m_hasFleed)
         {
             if (m_creature->AI()->DoFlee())
                 m_hasFleed = true;
         }
 
-        // Shoot
+        // Shoot (说明)
         if (m_shootTimer < diff)
         {
-            // If we are in shooting range: shoot!
+            // If we are in shooting range: shoot! (说明)
             if (m_creature->IsInRange(m_creature->GetVictim(), 5.0f, 30.0f, true, true))
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SHOOT) == CAST_OK)
@@ -533,10 +544,10 @@ struct npc_kindal_moonweaverAI : public FollowerAI
         else
             m_shootTimer -= diff;
 
-        // Multishot
+        // Multishot (说明)
         if (m_multiShotTimer < diff)
         {
-            // If we are in shooting range: shoot!
+            // If we are in shooting range: shoot! (说明)
             if (m_creature->IsInRange(m_creature->GetVictim(), 5.0f, 30.0f, true, true))
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MULTI_SHOT) == CAST_OK)
@@ -553,12 +564,12 @@ struct npc_kindal_moonweaverAI : public FollowerAI
     }
 };
 
-UnitAI* GetAI_npc_kindal_moonweaver(Creature* pCreature)
+UnitAI* GetAI_npc_kindal_moonweaver(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_kindal_moonweaverAI(pCreature);
 }
 
-bool QuestAccept_npc_kindal_moonweaver(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_kindal_moonweaver(Player* player, Creature* creature, const Quest* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_FREEDOM_ALL_CREATURES)
     {
@@ -572,6 +583,7 @@ bool QuestAccept_npc_kindal_moonweaver(Player* player, Creature* creature, const
     return true;
 }
 
+// SpecificTargetScript 法术/光环脚本
 struct SpecificTargetScript : public SpellScript
 {
     virtual std::set<uint32> const& GetRequiredTargets() const = 0;
@@ -588,42 +600,42 @@ struct SpecificTargetScript : public SpellScript
     }
 };
 
-struct CaptureWildkin : public SpecificTargetScript // 11886
+struct CaptureWildkin : public SpecificTargetScript // 11886 (说明)
 {
     std::set<uint32> m_targets = { 2927, 2928, 2929, 7808 };
 
     std::set<uint32> const& GetRequiredTargets() const override { return m_targets; }
 };
 
-struct CaptureHippogryph : public SpecificTargetScript // 11887
+struct CaptureHippogryph : public SpecificTargetScript // 11887 (说明)
 {
     std::set<uint32> m_targets = { 5300, 5304, 5305, 5306 };
 
     std::set<uint32> const& GetRequiredTargets() const override { return m_targets; }
 };
 
-struct CaptureFaerieDragon : public SpecificTargetScript // 11888
+struct CaptureFaerieDragon : public SpecificTargetScript // 11888 (说明)
 {
     std::set<uint32> m_targets = { 5276, 5278 };
 
     std::set<uint32> const& GetRequiredTargets() const override { return m_targets; }
 };
 
-struct CaptureTreant : public SpecificTargetScript // 11885
+struct CaptureTreant : public SpecificTargetScript // 11885 (说明)
 {
     std::set<uint32> m_targets = { 7584 };
 
     std::set<uint32> const& GetRequiredTargets() const override { return m_targets; }
 };
 
-struct CaptureMountainGiant : public SpecificTargetScript // 11889
+struct CaptureMountainGiant : public SpecificTargetScript // 11889 (说明)
 {
     std::set<uint32> m_targets = { 5357, 5358 };
 
     std::set<uint32> const& GetRequiredTargets() const override { return m_targets; }
 };
 
-void AddSC_feralas()
+void AddSC_feralas() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_oox22fe";

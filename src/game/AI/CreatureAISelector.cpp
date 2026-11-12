@@ -33,11 +33,14 @@
 INSTANTIATE_SINGLETON_1(CreatureAIRegistry);
 INSTANTIATE_SINGLETON_1(MovementGeneratorRegistry);
 
+// 工厂选择器：按优先级为生物/单位挑选 AI 与默认移动生成器
 namespace FactorySelector
 {
+    // 按优先级为生物选择 AI：脚本 AI -> 宠物/守卫/图腾 -> 指定 AIName -> Permit 评分最高者 -> NullCreatureAI
     UnitAI* selectAI(Creature* creature)
     {
         // Allow scripting AI for normal creatures and not controlled pets (guardians and mini-pets)
+        // 允许普通生物及非玩家直接控制的宠物（守护者与小宠物）使用 ScriptDevAI 脚本
         if ((!creature->IsPet() || !static_cast<Pet*>(creature)->isControlled()) || creature->HasCharmer())
             if (UnitAI* scriptedAI = sScriptDevAIMgr.GetCreatureAI(creature))
                 return scriptedAI;
@@ -48,23 +51,23 @@ namespace FactorySelector
 
         std::string ainame = creature->GetAIName();
 
-        // select by NPC flags
+        // select by NPC flags (按 NPC 类型与标志位选择对应 AI)
         if (creature->IsPet())
         {
             if (creature->IsPlayerControlled() && static_cast<Pet*>(creature)->isControlled())
                 ai_factory = ai_registry.GetRegistryItem("PetAI");
-            else                            // For guardians and creature pets in general
+            else                            // For guardians and creature pets in general (守护者及普通生物召唤宠)
                 ai_factory = ai_registry.GetRegistryItem("GuardianAI");
         }
-        else if(creature->HasCharmer() && !creature->IsTemporarySummon()) // for charmed creatures but not possessed tempspawns
+        else if(creature->HasCharmer() && !creature->IsTemporarySummon()) // for charmed creatures but not possessed tempspawns (被魅惑的生物，排除被附身的临时召唤物)
             ai_factory = ai_registry.GetRegistryItem("PetAI");
         else if (creature->IsTotem())
             ai_factory = ai_registry.GetRegistryItem("TotemAI");
-        else if (!ainame.empty())           // select by script name
+        else if (!ainame.empty())           // select by script name (按数据库配置的 AIName 选择)
             ai_factory = ai_registry.GetRegistryItem(ainame);
         else if (creature->IsGuard())
             ai_factory = ai_registry.GetRegistryItem("GuardAI");
-        else                                // select by permit check
+        else                                // select by permit check (遍历注册项，通过 Permit 许可度评分选择最佳 AI)
         {
             int best_val = PERMIT_BASE_NO;
             typedef CreatureAIRegistry::RegistryMapType RMT;
@@ -83,13 +86,14 @@ namespace FactorySelector
             }
         }
 
-        // select NullCreatureAI if not another cases
+        // select NullCreatureAI if not another cases (若无任何匹配项则回退至空 AI NullCreatureAI)
         ainame = (ai_factory == nullptr) ? "NullCreatureAI" : ai_factory->key();
 
         DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Creature %u used AI is %s.", creature->GetGUIDLow(), ainame.c_str());
         return (ai_factory == nullptr ? new NullCreatureAI(creature) : ai_factory->Create(creature));
     }
 
+    // 根据名称为单位创建指定 AI（支持生物工厂创建及玩家的 PetAI/PossessedAI）
     UnitAI* GetSpecificAI(Unit* unit, std::string const& ainame)
     {
         CreatureAIRegistry& ai_registry(CreatureAIRepository::Instance());
@@ -106,6 +110,7 @@ namespace FactorySelector
         return nullptr;
     }
 
+    // 为生物选择默认移动生成器（玩家拥有的生物强制使用跟随移动，否则按数据库配置）
     MovementGenerator* selectMovementGenerator(Creature* creature)
     {
         MovementGeneratorRegistry& mv_registry(MovementGeneratorRepository::Instance());

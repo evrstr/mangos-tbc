@@ -20,6 +20,7 @@
 
 SARC4::SARC4(size_t len) : m_ctx(EVP_CIPHER_CTX_new())
 {
+    // 初始化 RC4 加密上下文并设置密钥长度
     EVP_CIPHER_CTX_init(m_ctx);
     EVP_EncryptInit_ex(m_ctx, EVP_rc4(), nullptr, nullptr, nullptr);
     EVP_CIPHER_CTX_set_key_length(m_ctx, len);
@@ -27,6 +28,7 @@ SARC4::SARC4(size_t len) : m_ctx(EVP_CIPHER_CTX_new())
 
 SARC4::SARC4(const uint8 *seed, size_t len) : m_ctx(EVP_CIPHER_CTX_new())
 {
+    // 初始化 RC4 加密上下文并直接写入初始种子密钥
     EVP_CIPHER_CTX_init(m_ctx);
     EVP_EncryptInit_ex(m_ctx, EVP_rc4(), nullptr, nullptr, nullptr);
     EVP_CIPHER_CTX_set_key_length(m_ctx, len);
@@ -45,6 +47,7 @@ void SARC4::Init(const uint8 *seed)
 
 void SARC4::UpdateData(uint8 *data, size_t len)
 {
+    // 原地执行 RC4 流加解密
     int outlen = 0;
     EVP_EncryptUpdate(m_ctx, data, &outlen, data, len);
     EVP_EncryptFinal_ex(m_ctx, data, &outlen);

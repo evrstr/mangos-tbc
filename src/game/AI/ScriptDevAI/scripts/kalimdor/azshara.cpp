@@ -21,6 +21,10 @@ SDComment: Quest support: 2744, 3141, 3602, 8729, 9364, 10994
 SDCategory: Azshara
 EndScriptData */
 
+/**
+ * 艾萨拉 (Azshara) 任务与野外 NPC 脚本
+ */
+
 /* ContentData
 npc_rizzle_sprysprocket
 npc_depth_charge
@@ -40,39 +44,41 @@ EndContentData */
 ## npc_rizzle_sprysprocket
 #####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_START                   = -1000351,
-    EMOTE_START                 = -1000352,
-    SAY_WHISPER_CHILL           = -1000353,
-    SAY_GRENADE_FAIL            = -1000354,
-    SAY_END                     = -1000355,
+    SAY_START                   = -1000351,                 // 剧情台词/喊话文本 ID
+    EMOTE_START                 = -1000352,                 // 剧情台词/喊话文本 ID
+    SAY_WHISPER_CHILL           = -1000353,                 // 剧情台词/喊话文本 ID
+    SAY_GRENADE_FAIL            = -1000354,                 // 剧情台词/喊话文本 ID
+    SAY_END                     = -1000355,                 // 剧情台词/喊话文本 ID
 
-    QUEST_MOONSTONE             = 10994,
-    NPC_RIZZLE                  = 23002,
-    NPC_DEPTH_CHARGE            = 23025,
+    QUEST_MOONSTONE             = 10994,                    // 任务 ID
+    NPC_RIZZLE                  = 23002,                    // NPC 条目 ID
+    NPC_DEPTH_CHARGE            = 23025,                    // NPC 条目 ID
 
-    SPELL_SUMMON_RIZZLE         = 39866,
-    SPELL_BLACKJACK             = 39865,                    // stuns player
-    SPELL_ESCAPE                = 39871,                    // teleports to water
-    SPELL_SWIM_SPEED            = 40596,
+    SPELL_SUMMON_RIZZLE         = 39866,                    // 技能法术 ID
+    SPELL_BLACKJACK             = 39865,                    // stuns player (玩家)
+    SPELL_ESCAPE                = 39871,                    // teleports to water (说明)
+    SPELL_SWIM_SPEED            = 40596,                    // 技能法术 ID
 
-    SPELL_FROST_TRAP            = 39902,                    // not used?
+    SPELL_FROST_TRAP            = 39902,                    // not used? (说明)
 
-    SPELL_PERIODIC_GRENADE      = 40553,                    // cannot tell who are supposed to have this aura
-    SPELL_FROST_GRENADE         = 40525,                    // triggered by periodic grenade
+    SPELL_PERIODIC_GRENADE      = 40553,                    // cannot tell who are supposed to have this aura (说明)
+    SPELL_FROST_GRENADE         = 40525,                    // triggered by periodic grenade (说明)
 
-    SPELL_SUMMON_DEPTH_CHARGE   = 39907,                    // summons the bomb creature
-    SPELL_TRAP                  = 39899,                    // knockback
+    SPELL_SUMMON_DEPTH_CHARGE   = 39907,                    // summons the bomb creature (召唤)
+    SPELL_TRAP                  = 39899,                    // knockback (说明)
 
-    SPELL_PERIODIC_CHECK        = 39888,
-    SPELL_SURRENDER             = 39889,                    // should be triggered by periodic check, if player comes in certain distance with quest incomplete
+    SPELL_PERIODIC_CHECK        = 39888,                    // 技能法术 ID
+    SPELL_SURRENDER             = 39889,                    // should be triggered by periodic check, if player comes in certain distance with quest incomplete (说明)
 
     SPELL_GIVE_MOONSTONE        = 39886
 };
 
 #define GOSSIP_ITEM_MOONSTONE   "Hand over the Southfury moonstone and I'll let you go."
 
+// npc_rizzle_sprysprocketAI NPC 脚本 AI
 struct npc_rizzle_sprysprocketAI : public npc_escortAI
 {
     npc_rizzle_sprysprocketAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -104,7 +110,7 @@ struct npc_rizzle_sprysprocketAI : public npc_escortAI
         npc_escortAI::MoveInLineOfSight(pUnit);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -114,7 +120,7 @@ struct npc_rizzle_sprysprocketAI : public npc_escortAI
         }
     }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
     void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
@@ -133,13 +139,13 @@ struct npc_rizzle_sprysprocketAI : public npc_escortAI
             DoScriptText(SAY_WHISPER_CHILL, m_creature, pTarget);
     }
 
-    // this may be wrong
+    // this may be wrong (说明)
     void JustSummoned(Creature* /*pSummoned*/) override
     {
-        // pSummoned->CastSpell(pSummoned,SPELL_PERIODIC_GRENADE,TRIGGERED_NONE,nullptr,nullptr,m_creature->GetObjectGuid());
+        // pSummoned->CastSpell(pSummoned,SPELL_PERIODIC_GRENADE,TRIGGERED_NONE,nullptr,nullptr,m_creature->GetObjectGuid()); (说明)
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         if (m_bIsIntro)
         {
@@ -158,7 +164,7 @@ struct npc_rizzle_sprysprocketAI : public npc_escortAI
                     DoScriptText(EMOTE_START, m_creature);
                     break;
                 case 1:
-                    // teleports to water _before_ we Start()
+                    // teleports to water _before_ we Start() (开始)
                     m_creature->CastSpell(m_creature, SPELL_ESCAPE, TRIGGERED_NONE);
                     break;
                 case 2:
@@ -184,12 +190,12 @@ struct npc_rizzle_sprysprocketAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_rizzle_sprysprocket(Creature* pCreature)
+UnitAI* GetAI_npc_rizzle_sprysprocket(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_rizzle_sprysprocketAI(pCreature);
 }
 
-bool GossipHello_npc_rizzle_sprysprocket(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_rizzle_sprysprocket(Player* pPlayer, Creature* pCreature) // 对话交互问候处理
 {
     if (pPlayer->GetQuestStatus(QUEST_MOONSTONE) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_MOONSTONE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
@@ -209,6 +215,7 @@ bool GossipSelect_npc_rizzle_sprysprocket(Player* pPlayer, Creature* /*pCreature
     return true;
 }
 
+// npc_depth_chargeAI NPC 脚本 AI
 struct npc_depth_chargeAI : public ScriptedAI
 {
     npc_depth_chargeAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -222,10 +229,10 @@ struct npc_depth_chargeAI : public ScriptedAI
             m_creature->CastSpell(pUnit, SPELL_TRAP, TRIGGERED_NONE);
     }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 };
 
-UnitAI* GetAI_npc_depth_charge(Creature* pCreature)
+UnitAI* GetAI_npc_depth_charge(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_depth_chargeAI(pCreature);
 }
@@ -236,8 +243,8 @@ UnitAI* GetAI_npc_depth_charge(Creature* pCreature)
 
 bool GOUse_go_southfury_moonstone(Player* pPlayer, GameObject* /*pGo*/)
 {
-    // implicitTarget=48 not implemented as of writing this code, and manual summon may be just ok for our purpose
-    // pPlayer->CastSpell(pPlayer,SPELL_SUMMON_RIZZLE,TRIGGERED_NONE);
+    // implicitTarget=48 not implemented as of writing this code, and manual summon may be just ok for our purpose (说明)
+    // pPlayer->CastSpell(pPlayer,SPELL_SUMMON_RIZZLE,TRIGGERED_NONE); (说明)
 
     if (Creature* pCreature = pPlayer->SummonCreature(NPC_RIZZLE, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSPAWN_DEAD_DESPAWN, 0))
         pCreature->CastSpell(pPlayer, SPELL_BLACKJACK, TRIGGERED_NONE);
@@ -248,27 +255,28 @@ bool GOUse_go_southfury_moonstone(Player* pPlayer, GameObject* /*pGo*/)
 /*######
 ## mobs_spitelashes
 ######*/
+// 常量与事件枚举
 enum
 {
-    // quest related
-    SPELL_POLYMORPH_BACKFIRE    = 28406,        // summons npc 16479
-    QUEST_FRAGMENTED_MAGIC      = 9364,
+    // quest related (任务)
+    SPELL_POLYMORPH_BACKFIRE    = 28406,        // summons npc 16479 (召唤)
+    QUEST_FRAGMENTED_MAGIC      = 9364,                     // 任务 ID
 
-    // npc spells
-    SPELL_DISARM                = 6713,         // warrior
-    SPELL_SCREECH               = 3589,         // screamer
-    SPELL_FROST_SHOCK           = 12548,        // serpent guard
-    SPELL_RENEW                 = 11640,        // siren
-    SPELL_SHOOT                 = 6660,
-    SPELL_FROST_SHOT            = 12551,
-    SPELL_FROST_NOVA            = 11831,
-    SPELL_STRIKE                = 11976,        // myrmidon
+    // npc spells (法术)
+    SPELL_DISARM                = 6713,         // warrior (说明)
+    SPELL_SCREECH               = 3589,         // screamer (说明)
+    SPELL_FROST_SHOCK           = 12548,        // serpent guard (说明)
+    SPELL_RENEW                 = 11640,        // siren (说明)
+    SPELL_SHOOT                 = 6660,                     // 技能法术 ID
+    SPELL_FROST_SHOT            = 12551,                    // 技能法术 ID
+    SPELL_FROST_NOVA            = 11831,                    // 技能法术 ID
+    SPELL_STRIKE                = 11976,        // myrmidon (说明)
 
-    NPC_SPITELASH_WARRIOR       = 6190,
-    NPC_SPITELASH_SCREAMER      = 6193,
-    NPC_SPITELASH_GUARD         = 6194,
-    NPC_SPITELASH_SIREN         = 6195,
-    NPC_SPITELASH_MYRMIDON      = 6196,
+    NPC_SPITELASH_WARRIOR       = 6190,                     // NPC 条目 ID
+    NPC_SPITELASH_SCREAMER      = 6193,                     // NPC 条目 ID
+    NPC_SPITELASH_GUARD         = 6194,                     // NPC 条目 ID
+    NPC_SPITELASH_SIREN         = 6195,                     // NPC 条目 ID
+    NPC_SPITELASH_MYRMIDON      = 6196,                     // NPC 条目 ID
 
     TARGET_TYPE_RANDOM          = 0,
     TARGET_TYPE_VICTIM          = 1,
@@ -295,6 +303,7 @@ static SpitelashAbilityStruct m_aSpitelashAbility[8] =
     {NPC_SPITELASH_MYRMIDON,    SPELL_STRIKE,       TARGET_TYPE_VICTIM,     3000,  7000}
 };
 
+// mobs_spitelashesAI AI 逻辑实现
 struct mobs_spitelashesAI : public ScriptedAI
 {
     mobs_spitelashesAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -312,7 +321,7 @@ struct mobs_spitelashesAI : public ScriptedAI
 
     std::unordered_map<uint8, uint32> m_mSpellTimers;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiMorphTimer = 0;
 
@@ -320,13 +329,13 @@ struct mobs_spitelashesAI : public ScriptedAI
             m_mSpellTimer.second = m_aSpitelashAbility[m_mSpellTimer.first].m_uiInitialTimer;
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override    // 被法术命中回调处理
     {
-        // If already hit by the polymorph return
+        // If already hit by the polymorph return (说明)
         if (m_uiMorphTimer)
             return;
 
-        // Creature get polymorphed into a sheep and after 5 secs despawns
+        // Creature get polymorphed into a sheep and after 5 secs despawns (说明)
         if (pCaster->GetTypeId() == TYPEID_PLAYER && ((Player*)pCaster)->GetQuestStatus(QUEST_FRAGMENTED_MAGIC) == QUEST_STATUS_INCOMPLETE &&
                 (pSpell->Id == 118 || pSpell->Id == 12824 || pSpell->Id == 12825 || pSpell->Id == 12826))
             m_uiMorphTimer = 5000;
@@ -361,7 +370,7 @@ struct mobs_spitelashesAI : public ScriptedAI
         return false;
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
@@ -398,7 +407,7 @@ struct mobs_spitelashesAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_mobs_spitelashes(Creature* pCreature)
+UnitAI* GetAI_mobs_spitelashes(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new mobs_spitelashesAI(pCreature);
 }
@@ -407,20 +416,22 @@ UnitAI* GetAI_mobs_spitelashes(Creature* pCreature)
 ## npc_felhound_tracker
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_AZSHARITE     = 3602,
+    QUEST_AZSHARITE     = 3602,                             // 任务 ID
 
-    GO_AZSHARITE_1      = 152620,
-    GO_AZSHARITE_2      = 152621,
-    GO_AZSHARITE_3      = 152622,
-    GO_AZSHARITE_4      = 152631,
+    GO_AZSHARITE_1      = 152620,                           // 游戏对象条目 ID
+    GO_AZSHARITE_2      = 152621,                           // 游戏对象条目 ID
+    GO_AZSHARITE_3      = 152622,                           // 游戏对象条目 ID
+    GO_AZSHARITE_4      = 152631,                           // 游戏对象条目 ID
 
     SOUND_GROWL         = 1249
 };
 
 static const uint32 aGOList[] = {GO_AZSHARITE_1, GO_AZSHARITE_2, GO_AZSHARITE_3, GO_AZSHARITE_4};
 
+// npc_felhound_trackerAI NPC 脚本 AI
 struct npc_felhound_trackerAI : public ScriptedPetAI
 {
     npc_felhound_trackerAI(Creature* pCreature) : ScriptedPetAI(pCreature) { Reset(); }
@@ -428,13 +439,13 @@ struct npc_felhound_trackerAI : public ScriptedPetAI
     bool m_bIsMovementActive;
     uint32 m_uiWaitTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_bIsMovementActive  = false;
         m_uiWaitTimer        = 0;
     }
 
-    void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId) override    // 移动节点到达通知
     {
         if (uiMoveType != POINT_MOTION_TYPE || !uiPointId)
             return;
@@ -446,7 +457,7 @@ struct npc_felhound_trackerAI : public ScriptedPetAI
 
     void ReceiveEmote(Player* pPlayer, uint32 uiTextEmote) override
     {
-        // Only react if player is on the quest
+        // Only react if player is on the quest (说明)
         if (pPlayer->GetQuestStatus(QUEST_AZSHARITE) != QUEST_STATUS_INCOMPLETE)
             return;
 
@@ -458,19 +469,19 @@ struct npc_felhound_trackerAI : public ScriptedPetAI
         }
     }
 
-    // Function to search for new tubber in range
+    // Function to search for new tubber in range (在范围内搜索新目标的函数)
     void DoFindNewCrystal(Player* /*pMaster*/)
     {
         GameObjectList lCrystalsInRange;
         for (unsigned int i : aGOList)
         {
             GetGameObjectListWithEntryInGrid(lCrystalsInRange, m_creature, i, 40.0f);
-            // If a crystal was found in range, stop the search here, else try with another GO
+            // If a crystal was found in range, stop the search here, else try with another GO (说明)
             if (!lCrystalsInRange.empty())
                 break;
         }
 
-        if (lCrystalsInRange.empty())   // Definely no GO found
+        if (lCrystalsInRange.empty())   // Definely no GO found (说明)
         {
             m_creature->PlayDirectSound(SOUND_GROWL);
             return;
@@ -478,7 +489,7 @@ struct npc_felhound_trackerAI : public ScriptedPetAI
         lCrystalsInRange.sort(ObjectDistanceOrder(m_creature));
         GameObject* pNearestCrystal = nullptr;
 
-        // Always need to find new ones
+        // Always need to find new ones (始终需要寻找新目标)
         for (GameObjectList::const_iterator itr = lCrystalsInRange.begin(); itr != lCrystalsInRange.end(); ++itr)
         {
             if ((*itr)->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND))
@@ -500,7 +511,7 @@ struct npc_felhound_trackerAI : public ScriptedPetAI
         m_bIsMovementActive = true;
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_bIsMovementActive)
             return;
@@ -522,7 +533,7 @@ struct npc_felhound_trackerAI : public ScriptedPetAI
     }
 };
 
-UnitAI* GetAI_npc_felhound_tracker(Creature* pCreature)
+UnitAI* GetAI_npc_felhound_tracker(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_felhound_trackerAI(pCreature);
 }
@@ -531,11 +542,12 @@ UnitAI* GetAI_npc_felhound_tracker(Creature* pCreature)
 ## event_arcanite_buoy
 ######*/
 
+// 常量与事件枚举
 enum
 {
     EVENT_ARCANITE_BUOY     = 9542,
-    NPC_MAWS                = 15571,
-    GO_THEATRIC_LIGHTNING   = 183356,
+    NPC_MAWS                = 15571,                        // NPC 条目 ID
+    GO_THEATRIC_LIGHTNING   = 183356,                       // 游戏对象条目 ID
 };
 
 struct SummonLocation
@@ -551,17 +563,17 @@ bool ProcessEventId_arcanite_buoy(uint32 uiEventId, Object* pSource, Object* /*p
     {
         if (pSource->GetTypeId() == TYPEID_PLAYER)
         {
-            // Do not summon it twice
+            // Do not summon it twice (召唤)
             if (Creature* temp = GetClosestCreatureWithEntry((Player*)pSource, NPC_MAWS, 200.0f))
                 return false;
 
-            // Summon Maws
+            // Summon Maws (召唤)
             if (Creature* maws = ((Player*)pSource)->SummonCreature(NPC_MAWS, aMawsSpawn.m_fX, aMawsSpawn.m_fY, aMawsSpawn.m_fZ, 1.6f, TEMPSPAWN_MANUAL_DESPAWN, 0))
             {
                 maws->SetWalk(false);
                 maws->GetMotionMaster()->MoveWaypoint();
 
-                // Respawn visual lightning GO
+                // Respawn visual lightning GO (复活)
                 if (GameObject* lightning = GetClosestGameObjectWithEntry((Player*)pSource, GO_THEATRIC_LIGHTNING, 20.0f))
                 {
                     if (!lightning->IsSpawned())
@@ -581,14 +593,15 @@ bool ProcessEventId_arcanite_buoy(uint32 uiEventId, Object* pSource, Object* /*p
 ## go_lightning
 ################*/
 
+// go_ai_lightning 游戏对象脚本 AI
 struct go_ai_lightning : public GameObjectAI
 {
     go_ai_lightning(GameObject* go) : GameObjectAI(go), m_uilightningTimer(urand(2, 5) * IN_MILLISECONDS) {}
 
     uint32 m_uilightningTimer;
 
-    // Custom anim is played on a random timer as long as GO is spawned in world
-    void UpdateAI(const uint32 uiDiff) override
+    // Custom anim is played on a random timer as long as GO is spawned in world (说明)
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_go->IsSpawned())
             return;
@@ -612,17 +625,19 @@ GameObjectAI* GetAI_go_lightning(GameObject* go)
 ## boss_maws
 ################*/
 
+// 常量与事件枚举
 enum
 {
-    SPELL_THRASH                = 8876,
-    SPELL_FRENZY                = 19812,
-    SPELL_DARK_WATER            = 25743,
-    SPELL_RAMPAGE               = 25744,
+    SPELL_THRASH                = 8876,                     // 技能法术 ID
+    SPELL_FRENZY                = 19812,                    // 技能法术 ID
+    SPELL_DARK_WATER            = 25743,                    // 技能法术 ID
+    SPELL_RAMPAGE               = 25744,                    // 技能法术 ID
 
-    EMOTE_GENERIC_FRENZY_KILL   = -1000001,
-    EMOTE_MAWS_KILL             = -1010000      // World emote that was removed in WotLK patch 3.2
+    EMOTE_GENERIC_FRENZY_KILL   = -1000001,                 // 剧情台词/喊话文本 ID
+    EMOTE_MAWS_KILL             = -1010000      // World emote that was removed in WotLK patch 3.2 (说明)
 };
 
+// boss_mawsAI 首领战斗 AI
 struct boss_mawsAI : public ScriptedAI
 {
     boss_mawsAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -635,7 +650,7 @@ struct boss_mawsAI : public ScriptedAI
     uint32 uiRampageTimer;
     uint32 uiDespawnTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         uiFrenzyTimer           = 25 * IN_MILLISECONDS;
         uiDarkWaterTimer        = 15 * IN_MILLISECONDS;
@@ -647,18 +662,18 @@ struct boss_mawsAI : public ScriptedAI
 
     void JustDied(Unit* /*pKiller*/) override
     {
-        // Despawn visual lightning GO
+        // Despawn visual lightning GO (使闪电视觉效果游戏对象消失)
         if (GameObject* lightning = GetClosestGameObjectWithEntry(m_creature, GO_THEATRIC_LIGHTNING, 200.0f))
             lightning->SetLootState(GO_JUST_DEACTIVATED);
         DoScriptText(EMOTE_MAWS_KILL, m_creature);
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
-        // Despawn timer handled in UpdateAI because creature must perform actions on despawn that cannot be done in OnDespawn() (creature is already despawned)
+        // Despawn timer handled in UpdateAI because creature must perform actions on despawn that cannot be done in OnDespawn() (creature is already despawned) (说明)
         if (uiDespawnTimer < uiDiff)
         {
-            // Despawn visual lightning GO
+            // Despawn visual lightning GO (使闪电视觉效果游戏对象消失)
             if (GameObject* lightning = GetClosestGameObjectWithEntry(m_creature, GO_THEATRIC_LIGHTNING, 200.0f))
                 lightning->SetLootState(GO_JUST_DEACTIVATED);
             DoScriptText(EMOTE_MAWS_KILL, m_creature);
@@ -667,7 +682,7 @@ struct boss_mawsAI : public ScriptedAI
         else
             uiDespawnTimer -= uiDiff;
 
-        // Return since we have no target
+        // Return since we have no target (没有攻击目标，直接返回)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -703,12 +718,12 @@ struct boss_mawsAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_boss_maws(Creature* pCreature)
+UnitAI* GetAI_boss_maws(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new boss_mawsAI(pCreature);
 }
 
-void AddSC_azshara()
+void AddSC_azshara() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_rizzle_sprysprocket";

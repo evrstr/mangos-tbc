@@ -21,6 +21,11 @@ SDComment: Elevator needs core support
 SDCategory: Mechanar
 EndScriptData */
 
+// 能源舰副本数据脚本实现
+/* 遭遇战概述：
+ * 维护能源舰各首领进度。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "mechanar.h"
 
@@ -304,6 +309,7 @@ void instance_mechanar::ExecuteChatCommand(ChatHandler* handler, char* args)
     }
 }
 
+// 注册 instance_mechanar 脚本
 void AddSC_instance_mechanar()
 {
     Script* pNewScript = new Script;

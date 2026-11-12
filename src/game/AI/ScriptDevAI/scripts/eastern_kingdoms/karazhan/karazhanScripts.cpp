@@ -21,6 +21,8 @@ SDComment: Quest support: 9645. Support for Barnes (Opera controller) and Bertho
 SDCategory: Karazhan
 EndScriptData */
 
+// 卡拉赞（Karazhan）小怪杂项与幽灵侍从技能脚本
+
 /* ContentData
 npc_barnes
 npc_berthold
@@ -38,44 +40,45 @@ EndContentData */
 # npc_barnesAI
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_BARNES_EVENT_START  = -1532115,
+    SAY_BARNES_EVENT_START  = -1532115,                     // barnes事件开始 台词广播 ID
 
-    SAY_BARNES_OZ_1         = -1532103,
-    SAY_BARNES_OZ_2         = -1532104,
-    SAY_BARNES_OZ_3         = -1532105,
-    SAY_BARNES_OZ_4         = -1532106,
+    SAY_BARNES_OZ_1         = -1532103,                     // barnesoz1 台词广播 ID
+    SAY_BARNES_OZ_2         = -1532104,                     // barnesoz2 台词广播 ID
+    SAY_BARNES_OZ_3         = -1532105,                     // barnesoz3 台词广播 ID
+    SAY_BARNES_OZ_4         = -1532106,                     // barnesoz4 台词广播 ID
 
-    SAY_BARNES_HOOD_1       = -1532107,
-    SAY_BARNES_HOOD_2       = -1532108,
-    SAY_BARNES_HOOD_3       = -1532109,
-    SAY_BARNES_HOOD_4       = -1532110,
+    SAY_BARNES_HOOD_1       = -1532107,                     // barneshood1 台词广播 ID
+    SAY_BARNES_HOOD_2       = -1532108,                     // barneshood2 台词广播 ID
+    SAY_BARNES_HOOD_3       = -1532109,                     // barneshood3 台词广播 ID
+    SAY_BARNES_HOOD_4       = -1532110,                     // barneshood4 台词广播 ID
 
-    SAY_BARNES_RAJ_1        = -1532111,
-    SAY_BARNES_RAJ_2        = -1532112,
-    SAY_BARNES_RAJ_3        = -1532113,
-    SAY_BARNES_RAJ_4        = -1532114,
+    SAY_BARNES_RAJ_1        = -1532111,                     // barnesraj1 台词广播 ID
+    SAY_BARNES_RAJ_2        = -1532112,                     // barnesraj2 台词广播 ID
+    SAY_BARNES_RAJ_3        = -1532113,                     // barnesraj3 台词广播 ID
+    SAY_BARNES_RAJ_4        = -1532114,                     // barnesraj4 台词广播 ID
 
     // ToDo: it's not very clear which is the gossip sequence for event FAIL case
-    GOSSIP_ITEM_OPERA_1     = -3532001,
-    GOSSIP_ITEM_OPERA_2     = -3532002,
-    GOSSIP_ITEM_JUL_WIPE    = -3532003,
-    GOSSIP_ITEM_WOLF_WIPE   = -3532004,
-    GOSSIP_ITEM_OPERA_OZ_WIPE = -3532019,
+    GOSSIP_ITEM_OPERA_1     = -3532001,                     // 物品opera1 对话菜单选项 ID
+    GOSSIP_ITEM_OPERA_2     = -3532002,                     // 物品opera2 对话菜单选项 ID
+    GOSSIP_ITEM_JUL_WIPE    = -3532003,                     // 物品julwipe 对话菜单选项 ID
+    GOSSIP_ITEM_WOLF_WIPE   = -3532004,                     // 物品wolfwipe 对话菜单选项 ID
+    GOSSIP_ITEM_OPERA_OZ_WIPE = -3532019,                   // 物品operaozwipe 对话菜单选项 ID
 
-    TEXT_ID_MOROES_ALIVE    = 8969,
-    TEXT_ID_OPERA_1         = 8970,
-    TEXT_ID_OPERA_2         = 8971,
-    TEXT_ID_OPERA_WOLF_WIPE = 8975,
-    TEXT_ID_OPERA_OZ_WIPE   = 8981,
-    TEXT_ID_OPERA_JUL_WIPE  = 8982,
-    TEXT_ID_OPERA_DONE      = 10471,
+    TEXT_ID_MOROES_ALIVE    = 8969,                         // ID莫罗斯alive 标识 ID
+    TEXT_ID_OPERA_1         = 8970,                         // IDopera1 标识 ID
+    TEXT_ID_OPERA_2         = 8971,                         // IDopera2 标识 ID
+    TEXT_ID_OPERA_WOLF_WIPE = 8975,                         // IDoperawolfwipe 标识 ID
+    TEXT_ID_OPERA_OZ_WIPE   = 8981,                         // IDoperaozwipe 标识 ID
+    TEXT_ID_OPERA_JUL_WIPE  = 8982,                         // IDoperajulwipe 标识 ID
+    TEXT_ID_OPERA_DONE      = 10471,                        // IDoperadone 标识 ID
 
     // SPELL_SPOTLIGHT       = 25824,            // in creature_template_addon
-    SPELL_TUXEDO            = 32616,
+    SPELL_TUXEDO            = 32616,                        // tuxedo 法术 ID
 
-    NPC_SPOTLIGHT           = 19525,
+    NPC_SPOTLIGHT           = 19525,                        // spotlight Entry ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
@@ -98,6 +101,7 @@ static const DialogueEntry aIntroDialogue[] =
     {0, 0, 0},
 };
 
+// 随从/NPC AI：标识 ID（barnes）
 struct npc_barnesAI : public npc_escortAI, private DialogueHelper
 {
     npc_barnesAI(Creature* pCreature) : npc_escortAI(pCreature),
@@ -110,13 +114,15 @@ struct npc_barnesAI : public npc_escortAI, private DialogueHelper
 
     instance_karazhan* m_pInstance;
 
-    ObjectGuid m_spotlightGuid;
+    ObjectGuid m_spotlightGuid;                             // spotlight 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_spotlightGuid.Clear();
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_SPOTLIGHT)
@@ -178,11 +184,13 @@ struct npc_barnesAI : public npc_escortAI, private DialogueHelper
     void UpdateEscortAI(const uint32 uiDiff) override { DialogueUpdate(uiDiff); }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_barnesAI
 UnitAI* GetAI_npc_barnesAI(Creature* pCreature)
 {
     return new npc_barnesAI(pCreature);
 }
 
+// NPC 对话交互入口函数：npc_barnes
 bool GossipHello_npc_barnes(Player* pPlayer, Creature* pCreature)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
@@ -289,41 +297,42 @@ bool GossipSelect_npc_barnes(Player* pPlayer, Creature* pCreature, uint32 /*uiSe
 # npc_image_of_medivh
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // yells
-    SAY_MEDIVH_1            = -1532116,
-    SAY_ARCANAGOS_2         = -1532117,
-    SAY_MEDIVH_3            = -1532118,
-    SAY_ARCANAGOS_4         = -1532119,
-    SAY_MEDIVH_5            = -1532120,
-    SAY_ARCANAGOS_6         = -1532121,
-    EMOTE_CAST_SPELL        = -1532122,
-    SAY_ARCANAGOS_7         = -1532123,
-    SAY_MEDIVH_8            = -1532124,
+    SAY_MEDIVH_1            = -1532116,                     // medivh1 台词广播 ID
+    SAY_ARCANAGOS_2         = -1532117,                     // arcanagos2 台词广播 ID
+    SAY_MEDIVH_3            = -1532118,                     // medivh3 台词广播 ID
+    SAY_ARCANAGOS_4         = -1532119,                     // arcanagos4 台词广播 ID
+    SAY_MEDIVH_5            = -1532120,                     // medivh5 台词广播 ID
+    SAY_ARCANAGOS_6         = -1532121,                     // arcanagos6 台词广播 ID
+    EMOTE_CAST_SPELL        = -1532122,                     // cast法术 表情动作 ID
+    SAY_ARCANAGOS_7         = -1532123,                     // arcanagos7 台词广播 ID
+    SAY_MEDIVH_8            = -1532124,                     // medivh8 台词广播 ID
 
-    // spells
+    // spells (技能法术)
     // Arcanagos
     // SPELL_NOTIFY_FLEE     = 30985,            // not used - allow Medivh to return inside after the dragon has escaped
     // SPELL_PREPARE_FIREBALL= 30970,            // not used - allow Medivh to cast fireball
-    SPELL_REFLECTION        = 30969,
+    SPELL_REFLECTION        = 30969,                        // 倒影镜像 法术 ID
     // SPELL_SHOOT_FIREBALL  = 30968,            // not used
-    SPELL_FIREBALL_REFLECT  = 30971,
+    SPELL_FIREBALL_REFLECT  = 30971,                        // fireballreflect 法术 ID
 
-    // Medivh
+    // Medivh (麦迪文)
     // SPELL_FROST_BREATH    = 30974,            // not used
     SPELL_CONFLAG_BLAST     = 30977,            // cast on Arcanagos
     SPELL_EVOCATION         = 30972,            // prepare the Conflagration Blast
-    SPELL_FIREBALL          = 30967,
+    SPELL_FIREBALL          = 30967,                        // fireball 法术 ID
     // SPELL_FLY_TO_DEATH    = 30936,            // not used - inform the dragon to move to death Location
-    SPELL_MANA_SHIELD       = 30973,
+    SPELL_MANA_SHIELD       = 30973,                        // 法力护盾 法术 ID
 
     // NPC_ARCANAGOS_CREDIT  = 17665,            // purpose unk
 
-    QUEST_MASTERS_TERRACE   = 9645,
+    QUEST_MASTERS_TERRACE   = 9645,                         // mastersterrace 任务 ID
 
-    POINT_ID_INTRO          = 1,
-    POINT_ID_DESPAWN        = 2,
+    POINT_ID_INTRO          = 1,                            // ID开场 路径点 ID
+    POINT_ID_DESPAWN        = 2,                            // ID消除 路径点 ID
 };
 
 /* Notes for future development of the event:
@@ -355,6 +364,7 @@ static const DialogueEntry aMedivhDialogue[] =
     {0, 0, 0},
 };
 
+// 随从/NPC AI：ofmedivh（image_of_medivh）
 struct npc_image_of_medivhAI : public ScriptedAI, private DialogueHelper
 {
     npc_image_of_medivhAI(Creature* pCreature) : ScriptedAI(pCreature),
@@ -367,13 +377,15 @@ struct npc_image_of_medivhAI : public ScriptedAI, private DialogueHelper
 
     instance_karazhan* m_pInstance;
 
-    ObjectGuid m_eventStarterGuid;
+    ObjectGuid m_eventStarterGuid;                          // eventStarter 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
     void AttackStart(Unit* /*pWho*/) override { }
     void MoveInLineOfSight(Unit* /*pWho*/) override { }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_IMAGE_OF_ARCANAGOS)
@@ -399,13 +411,14 @@ struct npc_image_of_medivhAI : public ScriptedAI, private DialogueHelper
                 pSummoned->ForcedDespawn();
                 m_creature->ForcedDespawn(10000);
                 m_creature->GetMotionMaster()->MovePoint(0, afMedivhExitLoc[0], afMedivhExitLoc[1], afMedivhExitLoc[2]);
-                // complete quest
+                // complete quest (complete任务)
                 if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_eventStarterGuid))
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_MASTERS_TERRACE, m_creature);
                 break;
         }
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         if (pSpell->Id == SPELL_FIREBALL_REFLECT && pCaster->GetEntry() == NPC_IMAGE_OF_ARCANAGOS)
@@ -442,9 +455,11 @@ struct npc_image_of_medivhAI : public ScriptedAI, private DialogueHelper
 
     void SetEventStarter(ObjectGuid m_starterGuid) { m_eventStarterGuid = m_starterGuid; }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override { DialogueUpdate(uiDiff); }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_image_of_medivhAI
 UnitAI* GetAI_npc_image_of_medivhAI(Creature* pCreature)
 {
     return new npc_image_of_medivhAI(pCreature);
@@ -454,12 +469,15 @@ UnitAI* GetAI_npc_image_of_medivhAI(Creature* pCreature)
 # npc_image_arcanagos
 ######*/
 
+// 随从/NPC AI：arcanagos（image_arcanagos）
 struct npc_image_arcanagosAI : public ScriptedAI
 {
     npc_image_arcanagosAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         if (pSpell->Id == SPELL_FIREBALL && pCaster->GetEntry() == NPC_IMAGE_OF_MEDIVH)
@@ -479,6 +497,7 @@ struct npc_image_arcanagosAI : public ScriptedAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_image_arcanagosAI
 UnitAI* GetAI_npc_image_arcanagosAI(Creature* pCreature)
 {
     return new npc_image_arcanagosAI(pCreature);
@@ -492,7 +511,7 @@ bool ProcessEventId_event_spell_medivh_journal(uint32 /*uiEventId*/, Object* pSo
 {
     if (bIsStart && pSource->GetTypeId() == TYPEID_PLAYER)
     {
-        // Summon Medivh and Arcanagos
+        // Summon Medivh and Arcanagos (召唤 Medivh and Arcanagos)
         if (Creature* pMedivh = ((Player*)pSource)->SummonCreature(NPC_IMAGE_OF_MEDIVH, afMedivhSpawnLoc[0], afMedivhSpawnLoc[1], afMedivhSpawnLoc[2], afMedivhSpawnLoc[3], TEMPSPAWN_DEAD_DESPAWN, 0))
         {
             pMedivh->SummonCreature(NPC_IMAGE_OF_ARCANAGOS, afArcanagosSpawnLoc[0], afArcanagosSpawnLoc[1], afArcanagosSpawnLoc[2], afArcanagosSpawnLoc[3], TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -506,11 +525,13 @@ bool ProcessEventId_event_spell_medivh_journal(uint32 /*uiEventId*/, Object* pSo
     return true;
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_BLINK = 29884,
+    SPELL_BLINK = 29884,                                    // blink 法术 ID
 };
 
+// 法术脚本逻辑实现：标识 ID（BlinkArcaneAnomaly）
 struct BlinkArcaneAnomaly : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -532,6 +553,7 @@ struct BlinkArcaneAnomaly : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（WrathOfTheTitansStacker）
 struct WrathOfTheTitansStacker : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -572,7 +594,7 @@ struct WrathOfTheTitansProcAura : public AuraScript
     }
 };
 
-// 29339 - Healing Touch
+// 29339 - Healing Touch (29339 - 治疗 Touch)
 struct HealingTouchHorses : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -581,7 +603,7 @@ struct HealingTouchHorses : public SpellScript
     }
 };
 
-// 29340 - Whip Frenzy
+// 29340 - Whip Frenzy (29340 - Whip 狂乱)
 struct WhipFrenzyHorses : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -603,6 +625,7 @@ struct DanceVibe : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：karazhan
 void AddSC_karazhan()
 {
     Script* pNewScript = new Script;

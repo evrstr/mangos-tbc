@@ -17,6 +17,7 @@
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "botanica.h"
 
+// BotanicaActions 相关枚举
 enum BotanicaActions
 {
     BOTANICA_TRIGGER_BLOODWARDER_PROTECTOR_01,
@@ -145,11 +146,13 @@ void instance_botanica::Update(const uint32 diff)
     UpdateTimers(diff);
 }
 // 34799 ArcaneDevastation
+// Spells 相关枚举
 enum Spells
 {
     SPELL_ARCANE_RESONANCE = 34794,
 };
 
+// ArcaneDevastation 法术脚本
 struct ArcaneDevastation : public SpellScript
 {
     void OnAfterHit(Spell* spell) const override
@@ -160,6 +163,7 @@ struct ArcaneDevastation : public SpellScript
     }
 };
 
+// 注册 instance_botanica 脚本
 void AddSC_instance_botanica()
 {
     Script* pNewScript = new Script;

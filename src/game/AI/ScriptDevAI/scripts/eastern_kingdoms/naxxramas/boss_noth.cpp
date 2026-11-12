@@ -21,82 +21,85 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 瘟疫使者诺斯（Noth the Plaguebringer）瘟疫区1号首领战 AI（闪现诅咒与阳台阶段召唤骷髅大军）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO1                          = 13061,
-    SAY_AGGRO2                          = 13062,
-    SAY_AGGRO3                          = 13063,
-    SAY_SUMMON                          = 13067,
-    SAY_SLAY1                           = 13065,
-    SAY_SLAY2                           = 13066,
-    SAY_DEATH                           = 13064,
+    SAY_AGGRO1                          = 13061,            // aggro1 台词广播 ID
+    SAY_AGGRO2                          = 13062,            // aggro2 台词广播 ID
+    SAY_AGGRO3                          = 13063,            // aggro3 台词广播 ID
+    SAY_SUMMON                          = 13067,            // 召唤 台词广播 ID
+    SAY_SLAY1                           = 13065,            // slay1 台词广播 ID
+    SAY_SLAY2                           = 13066,            // slay2 台词广播 ID
+    SAY_DEATH                           = 13064,            // 死亡 台词广播 ID
 
-    SPELL_TELEPORT                      = 29216,
-    SPELL_TELEPORT_RETURN               = 29231,
+    SPELL_TELEPORT                      = 29216,            // 传送 法术 ID
+    SPELL_TELEPORT_RETURN               = 29231,            // 传送return 法术 ID
 
-    SPELL_BLINK_1                       = 29208,
-    SPELL_BLINK_2                       = 29209,
-    SPELL_BLINK_3                       = 29210,
-    SPELL_BLINK_4                       = 29211,
+    SPELL_BLINK_1                       = 29208,            // blink1 法术 ID
+    SPELL_BLINK_2                       = 29209,            // blink2 法术 ID
+    SPELL_BLINK_3                       = 29210,            // blink3 法术 ID
+    SPELL_BLINK_4                       = 29211,            // blink4 法术 ID
 
-    SPELL_CRIPPLE                       = 29212,
-    SPELL_CURSE_PLAGUEBRINGER           = 29213,
+    SPELL_CRIPPLE                       = 29212,            // cripple 法术 ID
+    SPELL_CURSE_PLAGUEBRINGER           = 29213,            // 诅咒plaguebringer 法术 ID
 
     SPELL_IMMUNE_ALL                    = 29230,            // Cast during balcony phase to make Noth unattackable
 
-    SPELL_SUMMON_WARRIOR_1              = 29247,            // Summon NPC 16984 (Plagued Warrior)
-    SPELL_SUMMON_WARRIOR_2              = 29248,
-    SPELL_SUMMON_WARRIOR_3              = 29249,
+    SPELL_SUMMON_WARRIOR_1              = 29247,            // Summon NPC 16984 (Plagued Warrior) (召唤 NPC 16984 (Plagued Warrior))
+    SPELL_SUMMON_WARRIOR_2              = 29248,            // 召唤战士2 法术 ID
+    SPELL_SUMMON_WARRIOR_3              = 29249,            // 召唤战士3 法术 ID
 
-    SPELL_SUMMON_WARRIOR_THREE          = 29237,
+    SPELL_SUMMON_WARRIOR_THREE          = 29237,            // 召唤战士three 法术 ID
 
     // SW corner
-    SPELL_SUMMON_CHAMP01                = 29217,            // Summon NPC 16983 (Plagued Champion)
-    SPELL_SUMMON_CHAMP02                = 29227,
+    SPELL_SUMMON_CHAMP01                = 29217,            // Summon NPC 16983 (Plagued Champion) (召唤 NPC 16983 (Plagued Champion))
+    SPELL_SUMMON_CHAMP02                = 29227,            // 召唤champ02 法术 ID
 
     // NW corner
-    SPELL_SUMMON_CHAMP03                = 29224,
-    SPELL_SUMMON_CHAMP04                = 29225,
+    SPELL_SUMMON_CHAMP03                = 29224,            // 召唤champ03 法术 ID
+    SPELL_SUMMON_CHAMP04                = 29225,            // 召唤champ04 法术 ID
 
     // NE corner
-    SPELL_SUMMON_CHAMP05                = 29258,
-    SPELL_SUMMON_CHAMP06                = 29262,
+    SPELL_SUMMON_CHAMP05                = 29258,            // 召唤champ05 法术 ID
+    SPELL_SUMMON_CHAMP06                = 29262,            // 召唤champ06 法术 ID
 
     // West
-    SPELL_SUMMON_CHAMP07                = 29255,
-    SPELL_SUMMON_CHAMP08                = 29257,
-    SPELL_SUMMON_CHAMP09                = 29267,
-    SPELL_SUMMON_CHAMP10                = 29238,
+    SPELL_SUMMON_CHAMP07                = 29255,            // 召唤champ07 法术 ID
+    SPELL_SUMMON_CHAMP08                = 29257,            // 召唤champ08 法术 ID
+    SPELL_SUMMON_CHAMP09                = 29267,            // 召唤champ09 法术 ID
+    SPELL_SUMMON_CHAMP10                = 29238,            // 召唤champ10 法术 ID
 
     // NE-NW corner
-    SPELL_SUMMON_GUARD01                = 29226,            // Summon NPC 16981 (Plagued Guardian)
-    SPELL_SUMMON_GUARD02                = 29239,
+    SPELL_SUMMON_GUARD01                = 29226,            // Summon NPC 16981 (Plagued Guardian) (召唤 NPC 16981 (Plagued Guardian))
+    SPELL_SUMMON_GUARD02                = 29239,            // 召唤guard02 法术 ID
 
     // SW corner
-    SPELL_SUMMON_GUARD03                = 29256,
-    SPELL_SUMMON_GUARD04                = 29268,
+    SPELL_SUMMON_GUARD03                = 29256,            // 召唤guard03 法术 ID
+    SPELL_SUMMON_GUARD04                = 29268,            // 召唤guard04 法术 ID
 
     SPELL_SUMMON_SKELETONS              = 29252,            // Periodic trigger aura that controls spawning of adds
 
     // West
-    SPELL_SUMMON_CONSTR01               = 29269,            // Summon NPC 16982 (Plagued Construct)
+    SPELL_SUMMON_CONSTR01               = 29269,            // Summon NPC 16982 (Plagued Construct) (召唤 NPC 16982 (Plagued Construct))
     // NE Corner
-    SPELL_SUMMON_CONSTR02               = 29240,
+    SPELL_SUMMON_CONSTR02               = 29240,            // 召唤constr02 法术 ID
 
     SPELL_DESPAWN_SUMMONS               = 30228,            // Spell ID unsure: there are several spells doing the same thing in DBCs within Naxxramas spell IDs range
                                                             // but it is not always clear which one is for each boss so some are assigned randomly like this one
-    NPC_PLAGUED_WARRIOR                 = 16984,
+    NPC_PLAGUED_WARRIOR                 = 16984,            // 疫病战士 Entry ID
 
-    PHASE_GROUND                        = 0,
-    PHASE_BALCONY                       = 1,
+    PHASE_GROUND                        = 0,                // ground 阶段 ID
+    PHASE_BALCONY                       = 1,                // balcony 阶段 ID
 
-    PHASE_SKELETON_1                    = 1,
-    PHASE_SKELETON_2                    = 2,
-    PHASE_SKELETON_3                    = 3
+    PHASE_SKELETON_1                    = 1,                // 骷髅1 阶段 ID
+    PHASE_SKELETON_2                    = 2,                // 骷髅2 阶段 ID
+    PHASE_SKELETON_3                    = 3                 // 骷髅3 阶段 ID
 };
 
 static uint32 const spellBlinkList[4] = { SPELL_BLINK_1, SPELL_BLINK_2, SPELL_BLINK_3, SPELL_BLINK_4 };
@@ -109,6 +112,7 @@ static uint32 const spellSummonPlaguedChampionWestList[4] = { SPELL_SUMMON_CHAMP
 static uint32 const spellSummonPlaguedGuardianNENWList[2] = { SPELL_SUMMON_GUARD01, SPELL_SUMMON_GUARD02 };
 static uint32 const spellSummonPlaguedGuardianSWList[2] = { SPELL_SUMMON_GUARD03, SPELL_SUMMON_GUARD04 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum NothActions
 {
     NOTH_SUMMON,
@@ -117,6 +121,7 @@ enum NothActions
     NOTH_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（noth）
 struct boss_nothAI : public BossAI
 {
     boss_nothAI(Creature* creature) : BossAI(creature, NOTH_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -136,6 +141,7 @@ struct boss_nothAI : public BossAI
     uint8 m_subWavesCount;        // On balcony phase, counts if this is the first or the second wave. Used to make Noth returns early
     uint8 m_wavesNpcsCount;       // Counter for NPCs per waves during balcony phase
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
@@ -149,11 +155,13 @@ struct boss_nothAI : public BossAI
         SetCombatMovement(true);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->SetInCombatWithZone();
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         summoned->ForcedDespawn(2000);
@@ -172,6 +180,7 @@ struct boss_nothAI : public BossAI
         summoned->ForcedDespawn();
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         DoCastSpellIfCan(nullptr, SPELL_DESPAWN_SUMMONS, CAST_TRIGGERED);
@@ -201,6 +210,7 @@ struct boss_nothAI : public BossAI
             ++m_wavesNpcsCount;
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* caster, const SpellEntry* spellInfo) override
     {
         if (caster == m_creature && spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_LEAP)
@@ -247,7 +257,7 @@ struct boss_nothAI : public BossAI
                     }
                     m_phase = PHASE_BALCONY;
 
-                    ResetCombatAction(NOTH_SUMMON, 10u * IN_MILLISECONDS); // Summon first wave 10 seconds after teleport
+                    ResetCombatAction(NOTH_SUMMON, 10u * IN_MILLISECONDS); // Summon first wave 10 seconds after teleport (召唤 first wave 10 seconds after teleport)
 
                     DisableCombatAction(action);
                 }
@@ -260,7 +270,7 @@ struct boss_nothAI : public BossAI
                     SetAIImmobilizedState(false);
                     m_creature->RemoveAurasDueToSpell(SPELL_IMMUNE_ALL);
                     m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    ResetCombatAction(NOTH_SUMMON, 5u * IN_MILLISECONDS); // 5 seconds before summoning Plagued Warriors again
+                    ResetCombatAction(NOTH_SUMMON, 5u * IN_MILLISECONDS); // 5 seconds before summoning Plagued Warriors again (5秒倒计时)
                     SetMeleeEnabled(true);
                     HandleTargetRestoration();
                     m_subWavesCount = 0;
@@ -318,7 +328,7 @@ struct boss_nothAI : public BossAI
     }
 };
 
-// 29252 - Summon Skeletons - Delay for summon after text
+// 29252 - Summon Skeletons - Delay for summon after text (29252 - 召唤 Skeletons - Delay for 召唤 after text)
 struct SummonSkeletonsNoth : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
@@ -330,7 +340,7 @@ struct SummonSkeletonsNoth : public AuraScript
     }
 };
 
-// 30228 - Despawn Summons
+// 30228 - Despawn Summons (30228 - 消除 Summons)
 struct DespawnSummonsNoth : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -341,6 +351,7 @@ struct DespawnSummonsNoth : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_noth
 void AddSC_boss_noth()
 {
     Script* newScript = new Script;

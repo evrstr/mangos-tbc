@@ -21,18 +21,22 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 埃博诺克（Ebonroc）5号首领战 AI（埃博诺克之影与暗影之翼）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_SHADOW_FLAME          = 22539,
-    SPELL_WING_BUFFET           = 23339,
-    SPELL_SHADOW_OF_EBONROC     = 23340,
-    SPELL_THRASH                = 3391,
+    SPELL_SHADOW_FLAME          = 22539,                    // 暗影烈焰 法术 ID
+    SPELL_WING_BUFFET           = 23339,                    // 翼击震击 法术 ID
+    SPELL_SHADOW_OF_EBONROC     = 23340,                    // 暗影of埃博诺克 法术 ID
+    SPELL_THRASH                = 3391,                     // thrash 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum EbonrocActions
 {
     EBONROC_SHADOW_OF_EBONROC,
@@ -42,6 +46,7 @@ enum EbonrocActions
     EBONROC_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（ebonroc）
 struct boss_ebonrocAI : public CombatAI
 {
     boss_ebonrocAI(Creature* creature) : CombatAI(creature, EBONROC_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -66,6 +71,7 @@ struct boss_ebonrocAI : public CombatAI
             m_instance->SetData(TYPE_EBONROC, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -74,7 +80,7 @@ struct boss_ebonrocAI : public CombatAI
 
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo, SpellMissInfo /*missInfo*/) override
     {
-        if (spellInfo->Id == SPELL_WING_BUFFET) // reduces threat of everyone hit
+        if (spellInfo->Id == SPELL_WING_BUFFET) // reduces threat of everyone hit (降低所有受击目标的仇恨)
             m_creature->getThreatManager().modifyThreatPercent(target, -50);
     }
 
@@ -110,6 +116,7 @@ struct boss_ebonrocAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_ebonroc
 void AddSC_boss_ebonroc()
 {
     Script* pNewScript = new Script;

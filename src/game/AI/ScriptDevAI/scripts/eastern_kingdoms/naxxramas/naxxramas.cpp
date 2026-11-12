@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 纳克萨玛斯（Naxxramas）四大分区状态机、大门开启与传送门激活
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "naxxramas.h"
 
@@ -950,16 +952,18 @@ bool instance_naxxramas::DoHandleEvent(uint32 eventId)
 
 static const Position gargoyleResetCoords = {2963.f, -3476.f, 297.6f, 0.0};
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     SAY_GARGOYLE_NOISE      = 10755, // %s emits a strange noise.
 
-    SPELL_STONEFORM         = 29154,
-    SPELL_STEALTH_DETECTION = 18950,
-    SPELL_STONESKIN         = 28995,
-    SPELL_ACID_VOLLEY       = 29325,
+    SPELL_STONEFORM         = 29154,                        // stoneform 法术 ID
+    SPELL_STEALTH_DETECTION = 18950,                        // 潜行detection 法术 ID
+    SPELL_STONESKIN         = 28995,                        // stoneskin 法术 ID
+    SPELL_ACID_VOLLEY       = 29325,                        // 酸液箭雨 法术 ID
 };
 
+// 随从/NPC AI：石像鬼（stoneskin_gargoyle）
 struct npc_stoneskin_gargoyleAI : public ScriptedAI
 {
     npc_stoneskin_gargoyleAI(Creature* creature) : ScriptedAI(creature)
@@ -974,6 +978,7 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
     uint32 acidVolleyTimer;
     bool canCastVolley;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         acidVolleyTimer = 4000;
@@ -995,6 +1000,7 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         TryStoneForm();
@@ -1017,6 +1023,7 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
             ScriptedAI::MoveInLineOfSight(who);
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit*) override
     {
         if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_SPAWNING))
@@ -1044,7 +1051,7 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
                 DoBroadcastText(SAY_GARGOYLE_NOISE, m_creature);
         }
 
-        // Acid Volley
+        // Acid Volley (酸液箭雨)
         if (canCastVolley)
         {
             if (acidVolleyTimer < diff)
@@ -1056,7 +1063,7 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
                 acidVolleyTimer -= diff;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
@@ -1064,10 +1071,12 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
 #   npc_living_poison
 ###################*/
 
+// 随从/NPC AI：毒药（living_poison）
 struct npc_living_poisonAI : public ScriptedAI
 {
     npc_living_poisonAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         SetMeleeEnabled(false);
@@ -1143,6 +1152,7 @@ bool ProcessEventId_naxxramas(uint32 eventId, Object* source, Object* /*target*/
     return false;
 }
 
+// 注册并载入脚本模块：instance_naxxramas
 void AddSC_instance_naxxramas()
 {
     Script* newScript = new Script;

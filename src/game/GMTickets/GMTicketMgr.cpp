@@ -36,6 +36,7 @@
 template <typename T>
 static inline T clamp(T v, T lo, T hi) { return std::min(std::max(v, lo), hi); }
 
+/// 工单优先级排序比较函数（已升级工单优先，其余按更新时间/创建时间 FIFO 排序）
 bool GMTicket::Compare(GMTicket* a, GMTicket* b)
 {
     // 1) Open over closed (abandoned are stored in memory for recycling and should never appear in listings)
@@ -325,6 +326,7 @@ GMTicketMgr::GMTicketMgr()
     m_status = GMTicketSystemStatus(sWorld.getConfig(CONFIG_BOOL_GM_TICKETS_QUEUE_STATUS));
 }
 
+/// 从数据库加载全部未关闭工单并排序入队
 void GMTicketMgr::LoadGMTickets()
 {
     // For reload case: unload all tickets
@@ -369,6 +371,7 @@ void GMTicketMgr::LoadGMTickets()
     sLog.outString();
 }
 
+/// 向 GM 会话输出单条工单的完整详情及可点击聊天操作链接
 void GMTicketMgr::Print(GMTicket const& ticket, WorldSession* session, time_t now/* = time(nullptr)*/)
 {
     const LocaleConstant locale = session->GetSessionDbcLocale();
@@ -430,6 +433,7 @@ void GMTicketMgr::Print(GMTicket const& ticket, WorldSession* session, time_t no
     ch.SendSysMessage(LANG_TICKETS_PRINT_SPACER);
 }
 
+/// 生成工单结案通知邮件正文（含处理结论与 GM 署名）
 const std::string GMTicketMgr::PrintMailResponse(GMTicket const& ticket, bool resolved)
 {
     const int32 localeIndex = GetLocaleByName(ticket.GetLocale());
@@ -549,6 +553,7 @@ const std::string GMTicketMgr::PrintTicketSummaryLine(const GMTicket& ticket, Lo
     return ss.str();
 }
 
+/// 打印工单列表摘要（支持按分类和在线状态筛选）
 void GMTicketMgr::PrintTicketList(WorldSession* session, std::ostringstream& output, size_t max, GMTicketCategoryEntry const* category/* = nullptr*/, bool online/* = false*/) const
 {
     size_t count = 0;
@@ -764,6 +769,7 @@ void GMTicketMgr::ShowMOTD(Player &gm) const
     }
 }
 
+/// 拦截玩家发送给 GM 的密语：支持点选工单快捷链接指令并转发至工单会话
 std::pair<bool, bool> GMTicketMgr::HookGMTicketWhisper(Player* sender, const std::string& recepient, Player* character, const std::string& msg, bool addon)
 {
     // GM ticket chat: outgoing hook
@@ -820,6 +826,7 @@ std::pair<bool, bool> GMTicketMgr::HookGMTicketWhisper(Player* sender, const std
     return {false, false};
 }
 
+/// 拦截 GM 的 /who 查询（若查询内容为 T#<id> 则直接打印该工单详情）
 bool GMTicketMgr::HookGMTicketWhoQuery(const std::string& query, Player* gm) const
 {
     if (gm && gm->isAcceptTickets())
@@ -894,6 +901,7 @@ std::pair<GMTicket*, std::string> GMTicketMgr::GetTicketByIdTag(const std::strin
     return {nullptr, command};
 }
 
+/// 将新工单加入内存队列并持久化、向在线 GM 广播
 bool GMTicketMgr::Add(GMTicket* ticket, bool loading/* = false*/)
 {
     if (!ticket || !ticket->GetId())
@@ -918,6 +926,7 @@ bool GMTicketMgr::Add(GMTicket* ticket, bool loading/* = false*/)
     return true;
 }
 
+/// 复用已放弃的工单重新进入待处理队列
 bool GMTicketMgr::Recycle(GMTicket* ticket)
 {
     if (!ticket || ticket->GetState() != GMTICKET_STATE_ABANDONED)
@@ -939,6 +948,7 @@ bool GMTicketMgr::Recycle(GMTicket* ticket)
     return true;
 }
 
+/// 保存玩家提交的工单满意度调查并从内存卸载已关闭工单
 void GMTicketMgr::Survey(GMTicket* ticket, const GMSurveyResult* result/* = nullptr*/)
 {
     if (!ticket || ticket->IsOpen() || !ticket->IsSurveyed())
@@ -954,6 +964,7 @@ void GMTicketMgr::Survey(GMTicket* ticket, const GMSurveyResult* result/* = null
     Remove(*ticket);
 }
 
+/// 玩家放弃工单（保留在内存中以便后续复用）
 GMTicketMgr::CommandResult GMTicketMgr::Abandon(GMTicket* ticket)
 {
     if (!ticket || !ticket->IsOpen())
@@ -973,6 +984,7 @@ GMTicketMgr::CommandResult GMTicketMgr::Abandon(GMTicket* ticket)
     return COMMAND_RESULT_SUCCESS;
 }
 
+/// 升级工单至更高权限等级的 GM 队列
 GMTicketMgr::CommandResult GMTicketMgr::Escalate(GMTicket* ticket, WorldSession* session, uint8 level)
 {
     if (!ticket || !ticket->IsOpen())
@@ -1181,6 +1193,7 @@ bool GMTicketMgr::SetSystemStatus(bool status)
     return true;
 }
 
+/// 权限与状态校验：是否允许备注、关闭、分类或回复工单
 GMTicketMgr::CommandResult GMTicketMgr::CanComment(const GMTicket* ticket, WorldSession* who)
 {
     if (!ticket || !ticket->IsOpen())
@@ -1246,6 +1259,7 @@ GMTicketMgr::CommandResult GMTicketMgr::CanWhisper(const GMTicket* ticket, World
     return COMMAND_RESULT_SUCCESS;
 }
 
+/// 角色删除时清理其创建的工单，并解除其作为 GM 认领的工单分配
 void GMTicketMgr::RemovePlayerReferences(ObjectGuid playerGuid)
 {
     std::vector<GMTicket*> authored;
@@ -1293,6 +1307,7 @@ void GMTicketMgr::RemoveAll()
     m_currentTicketCountOpen = 0;
 }
 
+/// 关闭工单（已解决或丢弃）：更新统计、发送结案邮件并触发满意度问卷或释放内存
 GMTicketMgr::CommandResult GMTicketMgr::Close(GMTicket* ticket, const std::string& conclusion, bool resolved, WorldSession* session/* = nullptr*/)
 {
     CommandResult result = CanClose(ticket, resolved, session);
@@ -1358,6 +1373,7 @@ float GMTicketMgr::GetOldestTicketAgeLastUpdateDays(time_t now) const
     return (m_statsOldestTicketAgeLastUpdate ? GetDaysPassed(now, m_statsOldestTicketAgeLastUpdate) : -1);
 }
 
+/// 关闭工单后刷新平均处理时长与队列最老未读工单等待天数
 void GMTicketMgr::UpdateTicketQueueStats(GMTicket& closed, time_t when)
 {
     MANGOS_ASSERT(m_currentTicketCountClosed)

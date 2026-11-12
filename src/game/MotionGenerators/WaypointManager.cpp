@@ -44,6 +44,7 @@ char const* waypointKeyColumn[] =
     "entry",
 };
 
+/// 校验路点绑定的移动脚本是否存在；若脚本无延迟地立即刷灭/切换移动生成器/改跑步状态则强制补 1 秒节点停顿
 void CheckDbscript(WaypointNode& node, uint32 entry, uint32 point, std::set<uint32>& movementScriptSet, std::string const& tablename)
 {
     auto creatureMovementScripts = sScriptMgr.GetScriptMap(SCRIPT_TYPE_CREATURE_MOVEMENT);
@@ -154,6 +155,7 @@ void CheckDbscript(WaypointNode& node, uint32 entry, uint32 point, std::set<uint
     movementScriptSet.erase(node.script_id);
 }
 
+/// 从数据库三张路点表（creature_movement / creature_movement_template / waypoint_path）加载全部路径并校验坐标与脚本
 void WaypointManager::Load()
 {
     uint32 total_paths = 0;
@@ -529,6 +531,7 @@ bool WaypointManager::AddExternalNode(uint32 entry, int32 pathId, uint32 pointId
 }
 
 /// - Insert at a certain point, if pointId == 0 insert last. In this case pointId will be changed to the id to which the node was added
+/// 在指定位置插入路点（pointId == 0 时追加到末尾），同步顺移后续节点序号并写入数据库
 WaypointNode const* WaypointManager::AddNode(uint32 entry, uint32 dbGuid, uint32 pathId, uint32& pointId, WaypointPathOrigin wpDest, float x, float y, float z, float orientation)
 {
     // Support only normal movement tables
@@ -615,6 +618,7 @@ void WaypointManager::DeleteNode(uint32 entry, uint32 dbGuid, uint32 point, uint
     path->erase(point);
 }
 
+/// 删除指定 GUID 生物的路点路径（仅清空容器而不擦除 map 槽位，避免持有指针的 WMG 崩溃）
 void WaypointManager::DeletePath(uint32 id)
 {
     WorldDatabase.PExecuteLog("DELETE FROM creature_movement WHERE Id=%u", id);

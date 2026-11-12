@@ -72,6 +72,10 @@ class WorldSession;
  * which is ok for using with Level and Edge Triggered IO
  * notification.
  *
+ * WorldSocket 类：负责与远程客户端之间的世界服 TCP 通信。
+ * 继承自 AsyncSocket，内部通过 AuthCrypt 对客户端/服务端包头执行流式加解密，
+ * 在连接建立时下发 SMSG_AUTH_CHALLENGE，在认证完成后创建 WorldSession
+ * 并将后续接收到的客户端数据包投递至会话接收队列或执行即时处理。
  */
 
 class WorldSocket : public MaNGOS::AsyncSocket<WorldSocket>
@@ -82,6 +86,7 @@ class WorldSocket : public MaNGOS::AsyncSocket<WorldSocket>
 #else
 #pragma pack(push,1)
 #endif
+        /// 客户端上行包头结构（2 字节大端长度 + 4 字节小端操作码）
         struct ClientPktHeader
         {
             uint16 size;
@@ -93,55 +98,58 @@ class WorldSocket : public MaNGOS::AsyncSocket<WorldSocket>
 #pragma pack(pop)
 #endif
 
-        /// Time in which the last ping was received
+        /// Time in which the last ping was received | 上一次收到客户端 Ping 包的时间点
         std::chrono::system_clock::time_point m_lastPingTime;
 
-        /// Keep track of over-speed pings ,to prevent ping flood.
+        /// Keep track of over-speed pings ,to prevent ping flood. | 超速 Ping 计数，用于防止 Ping 洪泛攻击
         uint32 m_overSpeedPings;
 
-        /// Class used for managing encryption of the headers
+        /// Class used for managing encryption of the headers | 用于包头加解密的 AuthCrypt 实例
         AuthCrypt m_crypt;
 
-        /// Session to which received packets are routed
+        /// Session to which received packets are routed | 关联的玩家会话指针（接收到的数据包将路由至此会话）
         WorldSession* m_session;
 
-        const uint32 m_seed;
+        const uint32 m_seed;                                ///< 本连接随机生成的认证挑战种子
 
-        BigNumber m_sessionKey;      // the SRP6 session key K (see GetSessionKey below)
+        BigNumber m_sessionKey;      // the SRP6 session key K (see GetSessionKey below) | SRP6 会话密钥 K（40 字节）
 
-        /// process one incoming packet.
+        /// process one incoming packet. | 解析并处理缓冲区中的收到的数据包
         virtual bool ProcessIncomingData() override;
 
-        /// Called by ProcessIncoming() on CMSG_AUTH_SESSION.
+        /// Called by ProcessIncoming() on CMSG_AUTH_SESSION. | 处理客户端认证请求包（CMSG_AUTH_SESSION）
         bool HandleAuthSession(WorldPacket& recvPacket);
 
-        /// Called by ProcessIncoming() on CMSG_PING.
+        /// Called by ProcessIncoming() on CMSG_PING. | 处理客户端心跳检测包（CMSG_PING）
         bool HandlePing(WorldPacket& recvPacket);
 
-        std::mutex m_worldSocketMutex;
+        std::mutex m_worldSocketMutex;                      ///< 保护连接销毁/会话绑定与操作码历史记录的互斥锁
 
-        std::deque<uint32> m_opcodeHistoryOut;
-        std::deque<uint32> m_opcodeHistoryInc;
+        std::deque<uint32> m_opcodeHistoryOut;              ///< 最近发送的操作码历史队列
+        std::deque<uint32> m_opcodeHistoryInc;              ///< 最近接收的操作码历史队列
 
-        bool m_loggingPackets;
+        bool m_loggingPackets;                              ///< 是否启用单连接数据包抓包日志
 
     public:
         WorldSocket(boost::asio::io_context& context);
 
-        // send a packet \o/
+        // send a packet \o/ | 编码包头、可选加密后异步发送数据包给客户端
         void SendPacket(const WorldPacket& pct);
 
+        /// 解除与 WorldSession 的关联（会话关闭时调用）
         void FinalizeSession() { m_session = nullptr; }
 
+        /// TCP 连接建立回调：向客户端发送 SMSG_AUTH_CHALLENGE
         bool OnOpen() override;
 
-        /// Return the session key (K, 40 bytes once authenticated)
+        /// Return the session key (K, 40 bytes once authenticated) | 返回认证后的 40 字节会话密钥 K
         BigNumber& GetSessionKey() { return m_sessionKey; }
 
         std::deque<uint32> GetOutOpcodeHistory();
         std::deque<uint32> GetIncOpcodeHistory();
 
         /// Reads Network.PacketCooldowns into m_packetCooldowns; must run before any socket is accepted
+        /// 将 Network.PacketCooldowns 配置加载到 m_packetCooldowns（必须在接受任何连接前调用）
         static void LoadPacketCooldowns();
         static std::vector<uint32> m_packetCooldowns;
         std::map<uint32, TimePoint> m_lastPacket;

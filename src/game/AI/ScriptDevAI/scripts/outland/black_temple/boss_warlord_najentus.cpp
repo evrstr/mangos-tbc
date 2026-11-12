@@ -25,6 +25,7 @@ EndScriptData */
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = -1564000,
@@ -52,6 +53,7 @@ enum
     ITEM_IMPALING_SPINE             = 32408,
 };
 
+// NajentusActions // order based on priority 相关枚举
 enum NajentusActions // order based on priority
 {
     NAJENTUS_ACTION_TIDAL_SHIELD,
@@ -61,6 +63,7 @@ enum NajentusActions // order based on priority
     NAJENTUS_ACTION_MAX
 };
 
+// boss_najentusAI 逻辑实现
 struct boss_najentusAI : public CombatAI
 {
     boss_najentusAI(Creature* creature) : CombatAI(creature, NAJENTUS_ACTION_MAX), m_instance(static_cast<instance_black_temple*>(creature->GetInstanceData()))
@@ -78,6 +81,7 @@ struct boss_najentusAI : public CombatAI
 
     instance_black_temple* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -112,12 +116,14 @@ struct boss_najentusAI : public CombatAI
         }
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_NAJENTUS, NOT_STARTED);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -126,6 +132,7 @@ struct boss_najentusAI : public CombatAI
         DoScriptText(SAY_DEATH, m_creature);
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
     {
         if (m_creature->HasAura(SPELL_TIDAL_SHIELD) && spellInfo->Id == SPELL_HURL_SPINE)
@@ -144,6 +151,7 @@ struct boss_najentusAI : public CombatAI
         }
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (m_instance)
@@ -156,6 +164,7 @@ struct boss_najentusAI : public CombatAI
             mapRef.getSource()->DestroyItemCount(ITEM_IMPALING_SPINE, 5, true);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -197,6 +206,7 @@ struct boss_najentusAI : public CombatAI
     }
 };
 
+// 注册 boss_najentus 脚本
 void AddSC_boss_najentus()
 {
     Script* pNewScript = new Script;

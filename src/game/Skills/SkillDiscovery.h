@@ -23,6 +23,8 @@
 
 class Player;
 
+// 从数据库加载专业技能领悟（配方发现）配置表
 void LoadSkillDiscoveryTable();
+// 根据当前专业技能或施放法术随机判定并返回玩家新领悟的配方法术 ID（未触发则返回 0）
 uint32 GetSkillDiscoverySpell(uint32 skillId, uint32 spellId, Player* player);
 #endif

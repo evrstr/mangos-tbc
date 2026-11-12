@@ -23,36 +23,40 @@
 
 #include <optional>
 
+/// 巡逻路点数据来源类型
 enum WaypointPathOrigin
 {
-    PATH_NO_PATH                = 0,
-    PATH_FROM_GUID              = 1,
-    PATH_FROM_ENTRY             = 2,
-    PATH_FROM_EXTERNAL          = 3,
-    PATH_FROM_WAYPOINT_PATH     = 4,
+    PATH_NO_PATH                = 0, // 无路径
+    PATH_FROM_GUID              = 1, // 来自 creature_movement 表（按生物 dbGuid 绑定）
+    PATH_FROM_ENTRY             = 2, // 来自 creature_movement_template 表（按生物 Entry 模板绑定）
+    PATH_FROM_EXTERNAL          = 3, // 来自脚本库/外部注册表
+    PATH_FROM_WAYPOINT_PATH     = 4, // 来自 waypoint_path 表（按统一 pathId 绑定）
 };
 
+/// 单个路点节点定义
 struct WaypointNode
 {
     float x;
     float y;
     float z;
-    std::optional<float> orientation;
-    uint32 delay;
-    uint32 script_id;
+    std::optional<float> orientation; // 到达路点后的可选朝向
+    uint32 delay;                     // 到达路点后的停留等待毫秒数
+    uint32 script_id;                 // 到达路点时触发的脚本 ID
     WaypointNode() : x(0.0f), y(0.0f), z(0.0f), delay(0), script_id(0) {}
     WaypointNode(float _x, float _y, float _z, std::optional<float> _o, uint32 _delay, uint32 _script_id)
         : x(_x), y(_y), z(_z), orientation(_o), delay(_delay), script_id(_script_id) {}
 };
 
-typedef std::map<uint32 /*pointId*/, WaypointNode> WaypointPath;
+typedef std::map<uint32 /*pointId*/, WaypointNode> WaypointPath; // 路点序号到节点的有序映射
 
+/// 全局路点管理器单例：负责从数据库加载、缓存及通过 GM 命令在线增删改路点路径
 class WaypointManager
 {
     public:
         WaypointManager() : m_externalTable("external.waypointTable") {}
         ~WaypointManager() {}
 
+        /// 启动时从数据库全量加载路点数据
         void Load();
 
         // We may get a path for several occasions:
@@ -65,14 +69,14 @@ class WaypointManager
         //    2a) Creature is summoned and has creature_template.MovementType=2
         //        Creators need to be sure that creature_movement_template is always valid for summons.
         //        Mob that can be summoned anywhere should not have creature_movement_template for example.
-
+        // 按优先级获取默认路点路径：GUID 专属路径 -> Entry 模板路径 -> waypoint_path 模板路径
         WaypointPath* GetDefaultPath(uint32 entry, uint32 lowGuid, WaypointPathOrigin* wpOrigin = nullptr)
         {
             WaypointPath* path = GetPath(lowGuid);
             if (path && wpOrigin)
                 *wpOrigin = PATH_FROM_GUID;
 
-            // No movement found for guid
+            // No movement found for guid (未找到 GUID 专属路径时回退到 Entry 模板)
             if (!path)
             {
                 path = GetPathTemplate(entry);
@@ -81,7 +85,7 @@ class WaypointManager
 
                 if (!path)
                 {
-                    // check movement_template
+                    // check movement_template (回退检查 waypoint_path 表)
                     path = GetPathMovementTemplate(entry);
                     if (path)
                         *wpOrigin = PATH_FROM_WAYPOINT_PATH;
@@ -91,7 +95,7 @@ class WaypointManager
             return path;
         }
 
-        // Helper function to get a path provided the required information
+        // Helper function to get a path provided the required information (按显式来源与 pathId 查找路点路径)
         WaypointPath* GetPathFromOrigin(uint32 entry, uint32 lowGuid, int32 pathId, WaypointPathOrigin wpOrigin)
         {
             WaypointPathMap* wpMap;

@@ -21,11 +21,13 @@
 
 namespace MaNGOS
 {
+    /// C 链接包装函数，将函数指针传给 std::atexit
     extern "C" void external_wrapper(void* p)
     {
         std::atexit((void (*)())p);
     }
 
+    /// 注册程序退出回调函数
     void at_exit(void (*func)())
     {
         external_wrapper((void*)func);

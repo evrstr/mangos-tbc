@@ -21,38 +21,44 @@ SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉废墟：吞咽者布鲁 (Buru the Gorger) 孵化蛋与风筝机制首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_TARGET            = -1509002,
+    EMOTE_TARGET            = -1509002,                     // 剧情台词/喊话文本 ID
 
-    // boss spells
-    SPELL_CREEPING_PLAGUE   = 20512,
-    SPELL_DISMEMBER         = 96,
-    SPELL_GATHERING_SPEED   = 1834,
-    SPELL_FULL_SPEED        = 1557,
-    SPELL_THORNS            = 25640,
-    SPELL_BURU_TRANSFORM    = 24721,
-    SPELL_CREATURE_SPECIAL  = 7155, // unk purpose
+    // boss spells (法术)
+    SPELL_CREEPING_PLAGUE   = 20512,                        // 技能法术 ID
+    SPELL_DISMEMBER         = 96,                           // 技能法术 ID
+    SPELL_GATHERING_SPEED   = 1834,                         // 技能法术 ID
+    SPELL_FULL_SPEED        = 1557,                         // 技能法术 ID
+    SPELL_THORNS            = 25640,                        // 技能法术 ID
+    SPELL_BURU_TRANSFORM    = 24721,                        // 技能法术 ID
+    SPELL_CREATURE_SPECIAL  = 7155, // unk purpose (说明)
 
-    // egg spells
-    SPELL_SUMMON_HATCHLING  = 1881,
-    SPELL_EXPLODE           = 19593,
-    SPELL_BURU_EGG_TRIGGER  = 26646,
-    SPELL_EXPLOSION         = 5255,
+    // egg spells (法术)
+    SPELL_SUMMON_HATCHLING  = 1881,                         // 技能法术 ID
+    SPELL_EXPLODE           = 19593,                        // 技能法术 ID
+    SPELL_BURU_EGG_TRIGGER  = 26646,                        // 技能法术 ID
+    SPELL_EXPLOSION         = 5255,                         // 技能法术 ID
 
-    // npcs
-    NPC_BURU_EGG_TRIGGER    = 15964,
-    NPC_BURU_EGG            = 15514,
-    NPC_HATCHLING           = 15521,
+    // npcs (说明)
+    NPC_BURU_EGG_TRIGGER    = 15964,                        // NPC 条目 ID
+    NPC_BURU_EGG            = 15514,                        // NPC 条目 ID
+    NPC_HATCHLING           = 15521,                        // NPC 条目 ID
 
     PHASE_EGG               = 1,
     PHASE_TRANSFORM         = 2,
 };
 
+// BuruActions 战斗行为动作枚举
 enum BuruActions
 {
     BURU_PHASE_2_TRANSITION,
@@ -61,10 +67,11 @@ enum BuruActions
     BURU_CREEPING_PLAGUE,
     BURU_GATHERING_SPEED,
     BURU_FULL_SPEED,
-    BURU_ACTION_MAX,
+    BURU_ACTION_MAX,                                        // 战斗行为动作
     BURU_PHASE_2_TRANSITION_STEP,
 };
 
+// boss_buruAI 首领战斗 AI
 struct boss_buruAI : public CombatAI
 {
     boss_buruAI(Creature* creature) :
@@ -84,7 +91,7 @@ struct boss_buruAI : public CombatAI
     uint8 m_uiPhase;
     uint32 m_transitionStep;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         m_uiPhase = PHASE_EGG;
@@ -94,16 +101,16 @@ struct boss_buruAI : public CombatAI
         SetMeleeEnabled(true);
     }
 
-    void Aggro(Unit* who) override
+    void Aggro(Unit* who) override                          // 进入战斗回调处理
     {
         DoScriptText(EMOTE_TARGET, m_creature, who);
         DoCastSpellIfCan(nullptr, SPELL_THORNS);
         DoAttackNewTarget();
     }
 
-    void KilledUnit(Unit* victim) override
+    void KilledUnit(Unit* victim) override                  // 击杀目标回调处理
     {
-        // Attack a new random target when a player is killed
+        // Attack a new random target when a player is killed (说明)
         if (victim == m_creature->GetVictim())
             ScheduleNewTarget();
     }
@@ -119,7 +126,7 @@ struct boss_buruAI : public CombatAI
         SetActionReadyStatus(BURU_NEW_TARGET, true);
     }
 
-    // Wrapper to attack a new target and remove the speed gathering buff
+    // Wrapper to attack a new target and remove the speed gathering buff (说明)
     void DoAttackNewTarget()
     {
         if (m_uiPhase == PHASE_TRANSFORM)
@@ -162,7 +169,7 @@ struct boss_buruAI : public CombatAI
         ++m_transitionStep;
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -229,6 +236,7 @@ struct boss_buruAI : public CombatAI
     }
 };
 
+// npc_buru_eggAI NPC 脚本 AI
 struct npc_buru_eggAI : public Scripted_NoMovementAI
 {
     npc_buru_eggAI(Creature* creature) : Scripted_NoMovementAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -238,18 +246,18 @@ struct npc_buru_eggAI : public Scripted_NoMovementAI
 
     ScriptedInstance* m_instance;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         SetCombatMovement(false);
         SetReactState(REACT_PASSIVE);
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
-        // The purpose of this is unk for the moment
+        // The purpose of this is unk for the moment (说明)
         if (summoned->GetEntry() == NPC_BURU_EGG_TRIGGER)
             summoned->CastSpell(summoned, SPELL_BURU_EGG_TRIGGER, TRIGGERED_OLD_TRIGGERED);
-        // The Hatchling should attack a random target
+        // The Hatchling should attack a random target (说明)
         else if (summoned->GetEntry() == NPC_HATCHLING)
         {
             if (m_instance)
@@ -268,11 +276,11 @@ struct npc_buru_eggAI : public Scripted_NoMovementAI
         if (spellInfo->Id == SPELL_EXPLODE)
         {
             int32 damage;
-            if (target->IsPlayer()) // damage from 100 - 500 based on proximity - max range 25
+            if (target->IsPlayer()) // damage from 100 - 500 based on proximity - max range 25 (说明)
                 damage = 100 + ((25 - std::min(m_creature->GetDistance(target, true, DIST_CALC_COMBAT_REACH), 25.f)) / 25.f) * 400;
             else if (target->GetEntry() == NPC_BURU)
             {
-                damage = target->GetMaxHealth() * 15 / 100; // 15% hp for buru
+                damage = target->GetMaxHealth() * 15 / 100; // 15% hp for buru (buru 生命值达到 15%)
                 static_cast<boss_buruAI*>(target->AI())->ScheduleNewTarget();
             }
             m_creature->CastCustomSpell(target, SPELL_EXPLOSION, &damage, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
@@ -290,7 +298,7 @@ struct npc_buru_eggAI : public Scripted_NoMovementAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        // Explode and Summon hatchling
+        // Explode and Summon hatchling (召唤)
         DoCastSpellIfCan(nullptr, SPELL_EXPLODE);
         DoCastSpellIfCan(nullptr, SPELL_SUMMON_HATCHLING, CAST_TRIGGERED);
     }
@@ -298,7 +306,7 @@ struct npc_buru_eggAI : public Scripted_NoMovementAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
-void AddSC_boss_buru()
+void AddSC_boss_buru() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_buru";

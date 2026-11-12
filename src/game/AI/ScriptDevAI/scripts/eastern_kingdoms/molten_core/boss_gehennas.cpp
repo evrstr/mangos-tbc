@@ -21,18 +21,22 @@ SDComment: -
 SDCategory: Molten Core
 EndScriptData */
 
+// 基赫纳斯（Gehennas）3号首领战 AI（基赫纳斯的诅咒、火雨与火誓火妖）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_GEHENNAS_CURSE        = 19716,
-    SPELL_RAIN_OF_FIRE          = 19717,
-    SPELL_SHADOW_BOLT_RANDOM    = 19729,
-    SPELL_SHADOW_BOLT_TARGET    = 19728,
+    SPELL_GEHENNAS_CURSE        = 19716,                    // 基赫纳斯诅咒 法术 ID
+    SPELL_RAIN_OF_FIRE          = 19717,                    // rainof火焰 法术 ID
+    SPELL_SHADOW_BOLT_RANDOM    = 19729,                    // 暗影箭random 法术 ID
+    SPELL_SHADOW_BOLT_TARGET    = 19728,                    // 暗影箭目标 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GehennasActions
 {
     GEHENNAS_GEHENNAS_CURSE,
@@ -42,6 +46,7 @@ enum GehennasActions
     GEHENNAS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（gehennas）
 struct boss_gehennasAI : public CombatAI
 {
     boss_gehennasAI(Creature* creature) : CombatAI(creature, GEHENNAS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -67,6 +72,7 @@ struct boss_gehennasAI : public CombatAI
             m_instance->SetData(TYPE_GEHENNAS, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -107,6 +113,7 @@ struct boss_gehennasAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_gehennas
 void AddSC_boss_gehennas()
 {
     Script* pNewScript = new Script;

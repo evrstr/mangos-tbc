@@ -20,18 +20,20 @@
 #include "AI/BaseAI/CreatureAI.h"
 #include "Entities/Creature.h"
 
-IdleMovementGenerator si_idleMovement;
+IdleMovementGenerator si_idleMovement; // 全局空闲移动生成器实例
 
 bool IdleMovementGenerator::Update(Unit&, const uint32&)
 {
     return true;
 }
 
+/// 初始化扰乱状态：添加 UNIT_STAT_DISTRACTED
 void DistractMovementGenerator::Initialize(Unit& owner)
 {
     owner.addUnitState(UNIT_STAT_DISTRACTED);
 }
 
+/// 结束扰乱状态：清除 UNIT_STAT_DISTRACTED
 void DistractMovementGenerator::Finalize(Unit& owner)
 {
     owner.clearUnitState(UNIT_STAT_DISTRACTED);
@@ -42,6 +44,7 @@ void DistractMovementGenerator::Reset(Unit& owner)
     Initialize(owner);
 }
 
+/// 更新扰乱计时器，未超时且状态仍在时继续保持扰乱
 bool DistractMovementGenerator::Update(Unit& owner, const uint32& diff)
 {
     m_timer.Update(diff);

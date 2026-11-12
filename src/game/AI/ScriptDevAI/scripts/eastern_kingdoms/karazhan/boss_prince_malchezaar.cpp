@@ -21,25 +21,28 @@ SDComment:
 SDCategory: Karazhan
 EndScriptData */
 
+// 玛克扎尔王子（Prince Malchezaar）最终首领战 AI（召唤地狱火天降、衰弱与双斧狂暴阶段）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1532091,
-    SAY_AXE_TOSS1               = -1532092,
-    SAY_AXE_TOSS2               = -1532093,
-    SAY_SPECIAL1                = -1532094,
-    SAY_SPECIAL2                = -1532095,
-    SAY_SPECIAL3                = -1532096,
-    SAY_SLAY1                   = 15124,
-    SAY_SLAY2                   = 15125,
-    SAY_SLAY3                   = 15126,
-    SAY_SUMMON1                 = -1532100,
-    SAY_SUMMON2                 = -1532101,
-    SAY_DEATH                   = -1532102,
+    SAY_AGGRO                   = -1532091,                 // 开战 台词广播 ID
+    SAY_AXE_TOSS1               = -1532092,                 // axetoss1 台词广播 ID
+    SAY_AXE_TOSS2               = -1532093,                 // axetoss2 台词广播 ID
+    SAY_SPECIAL1                = -1532094,                 // special1 台词广播 ID
+    SAY_SPECIAL2                = -1532095,                 // special2 台词广播 ID
+    SAY_SPECIAL3                = -1532096,                 // special3 台词广播 ID
+    SAY_SLAY1                   = 15124,                    // slay1 台词广播 ID
+    SAY_SLAY2                   = 15125,                    // slay2 台词广播 ID
+    SAY_SLAY3                   = 15126,                    // slay3 台词广播 ID
+    SAY_SUMMON1                 = -1532100,                 // summon1 台词广播 ID
+    SAY_SUMMON2                 = -1532101,                 // summon2 台词广播 ID
+    SAY_DEATH                   = -1532102,                 // 死亡 台词广播 ID
 
     // Enfeeble is supposed to reduce hp to 1 and then heal player back to full when it ends
     SPELL_ENFEEBLE              = 30843,                    // Enfeeble during phases 1 and 2
@@ -49,7 +52,7 @@ enum
     SPELL_SW_PAIN_PHASE3        = 30898,                    // Shadow word pain during phase 3
     SPELL_SUNDER_ARMOR          = 30901,                    // Sunder armor during phase 2
     SPELL_THRASH                = 3391,                     // Passive proc chance for thrash
-    SPELL_SUMMON_AXES           = 30891,                    // Summon 17650
+    SPELL_SUMMON_AXES           = 30891,                    // Summon 17650 (召唤 0)
     SPELL_EQUIP_AXES            = 30857,                    // Visual for axe equiping - transition to phase 2
     SPELL_AMPLIFY_DAMAGE        = 39095,                    // Amplifiy during phase 3 3
     // SPELL_CLEAVE              = 30131,                   // spell not confirmed
@@ -65,9 +68,10 @@ enum
     ATTACK_TIMER_DEFAULT        = 2400,                     // note: for WotLK it is 2000
     ATTACK_TIMER_AXES           = 1600,                     // note: for WotLK it is 1333
 
-    MAX_ENFEEBLE_TARGETS        = 5,
+    MAX_ENFEEBLE_TARGETS        = 5,                        // enfeebletargets 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MalchezaarActions
 {
     MALCHEZAAR_PHASE_2,
@@ -82,6 +86,7 @@ enum MalchezaarActions
     MALCHEZAAR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（malchezaar）
 struct boss_malchezaarAI : public CombatAI
 {
     boss_malchezaarAI(Creature* creature) : CombatAI(creature, MALCHEZAAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -105,11 +110,12 @@ struct boss_malchezaarAI : public CombatAI
 
     std::map<uint64, uint32> m_enfleebleMap;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
 
-        // Reset equipment and attack
+        // Reset equipment and attack (重置equipmentand攻击)
         SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, EQUIP_NO_CHANGE);
         m_creature->SetAttackTime(BASE_ATTACK, ATTACK_TIMER_DEFAULT);
     }
@@ -118,7 +124,7 @@ struct boss_malchezaarAI : public CombatAI
     {
         DoScriptText(SAY_DEATH, m_creature);
 
-        // Remove the summoned axe - which is considered a guardian
+        // Remove the summoned axe - which is considered a guardian (移除召唤出的守卫战斧)
         m_creature->RemoveGuardians();
 
         if (m_instance)
@@ -163,15 +169,17 @@ struct boss_malchezaarAI : public CombatAI
             m_instance->SetData(TYPE_MALCHEZZAR, IN_PROGRESS);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_MALCHEZZAR, FAIL);
 
-        // Remove the summoned axe - which is considered a guardian
+        // Remove the summoned axe - which is considered a guardian (移除召唤出的守卫战斧)
         m_creature->RemoveGuardians();
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_MALCHEZARS_AXE)
@@ -292,6 +300,7 @@ struct boss_malchezaarAI : public CombatAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（Enfeeble）
 struct Enfeeble : public SpellScript, public AuraScript
 {
     void OnInit(Spell* spell) const override
@@ -336,6 +345,7 @@ struct Enfeeble : public SpellScript, public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（EnfeebleRemoval）
 struct EnfeebleRemoval : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -348,6 +358,7 @@ struct EnfeebleRemoval : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_prince_malchezaar
 void AddSC_boss_prince_malchezaar()
 {
     Script* pNewScript = new Script;

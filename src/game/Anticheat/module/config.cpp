@@ -7,6 +7,7 @@ INSTANTIATE_SINGLETON_1(NamreebAnticheat::AnticheatConfig);
 
 namespace
 {
+// 各类作弊检测器名称数组，顺序必须与 NamreebAnticheat::CheatType 枚举完全一致
 static const char *sCheatTypeNames[] =
 {
     "WallClimb",
@@ -41,16 +42,19 @@ static_assert(sizeof(sCheatTypeNames) / sizeof(sCheatTypeNames[0]) == NamreebAnt
 
 namespace NamreebAnticheat
 {
+// 读取整型配置项
 void AnticheatConfig::setConfig(AnticheatConfigUInt32Values index, char const* fieldname, uint32 defvalue)
 {
     setConfig(index, GetIntDefault(fieldname, defvalue));
 }
 
+// 读取布尔型配置项
 void AnticheatConfig::setConfig(AnticheatConfigBoolValues index, char const* fieldname, bool defvalue)
 {
     setConfig(index, GetBoolDefault(fieldname, defvalue));
 }
 
+// 读取浮点型配置项
 void AnticheatConfig::setConfig(AnticheatConfigFloatValues index, char const* fieldname, float defvalue)
 {
     setConfig(index, GetFloatDefault(fieldname, defvalue));
@@ -63,6 +67,7 @@ AnticheatConfig::AnticheatConfig()
     memset(m_configFloatValues, 0, sizeof(m_configFloatValues));
 }
 
+// 从配置文件加载反作弊、移动检测、反垃圾、Warden 及处罚延迟等全部参数
 void AnticheatConfig::loadConfigSettings()
 {
     setConfig(CONFIG_BOOL_AC_ENABLED, "Enable", false);
@@ -110,7 +115,7 @@ void AnticheatConfig::loadConfigSettings()
     {
         std::stringstream tickCount, tickAction, totalCount, totalAction;
 
-        // warden parameters are named differently
+        // warden parameters are named differently (Warden 配置项前缀不带 Movement.)
         if (i == CHEAT_TYPE_WARDEN)
         {
             tickCount << GetDetectorName(static_cast<CheatType>(i)) << ".TickCount";
@@ -148,18 +153,19 @@ void AnticheatConfig::loadConfigSettings()
     m_wardenModuleDir = GetStringDefault("Warden.ModuleDir", "warden_modules");
 }
 
+// 根据单 Tick 与累计违规次数匹配应触发的处罚动作掩码
 bool AnticheatConfig::CheckResponse(CheatType cheatType, uint32 tickCount, uint32 totalCount, uint32 &actionMask) const
 {
     MANGOS_ASSERT(cheatType < CHEATS_COUNT);
 
     actionMask = CHEAT_ACTION_NONE;
 
-    // too many for this tick?  append these actions
+    // too many for this tick?  append these actions (单帧触发次数达到阈值，追加单帧处罚动作)
     if (tickCount && _responseRules[cheatType].tickCount &&
         tickCount >= _responseRules[cheatType].tickCount)
         actionMask |= _responseRules[cheatType].tickAction;
 
-    // too many total?  append these actions
+    // too many total?  append these actions (累计触发次数达到阈值，追加累计处罚动作)
     if (totalCount && _responseRules[cheatType].totalCount &&
         totalCount >= _responseRules[cheatType].totalCount)
         actionMask |= _responseRules[cheatType].totalAction;
@@ -167,6 +173,7 @@ bool AnticheatConfig::CheckResponse(CheatType cheatType, uint32 tickCount, uint3
     return actionMask != CHEAT_ACTION_NONE;
 }
 
+// 获取随机踢线延迟（毫秒）
 uint32 AnticheatConfig::GetKickDelay() const
 {
     auto const minDelay = getConfig(CONFIG_UINT32_AC_KICK_DELAY_MIN);
@@ -175,6 +182,7 @@ uint32 AnticheatConfig::GetKickDelay() const
     return urand(minDelay*1000, maxDelay*1000);
 }
 
+// 获取随机封号延迟（毫秒）
 uint32 AnticheatConfig::GetBanDelay() const
 {
     auto const minDelay = getConfig(CONFIG_UINT32_AC_BAN_DELAY_MIN);
@@ -183,6 +191,7 @@ uint32 AnticheatConfig::GetBanDelay() const
     return urand(minDelay * 1000, maxDelay * 1000);
 }
 
+// 获取随机封禁 IP 延迟（毫秒）
 uint32 AnticheatConfig::GetIPBanDelay() const
 {
     auto const minDelay = getConfig(CONFIG_UINT32_AC_IP_BAN_DELAY_MIN);
@@ -191,6 +200,7 @@ uint32 AnticheatConfig::GetIPBanDelay() const
     return urand(minDelay * 1000, maxDelay * 1000);
 }
 
+// 读取定期封波（BanWave）的每周/日执行时间配置
 void AnticheatConfig::GetBanWaveTime(uint32 &day, uint32 &hour, uint32 &minute) const
 {
     day = getConfig(CONFIG_UINT32_AC_BAN_WAVE_DAY);
@@ -198,6 +208,7 @@ void AnticheatConfig::GetBanWaveTime(uint32 &day, uint32 &hour, uint32 &minute) 
     minute = getConfig(CONFIG_UINT32_AC_BAN_WAVE_MINUTE);
 }
 
+// 根据作弊类型枚举获取对应的配置/日志名称字符串
 const char *AnticheatConfig::GetDetectorName(CheatType cheatType)
 {
     MANGOS_ASSERT(cheatType < CHEATS_COUNT);

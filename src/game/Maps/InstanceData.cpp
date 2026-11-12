@@ -21,9 +21,10 @@
 #include "Maps/Map.h"
 #include "Log/Log.h"
 
+// 将当前副本脚本进度字符串持久化写入数据库（战场与竞技场无需保存）
 void InstanceData::SaveToDB() const
 {
-    // no reason to save BGs/Arenas
+    // no reason to save BGs/Arenas (战场与竞技场无需保存进度)
     if (instance->IsBattleGroundOrArena())
         return;
 
@@ -39,6 +40,7 @@ void InstanceData::SaveToDB() const
         CharacterDatabase.PExecute("UPDATE world SET data = '%s' WHERE map = '%u'", data.c_str(), instance->GetId());
 }
 
+// 默认条件判定实现：子类未重写时记录错误日志并返回 false
 bool InstanceData::CheckConditionCriteriaMeet(Player const* /*source*/, uint32 instance_condition_id, WorldObject const* /*conditionSource*/, uint32 conditionSourceType) const
 {
     sLog.outError("Condition system call InstanceData::CheckConditionCriteriaMeet but instance script for map %u not have implementation for player condition criteria with internal id %u (called from %u)",

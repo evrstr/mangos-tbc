@@ -21,17 +21,21 @@ SDComment:
 SDCategory: Molten Core
 EndScriptData */
 
+// 鲁西弗隆（Lucifron）1号首领战 AI（鲁西弗隆的诅咒、末日迫近与火誓护卫）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_SHADOWSHOCK       = 19460,
-    SPELL_IMPENDINGDOOM     = 19702,
-    SPELL_LUCIFRONCURSE     = 19703,
+    SPELL_SHADOWSHOCK       = 19460,                        // shadowshock 法术 ID
+    SPELL_IMPENDINGDOOM     = 19702,                        // impendingdoom 法术 ID
+    SPELL_LUCIFRONCURSE     = 19703,                        // lucifroncurse 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum LucifronActions
 {
     LUCIFRON_IMPENDING_DOOM,
@@ -40,6 +44,7 @@ enum LucifronActions
     LUCIFRON_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（lucifron）
 struct boss_lucifronAI : public CombatAI
 {
     boss_lucifronAI(Creature* creature) : CombatAI(creature, LUCIFRON_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -64,6 +69,7 @@ struct boss_lucifronAI : public CombatAI
             m_instance->SetData(TYPE_LUCIFRON, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -96,6 +102,7 @@ struct boss_lucifronAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_lucifron
 void AddSC_boss_lucifron()
 {
     Script* pNewScript = new Script;

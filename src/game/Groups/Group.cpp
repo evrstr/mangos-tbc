@@ -34,6 +34,7 @@
 #include "Spells/SpellAuras.h"
 #include "BattleGround/BattleGroundMgr.h"
 
+/// 计算队员用于队伍列表同步的状态掩码（在线、PvP、死亡/灵魂、暂离等）
 GroupMemberStatus GetGroupMemberStatus(const Player* member = nullptr)
 {
     uint8 flags = MEMBER_STATUS_OFFLINE;
@@ -94,6 +95,7 @@ Group::~Group()
     delete[] m_subGroupsCounts;
 }
 
+/// 创建新队伍（初始化队长、默认拾取模式、副本难度并持久化到数据库）
 bool Group::Create(ObjectGuid guid, const char* name)
 {
     m_leaderGuid = guid;
@@ -149,6 +151,7 @@ bool Group::Create(ObjectGuid guid, const char* name)
     return true;
 }
 
+/// 从数据库结果集加载队伍基础配置（队长、拾取设置、团队标识、目标标记等）
 bool Group::LoadGroupFromDB(Field* fields)
 {
     //                                          0         1              2           3           4              5      6      7      8      9      10     11     12     13      14          15          16
@@ -186,6 +189,7 @@ bool Group::LoadGroupFromDB(Field* fields)
     return true;
 }
 
+/// 从数据库加载单个队员槽位（子小队与助理权限）
 bool Group::LoadMemberFromDB(uint32 guidLow, uint8 subgroup, bool assistant)
 {
     MemberSlot member;
@@ -213,6 +217,7 @@ bool Group::LoadMemberFromDB(uint32 guidLow, uint8 subgroup, bool assistant)
     return true;
 }
 
+/// 将普通小队转换为团队模式（最多 40 人、8 个子小队）并同步数据库与全体成员
 void Group::ConvertToRaid()
 {
     m_groupFlags = GROUP_FLAG_RAID;
@@ -295,6 +300,7 @@ Player* Group::GetInvited(const std::string& name) const
     return nullptr;
 }
 
+/// 向队伍添加新成员并同步副本难度、组队专属 UpdateFields 与团队列表
 bool Group::AddMember(ObjectGuid guid, const char* name)
 {
     if (!_addMember(guid, name))
@@ -375,6 +381,7 @@ bool Group::AddMember(ObjectGuid guid, const char* name)
     return true;
 }
 
+/// 从队伍移除成员（主动离队或被踢出），若团队人数不足则解散，返回剩余成员数
 uint32 Group::RemoveMember(ObjectGuid guid, uint8 method)
 {
     Player* player = sObjectMgr.GetPlayer(guid);
@@ -450,6 +457,7 @@ uint32 Group::RemoveMember(ObjectGuid guid, uint8 method)
     return m_memberSlots.size();
 }
 
+/// 转移队长权限并向全队广播新队长通知
 void Group::ChangeLeader(ObjectGuid guid)
 {
     member_citerator slot = _getMemberCSlot(guid);
@@ -464,6 +472,7 @@ void Group::ChangeLeader(ObjectGuid guid)
     SendUpdate();
 }
 
+/// 解散队伍：清空成员引用、删除数据库记录、重置未永久绑定的副本并将副本内成员传回炉石绑定点
 void Group::Disband(bool hideDestroy)
 {
     for (member_citerator citr = m_memberSlots.begin(); citr != m_memberSlots.end(); ++citr)
@@ -531,6 +540,7 @@ void Group::Disband(bool hideDestroy)
     m_leaderName.clear();
 }
 
+/// 设置并广播团队目标标记图标（确保同一目标仅保留一个标记）
 void Group::SetTargetIcon(uint8 id, ObjectGuid targetGuid)
 {
     if (id >= TARGET_ICON_COUNT)
@@ -567,6 +577,7 @@ static void GetDataForXPAtKill_helper(Player* player, Unit const* victim, uint32
         not_gray_member_with_max_level = player;
 }
 
+/// 统计击杀目标时同地图有效距离内的队员数量、等级和及最高等级成员，用于计算经验分配
 void Group::GetDataForXPAtKill(Unit const* victim, uint32& count, uint32& sum_level, Player*& member_with_max_level, Player*& not_gray_member_with_max_level, Player* additional)
 {
     for (GroupReference const* itr = GetFirstMember(); itr != nullptr; itr = itr->next())
@@ -616,6 +627,7 @@ void Group::SendTargetIconList(WorldSession* session) const
     session->SendPacket(data);
 }
 
+/// 向指定成员发送完整的队伍列表（SMSG_GROUP_LIST）
 void Group::SendUpdateTo(Player* player)
 {
     if (player && player->GetGroup() == this)
@@ -704,6 +716,7 @@ void Group::UpdatePlayerOnlineStatus(Player* player, bool online /*= true*/)
         m_leaderLastOnline = time(nullptr);
 }
 
+/// 当队长持续离线超过阈值时自动将队长移交给其他在线成员
 void Group::UpdateOfflineLeader(time_t time, uint32 delay)
 {
     // Do not update BG groups, BGs take care of offliners
@@ -806,6 +819,7 @@ bool Group::_addMember(ObjectGuid guid, const char* name, bool isAssistant)
     return _addMember(guid, name, isAssistant, groupid);
 }
 
+/// 内部方法：将成员加入指定子小队、建立 GroupReference 链接并更新数据库
 bool Group::_addMember(ObjectGuid guid, const char* name, bool isAssistant, uint8 group)
 {
     if (IsFull())
@@ -870,6 +884,7 @@ bool Group::_addMember(ObjectGuid guid, const char* name, bool isAssistant, uint
     return true;
 }
 
+/// 内部方法：移除成员并在队长离开时自动选举新队长，返回值表示队长是否发生变化
 bool Group::_removeMember(ObjectGuid guid)
 {
     Player* player = sObjectMgr.GetPlayer(guid);
@@ -909,6 +924,7 @@ bool Group::_removeMember(ObjectGuid guid)
     return false;
 }
 
+/// 从现有成员中选举新队长（优先助理，其次任意其他成员或在线成员）
 void Group::_chooseLeader(bool offline /*= false*/)
 {
     if (GetMembersCount() < GetMembersMinCount())
@@ -1211,6 +1227,7 @@ void Group::ChangeMembersGroup(Player* player, uint8 group)
     }
 }
 
+/// 校验全队是否符合加入指定战场或竞技场队列的条件
 uint32 Group::CanJoinBattleGroundQueue(BattleGroundTypeId bgTypeId, BattleGroundQueueTypeId bgQueueTypeId, uint32 MinPlayerCount, uint32 MaxPlayerCount, bool isRated, uint32 arenaSlot)
 {
     // check for min / max count
@@ -1288,6 +1305,7 @@ bool Group::InCombatToInstance(uint32 instanceId)
     return false;
 }
 
+/// 重置队伍绑定的副本实例（检查离线成员与传送中成员位置，并处理普通/英雄/团本差异）
 void Group::ResetInstances(InstanceResetMethod method, Player* SendMsgTo)
 {
     if (IsBattleGroup())
@@ -1419,6 +1437,7 @@ InstanceGroupBind* Group::GetBoundInstance(Map* aMap, Difficulty difficulty)
     return nullptr;
 }
 
+/// 将队伍绑定到指定副本持久化状态（如击杀首领转为永久绑定或合并队长进度）
 InstanceGroupBind* Group::BindToInstance(DungeonPersistentState* state, bool permanent, bool load)
 {
     if (state && !IsBattleGroup())
@@ -1534,6 +1553,7 @@ static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 co
  *
  * Rewards received by group members and player_tap
  */
+/// 击杀怪物后按队伍成员距离与等级计算经验、声望、荣誉及任务击杀奖励分发
 void Group::RewardGroupAtKill(Unit* pVictim, Player* player_tap)
 {
     bool PvP = pVictim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);

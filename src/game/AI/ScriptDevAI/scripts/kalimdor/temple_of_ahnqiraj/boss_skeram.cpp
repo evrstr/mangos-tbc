@@ -21,31 +21,37 @@ SDComment:
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：预言者斯克拉姆 (The Prophet Skeram) 精神控制与分身传送首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_AGGRO                   = -1531000,
-    SAY_SLAY                    = 11446,
-    SAY_DEATH                   = -1531002,
+    SAY_AGGRO                   = -1531000,                 // 剧情台词/喊话文本 ID
+    SAY_SLAY                    = 11446,                    // 剧情台词/喊话文本 ID
+    SAY_DEATH                   = -1531002,                 // 剧情台词/喊话文本 ID
 
-    SPELL_ARCANE_EXPLOSION      = 26192,
-    SPELL_EARTH_SHOCK           = 26194,
-    SPELL_TRUE_FULFILLMENT      = 785, // wotlk+ also casts 61286 on the target on cast end and also on aura end 65634
-    SPELL_TRUE_FULFILLMENT_2    = 2313, // additional buff
-    SPELL_TELEPORT_1            = 4801,
-    SPELL_TELEPORT_2            = 8195,
-    SPELL_TELEPORT_3            = 20449,
-    SPELL_INITIALIZE_IMAGES     = 794,
-    SPELL_INITIALIZE_IMAGE      = 3730,   // Triggers by spell 794 on each summoned image
-    SPELL_SUMMON_IMAGES         = 747,
-    SPELL_TELEPORT_IMAGE        = 26591,
+    SPELL_ARCANE_EXPLOSION      = 26192,                    // 技能法术：魔爆术
+    SPELL_EARTH_SHOCK           = 26194,                    // 技能法术 ID
+    SPELL_TRUE_FULFILLMENT      = 785, // wotlk+ also casts 61286 on the target on cast end and also on aura end 65634 (说明)
+    SPELL_TRUE_FULFILLMENT_2    = 2313, // additional buff (说明)
+    SPELL_TELEPORT_1            = 4801,                     // 技能法术 ID
+    SPELL_TELEPORT_2            = 8195,                     // 技能法术 ID
+    SPELL_TELEPORT_3            = 20449,                    // 技能法术 ID
+    SPELL_INITIALIZE_IMAGES     = 794,                      // 技能法术 ID
+    SPELL_INITIALIZE_IMAGE      = 3730,   // Triggers by spell 794 on each summoned image (说明)
+    SPELL_SUMMON_IMAGES         = 747,                      // 技能法术 ID
+    SPELL_TELEPORT_IMAGE        = 26591,                    // 技能法术 ID
 
-    SPELL_BIRTH                 = 34115, // TBC+ spell on spawn - purpose of 1 sec delay before images attack
+    SPELL_BIRTH                 = 34115, // TBC+ spell on spawn - purpose of 1 sec delay before images attack (说明)
 };
 
+// SkeramActions 战斗行为动作枚举
 enum SkeramActions
 {
     SKERAM_SPLIT,
@@ -53,11 +59,12 @@ enum SkeramActions
     SKERAM_TRUE_FULFILMENT,
     SKERAM_BLINK,
     SKERAM_EARTH_SHOCK,
-    SKERAM_ACTION_MAX,
+    SKERAM_ACTION_MAX,                                      // 战斗行为动作
     SKERAM_BLINK_DELAY,
     SKERAM_INIT_IMAGES,
 };
 
+// boss_skeramAI 首领战斗 AI
 struct boss_skeramAI : public CombatAI
 {
     boss_skeramAI(Creature* creature) : CombatAI(creature, SKERAM_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_isImage(!m_creature->GetSpawnerGuid().IsEmpty())
@@ -90,7 +97,7 @@ struct boss_skeramAI : public CombatAI
 
     GuidVector m_images;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         m_hpCheck               = 75.0f;
@@ -120,16 +127,16 @@ struct boss_skeramAI : public CombatAI
 
             DespawnGuids(m_images);
         }
-        // Else despawn to avoid looting
+        // Else despawn to avoid looting (消失)
         else
             m_creature->ForcedDespawn(1);
     }
 
     void Aggro(Unit* /*who*/) override
     {
-        // Prophet Skeram will only cast Arcane Explosion if a given number of players are in melee range
-        // Initial value was 4+ but it was changed in patch 1.12 to be less dependant on raid
-        // We assume value is number of players / 10 (raid of 40 people in Classic -> value of 4)
+        // Prophet Skeram will only cast Arcane Explosion if a given number of players are in melee range (说明)
+        // Initial value was 4+ but it was changed in patch 1.12 to be less dependant on raid (说明)
+        // We assume value is number of players / 10 (raid of 40 people in Classic -> value of 4) (说明)
         m_maxMeleeAllowed = m_instance->instance->GetPlayers().getSize() / 10 + 1;
 
         if (m_isImage)
@@ -150,7 +157,7 @@ struct boss_skeramAI : public CombatAI
             m_creature->ForcedDespawn();
     }
 
-    void JustSummoned(Creature* summoned) override
+    void JustSummoned(Creature* summoned) override          // 召唤仆从成功回调
     {
         if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             summoned->AI()->AttackStart(target);
@@ -166,7 +173,7 @@ struct boss_skeramAI : public CombatAI
         m_creature->SetTarget(nullptr);
     }
 
-    // Wrapper to handle the image teleport
+    // Wrapper to handle the image teleport (说明)
     void DoTeleport(bool attacking)
     {
         if (!m_instance)
@@ -175,7 +182,7 @@ struct boss_skeramAI : public CombatAI
         uint32 teleportSpellID = 0;
         if (m_isImage)
         {
-            // Get an available teleport location from original boss
+            // Get an available teleport location from original boss (说明)
             if (Creature* prophet = m_instance->GetSingleCreatureFromStorage(NPC_SKERAM))
             {
                 if (boss_skeramAI* skeramAI = dynamic_cast<boss_skeramAI*>(prophet->AI()))
@@ -185,7 +192,7 @@ struct boss_skeramAI : public CombatAI
         else
             teleportSpellID = m_teleports[0];
 
-        // Teleport, reset thread (and restore visibility if needed)
+        // Teleport, reset thread (and restore visibility if needed) (说明)
         DoCastSpellIfCan(nullptr, teleportSpellID);
         DoResetThreat();
         ClearMark();
@@ -206,7 +213,7 @@ struct boss_skeramAI : public CombatAI
 
     uint32 GetAvailableTeleport()
     {
-        // Only original boss can give teleport location
+        // Only original boss can give teleport location (说明)
         if (m_isImage)
             return 0;
 
@@ -220,11 +227,11 @@ struct boss_skeramAI : public CombatAI
     {
         if (m_instance)
         {
-            if (Player* player = m_instance->GetPlayerInMap(true, false)) // we assume only one group in raid
+            if (Player* player = m_instance->GetPlayerInMap(true, false)) // we assume only one group in raid (说明)
             {
                 if (Group* group = player->GetGroup())
                 {
-                    group->SetTargetIcon(7, m_creature->GetObjectGuid()); // set to none
+                    group->SetTargetIcon(7, m_creature->GetObjectGuid()); // set to none (说明)
                 }
             }
         }
@@ -232,20 +239,20 @@ struct boss_skeramAI : public CombatAI
 
     void HandleInitImages()
     {
-        std::shuffle(m_teleports.begin(), m_teleports.end(), *GetRandomGenerator()); // Shuffle the teleport spells to ensure that boss and images have a different location assigned randomly
+        std::shuffle(m_teleports.begin(), m_teleports.end(), *GetRandomGenerator()); // Shuffle the teleport spells to ensure that boss and images have a different location assigned randomly (说明)
         m_teleportCounter = 1;
         DoCastSpellIfCan(nullptr, SPELL_INITIALIZE_IMAGES, CAST_TRIGGERED);
         DoTeleport(false);
         ResetCombatAction(SKERAM_BLINK, urand(30000, 40000));
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
             case SKERAM_SPLIT:
             {
-                // Summon images at 75%, 50% and 25%
+                // Summon images at 75%, 50% and 25% (说明)
                 if (m_creature->GetHealthPercent() < m_hpCheck)
                 {
                     DespawnGuids(m_images);
@@ -253,7 +260,7 @@ struct boss_skeramAI : public CombatAI
                     {
                         m_hpCheck -= 25.0f;
                         StopAttacking();
-                        // Teleport shortly after the images are summoned and set invisible to clear the selection (Workaround alert!!!)
+                        // Teleport shortly after the images are summoned and set invisible to clear the selection (Workaround alert!!!) (说明)
                         ResetTimer(SKERAM_INIT_IMAGES, 1500);
                     }
                 }
@@ -261,7 +268,7 @@ struct boss_skeramAI : public CombatAI
             }
             case SKERAM_ARCANE_EXPLOSION:
             {
-                // Arcane Explosion is done if more than a set number of people are in melee range
+                // Arcane Explosion is done if more than a set number of people are in melee range (说明)
                 PlayerList meleePlayerList;
                 float meleeRange = m_creature->GetCombinedCombatReach(m_creature->GetVictim(), true);
                 GetPlayerListWithEntryInWorld(meleePlayerList, m_creature, meleeRange);
@@ -270,7 +277,7 @@ struct boss_skeramAI : public CombatAI
                     if (DoCastSpellIfCan(m_creature, SPELL_ARCANE_EXPLOSION) == CAST_OK)
                         ResetCombatAction(action, urand(8, 18) * IN_MILLISECONDS);
                 }
-                else // Recheck in 1 second
+                else // Recheck in 1 second (说明)
                     ResetCombatAction(action, 1 * IN_MILLISECONDS);
                 break;
             }
@@ -283,7 +290,7 @@ struct boss_skeramAI : public CombatAI
             }
             case SKERAM_BLINK:
             {
-                std::shuffle(m_teleports.begin(), m_teleports.end(), *GetRandomGenerator()); // Shuffle the teleport spells to ensure that boss and images have a different location assigned randomly
+                std::shuffle(m_teleports.begin(), m_teleports.end(), *GetRandomGenerator()); // Shuffle the teleport spells to ensure that boss and images have a different location assigned randomly (说明)
                 m_teleportCounter = 1;
                 DoTeleport(true);
                 for (auto guid : m_images)
@@ -295,10 +302,10 @@ struct boss_skeramAI : public CombatAI
             case SKERAM_EARTH_SHOCK:
             {
                 uint32 timer = 500;
-                // If victim exists we have a target in melee range
+                // If victim exists we have a target in melee range (说明)
                 if (m_creature->GetVictim() && m_creature->CanReachWithMeleeAttack(m_creature->GetVictim()))
                     m_rangeCheckState = -1;
-                // Spam Waterbolt spell when not tanked
+                // Spam Waterbolt spell when not tanked (法术)
                 else
                 {
                     ++m_rangeCheckState;
@@ -319,7 +326,7 @@ struct TrueFulfillment : public AuraScript
     {
         if (apply)
             aura->GetTarget()->CastSpell(aura->GetTarget(), SPELL_TRUE_FULFILLMENT_2, TRIGGERED_OLD_TRIGGERED);
-        // wotlk add stuff on break
+        // wotlk add stuff on break (说明)
     }
 };
 
@@ -329,10 +336,10 @@ struct InitializeImages : public SpellScript
     {
         if (Unit* unitTarget = spell->GetUnitTarget())
         {
-            // Cast Initialize Image for each image target with orignal boss HP percent as basepoints
+            // Cast Initialize Image for each image target with orignal boss HP percent as basepoints (说明)
             int32 healthPercent = int32(spell->GetCaster()->GetHealthPercent());
             unitTarget->CastCustomSpell(nullptr, SPELL_INITIALIZE_IMAGE, &healthPercent, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr);
-            unitTarget->CastSpell(nullptr, SPELL_TELEPORT_IMAGE, TRIGGERED_OLD_TRIGGERED);   // Teleport Image
+            unitTarget->CastSpell(nullptr, SPELL_TELEPORT_IMAGE, TRIGGERED_OLD_TRIGGERED);   // Teleport Image (说明)
         }
     }
 };
@@ -354,7 +361,7 @@ struct InitializeImage : public SpellScript
             else
                 maxHealthPct = 0.10f;
 
-            // Set the same health percent as the original boss
+            // Set the same health percent as the original boss (说明)
             spell->GetCaster()->SetMaxHealth(unitTarget->GetMaxHealth() * maxHealthPct);
             spell->GetCaster()->SetHealthPercent(healthPct);
         }
@@ -362,7 +369,7 @@ struct InitializeImage : public SpellScript
 
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
     {
-        if (target->GetSpawnerGuid()) // only original spawn can be hit by this
+        if (target->GetSpawnerGuid()) // only original spawn can be hit by this (说明)
             return false;
 
         return true;
@@ -379,7 +386,7 @@ struct TeleportImage : public SpellScript
     }
 };
 
-void AddSC_boss_skeram()
+void AddSC_boss_skeram() // 注册脚本到系统管理器
 {
     Script* newScript = new Script;
     newScript->Name = "boss_skeram";

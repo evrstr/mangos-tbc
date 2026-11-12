@@ -21,17 +21,18 @@
 
 enum
 {
-    SPELL_PET_RESISTANCE = 37386,
-    SPELL_INCREASED_ATTACK_POWER = 38297,
+    SPELL_PET_RESISTANCE = 37386,                           // 宠物抗性套装/光环加成
+    SPELL_INCREASED_ATTACK_POWER = 38297,                   // 猎人套装额外宠物耐力/攻强/护甲加成
 };
 
+// 猎人宠物缩放光环 1：继承主人耐力（30%）、远程攻强（25%）与法强（12.5%）
 struct HunterPetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // stamina
+            case EFFECT_INDEX_0: // stamina (耐力缩放)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
@@ -39,7 +40,7 @@ struct HunterPetScaling1 : public AuraScript
                         value += 52;
                 }
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (攻击强度缩放)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = owner->GetTotalAttackPowerValue(RANGED_ATTACK) * 0.25f;
@@ -47,7 +48,7 @@ struct HunterPetScaling1 : public AuraScript
                         value += 70;
                 }
                 break;
-            case EFFECT_INDEX_2: // spell power
+            case EFFECT_INDEX_2: // spell power (法术强度缩放)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetTotalAttackPowerValue(RANGED_ATTACK) * 0.125f;
                 break;
@@ -56,21 +57,22 @@ struct HunterPetScaling1 : public AuraScript
     }
 };
 
+// 猎人宠物缩放光环 2：继承主人火、冰、自然抗性的 40%
 struct HunterPetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
                 break;
@@ -79,21 +81,22 @@ struct HunterPetScaling2 : public AuraScript
     }
 };
 
+// 猎人宠物缩放光环 3：继承主人暗影/奥术抗性的 40% 及护甲的 35%
 struct HunterPetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // armor
+            case EFFECT_INDEX_2: // armor (护甲缩放)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = owner->GetArmor() * 0.35f;
@@ -106,17 +109,18 @@ struct HunterPetScaling3 : public AuraScript
     }
 };
 
+// 术士宠物缩放光环 1：继承主人耐力（30%）及暗/火最高法伤换算攻强（57%）与法强（15%）
 struct WarlockPetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // stamina
+            case EFFECT_INDEX_0: // stamina (耐力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (近战攻强)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -130,7 +134,7 @@ struct WarlockPetScaling1 : public AuraScript
                     }
                 }
                 break;
-            case EFFECT_INDEX_2: // spell power
+            case EFFECT_INDEX_2: // spell power (法术强度)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -149,21 +153,22 @@ struct WarlockPetScaling1 : public AuraScript
     }
 };
 
+// 术士宠物缩放光环 2：智力、护甲（35%）与火焰抗性（40% + 套装加成）
 struct WarlockPetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // intelect
+            case EFFECT_INDEX_0: // intelect (智力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // armor
+            case EFFECT_INDEX_1: // armor (护甲)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetArmor() * 0.35f;
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
@@ -176,13 +181,14 @@ struct WarlockPetScaling2 : public AuraScript
     }
 };
 
+// 术士宠物缩放光环 3：冰霜、奥术、自然抗性缩放
 struct WarlockPetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
@@ -190,7 +196,7 @@ struct WarlockPetScaling3 : public AuraScript
                         value += 130;
                 }
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
@@ -198,7 +204,7 @@ struct WarlockPetScaling3 : public AuraScript
                         value += 130;
                 }
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
@@ -211,13 +217,14 @@ struct WarlockPetScaling3 : public AuraScript
     }
 };
 
+// 术士宠物缩放光环 4：暗影抗性与法力恢复缩放
 struct WarlockPetScaling4 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
@@ -225,7 +232,7 @@ struct WarlockPetScaling4 : public AuraScript
                         value += 130;
                 }
                 break;
-            case EFFECT_INDEX_1: // mana regen
+            case EFFECT_INDEX_1: // mana regen (5 秒法力恢复缩放)
                 if (Unit* owner = data.caster->GetOwner())
                     if (owner->IsPlayer())
                         value = static_cast<Player*>(owner)->GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN) * 0.5f * 5.f;
@@ -236,19 +243,20 @@ struct WarlockPetScaling4 : public AuraScript
     }
 };
 
+// 法师水元素缩放光环 1：继承主人耐力（30%）与冰霜法伤（40%）
 struct MagePetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // stamina
+            case EFFECT_INDEX_0: // stamina (耐力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (近战攻强，水元素不用)
                 break;
-            case EFFECT_INDEX_2: // spell power
+            case EFFECT_INDEX_2: // spell power (法术强度)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -265,21 +273,22 @@ struct MagePetScaling1 : public AuraScript
     }
 };
 
+// 法师水元素缩放光环 2：智力、护甲与火焰抗性
 struct MagePetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // intelect
+            case EFFECT_INDEX_0: // intelect (智力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // armor
+            case EFFECT_INDEX_1: // armor (护甲)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetArmor() * 0.35f;
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
                 break;
@@ -288,21 +297,22 @@ struct MagePetScaling2 : public AuraScript
     }
 };
 
+// 法师水元素缩放光环 3：冰霜、奥术、自然抗性
 struct MagePetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
                 break;
@@ -311,13 +321,14 @@ struct MagePetScaling3 : public AuraScript
     }
 };
 
+// 法师水元素缩放光环 4：暗影抗性
 struct MagePetScaling4 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
                 break;
@@ -327,17 +338,18 @@ struct MagePetScaling4 : public AuraScript
     }
 };
 
+// 牧师暗影魔缩放光环 1：继承主人耐力（30%）与暗影法伤换算近战攻强（65%）
 struct PriestPetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // stamina
+            case EFFECT_INDEX_0: // stamina (耐力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (攻击强度)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -356,21 +368,22 @@ struct PriestPetScaling1 : public AuraScript
     }
 };
 
+// 牧师暗影魔缩放光环 2：智力、护甲与火焰抗性
 struct PriestPetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // intelect
+            case EFFECT_INDEX_0: // intelect (智力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // armor
+            case EFFECT_INDEX_1: // armor (护甲)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetArmor() * 0.35f;
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
                 break;
@@ -379,21 +392,22 @@ struct PriestPetScaling2 : public AuraScript
     }
 };
 
+// 牧师暗影魔缩放光环 3：冰霜、奥术、自然抗性
 struct PriestPetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
                 break;
@@ -402,13 +416,14 @@ struct PriestPetScaling3 : public AuraScript
     }
 };
 
+// 牧师暗影魔缩放光环 4：暗影抗性
 struct PriestPetScaling4 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
                 break;
@@ -418,15 +433,16 @@ struct PriestPetScaling4 : public AuraScript
     }
 };
 
+// 萨满元素守卫缩放光环 1：自然法伤换算近战攻强（57%）与法强（65%）
 struct ElementalPetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // dummy - unk
+            case EFFECT_INDEX_0: // dummy - unk (未知占位)
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (近战攻强)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -438,7 +454,7 @@ struct ElementalPetScaling1 : public AuraScript
                     }
                 }
                 break;
-            case EFFECT_INDEX_2: // spell power
+            case EFFECT_INDEX_2: // spell power (法术强度)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -455,21 +471,22 @@ struct ElementalPetScaling1 : public AuraScript
     }
 };
 
+// 萨满元素守卫缩放光环 2：智力、护甲与火焰抗性
 struct ElementalPetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // intelect
+            case EFFECT_INDEX_0: // intelect (智力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // armor
+            case EFFECT_INDEX_1: // armor (护甲)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetArmor() * 0.35f;
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
                 break;
@@ -478,21 +495,22 @@ struct ElementalPetScaling2 : public AuraScript
     }
 };
 
+// 萨满元素守卫缩放光环 3：冰霜、奥术、自然抗性
 struct ElementalPetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
                 break;
@@ -501,13 +519,14 @@ struct ElementalPetScaling3 : public AuraScript
     }
 };
 
+// 萨满元素守卫缩放光环 4：暗影抗性
 struct ElementalPetScaling4 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
                 break;
@@ -517,17 +536,18 @@ struct ElementalPetScaling4 : public AuraScript
     }
 };
 
+// 德鲁伊树人缩放光环 1：耐力（15%）与自然法伤换算近战攻强（50%）
 struct DruidPetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // stamina
+            case EFFECT_INDEX_0: // stamina (耐力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.15f; // unconfirmed value
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (近战攻强)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -546,21 +566,22 @@ struct DruidPetScaling1 : public AuraScript
     }
 };
 
+// 德鲁伊树人缩放光环 2：智力、护甲与火焰抗性
 struct DruidPetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // intelect
+            case EFFECT_INDEX_0: // intelect (智力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // armor
+            case EFFECT_INDEX_1: // armor (护甲)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetArmor() * 0.35f;
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
                 break;
@@ -569,21 +590,22 @@ struct DruidPetScaling2 : public AuraScript
     }
 };
 
+// 德鲁伊树人缩放光环 3：冰霜、奥术、自然抗性
 struct DruidPetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
                 break;
@@ -592,13 +614,14 @@ struct DruidPetScaling3 : public AuraScript
     }
 };
 
+// 德鲁伊树人缩放光环 4：暗影抗性
 struct DruidPetScaling4 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
                 break;
@@ -608,17 +631,18 @@ struct DruidPetScaling4 : public AuraScript
     }
 };
 
+// 增强萨满宠物缩放光环 1：耐力（30%）、自然法伤换算近战攻强（50%）与法强（65%）
 struct EnhancementPetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // stamina
+            case EFFECT_INDEX_0: // stamina (耐力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (近战攻强)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -630,7 +654,7 @@ struct EnhancementPetScaling1 : public AuraScript
                     }
                 }
                 break;
-            case EFFECT_INDEX_2: // spell power
+            case EFFECT_INDEX_2: // spell power (法术强度)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -647,21 +671,22 @@ struct EnhancementPetScaling1 : public AuraScript
     }
 };
 
+// 增强萨满宠物缩放光环 2：火、冰、自然抗性
 struct EnhancementPetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
                 break;
@@ -670,21 +695,22 @@ struct EnhancementPetScaling2 : public AuraScript
     }
 };
 
+// 增强萨满宠物缩放光环 3：暗影抗性、奥术抗性与护甲
 struct EnhancementPetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
                 break;
-            case EFFECT_INDEX_2: // armor
+            case EFFECT_INDEX_2: // armor (护甲)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetArmor() * 0.35f;
                 break;
@@ -693,17 +719,18 @@ struct EnhancementPetScaling3 : public AuraScript
     }
 };
 
+// 术士地狱火缩放光环 1：耐力（30%）、火/暗最高法伤换算近战攻强（57%）与法强（15%）
 struct InfernalPetScaling1 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // stamina
+            case EFFECT_INDEX_0: // stamina (耐力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // attack power
+            case EFFECT_INDEX_1: // attack power (近战攻强)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -717,7 +744,7 @@ struct InfernalPetScaling1 : public AuraScript
                     }
                 }
                 break;
-            case EFFECT_INDEX_2: // spell power
+            case EFFECT_INDEX_2: // spell power (法术强度)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     if (owner->IsPlayer())
@@ -736,21 +763,22 @@ struct InfernalPetScaling1 : public AuraScript
     }
 };
 
+// 术士地狱火缩放光环 2：智力、护甲与火焰抗性
 struct InfernalPetScaling2 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // intelect
+            case EFFECT_INDEX_0: // intelect (智力)
                 if (Unit* owner = data.caster->GetOwner())
                     value = float(owner->GetStat(STAT_STAMINA)) * 0.3f;
                 break;
-            case EFFECT_INDEX_1: // armor
+            case EFFECT_INDEX_1: // armor (护甲)
                 if (Unit* owner = data.caster->GetOwner())
                     value = owner->GetArmor() * 0.35f;
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (火焰抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_FIRE) * 0.4f);
@@ -763,13 +791,14 @@ struct InfernalPetScaling2 : public AuraScript
     }
 };
 
+// 术士地狱火缩放光环 3：冰霜、奥术、自然抗性
 struct InfernalPetScaling3 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (冰霜抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_FROST) * 0.4f);
@@ -777,7 +806,7 @@ struct InfernalPetScaling3 : public AuraScript
                         value += 130;
                 }
                 break;
-            case EFFECT_INDEX_1: // resistance
+            case EFFECT_INDEX_1: // resistance (奥术抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_ARCANE) * 0.4f);
@@ -785,7 +814,7 @@ struct InfernalPetScaling3 : public AuraScript
                         value += 130;
                 }
                 break;
-            case EFFECT_INDEX_2: // resistance
+            case EFFECT_INDEX_2: // resistance (自然抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_NATURE) * 0.4f);
@@ -798,13 +827,14 @@ struct InfernalPetScaling3 : public AuraScript
     }
 };
 
+// 术士地狱火缩放光环 4：暗影抗性与法力恢复
 struct InfernalPetScaling4 : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         switch (data.effIdx)
         {
-            case EFFECT_INDEX_0: // resistance
+            case EFFECT_INDEX_0: // resistance (暗影抗性)
                 if (Unit* owner = data.caster->GetOwner())
                 {
                     value = (owner->GetResistance(SPELL_SCHOOL_SHADOW) * 0.4f);
@@ -812,7 +842,7 @@ struct InfernalPetScaling4 : public AuraScript
                         value += 130;
                 }
                 break;
-            case EFFECT_INDEX_1: // mana regen
+            case EFFECT_INDEX_1: // mana regen (5 秒法力恢复)
                 if (Unit* owner = data.caster->GetOwner())
                     if (owner->IsPlayer())
                         value = static_cast<Player*>(owner)->GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN) * 0.5f * 5.f;
@@ -823,6 +853,7 @@ struct InfernalPetScaling4 : public AuraScript
     }
 };
 
+// 注册所有宠物属性缩放光环脚本
 void LoadScalingScripts()
 {
     RegisterSpellScript<HunterPetScaling1>("spell_hunter_pet_scaling_1");

@@ -23,6 +23,7 @@
  * Here you'll find a list of helper functions to make
  * the TypeContainer usefull.  Without it, its hard
  * to access or mutate the container.
+ * 本文件提供一系列模板辅助函数，用于对 TypeContainer / ContainerMapList 进行计数、插入和移除操作。
  */
 
 #include "Platform/Define.h"
@@ -31,8 +32,8 @@
 
 namespace MaNGOS
 {
-    /* ContainerMapList Helpers */
-    // count functions
+    /* ContainerMapList Helpers | ContainerMapList 辅助函数 */
+    // count functions | 计数函数重载集
     template<class SPECIFIC_TYPE>
     size_t Count(const ContainerMapList<SPECIFIC_TYPE>& elements, SPECIFIC_TYPE* /*fake*/)
     {
@@ -63,7 +64,7 @@ namespace MaNGOS
         return Count(elements._TailElements, fake);
     }
 
-    // non-const insert functions
+    // non-const insert functions | 非常量插入函数重载集
     template<class SPECIFIC_TYPE>
     SPECIFIC_TYPE* Insert(ContainerMapList<SPECIFIC_TYPE>& elements, SPECIFIC_TYPE* obj)
     {
@@ -78,14 +79,14 @@ namespace MaNGOS
         return nullptr;
     }
 
-    // this is a missed
+    // this is a missed | 类型不匹配时的兜底分支
     template<class SPECIFIC_TYPE, class T>
     SPECIFIC_TYPE* Insert(ContainerMapList<T>& /*elements*/, SPECIFIC_TYPE* /*obj*/)
     {
-        return nullptr;                                        // a missed
+        return nullptr;                                        // a missed | 未命中目标类型
     }
 
-    // Recursion
+    // Recursion | 递归遍历 TypeList 插入
     template<class SPECIFIC_TYPE, class H, class T>
     SPECIFIC_TYPE* Insert(ContainerMapList<TypeList<H, T> >& elements, SPECIFIC_TYPE* obj)
     {
@@ -93,7 +94,7 @@ namespace MaNGOS
         return (t != nullptr ? t : Insert(elements._TailElements, obj));
     }
 
-    // non-const remove method
+    // non-const remove method | 非常量移除函数重载集
     template<class SPECIFIC_TYPE>
     SPECIFIC_TYPE* Remove(ContainerMapList<SPECIFIC_TYPE>& /*elements*/, SPECIFIC_TYPE* obj)
     {
@@ -107,17 +108,17 @@ namespace MaNGOS
         return nullptr;
     }
 
-    // this is a missed
+    // this is a missed | 类型不匹配时的兜底分支
     template<class SPECIFIC_TYPE, class T>
     SPECIFIC_TYPE* Remove(ContainerMapList<T>& /*elements*/, SPECIFIC_TYPE* /*obj*/)
     {
-        return nullptr;                                        // a missed
+        return nullptr;                                        // a missed | 未命中目标类型
     }
 
     template<class SPECIFIC_TYPE, class T, class H>
     SPECIFIC_TYPE* Remove(ContainerMapList<TypeList<H, T> >& elements, SPECIFIC_TYPE* obj)
     {
-        // The head element is bad
+        // The head element is bad | 先尝试头部类型，不匹配则递归尾部列表
         SPECIFIC_TYPE* t = Remove(elements._elements, obj);
         return (t != nullptr ? t : Remove(elements._TailElements, obj));
     }

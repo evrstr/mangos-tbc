@@ -22,10 +22,11 @@
 #include <array>
 #include <vector>
 
-// Auto generated file
-// Patch: 2.4.3
-// Build: 8606
+// Auto generated file (自动生成文件)
+// Patch: 2.4.3 (补丁版本 2.4.3)
+// Build: 8606 (客户端版本号 8606)
 
+// 全量更新字段元数据表（记录各对象类型每个字段的偏移、槽位长度、数据类型与同步标志）
 static std::array<UpdateFieldData, 399> const g_updateFieldsData =
 {{
         // enum EObjectFields
@@ -437,6 +438,7 @@ static std::array<UpdateFieldData, 399> const g_updateFieldsData =
     { TYPEMASK_CORPSE       , "CORPSE_END"                                      , 0x28 , 0  , UF_TYPE_NONE     , UF_FLAG_NONE },
 }};
 
+// 根据对象类型掩码从元数据表构建按字段索引排列的同步标志数组
 template<std::size_t SIZE>
 static std::array<uint16, SIZE> SetupUpdateFieldFlagsArray(uint8 objectTypeMask)
 {
@@ -454,12 +456,14 @@ static std::array<uint16, SIZE> SetupUpdateFieldFlagsArray(uint8 objectTypeMask)
     return flagsArray;
 }
 
+// 预生成的各对象大类更新字段标志查找表
 static std::array<uint16, CONTAINER_END> const g_containerUpdateFieldFlags = SetupUpdateFieldFlagsArray<CONTAINER_END>(TYPEMASK_OBJECT | TYPEMASK_ITEM | TYPEMASK_CONTAINER);
 static std::array<uint16, PLAYER_END> const g_playerUpdateFieldFlags = SetupUpdateFieldFlagsArray<PLAYER_END>(TYPEMASK_OBJECT | TYPEMASK_UNIT | TYPEMASK_PLAYER);
 static std::array<uint16, GAMEOBJECT_END> const g_gameObjectUpdateFieldFlags = SetupUpdateFieldFlagsArray<GAMEOBJECT_END>(TYPEMASK_OBJECT | TYPEMASK_GAMEOBJECT);
 static std::array<uint16, DYNAMICOBJECT_END> const g_dynamicObjectUpdateFieldFlags = SetupUpdateFieldFlagsArray<DYNAMICOBJECT_END>(TYPEMASK_OBJECT | TYPEMASK_DYNAMICOBJECT);
 static std::array<uint16, CORPSE_END> const g_corpseUpdateFieldFlags = SetupUpdateFieldFlagsArray<CORPSE_END>(TYPEMASK_OBJECT | TYPEMASK_CORPSE);
 
+// 按对象 TypeID 返回对应的更新字段同步标志表首地址
 uint16 const* UpdateFields::GetUpdateFieldFlagsArray(uint8 objectTypeId)
 {
     switch (objectTypeId)
@@ -491,6 +495,7 @@ uint16 const* UpdateFields::GetUpdateFieldFlagsArray(uint8 objectTypeId)
     return 0;
 }
 
+// 按字段枚举名称字符串查找更新字段描述信息
 UpdateFieldData const* UpdateFields::GetUpdateFieldDataByName(char const* name)
 {
     for (const auto& itr : g_updateFieldsData)
@@ -501,6 +506,7 @@ UpdateFieldData const* UpdateFields::GetUpdateFieldDataByName(char const* name)
     return nullptr;
 }
 
+// 按对象类型掩码及字段偏移槽位号查找更新字段描述信息
 UpdateFieldData const* UpdateFields::GetUpdateFieldDataByTypeMaskAndOffset(uint8 objectTypeMask, uint16 offset)
 {
     for (auto const& itr : g_updateFieldsData)

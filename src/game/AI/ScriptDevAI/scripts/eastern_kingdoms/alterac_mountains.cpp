@@ -21,11 +21,15 @@ SDComment: Placeholder
 SDCategory: Alterac Mountains
 EndScriptData */
 
+// 奥特兰克山脉（Alterac Mountains）区域杂项与 NPC 脚本
+
 /* ContentData
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 注册并载入脚本模块：alterac_mountains
 void AddSC_alterac_mountains()
 {
+    // 占位函数：当前该区域暂无特殊脚本逻辑
 }

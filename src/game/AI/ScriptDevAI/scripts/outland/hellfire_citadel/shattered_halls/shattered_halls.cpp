@@ -21,6 +21,11 @@ SDComment: currently missing info about door. instance not complete
 SDCategory: Hellfire Citadel, Shattered Halls
 EndScriptData */
 
+// 破碎大厅副本数据脚本实现
+/* 遭遇战概述：
+ * 管理破碎大厅各首领战进度与阿达尔的军旗/限时人质斩杀事件。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "shattered_halls.h"
 #include "AI/EventAI/CreatureEventAI.h"
@@ -37,6 +42,7 @@ instance_shattered_halls::instance_shattered_halls(Map* pMap) : ScriptedInstance
     Initialize();
 }
 
+// SHHActions 相关枚举
 enum SHHActions
 {
     SHH_TRIGGER_LEGIONNAIRE,
@@ -623,6 +629,7 @@ void instance_shattered_halls::DoCastGroupDebuff(uint32 spellId)
     }
 }
 
+// npc_shattered_hands_zealotAI 逻辑实现
 struct npc_shattered_hands_zealotAI : public CreatureEventAI
 {
     npc_shattered_hands_zealotAI(Creature* creature) : CreatureEventAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -665,11 +672,13 @@ struct npc_Shattered_Hand_Scout : public ScriptedAI
 
     bool m_bRunning;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_bRunning = false;
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         // Abuse Prevention for when people revive mid gauntlet and continue onward instead of starting the gauntlet
@@ -677,6 +686,7 @@ struct npc_Shattered_Hand_Scout : public ScriptedAI
             DoStartRunning();
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (who->GetTypeId() == TYPEID_PLAYER && !static_cast<Player*>(who)->IsGameMaster() && who->GetDistance(m_creature) <= 50.f)
@@ -749,6 +759,7 @@ bool AreaTrigger_at_shattered_halls(Player* player, AreaTriggerEntry const* /*at
     return true;
 }
 
+// 注册 instance_shattered_halls 脚本
 void AddSC_instance_shattered_halls()
 {
     Script* pNewScript = new Script;

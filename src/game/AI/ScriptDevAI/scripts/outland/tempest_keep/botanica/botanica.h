@@ -3,6 +3,11 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_BOTANICA_H
+
+// 生态船副本数据头文件
+/* 遭遇战概述：
+ * 定义生态船五大首领枚举。
+ */
 #define DEF_BOTANICA_H
 
 #include "AI/ScriptDevAI/base/TimerAI.h"
@@ -15,6 +20,7 @@ const std::string FIFTH_BLOODWARDER_STRING = "BLOODWARDER_PROTECTOR_GROUP_05";
 const std::string SIX_BLOODWARDER_STRING = "BLOODWARDER_PROTECTOR_GROUP_06";
 const std::string SEVEN_BLOODWARDER_STRING = "BLOODWARDER_PROTECTOR_GROUP_07";
 
+// instance_botanica 副本数据管理类
 class instance_botanica : public ScriptedInstance, public TimerManager
 {
     public:

@@ -1,31 +1,36 @@
 /*! \mainpage
  *
- * \section intro_sec Introduction and links
+ * \section intro_sec Introduction and links / 简介与链接
  * This is the source documentation for the \b %MaNGOS (Massive Network Game %Object Server) project.\n
  * %MaNGOS is an object-oriented Massively Multiplayer Online Role-Playing Game Server (MMORPGS).\n
- * The project documentation and the bug tracker can be found on the <A HREF="http://getmangos.com/wiki">%MaNGOS wiki</A>.
+ * The project documentation and the bug tracker can be found on the <A HREF="http://getmangos.com/wiki">%MaNGOS wiki</A>.\n
+ * 这是 \b %MaNGOS (Massive Network Game %Object Server) 项目的源码文档。\n
+ * %MaNGOS 是一个面向对象的大型多人在线角色扮演游戏服务端（MMORPGS）。\n
+ * 项目文档和问题追踪器可在 <A HREF="http://getmangos.com/wiki">%MaNGOS wiki</A> 查看。
  *
- * \section begin Where to begin?
+ * \section begin Where to begin? / 从哪里开始？
  * If you are interested in understanding the source code of this project you can begin
  * - <A HREF="http://getmangos.com/wiki/">On the wiki</A> to get an overview of the different modules of the server
  * - <A HREF="./modules.html">In this source doumentation</A>, starting at the module hierarchy
+ * 如果您希望了解本项目源码，可以从以下途径开始：\n
+ * - 访问 <A HREF="http://getmangos.com/wiki/">项目 Wiki</A>，了解服务端各模块的整体概览\n
+ * - 浏览 <A HREF="./modules.html">本源码文档的模块层级</A>
  */
 
-/*! \defgroup realmd Realm Daemon
+/*! \defgroup realmd Realm Daemon (登录认证守护进程)
  */
 
-/*! \defgroup mangos Mangos Deamon
+/*! \defgroup mangos Mangos Deamon (MaNGOS 世界服务守护进程)
  */
 
-/*! \defgroup mangosd Daemon starter
+/*! \defgroup mangosd Daemon starter (守护进程启动器)
     \ingroup mangos
  */
 
-/*! \defgroup u2w User Connections
+/*! \defgroup u2w User Connections (用户连接)
     \ingroup mangos
  */
 
-/*! \defgroup world The World
+/*! \defgroup world The World (游戏世界)
     \ingroup mangos
  */
-

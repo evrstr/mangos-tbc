@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: bosses_emerald_dragons
 SD%Complete: 99
-SDComment: Correct models used by Spirit Shade for each race/gender combination are missing (Lethon) / Player summon NYI
+SDComment: Correct models used by Spirit Shade for each race/gender combination are missing (Lethon) / Player summon NYI (四绿龙世界首领：艾莫莉丝、莱索恩、泰拉尔、伊森德雷)
 SDCategory: Emerald Dragon Bosses
 EndScriptData */
 
@@ -34,22 +34,25 @@ EndContentData */
 #include "World/WorldState.h"
 
 /*######
-## boss_emerald_dragon -- Superclass for the four dragons
+## boss_emerald_dragon -- Superclass for the four dragons (四大翡翠巨龙公共基类)
 ######*/
 
+// 四绿龙通用法术枚举
 enum
 {
-    SPELL_MARK_OF_NATURE_PLAYER     = 25040,
-    SPELL_MARK_OF_NATURE_AURA       = 25041,
-    SPELL_SEEPING_FOG_R             = 24813,                // Summons NPC 15224 (Dream Fog) that cast auras 24777 and 24780 on spawn
-    SPELL_SEEPING_FOG_L             = 24814,
-    SPELL_NOXIOUS_BREATH            = 24818,
-    SPELL_TAILSWEEP                 = 15847,
-    SPELL_SUMMON_PLAYER             = 24776,                // Not yet implemented
+    SPELL_MARK_OF_NATURE_PLAYER     = 25040,                // 击杀玩家时施加的自然印记 (玩家)
+    SPELL_MARK_OF_NATURE_AURA       = 25041,                // 自然印记光环 (首领进战附加)
+    SPELL_SEEPING_FOG_R             = 24813,                // Summons NPC 15224 (Dream Fog) that cast auras 24777 and 24780 on spawn (召唤右侧渗流迷雾)
+    SPELL_SEEPING_FOG_L             = 24814,                // 召唤左侧渗流迷雾
+    SPELL_NOXIOUS_BREATH            = 24818,                // 剧毒之息
+    SPELL_TAILSWEEP                 = 15847,                // 扫尾
+    SPELL_SUMMON_PLAYER             = 24776,                // Not yet implemented (召唤玩家)
 
     NPC_YSONDRE = 14887,
 };
 
+// 翡翠巨龙通用 AI 基类 (boss_emerald_dragonAI)
+// 负责自然印记、剧毒之息、扫尾、渗流迷雾等机制，并在生命值 75%/50%/25% 时触发特殊能力
 struct boss_emerald_dragonAI : public ScriptedAI
 {
     boss_emerald_dragonAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -143,7 +146,7 @@ struct boss_emerald_dragonAI : public ScriptedAI
 };
 
 /*######
-## boss_emeriss
+## boss_emeriss (艾莫莉丝 AI：腐蚀之种、快速传染、大地堕落)
 ######*/
 
 enum
@@ -157,6 +160,7 @@ enum
     SPELL_DESPAWN_MUSHROOMS     = 24958,                    // Removes all Putrid Mushrooms in case of raid wipe
 };
 
+// 艾莫莉丝 AI (boss_emerissAI)：生命值 75%/50%/25% 施放大地堕落，死亡玩家生成腐烂蘑菇
 struct boss_emerissAI : public boss_emerald_dragonAI
 {
     boss_emerissAI(Creature* pCreature) : boss_emerald_dragonAI(pCreature) { Reset(); }
@@ -221,7 +225,7 @@ UnitAI* GetAI_boss_emeriss(Creature* pCreature)
 }
 
 /*######
-## boss_lethon
+## boss_lethon (莱索恩 AI：暗影箭雨旋风、暗影之魂)
 ######*/
 
 enum
@@ -240,6 +244,7 @@ enum
     SPELL_SPIRIT_SHAPE_VISUAL   = 24809,
 };
 
+// 莱索恩 AI (boss_lethonAI)：生命值 75%/50%/25% 召唤暗影之魂，暗影之魂走向首领为其回血
 struct boss_lethonAI : public boss_emerald_dragonAI
 {
     boss_lethonAI(Creature* pCreature) : boss_emerald_dragonAI(pCreature) {}
@@ -278,6 +283,7 @@ struct boss_lethonAI : public boss_emerald_dragonAI
     }
 };
 
+// 暗影之魂 AI (npc_spirit_shadeAI)：由被吸取灵魂的玩家处生成，朝莱索恩移动并献祭治疗首领
 struct npc_spirit_shadeAI : public ScriptedAI
 {
     npc_spirit_shadeAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -346,7 +352,7 @@ UnitAI* GetAI_npc_spirit_shade(Creature* pCreature)
 }
 
 /*######
-## boss_taerar
+## boss_taerar (泰拉尔 AI：奥术冲击、放逐自身并召唤 3 只流放之影)
 ######*/
 
 enum
@@ -366,6 +372,7 @@ enum
     NPC_SHADE_OF_TAERAR     = 15302,
 };
 
+// 泰拉尔 AI (boss_taerarAI)：生命值 75%/50%/25% 自我放逐，召唤 3 只泰拉尔之影分身，全部被消灭后解除放逐
 struct boss_taerarAI : public boss_emerald_dragonAI
 {
     boss_taerarAI(Creature* pCreature) : boss_emerald_dragonAI(pCreature) { Reset(); }
@@ -483,7 +490,7 @@ UnitAI* GetAI_boss_taerar(Creature* pCreature)
 }
 
 /*######
-## boss_ysondre
+## boss_ysondre (伊森德雷 AI：闪电之波、召唤狂乱德鲁伊之魂)
 ######*/
 
 enum
@@ -496,6 +503,7 @@ enum
 };
 
 // Ysondre script
+// 伊森德雷 AI (boss_ysondreAI)：生命值 75%/50%/25% 召唤狂乱的德鲁伊之魂
 struct boss_ysondreAI : public boss_emerald_dragonAI
 {
     boss_ysondreAI(Creature* pCreature) : boss_emerald_dragonAI(pCreature) { Reset(); }
@@ -547,6 +555,7 @@ UnitAI* GetAI_boss_ysondre(Creature* pCreature)
     return new boss_ysondreAI(pCreature);
 }
 
+// 注册四绿龙脚本
 void AddSC_bosses_emerald_dragons()
 {
     Script* pNewScript = new Script;

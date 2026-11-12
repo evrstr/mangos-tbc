@@ -34,6 +34,7 @@ AddonHandler::~AddonHandler()
 {
 }
 
+/// 解析客户端插件信息包（zlib 解压）并生成 SMSG_ADDON_INFO 应答包
 bool AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target)
 {
     ByteBuffer AddOnPacked;
@@ -41,6 +42,7 @@ bool AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target)
     uint32 CurrentPosition;
     uint32 TempValue;
 
+    // 客户端暴雪标准插件校验用的公钥数据块（256 字节）
     unsigned char tdata[256] =
     {
         0xC3, 0x5B, 0x50, 0x84, 0xB9, 0x3E, 0x32, 0x42, 0x8C, 0xD0, 0xC7, 0x48, 0xFA, 0x0E, 0x5D, 0x54,
@@ -61,13 +63,13 @@ bool AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target)
         0x0D, 0x36, 0xEA, 0x01, 0xE0, 0xAA, 0x91, 0x20, 0x54, 0xF0, 0x72, 0xD8, 0x1E, 0xC7, 0x89, 0xD2
     };
 
-    // broken addon packet, can't be received from real client
+    // broken addon packet, can't be received from real client (数据包长度不足，非正常客户端请求)
     if (Source.rpos() + 4 > Source.size())
         return false;
 
-    Source >> TempValue;                                   // get real size of the packed structure
+    Source >> TempValue;                                   // get real size of the packed structure (读取解压后的原始数据结构大小)
 
-    // empty addon packet, nothing process, can't be received from real client
+    // empty addon packet, nothing process, can't be received from real client (空插件包，不予处理)
     if (!TempValue)
         return false;
 
@@ -77,11 +79,11 @@ bool AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target)
         return false;
     }
 
-    AddonRealSize = TempValue;                              // temp value because ZLIB only excepts uLongf
+    AddonRealSize = TempValue;                              // temp value because ZLIB only excepts uLongf (zlib 仅接受 uLongf 类型长度)
 
-    CurrentPosition = Source.rpos();                       // get the position of the pointer in the structure
+    CurrentPosition = Source.rpos();                       // get the position of the pointer in the structure (获取压缩负载起始偏移)
 
-    AddOnPacked.resize(AddonRealSize);                      // resize target for zlib action
+    AddOnPacked.resize(AddonRealSize);                      // resize target for zlib action (按解压后大小分配缓冲区)
 
     if (uncompress(const_cast<uint8*>(AddOnPacked.contents()), &AddonRealSize, const_cast<uint8*>(Source.contents() + CurrentPosition), Source.size() - CurrentPosition) == Z_OK)
     {
@@ -105,7 +107,7 @@ bool AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target)
             Target << (uint8)unk1;
             if (unk1)
             {
-                uint8 unk2 = crc != uint64(0x1c776d01);    // If addon is Standard addon CRC
+                uint8 unk2 = crc != uint64(0x1c776d01);    // If addon is Standard addon CRC (非标准插件 CRC 时下发校验公钥数据)
                 Target << (uint8)unk2;
                 if (unk2)
                     Target.append(tdata, sizeof(tdata));
@@ -117,7 +119,7 @@ bool AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target)
             Target << (uint8)unk3;
             if (unk3)
             {
-                // String, 256
+                // String, 256 (保留字符串字段，256 字节)
             }
         }
     }
@@ -129,6 +131,7 @@ bool AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target)
     return true;
 }
 
+// 以下为 1.10.2 旧版服务端禁用插件状态检查参考代码（保留备查）
 /* Code use in 1.10.2 when client not ignore ban state sended for addons. Saved for reference if client switch to use server ban state information
 void AddonHandler::BuildAddonPacket(WorldPacket& Source, WorldPacket& Target, uint32 Packetoffset)
 {

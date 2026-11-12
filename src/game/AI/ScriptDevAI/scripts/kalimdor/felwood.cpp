@@ -21,6 +21,10 @@ SDComment: Quest support: 4261, 4506, 5203, 7603, 7603 (Summon Pollo Grande)
 SDCategory: Felwood
 EndScriptData */
 
+/**
+ * 费伍德森林 (Felwood) 净化植物与任务 NPC 脚本
+ */
+
 /* ContentData
 npc_kitten
 npc_niby_the_almighty
@@ -38,20 +42,22 @@ EndContentData */
 # npc_kitten
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_SAB_JUMP              = -1000541,
-    EMOTE_SAB_FOLLOW            = -1000542,
+    EMOTE_SAB_JUMP              = -1000541,                 // 剧情台词/喊话文本 ID
+    EMOTE_SAB_FOLLOW            = -1000542,                 // 剧情台词/喊话文本 ID
 
-    SPELL_CORRUPT_SABER_VISUAL  = 16510,
+    SPELL_CORRUPT_SABER_VISUAL  = 16510,                    // 技能法术 ID
 
-    QUEST_CORRUPT_SABER         = 4506,
-    NPC_WINNA                   = 9996,
+    QUEST_CORRUPT_SABER         = 4506,                     // 任务 ID
+    NPC_WINNA                   = 9996,                     // NPC 条目 ID
     NPC_CORRUPT_SABER           = 10042
 };
 
 #define GOSSIP_ITEM_RELEASE     "I want to release the corrupted saber to Winna."
 
+// npc_kittenAI NPC 脚本 AI
 struct npc_kittenAI : public FollowerAI
 {
     npc_kittenAI(Creature* pCreature) : FollowerAI(pCreature)
@@ -64,7 +70,7 @@ struct npc_kittenAI : public FollowerAI
 
             pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
 
-            // find a decent way to move to center of moonwell
+            // find a decent way to move to center of moonwell (说明)
         }
 
         m_uiMoonwellCooldown = 7500;
@@ -73,11 +79,11 @@ struct npc_kittenAI : public FollowerAI
 
     uint32 m_uiMoonwellCooldown;
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
     void MoveInLineOfSight(Unit* pWho) override
     {
-        // should not have npcflag by default, so set when expected
+        // should not have npcflag by default, so set when expected (说明)
         if (!m_creature->GetVictim() && !m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP) && HasFollowState(STATE_FOLLOW_INPROGRESS) && pWho->GetEntry() == NPC_WINNA)
         {
             if (m_creature->IsWithinDistInMap(pWho, INTERACTION_DISTANCE))
@@ -107,18 +113,18 @@ struct npc_kittenAI : public FollowerAI
     }
 };
 
-UnitAI* GetAI_npc_kitten(Creature* pCreature)
+UnitAI* GetAI_npc_kitten(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_kittenAI(pCreature);
 }
 
-// 16510 - Corrupted Saber Visual (DND)
+// 16510 - Corrupted Saber Visual (DND) (法术 16510 - Corrupted Saber Visual (DND))
 struct CorruptedSaberVisual : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* caster = spell->GetCaster();
-        // Not nice way, however using UpdateEntry will not be correct.
+        // Not nice way, however using UpdateEntry will not be correct. (说明)
         if (const CreatureInfo* temp = GetCreatureTemplateStore(NPC_CORRUPT_SABER))
         {
             caster->SetEntry(temp->Entry);
@@ -132,7 +138,7 @@ struct CorruptedSaberVisual : public SpellScript
     }
 };
 
-bool GossipHello_npc_corrupt_saber(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_corrupt_saber(Player* pPlayer, Creature* pCreature) // 对话交互问候处理
 {
     if (pPlayer->GetQuestStatus(QUEST_CORRUPT_SABER) == QUEST_STATUS_INCOMPLETE)
     {
@@ -163,26 +169,28 @@ bool GossipSelect_npc_corrupt_saber(Player* pPlayer, Creature* pCreature, uint32
 # npc_captured_arkonarin
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_ESCORT_START                = 6433,
+    SAY_ESCORT_START                = 6433,                 // 剧情台词/喊话文本 ID
 
-    SPELL_MORTAL_STRIKE             = 16856,
-    SPELL_CLEAVE                    = 15496,
+    SPELL_MORTAL_STRIKE             = 16856,                // 技能法术 ID
+    SPELL_CLEAVE                    = 15496,                // 技能法术：顺劈斩
 
-    QUEST_ID_RESCUE_JAEDENAR        = 5203,
-    NPC_JAEDENAR_LEGIONNAIRE        = 9862,
-    NPC_SPIRT_TREY                  = 11141,
-    GO_ARKONARIN_CAGE               = 176306,
+    QUEST_ID_RESCUE_JAEDENAR        = 5203,                 // 任务 ID
+    NPC_JAEDENAR_LEGIONNAIRE        = 9862,                 // NPC 条目 ID
+    NPC_SPIRT_TREY                  = 11141,                // NPC 条目 ID
+    GO_ARKONARIN_CAGE               = 176306,               // 游戏对象条目 ID
 
 
 
-    PATH_ID                         = 11016,                      // Sniffed Waypoints for Escort Event
+    PATH_ID                         = 11016,                      // Sniffed Waypoints for Escort Event (路径点护送事件)
 };
 
-// RND Aggro Texts
+// RND Aggro Texts (说明)
 static const int32 aRandomAggro[] = { 6801, 6802, 6803 };
 
+// npc_captured_arkonarinAI NPC 脚本 AI
 struct npc_captured_arkonarinAI : public npc_escortAI
 {
     npc_captured_arkonarinAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -198,7 +206,7 @@ struct npc_captured_arkonarinAI : public npc_escortAI
     uint32 m_uiMortalStrikeTimer;
     uint32 m_uiCleaveTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
             m_bCanAttack = false;
@@ -207,7 +215,7 @@ struct npc_captured_arkonarinAI : public npc_escortAI
         m_uiCleaveTimer = urand(1000, 4000);
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         if (roll_chance_i(80))
             DoBroadcastText(aRandomAggro[urand(0, 2)], m_creature, pWho);
@@ -232,7 +240,7 @@ struct npc_captured_arkonarinAI : public npc_escortAI
         }
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -262,7 +270,7 @@ struct npc_captured_arkonarinAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
@@ -290,12 +298,12 @@ struct npc_captured_arkonarinAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_captured_arkonarin(Creature* pCreature)
+UnitAI* GetAI_npc_captured_arkonarin(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_captured_arkonarinAI(pCreature);
 }
 
-bool QuestAccept_npc_captured_arkonarin(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_captured_arkonarin(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_ID_RESCUE_JAEDENAR)
         pCreature->AI()->SendAIEvent(AI_EVENT_START_ESCORT, pPlayer, pCreature, pQuest->GetQuestId());
@@ -307,26 +315,27 @@ bool QuestAccept_npc_captured_arkonarin(Player* pPlayer, Creature* pCreature, co
 # npc_arei
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_AREI_ESCORT_START           = -1001159,
-    SAY_ATTACK_IRONTREE             = -1001160,
-    SAY_ATTACK_TOXIC_HORROR         = -1001161,
-    SAY_EXIT_WOODS                  = -1001162,
-    SAY_CLEAR_PATH                  = -1001163,
-    SAY_ASHENVALE                   = -1001164,
-    SAY_TRANSFORM                   = -1001165,
-    SAY_LIFT_CURSE                  = -1001166,
-    SAY_AREI_ESCORT_COMPLETE        = -1001167,
+    SAY_AREI_ESCORT_START           = -1001159,             // 剧情台词/喊话文本 ID
+    SAY_ATTACK_IRONTREE             = -1001160,             // 剧情台词/喊话文本 ID
+    SAY_ATTACK_TOXIC_HORROR         = -1001161,             // 剧情台词/喊话文本 ID
+    SAY_EXIT_WOODS                  = -1001162,             // 剧情台词/喊话文本 ID
+    SAY_CLEAR_PATH                  = -1001163,             // 剧情台词/喊话文本 ID
+    SAY_ASHENVALE                   = -1001164,             // 剧情台词/喊话文本 ID
+    SAY_TRANSFORM                   = -1001165,             // 剧情台词/喊话文本 ID
+    SAY_LIFT_CURSE                  = -1001166,             // 剧情台词/喊话文本 ID
+    SAY_AREI_ESCORT_COMPLETE        = -1001167,             // 剧情台词/喊话文本 ID
 
-    SPELL_WITHER_STRIKE             = 5337,
-    SPELL_AREI_TRANSFORM            = 14888,
+    SPELL_WITHER_STRIKE             = 5337,                 // 技能法术 ID
+    SPELL_AREI_TRANSFORM            = 14888,                // 技能法术 ID
 
-    NPC_AREI                        = 9598,
-    NPC_TOXIC_HORROR                = 7132,
-    NPC_IRONTREE_WANDERER           = 7138,
-    NPC_IRONTREE_STOMPER            = 7139,
-    QUEST_ID_ANCIENT_SPIRIT         = 4261,
+    NPC_AREI                        = 9598,                 // NPC 条目 ID
+    NPC_TOXIC_HORROR                = 7132,                 // NPC 条目 ID
+    NPC_IRONTREE_WANDERER           = 7138,                 // NPC 条目 ID
+    NPC_IRONTREE_STOMPER            = 7139,                 // NPC 条目 ID
+    QUEST_ID_ANCIENT_SPIRIT         = 4261,                 // 任务 ID
 };
 
 static const DialogueEntry aEpilogDialogue[] =
@@ -339,6 +348,7 @@ static const DialogueEntry aEpilogDialogue[] =
     {0, 0, 0},
 };
 
+// npc_areiAI NPC 脚本 AI
 struct npc_areiAI : public npc_escortAI, private DialogueHelper
 {
     npc_areiAI(Creature* pCreature) : npc_escortAI(pCreature),
@@ -356,12 +366,12 @@ struct npc_areiAI : public npc_escortAI, private DialogueHelper
 
     GuidList m_lSummonsGuids;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiWitherStrikeTimer = urand(1000, 4000);
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         if ((pWho->GetEntry() == NPC_IRONTREE_WANDERER || pWho->GetEntry() == NPC_IRONTREE_STOMPER) && !m_bAggroIrontree)
         {
@@ -376,13 +386,13 @@ struct npc_areiAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         switch (pSummoned->GetEntry())
         {
             case NPC_IRONTREE_STOMPER:
                 DoScriptText(SAY_EXIT_WOODS, m_creature, pSummoned);
-            // no break;
+            // no break; (无 break 直落)
             case NPC_IRONTREE_WANDERER:
                 pSummoned->AI()->AttackStart(m_creature);
                 m_lSummonsGuids.push_back(pSummoned->GetObjectGuid());
@@ -412,7 +422,7 @@ struct npc_areiAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         if (uiPointId == 37)
         {
@@ -456,7 +466,7 @@ struct npc_areiAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         DialogueUpdate(uiDiff);
 
@@ -475,12 +485,12 @@ struct npc_areiAI : public npc_escortAI, private DialogueHelper
     }
 };
 
-UnitAI* GetAI_npc_arei(Creature* pCreature)
+UnitAI* GetAI_npc_arei(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_areiAI(pCreature);
 }
 
-bool QuestAccept_npc_arei(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_arei(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_ID_ANCIENT_SPIRIT)
         pCreature->AI()->SendAIEvent(AI_EVENT_START_ESCORT, pPlayer, pCreature, pQuest->GetQuestId());
@@ -488,7 +498,7 @@ bool QuestAccept_npc_arei(Player* pPlayer, Creature* pCreature, const Quest* pQu
     return true;
 }
 
-void AddSC_felwood()
+void AddSC_felwood() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_kitten";

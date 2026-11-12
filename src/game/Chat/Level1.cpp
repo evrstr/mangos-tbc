@@ -44,7 +44,8 @@
 #include "VMapFactory.h"
 #endif
 
-//-----------------------Npc Commands-----------------------
+//-----------------------Npc Commands----------------------- | -----------------------NPC 说话与表情命令-----------------------
+/// 控制选中生物发出普通说话消息
 bool ChatHandler::HandleNpcSayCommand(char* args)
 {
     if (!*args)
@@ -63,6 +64,7 @@ bool ChatHandler::HandleNpcSayCommand(char* args)
     return true;
 }
 
+/// 控制选中生物发出大喊消息
 bool ChatHandler::HandleNpcYellCommand(char* args)
 {
     if (!*args)
@@ -81,7 +83,7 @@ bool ChatHandler::HandleNpcYellCommand(char* args)
     return true;
 }
 
-// show text emote by creature in chat
+// show text emote by creature in chat | 控制选中生物发出文本表情消息
 bool ChatHandler::HandleNpcTextEmoteCommand(char* args)
 {
     if (!*args)
@@ -101,7 +103,7 @@ bool ChatHandler::HandleNpcTextEmoteCommand(char* args)
     return true;
 }
 
-// make npc whisper to player
+// make npc whisper to player | 控制选中生物向指定玩家发送密语
 bool ChatHandler::HandleNpcWhisperCommand(char* args)
 {
     Player* target;
@@ -117,7 +119,7 @@ bool ChatHandler::HandleNpcWhisperCommand(char* args)
     if (!pCreature || !target || !*args)
         return false;
 
-    // check online security
+    // check online security | 校验目标玩家账号权限等级
     if (HasLowerSecurity(target))
         return false;
 
@@ -127,7 +129,7 @@ bool ChatHandler::HandleNpcWhisperCommand(char* args)
 }
 //----------------------------------------------------------
 
-// global announce
+// global announce | 全服系统文字公告（聊天框显示）
 bool ChatHandler::HandleAnnounceCommand(char* args)
 {
     if (!*args)
@@ -137,7 +139,7 @@ bool ChatHandler::HandleAnnounceCommand(char* args)
     return true;
 }
 
-// notification player at the screen
+// notification player at the screen | 全服屏幕中央强提醒横幅公告
 bool ChatHandler::HandleNotifyCommand(char* args)
 {
     if (!*args)
@@ -153,7 +155,7 @@ bool ChatHandler::HandleNotifyCommand(char* args)
     return true;
 }
 
-// Enable\Dissable GM Mode
+// Enable\Dissable GM Mode | 开启或关闭 GM 模式
 bool ChatHandler::HandleGMCommand(char* args)
 {
     if (!*args)
@@ -187,7 +189,7 @@ bool ChatHandler::HandleGMCommand(char* args)
     return true;
 }
 
-// Acquire random unusual land mount or visually mount displayid or selected creature
+// Acquire random unusual land mount or visually mount displayid or selected creature | 骑乘随机稀有陆地坐骑，或指定模型 ID / 选中生物的模型
 bool ChatHandler::HandleGMMountUpCommand(char* args)
 {
     if (*args)
@@ -229,7 +231,7 @@ bool ChatHandler::HandleGMMountUpCommand(char* args)
     return ModifyMountCommandHelper(m_session->GetPlayer(), args);
 }
 
-// Enable\Dissable Invisible mode
+// Enable\Dissable Invisible mode | 开启或关闭 GM 隐身模式
 bool ChatHandler::HandleGMVisibleCommand(char* args)
 {
     if (!*args)
@@ -269,6 +271,7 @@ bool ChatHandler::HandleGMVisibleCommand(char* args)
     return true;
 }
 
+/// 查询并输出选中目标或指定 GUID 对象的详细地图、区域、坐标、网格、地形高度及液体状态
 bool ChatHandler::HandleGPSCommand(char* args)
 {
     WorldObject* obj = nullptr;
@@ -393,7 +396,7 @@ bool ChatHandler::HandleGPSCommand(char* args)
     return true;
 }
 
-// Summon Player
+// Summon Player | 召唤指定玩家到 GM 身边（支持离线玩家修改数据库坐标）
 bool ChatHandler::HandleNamegoCommand(char* args)
 {
     Player* target;
@@ -510,7 +513,7 @@ bool ChatHandler::HandleNamegoCommand(char* args)
     return true;
 }
 
-// Teleport to Player
+// Teleport to Player | 传送 GM 到指定玩家所在位置（支持副本绑定同步与载具甲板定位）
 bool ChatHandler::HandleGonameCommand(char* args)
 {
     Player* target;
@@ -671,7 +674,7 @@ bool ChatHandler::HandleGonameCommand(char* args)
     return true;
 }
 
-// Teleport player to last position
+// Teleport player to last position | 将目标玩家传回上次传送前记录的召回坐标 (.recall)
 bool ChatHandler::HandleRecallCommand(char* args)
 {
     Player* target;
@@ -692,7 +695,7 @@ bool ChatHandler::HandleRecallCommand(char* args)
     return HandleGoHelper(target, target->m_recallMap, target->m_recallX, target->m_recallY, &target->m_recallZ, &target->m_recallO);
 }
 
-// Edit Player HP
+// Edit Player HP | 修改选中玩家的当前生命值与最大生命值
 bool ChatHandler::HandleModifyHPCommand(char* args)
 {
     if (!*args)
@@ -730,7 +733,7 @@ bool ChatHandler::HandleModifyHPCommand(char* args)
     return true;
 }
 
-// Edit Player Mana
+// Edit Player Mana | 修改选中玩家的当前法力值与最大法力值
 bool ChatHandler::HandleModifyManaCommand(char* args)
 {
     if (!*args)
@@ -768,7 +771,7 @@ bool ChatHandler::HandleModifyManaCommand(char* args)
     return true;
 }
 
-// Edit Player Energy
+// Edit Player Energy | 修改选中玩家的能量值（内部以 10 倍存储）
 bool ChatHandler::HandleModifyEnergyCommand(char* args)
 {
     if (!*args)
@@ -808,7 +811,7 @@ bool ChatHandler::HandleModifyEnergyCommand(char* args)
     return true;
 }
 
-// Edit Player Rage
+// Edit Player Rage | 修改选中玩家的怒气值（内部以 10 倍存储）
 bool ChatHandler::HandleModifyRageCommand(char* args)
 {
     if (!*args)
@@ -846,7 +849,7 @@ bool ChatHandler::HandleModifyRageCommand(char* args)
     return true;
 }
 
-// Edit Player Faction
+// Edit Player Faction | 查询或修改选中生物的阵营模板及单位标志位
 bool ChatHandler::HandleModifyFactionCommand(char* args)
 {
     Creature* chr = getSelectedCreature();
@@ -910,7 +913,7 @@ bool ChatHandler::HandleModifyFactionCommand(char* args)
     return true;
 }
 
-// Edit Player TP
+// Edit Player TP | 修改选中玩家的可用自由天赋点数
 bool ChatHandler::HandleModifyTalentCommand(char* args)
 {
     if (!*args)
@@ -936,7 +939,7 @@ bool ChatHandler::HandleModifyTalentCommand(char* args)
     return true;
 }
 
-// Enable On\OFF all taxi paths
+// Enable On\OFF all taxi paths | 开启或关闭目标玩家的全部飞行点作弊解锁
 bool ChatHandler::HandleTaxiCheatCommand(char* args)
 {
     bool value;
@@ -972,7 +975,7 @@ bool ChatHandler::HandleTaxiCheatCommand(char* args)
     return true;
 }
 
-// Edit Player Aspeed
+// Edit Player Aspeed | 同时修改选中玩家的行走、奔跑、游泳和飞行速度倍率
 bool ChatHandler::HandleModifyASpeedCommand(char* args)
 {
     if (!*args)
@@ -1020,7 +1023,7 @@ bool ChatHandler::HandleModifyASpeedCommand(char* args)
     return true;
 }
 
-// Edit Player Speed
+// Edit Player Speed | 修改选中玩家的奔跑速度倍率
 bool ChatHandler::HandleModifySpeedCommand(char* args)
 {
     if (!*args)
@@ -1065,7 +1068,7 @@ bool ChatHandler::HandleModifySpeedCommand(char* args)
     return true;
 }
 
-// Edit Player Swim Speed
+// Edit Player Swim Speed | 修改选中玩家的游泳速度倍率
 bool ChatHandler::HandleModifySwimCommand(char* args)
 {
     if (!*args)
@@ -1110,7 +1113,7 @@ bool ChatHandler::HandleModifySwimCommand(char* args)
     return true;
 }
 
-// Edit Player Walk Speed
+// Edit Player Walk Speed | 修改选中玩家的后退移动速度倍率
 bool ChatHandler::HandleModifyBWalkCommand(char* args)
 {
     if (!*args)
@@ -1155,7 +1158,7 @@ bool ChatHandler::HandleModifyBWalkCommand(char* args)
     return true;
 }
 
-// Edit Player Fly
+// Edit Player Fly | 修改选中玩家的飞行速度倍率
 bool ChatHandler::HandleModifyFlyCommand(char* args)
 {
     if (!*args)
@@ -1191,7 +1194,7 @@ bool ChatHandler::HandleModifyFlyCommand(char* args)
     return true;
 }
 
-// Edit Player Scale
+// Edit Player Scale | 修改选中目标的模型缩放比例
 bool ChatHandler::HandleModifyScaleCommand(char* args)
 {
     if (!*args)
@@ -1230,13 +1233,13 @@ bool ChatHandler::HandleModifyScaleCommand(char* args)
     return true;
 }
 
-// Provide Player a random unusual mount
+// Provide Player a random unusual mount | 为选中玩家随机赋予一匹特殊陆地坐骑
 bool ChatHandler::HandleModifyMountCommand(char* args)
 {
     return ModifyMountCommandHelper(getSelectedPlayer(), args);
 }
 
-// Edit Player money
+// Edit Player money | 增减选中玩家的金钱数量（单位：铜币）
 bool ChatHandler::HandleModifyMoneyCommand(char* args)
 {
     if (!*args)
@@ -1299,6 +1302,7 @@ bool ChatHandler::HandleModifyMoneyCommand(char* args)
     return true;
 }
 
+/// 修改选中玩家的荣誉点数
 bool ChatHandler::HandleModifyHonorCommand(char* args)
 {
     if (!*args)
@@ -1325,6 +1329,7 @@ bool ChatHandler::HandleModifyHonorCommand(char* args)
     return true;
 }
 
+/// 传送当前 GM 至指定 game_tele 传送点
 bool ChatHandler::HandleTeleCommand(char* args)
 {
     if (!*args)
@@ -1345,6 +1350,7 @@ bool ChatHandler::HandleTeleCommand(char* args)
     return HandleGoHelper(_player, tele->mapId, tele->position_x, tele->position_y, &tele->position_z, &tele->orientation);
 }
 
+/// 在 AreaTable.dbc 中按多语言区域名模糊查找区域 ID
 bool ChatHandler::HandleLookupAreaCommand(char* args)
 {
     if (!*args)
@@ -1411,7 +1417,7 @@ bool ChatHandler::HandleLookupAreaCommand(char* args)
     return true;
 }
 
-// Find tele in game_tele order by name
+// Find tele in game_tele order by name | 按名称模糊检索 game_tele 传送点列表
 bool ChatHandler::HandleLookupTeleCommand(char* args)
 {
     if (!*args)
@@ -1454,7 +1460,7 @@ bool ChatHandler::HandleLookupTeleCommand(char* args)
     return true;
 }
 
-// Enable/Disable accept whispers (for GM)
+// Enable/Disable accept whispers (for GM) | 开启或关闭 GM 接收普通玩家密语开关
 bool ChatHandler::HandleWhispersCommand(char* args)
 {
     if (!*args)
@@ -1487,7 +1493,7 @@ bool ChatHandler::HandleWhispersCommand(char* args)
     return true;
 }
 
-// Save all players in the world
+// Save all players in the world | 强制保存全服所有在线玩家数据到数据库
 bool ChatHandler::HandleSaveAllCommand(char* /*args*/)
 {
     sObjectAccessor.SaveAllPlayers();
@@ -1495,7 +1501,7 @@ bool ChatHandler::HandleSaveAllCommand(char* /*args*/)
     return true;
 }
 
-// Send mail by command
+// Send mail by command | 通过命令向指定玩家发送纯文本/标题系统邮件
 bool ChatHandler::HandleSendMailCommand(char* args)
 {
     // format: name "subject text" "mail text"
@@ -1521,7 +1527,7 @@ bool ChatHandler::HandleSendMailCommand(char* args)
     return true;
 }
 
-// teleport player to given game_tele.entry
+// teleport player to given game_tele.entry | 将指定在线或离线玩家传送到目标传送点
 bool ChatHandler::HandleTeleNameCommand(char* args)
 {
     char* nameStr = ExtractOptNotLastArg(&args);
@@ -1576,7 +1582,7 @@ bool ChatHandler::HandleTeleNameCommand(char* args)
     return true;
 }
 
-// Teleport group to given game_tele.entry
+// Teleport group to given game_tele.entry | 将选中玩家所在整个队伍传送至目标传送点
 bool ChatHandler::HandleTeleGroupCommand(char* args)
 {
     if (!*args)
@@ -1646,7 +1652,7 @@ bool ChatHandler::HandleTeleGroupCommand(char* args)
     return true;
 }
 
-// Summon group of player
+// Summon group of player | 将目标玩家所在整个队伍的所有在线成员召唤到 GM 身边
 bool ChatHandler::HandleGroupgoCommand(char* args)
 {
     Player* target;
@@ -1733,6 +1739,7 @@ bool ChatHandler::HandleGroupgoCommand(char* args)
     return true;
 }
 
+/// 通用传送辅助函数：校验地图与坐标合法性（未指定 Z 时自动计算地面/水面高度），记录召回点并执行传送
 bool ChatHandler::HandleGoHelper(Player* player, uint32 mapid, float x, float y, float const* zPtr, float const* ortPtr)
 {
     float z;
@@ -1777,6 +1784,7 @@ bool ChatHandler::HandleGoHelper(Player* player, uint32 mapid, float x, float y,
     return true;
 }
 
+/// 传送至指定 ID 或超链接的飞行点坐标
 bool ChatHandler::HandleGoTaxinodeCommand(char* args)
 {
     Player* _player = m_session->GetPlayer();
@@ -1803,6 +1811,7 @@ bool ChatHandler::HandleGoTaxinodeCommand(char* args)
     return HandleGoHelper(_player, node->map_id, node->x, node->y, &node->z);
 }
 
+/// 传送至指定三维坐标 (x y z [mapid]) 或位置超链接
 bool ChatHandler::HandleGoCommand(char* args)
 {
     if (!*args)
@@ -1834,7 +1843,7 @@ bool ChatHandler::HandleGoCommand(char* args)
 
 
 
-// teleport at coordinates
+// teleport at coordinates | 传送至指定平面坐标 (x y [mapid])，Z 轴自动落地
 bool ChatHandler::HandleGoXYCommand(char* args)
 {
     Player* _player = m_session->GetPlayer();
@@ -1854,7 +1863,7 @@ bool ChatHandler::HandleGoXYCommand(char* args)
     return HandleGoHelper(_player, mapid, x, y);
 }
 
-// teleport at coordinates, including Z
+// teleport at coordinates, including Z | 传送至指定三维坐标（支持逗号分隔，禁止直接传战场/竞技场）
 bool ChatHandler::HandleGoXYZCommand(char* args)
 {
     if (!*args)
@@ -1900,7 +1909,7 @@ bool ChatHandler::HandleGoXYZCommand(char* args)
     return HandleGoHelper(_player, mapid, x, y, &z);
 }
 
-// teleport at coordinates
+// teleport at coordinates | 按区域百分比坐标 (0-100) 传送到当前或指定地图区域
 bool ChatHandler::HandleGoZoneXYCommand(char* args)
 {
     Player* _player = m_session->GetPlayer();
@@ -1955,7 +1964,7 @@ bool ChatHandler::HandleGoZoneXYCommand(char* args)
     return HandleGoHelper(_player, mapEntry->MapID, x, y);
 }
 
-// teleport to grid
+// teleport to grid | 传送至指定 Grid 网格中心点
 bool ChatHandler::HandleGoGridCommand(char* args)
 {
     Player* _player = m_session->GetPlayer();
@@ -1979,6 +1988,7 @@ bool ChatHandler::HandleGoGridCommand(char* args)
     return HandleGoHelper(_player, mapid, x, y);
 }
 
+/// 相对当前位置与朝向按前/右/上/角度偏移微调传送 (.go warp)
 bool ChatHandler::HandleGoWarpCommand(char* args)
 {
     if (!*args)
@@ -2035,6 +2045,7 @@ bool ChatHandler::HandleGoWarpCommand(char* args)
     return true;
 }
 
+/// 设置自身醉酒度百分比 (0-100)
 bool ChatHandler::HandleModifyDrunkCommand(char* args)
 {
     if (!*args)    return false;
@@ -2050,7 +2061,7 @@ bool ChatHandler::HandleModifyDrunkCommand(char* args)
     return true;
 }
 
-// Enables or disables hiding of the staff badge
+// Enables or disables hiding of the staff badge | 开启或关闭聊天名前的 <GM> 官方徽章标识
 bool ChatHandler::HandleGMChatCommand(char* args)
 {
     if (!*args)
@@ -2084,6 +2095,7 @@ bool ChatHandler::HandleGMChatCommand(char* args)
     return true;
 }
 
+/// 辅助函数：按账号权限等级从对应稀有度坐骑池中随机施放一只坐骑法术
 bool ChatHandler::ModifyMountCommandHelper(Player* target, char* args)
 {
     if (!target)
@@ -2281,6 +2293,7 @@ bool ChatHandler::ModifyMountCommandHelper(Player* target, char* args)
     return false;
 }
 
+/// 将客户端视角切换绑定到当前选中单位
 bool ChatHandler::HandleSetViewCommand(char* /*args*/)
 {
     if (Unit* unit = getSelectedUnit())
@@ -2295,6 +2308,7 @@ bool ChatHandler::HandleSetViewCommand(char* /*args*/)
     return true;
 }
 
+/// 列出当前阵营活跃人数最多的自定义或静态聊天频道
 bool ChatHandler::HandleChannelListCommand(char* args)
 {
     uint32 max = 10;
@@ -2345,6 +2359,7 @@ bool ChatHandler::HandleChannelListCommand(char* args)
     return true;
 }
 
+/// 手动开启或关闭指定自定义频道的静态公共频道属性
 bool ChatHandler::HandleChannelStaticCommand(char* args)
 {
     char* name = ExtractLiteralArg(&args);
@@ -2384,6 +2399,7 @@ bool ChatHandler::HandleChannelStaticCommand(char* args)
     return true;
 }
 
+/// 热重载反作弊模块规则与垃圾消息库数据
 bool ChatHandler::HandleReloadAnticheatCommand(char*)
 {
     sAnticheatLib->Reload();

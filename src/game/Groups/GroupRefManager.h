@@ -25,6 +25,7 @@ class Group;
 class Player;
 class GroupReference;
 
+/// 队伍成员引用链表管理器（维护小队/团队中在线成员玩家的侵入式链表）
 class GroupRefManager : public RefManager<Group, Player>
 {
     public:

@@ -21,32 +21,37 @@ SDComment:
 SDCategory: Blackrock Depths
 EndScriptData */
 
+// 安格弗将军（General Angerforge）首领战 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_ALARM                 = -1230035,
+    EMOTE_ALARM                 = -1230035,                 // 警报 表情动作 ID
 
-    SPELL_FLURRY                = 15088,
-    SPELL_ENRAGE                = 15097,
-    SPELL_SUNDER_ARMOR          = 15572,
+    SPELL_FLURRY                = 15088,                    // 乱击 法术 ID
+    SPELL_ENRAGE                = 15097,                    // 狂暴 法术 ID
+    SPELL_SUNDER_ARMOR          = 15572,                    // sunderarmor 法术 ID
 
-    NPC_ANVILRAGE_MEDIC         = 8894,
-    NPC_ANVILRAGE_RESERVIST     = 8901,
+    NPC_ANVILRAGE_MEDIC         = 8894,                     // anvilrage医师 Entry ID
+    NPC_ANVILRAGE_RESERVIST     = 8901,                     // anvilragereservist Entry ID
 
-    NPC_ELITE_AMOUNT            = 2,
-    NPC_NORMAL_AMOUNT           = 8,
+    NPC_ELITE_AMOUNT            = 2,                        // eliteamount Entry ID
+    NPC_NORMAL_AMOUNT           = 8,                        // normalamount Entry ID
 };
 
 static const float aAlarmPoint[4] = {717.343f, 22.116f, -45.4321f, 3.1415f};
 
+// 首领战 AI：安格弗（general_angerforge）
 struct boss_general_angerforgeAI : public ScriptedAI
 {
     boss_general_angerforgeAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiSunderArmorTimer;
-    uint32 m_uiAlarmTimer;
+    uint32 m_uiSunderArmorTimer;                            // SunderArmor 技能计时器
+    uint32 m_uiAlarmTimer;                                  // Alarm 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiSunderArmorTimer = urand(5 * IN_MILLISECONDS, 10 * IN_MILLISECONDS);
@@ -66,15 +71,17 @@ struct boss_general_angerforgeAI : public ScriptedAI
         m_creature->SummonCreature(uiEntry, fX, fY, fZ, aAlarmPoint[3], TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 30 * IN_MILLISECONDS);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (m_creature->GetVictim())
             pSummoned->AI()->AttackStart(m_creature->GetVictim());
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -105,15 +112,17 @@ struct boss_general_angerforgeAI : public ScriptedAI
                 m_uiAlarmTimer -= uiDiff;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_general_angerforge
 UnitAI* GetAI_boss_general_angerforge(Creature* pCreature)
 {
     return new boss_general_angerforgeAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_general_angerforge
 void AddSC_boss_general_angerforge()
 {
     Script* pNewScript = new Script;

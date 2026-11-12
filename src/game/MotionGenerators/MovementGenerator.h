@@ -29,42 +29,50 @@ class Unit;
 class Creature;
 class Player;
 
+/// 移动生成器抽象基类：由 MotionMaster 以栈式结构调度，控制单位的各类移动行为
 class MovementGenerator
 {
     public:
         virtual ~MovementGenerator();
 
-        // called before adding movement generator to motion stack
+        // called before adding movement generator to motion stack (压入运动栈激活前调用)
         virtual void Initialize(Unit&) = 0;
-        // called aftre remove movement generator from motion stack
+        // called aftre remove movement generator from motion stack (从运动栈弹出移除后调用)
         virtual void Finalize(Unit&) = 0;
 
-        // called before lost top position (before push new movement generator above)
+        // called before lost top position (before push new movement generator above) (被更高优先级生成器压栈覆盖前调用)
         virtual void Interrupt(Unit&) = 0;
-        // called after return movement generator to top position (after remove above movement generator)
+        // called after return movement generator to top position (after remove above movement generator) (上层生成器移除后重新回到栈顶时调用)
         virtual void Reset(Unit&) = 0;
 
+        /// 每帧驱动移动逻辑，返回 false 表示移动已完成并可从栈顶过期移除
         virtual bool Update(Unit&, const uint32& time_diff) = 0;
 
         virtual MovementGeneratorType GetMovementGeneratorType() const = 0;
         virtual Unit* GetCurrentTarget() const { return nullptr; }
 
+        /// 单位移动速度变化时的通知回调
         virtual void UnitSpeedChanged() { }
 
         // used by Evade code for select point to evade with expected restart default movement
+        // 供脱战返巢逻辑查询复位坐标（例如巡逻中途接战后的返回点）
         virtual bool GetResetPosition(Unit&, Position& pos) const { return false; }
         virtual void SetResetPosition(Unit&, Position const& pos) { }
 
         // given destination unreachable? due to pathfinsing or other
+        // 目标点是否可达（寻路或地形不可达时返回 false）
         virtual bool IsReachable() const { return true; }
 
+        /// 过期后是否自动移除（默认 false）
         virtual bool IsRemovedOnExpire() const { return false; }
 
         // used for check from Update call is movegen still be active (top movement generator)
         // after some not safe for this calls
+        // 检查当前生成器是否仍处于 MotionMaster 栈顶（防止 Update 内部触发重入清栈后继续操作）
         bool IsActive(Unit& u);
 };
 
+/// CRTP 中间模板基类：将 Unit& 接口静态派发给子类强类型实现（如 Creature&）
 template<class T, class D>
 class MovementGeneratorMedium : public MovementGenerator
 {

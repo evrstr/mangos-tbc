@@ -32,9 +32,10 @@
 INSTANTIATE_SINGLETON_1(CreatureEventAIMgr);
 
 // -------------------
+// 从数据库 creature_ai_summons 表加载 EventAI 预设召唤点坐标与存活时间
 void CreatureEventAIMgr::LoadCreatureEventAI_Summons(bool check_entry_use)
 {
-    // Drop Existing EventSummon Map
+    // Drop Existing EventSummon Map (清空旧召唤点映射)
     m_CreatureEventAI_Summon_Map.clear();
 
     // Gather additional data for EventAI
@@ -85,6 +86,7 @@ void CreatureEventAIMgr::LoadCreatureEventAI_Summons(bool check_entry_use)
     }
 }
 
+// 扫描已加载的 Entry/Guid 事件表，报告未被引用的冗余召唤点条目
 void CreatureEventAIMgr::CheckUnusedAISummons()
 {
     std::set<int32> idx_set;
@@ -123,6 +125,7 @@ void CreatureEventAIMgr::CheckUnusedAISummons()
 }
 
 /// Helper function to check if a target-type is suitable for the event-type
+// 校验目标类型 (Target) 与事件类型 (EventAI_Type)、动作类型 (EventAI_ActionType) 的语义兼容性
 bool IsValidTargetType(EventAI_Type eventType, EventAI_ActionType actionType, uint32 targetType, uint32 eventId, uint8 action)
 {
     switch (targetType)
@@ -200,9 +203,10 @@ bool IsValidTargetType(EventAI_Type eventType, EventAI_ActionType actionType, ui
 }
 
 // -------------------
+// 从数据库 creature_ai_scripts 表加载全部 EventAI 脚本，执行参数合法性校验与预计算，并按 Entry/GUID 分桶
 void CreatureEventAIMgr::LoadCreatureEventAI_Scripts()
 {
-    // Drop Existing EventAI List
+    // Drop Existing EventAI List (构建新的智能指针容器以支持热重载)
     std::shared_ptr<CreatureEventAI_Event_Map> newEntryContainer = std::make_shared<CreatureEventAI_Event_Map>();
     std::shared_ptr<CreatureEventAI_Event_Map> newGuidContainer = std::make_shared<CreatureEventAI_Event_Map>();
     std::shared_ptr<CreatureEventAI_EventComputedData_Map> newComputedContainer = std::make_shared<CreatureEventAI_EventComputedData_Map>();

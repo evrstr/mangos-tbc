@@ -21,6 +21,16 @@ SDComment: Timers; Transition phase is incomplete, some spells are unk.
 SDCategory: Tempest Keep, The Eye
 EndScriptData */
 
+// 凯尔萨斯·逐日者（风暴要塞最终首领）
+/* 遭遇战概述：
+ * 凯尔萨斯·逐日者是血精灵王子，外域最具史诗感的多阶段首领战之一：
+ * 阶段一：逐一迎战四位强力传奇顾问（萨古纳尔男爵、卡珀尼安、泰隆尼库斯、桑达瓦尔）；
+ * 阶段二：对抗王子唤醒的七把悬浮神兵利器，玩家击破后可拾取强力传奇橙色武器自用；
+ * 阶段三：四位顾问同时复活全员协同作战；
+ * 阶段四：凯尔萨斯亲自参战，召唤火凤凰、心灵控制、炎爆术与火球轰击；
+ * 阶段五（50% 血量）：吸收全要塞纯净奥术虚空能量，释放重力崩塌将全团悬浮至半空，展开立体空间终极对决。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "the_eye.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
@@ -28,6 +38,7 @@ EndScriptData */
 //#define FAST_TIMERS
 //#define FAST_TRANSITION_TIMERS
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // ***** Event yells ********
@@ -221,6 +232,7 @@ static const float aCenterPos[3] = { 796.641f, -0.588817f, 48.72847f};
 static const float flightPos[3] = { 795.007f, -0.471827f, 75.f };
 static const float landPos[3] = { 792.419f, -0.504778f, 50.0505f };
 
+// TriggerData 相关枚举
 enum TriggerData
 {
     TRIGGERS_FIRST_STAGE    = 6,
@@ -245,6 +257,7 @@ static const uint32 groupThreeIndices[TRIGGERS_GROUP_THREE]  = { 5, 11, 12};
 ## boss_kaelthas
 ######*/
 
+// KaelThasActions 相关枚举
 enum KaelThasActions
 {
     KAEL_ACTION_PYROBLAST_SEQUENCE,
@@ -261,6 +274,7 @@ enum KaelThasActions
     KAEL_RESPAWN_ADVISORS,
 };
 
+// boss_kaelthasAI 逻辑实现
 struct boss_kaelthasAI : public CombatAI
 {
     boss_kaelthasAI(Creature* creature) : CombatAI(creature, KAEL_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -313,6 +327,7 @@ struct boss_kaelthasAI : public CombatAI
 
     bool m_rangeMode;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -369,6 +384,7 @@ struct boss_kaelthasAI : public CombatAI
         reader.PSendSysMessage("Kael'thas is currently in phase %u", uint32(m_uiPhase));
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_B)
@@ -394,6 +410,7 @@ struct boss_kaelthasAI : public CombatAI
     }
 
     // Custom Move in LoS function
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (m_uiPhase == PHASE_0_NOT_BEGUN && who->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) &&
@@ -417,6 +434,7 @@ struct boss_kaelthasAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -440,6 +458,7 @@ struct boss_kaelthasAI : public CombatAI
         m_creature->ForcedDespawn();
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -469,6 +488,7 @@ struct boss_kaelthasAI : public CombatAI
         m_summonedGuidList.push_back(summoned->GetObjectGuid());
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
     {
         // Handle summon weapons event
@@ -488,6 +508,7 @@ struct boss_kaelthasAI : public CombatAI
         }
     }
 
+    // 法术命中目标回调
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
         // Handle gravity lapse teleport - each player hit has his own teleport spell
@@ -596,6 +617,7 @@ struct boss_kaelthasAI : public CombatAI
         m_creature->SetSpellList(SPELL_SET_PHASE_5_GROUND);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -627,6 +649,7 @@ struct boss_kaelthasAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -971,8 +994,10 @@ struct boss_kaelthasAI : public CombatAI
 };
 
 // 36709 - Kael Phase Two
+// KaelPhaseTwo 法术脚本
 struct KaelPhaseTwo : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* caster = spell->GetCaster();
@@ -986,6 +1011,7 @@ struct KaelPhaseTwo : public SpellScript
 ## advisor_base_ai
 ######*/
 
+// AdvisorActions 相关枚举
 enum AdvisorActions
 {
     ADVISOR_ACTION_MAX,
@@ -1003,6 +1029,7 @@ struct advisor_base_ai : public CombatAI
 
     bool m_resurrected;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -1036,6 +1063,7 @@ struct advisor_base_ai : public CombatAI
 
     virtual void HandleSpellSwitch() = 0;
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         // Reset Kael if needed
@@ -1072,6 +1100,7 @@ struct advisor_base_ai : public CombatAI
         }
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* caster, const SpellEntry* spellInfo) override
     {
         // Remove fake death
@@ -1083,6 +1112,7 @@ struct advisor_base_ai : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -1098,21 +1128,25 @@ struct advisor_base_ai : public CombatAI
 ## boss_thaladred_the_darkener
 ######*/
 
+// boss_thaladred_the_darkenerAI 逻辑实现
 struct boss_thaladred_the_darkenerAI : public advisor_base_ai
 {
     boss_thaladred_the_darkenerAI(Creature* creature) : advisor_base_ai(creature, ADVISOR_ACTION_MAX) { Reset(); }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_THALADRED_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         advisor_base_ai::JustDied(killer);
         DoBroadcastText(SAY_THALADRED_DEATH, m_creature);
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* caster, const SpellEntry* spellInfo) override
     {
         advisor_base_ai::SpellHit(caster, spellInfo);
@@ -1141,12 +1175,14 @@ struct boss_thaladred_the_darkenerAI : public advisor_base_ai
 ## boss_lord_sanguinar
 ######*/
 
+// boss_lord_sanguinarAI 逻辑实现
 struct boss_lord_sanguinarAI : public advisor_base_ai
 {
     boss_lord_sanguinarAI(Creature* creature) : advisor_base_ai(creature, ADVISOR_ACTION_MAX)
     {
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         advisor_base_ai::Reset();
@@ -1154,11 +1190,13 @@ struct boss_lord_sanguinarAI : public advisor_base_ai
         DoCastSpellIfCan(nullptr, SPELL_THRASH, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_SANGUINAR_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         advisor_base_ai::JustDied(killer);
@@ -1175,6 +1213,7 @@ struct boss_lord_sanguinarAI : public advisor_base_ai
 ## boss_grand_astromancer_capernian
 ######*/
 
+// boss_grand_astromancer_capernianAI 逻辑实现
 struct boss_grand_astromancer_capernianAI : public advisor_base_ai
 {
     boss_grand_astromancer_capernianAI(Creature* creature) : advisor_base_ai(creature, ADVISOR_ACTION_MAX)
@@ -1182,11 +1221,13 @@ struct boss_grand_astromancer_capernianAI : public advisor_base_ai
         SetRangedMode(true, 30.f, TYPE_FULL_CASTER);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_CAPERNIAN_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         advisor_base_ai::JustDied(killer);
@@ -1203,6 +1244,7 @@ struct boss_grand_astromancer_capernianAI : public advisor_base_ai
 ## boss_master_engineer_telonicus
 ######*/
 
+// boss_master_engineer_telonicusAI 逻辑实现
 struct boss_master_engineer_telonicusAI : public advisor_base_ai
 {
     boss_master_engineer_telonicusAI(Creature* creature) : advisor_base_ai(creature, ADVISOR_ACTION_MAX)
@@ -1212,11 +1254,13 @@ struct boss_master_engineer_telonicusAI : public advisor_base_ai
         SetRangedMode(true, 25.f, TYPE_PROXIMITY);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_TELONICUS_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         advisor_base_ai::JustDied(killer);
@@ -1229,6 +1273,7 @@ struct boss_master_engineer_telonicusAI : public advisor_base_ai
     }
 };
 
+// npc_nether_vaporAI 逻辑实现
 struct npc_nether_vaporAI : public ScriptedAI
 {
     npc_nether_vaporAI(Creature* creature) : ScriptedAI(creature)
@@ -1260,6 +1305,7 @@ struct npc_nether_vaporAI : public ScriptedAI
 };
 
 // 45960 - Nether Vapor Lightning
+// NetherVaporLightning 光环脚本
 struct NetherVaporLightning : public AuraScript
 {
     void OnPeriodicDummy(Aura* aura) const override
@@ -1274,6 +1320,7 @@ struct NetherVaporLightning : public AuraScript
 };
 
 // 35861 - Summon Nether Vapor
+// NetherVaporSummon 法术脚本
 struct NetherVaporSummon : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -1283,8 +1330,10 @@ struct NetherVaporSummon : public SpellScript
 };
 
 // 35865 - Summon Nether Vapor
+// NetherVaporSummonParent 法术脚本
 struct NetherVaporSummonParent : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         spell->GetCaster()->CastSpell(nullptr, 35861, TRIGGERED_NONE);
@@ -1295,8 +1344,10 @@ struct NetherVaporSummonParent : public SpellScript
 };
 
 // 39497 - Remove Enchanted Weapons
+// RemoveWeapons 法术脚本
 struct RemoveWeapons : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -1314,6 +1365,7 @@ struct RemoveWeapons : public SpellScript
 };
 
 // 34480, 44226, 49887 - Gravity Lapse
+// GravityLapseKnockup 光环脚本
 struct GravityLapseKnockup : public AuraScript
 {
     void OnPeriodicTickEnd(Aura* aura) const override
@@ -1325,6 +1377,7 @@ struct GravityLapseKnockup : public AuraScript
 };
 
 // 36815 - Shock Barrier
+// ShockBarrier 光环脚本
 struct ShockBarrier : public AuraScript
 {
     void OnAbsorb(Aura* /*aura*/, int32& currentAbsorb, int32& remainingDamage, uint32& reflectedSpellId, int32& reflectDamage, bool& /*preventedDeath*/, bool& /*dropCharge*/, DamageEffectType /*damageType*/) const override
@@ -1338,6 +1391,7 @@ struct ShockBarrier : public AuraScript
 };
 
 // 36797 - Mind Control
+// MindControlKaelthas 法术脚本
 struct MindControlKaelthas : public SpellScript, public AuraScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -1347,6 +1401,7 @@ struct MindControlKaelthas : public SpellScript, public AuraScript
         return true;
     }
 
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -1357,8 +1412,10 @@ struct MindControlKaelthas : public SpellScript, public AuraScript
 };
 
 // 35869 - Nether Beam
+// NetherBeamKaelthas 法术脚本
 struct NetherBeamKaelthas : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* caster = spell->GetCaster();
@@ -1381,6 +1438,7 @@ struct NetherBeamKaelthas : public SpellScript
 };
 
 // 36819 - Pyroblast
+// PyroblastKael 法术脚本
 struct PyroblastKael : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -1392,8 +1450,10 @@ struct PyroblastKael : public SpellScript
 };
 
 // 36730 - Flame Strike
+// FlameStrikeKael 光环脚本
 struct FlameStrikeKael : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -1405,8 +1465,10 @@ struct FlameStrikeKael : public AuraScript
 };
 
 // 36089 - Netherbeam, 36090 - Netherbeam
+// NetherbeamSpeedKael 光环脚本
 struct NetherbeamSpeedKael : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         Unit* target = aura->GetTarget();
@@ -1419,6 +1481,7 @@ struct NetherbeamSpeedKael : public AuraScript
 };
 
 // 36091 - Kael Gaining Power
+// KaelGainingPower 光环脚本
 struct KaelGainingPower : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& /*data*/) const override
@@ -1452,8 +1515,10 @@ struct KaelGainingPower : public AuraScript
 };
 
 // 36092 - Kael Explodes
+// KaelExplodes 法术脚本
 struct KaelExplodes : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* caster = spell->GetCaster();
@@ -1466,8 +1531,10 @@ struct KaelExplodes : public SpellScript
 };
 
 // 36196, 36197, 36198 - Pure Nether Beam
+// PureNetherBeam 法术脚本
 struct PureNetherBeam : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (!spell->GetUnitTarget())
@@ -1479,8 +1546,10 @@ struct PureNetherBeam : public SpellScript
 };
 
 // 36201, 36290, 36291 - Pure Nether Beam
+// PureNetherBeamParent 法术脚本
 struct PureNetherBeamParent : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (!spell->GetUnitTarget())
@@ -1502,6 +1571,7 @@ struct PureNetherBeamParent : public SpellScript
 };
 
 // 37027 - Remote Toy
+// RemoteToy 光环脚本
 struct RemoteToy : public AuraScript
 {
     void OnPeriodicTrigger(Aura* /*aura*/, PeriodicTriggerData& data) const override
@@ -1511,6 +1581,7 @@ struct RemoteToy : public AuraScript
     }
 };
 
+// 注册 boss_kaelthas 脚本
 void AddSC_boss_kaelthas()
 {
     Script* pNewScript = new Script;

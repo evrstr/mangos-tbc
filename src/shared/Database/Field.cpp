@@ -21,6 +21,7 @@
 
 #include <iomanip>
 
+// 将 "%Y-%m-%d %H:%M:%S" 格式的字段字符串解析为本地 time_t 时间戳 | Parse field string in "%Y-%m-%d %H:%M:%S" format into time_t
 time_t Field::GetTime() const
 {
     std::string time = GetCppString();

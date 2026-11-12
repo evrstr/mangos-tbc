@@ -21,10 +21,16 @@ SDComment:
 SDCategory: Tempest Keep, The Mechanar
 EndScriptData */
 
+// 机械领主卡帕西图斯（能源舰一号首领）
+/* 遭遇战概述：
+ * 机械领主卡帕西图斯是虚空机甲，核心机制为正负极电荷极性转换（同极相聚增伤，异极相吸互炸）。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "mechanar.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = 19952,
@@ -50,12 +56,14 @@ enum
     SPELL_NETHER_CHARGE_TIMER       = 37670,
 };
 
+// CapacitusActions 相关枚举
 enum CapacitusActions
 {
     CAPACITUS_ACTIONS_MAX,
     CAPACITUS_NETHER_CHARGE
 };
 
+// boss_mechano_lord_capacitusAI 逻辑实现
 struct boss_mechano_lord_capacitusAI : public CombatAI
 {
     boss_mechano_lord_capacitusAI(Creature* creature) : CombatAI(creature, CAPACITUS_ACTIONS_MAX), m_isRegularMode(creature->GetMap()->IsRegularDifficulty())
@@ -70,6 +78,7 @@ struct boss_mechano_lord_capacitusAI : public CombatAI
     bool m_isRegularMode;
     std::vector<ObjectGuid> m_summons;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -77,17 +86,20 @@ struct boss_mechano_lord_capacitusAI : public CombatAI
         DespawnGuids(m_summons);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
         DespawnGuids(m_summons);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -114,6 +126,7 @@ struct boss_mechano_lord_capacitusAI : public CombatAI
     }
 };
 
+// NetherChargeAI 逻辑实现
 struct NetherChargeAI : public ScriptedAI
 {
     NetherChargeAI(Creature* creature) : ScriptedAI(creature), m_stopMoving(false)
@@ -131,6 +144,7 @@ struct NetherChargeAI : public ScriptedAI
         SetReactState(REACT_PASSIVE);
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override { }
 
     bool m_stopMoving;
@@ -160,6 +174,7 @@ struct NetherChargeAI : public ScriptedAI
     }
 };
 
+// NetherChargePassive 光环脚本
 struct NetherChargePassive : public AuraScript
 {
     void OnApply(Aura* aura, bool /*apply*/) const
@@ -181,6 +196,7 @@ struct NetherChargePassive : public AuraScript
     }
 };
 
+// NetherChargeTimer 光环脚本
 struct NetherChargeTimer : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const
@@ -191,8 +207,10 @@ struct NetherChargeTimer : public AuraScript
 };
 
 // 39096 - Polarity Shift
+// PolarityShiftCapacitus 法术脚本
 struct PolarityShiftCapacitus : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* unitTarget = spell->GetUnitTarget();
@@ -225,6 +243,7 @@ struct PolarityShiftCapacitus : public SpellScript
     }
 };
 
+// 注册 boss_mechano_lord_capacitus 脚本
 void AddSC_boss_mechano_lord_capacitus()
 {
     Script* pNewScript = new Script;

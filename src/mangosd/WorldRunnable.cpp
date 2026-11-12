@@ -36,6 +36,7 @@
 extern int m_ServiceStatus;
 #endif
 
+/// Windows 系统定时器分辨率 RAII 封装：构造时提升定时器精度，析构时自动恢复
 struct TimeBeginRAII
 {
     TimeBeginRAII()
@@ -63,20 +64,20 @@ struct TimeBeginRAII
 #endif
 };
 
-/// Heartbeat for the World
+/// Heartbeat for the World | 世界主循环心跳入口
 void WorldRunnable::run()
 {
     TimeBeginRAII raii;
 
-    ///- Init new SQL thread for the world database
-    WorldDatabase.ThreadStart();                            // let thread do safe mySQL requests (one connection call enough)
+    ///- Init new SQL thread for the world database | 为世界数据库初始化新的 SQL 线程
+    WorldDatabase.ThreadStart();                            // let thread do safe mySQL requests (one connection call enough) | 使当前线程能够安全执行 MySQL 请求（单次连接调用即可）
     sWorld.InitResultQueue();
 
-    uint32 diffTick = WorldTimer::tick(); // initialize world timer vars
-    uint32 diffTime = 0; // used to compute real time elapsed in World::Update()
-    uint32 overCounter = 0; // count overtime loops
+    uint32 diffTick = WorldTimer::tick(); // initialize world timer vars | 初始化世界计时器变量
+    uint32 diffTime = 0; // used to compute real time elapsed in World::Update() | 用于计算 World::Update() 的实际耗时
+    uint32 overCounter = 0; // count overtime loops | 统计超时循环次数
 
-    ///- While we have not World::m_stopEvent, update the world
+    ///- While we have not World::m_stopEvent, update the world | 只要未触发世界停止事件（World::m_stopEvent），就持续更新世界状态
     while (!World::IsStopped())
     {
 //        ++World::m_worldLoopCounter;
@@ -86,8 +87,8 @@ void WorldRunnable::run()
         sWorld.Update(diffTick);
         diffTime = WorldTimer::getMSTime() - WorldTimer::tickTime();
 
-        // we have to wait WORLD_SLEEP_CONST max between loops
-        // don't wait if over
+        // we have to wait WORLD_SLEEP_CONST max between loops | 两次循环之间最多等待 WORLD_SLEEP_CONST 毫秒
+        // don't wait if over | 若本次更新耗时已超过该阈值则不再休眠
         if (diffTime < WORLD_SLEEP_CONST)
         {
             MaNGOS::Thread::Sleep(WORLD_SLEEP_CONST - diffTime);
@@ -111,6 +112,6 @@ void WorldRunnable::run()
 
     sWorld.CleanupsBeforeStop();
 
-    ///- End the database thread
-    WorldDatabase.ThreadEnd();                              // free mySQL thread resources
+    ///- End the database thread | 结束数据库线程
+    WorldDatabase.ThreadEnd();                              // free mySQL thread resources | 释放 MySQL 线程资源
 }

@@ -28,6 +28,7 @@ void
 ActiveState::Update(Map& m, NGridType& grid, GridInfo& info, const uint32& x, const uint32& y, const uint32& t_diff) const
 {
     // Only check grid activity every (grid_expiry/10) ms, because it's really useless to do it every cycle
+    // 仅每 (grid_expiry / 10) 毫秒检查一次网格活跃度，避免每次地图循环都做无谓检测
     info.UpdateTimeTracker(t_diff);
     if (info.getTimeTracker().Passed())
     {
@@ -45,6 +46,7 @@ ActiveState::Update(Map& m, NGridType& grid, GridInfo& info, const uint32& x, co
 void
 IdleState::Update(Map& m, NGridType& grid, GridInfo&, const uint32& x, const uint32& y, const uint32&) const
 {
+    // 重置完整卸载过期时间并将网格切换到待卸载状态
     m.ResetGridExpiry(grid);
     grid.SetGridState(GRID_STATE_REMOVAL);
     DEBUG_LOG("Grid[%u,%u] on map %u moved to IDLE state", x, y, m.GetId());
@@ -53,6 +55,7 @@ IdleState::Update(Map& m, NGridType& grid, GridInfo&, const uint32& x, const uin
 void
 RemovalState::Update(Map& m, NGridType& grid, GridInfo& info, const uint32& x, const uint32& y, const uint32& t_diff) const
 {
+    // 仅当网格未被锁定卸载时推进过期计时，超时后尝试从地图卸载
     if (!info.getUnloadLock())
     {
         info.UpdateTimeTracker(t_diff);

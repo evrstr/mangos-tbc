@@ -21,11 +21,17 @@ SDComment: May need some small adjustments
 SDCategory: Tempest Keep, The Mechanar
 EndScriptData */
 
+// 虚空术士塞菲斯蕾亚（能源舰二号首领）
+/* 遭遇战概述：
+ * 虚空术士塞菲斯蕾亚召唤两只不可选中的怒火炎魔缓慢追击玩家，自身施放龙息术与冰霜霜冻。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "mechanar.h"
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = 19959,
@@ -45,6 +51,7 @@ enum
     NPC_RAGING_FLAMES               = 20481,
 };
 
+// boss_nethermancer_sepethreaAI 逻辑实现
 struct boss_nethermancer_sepethreaAI : public CombatAI
 {
     boss_nethermancer_sepethreaAI(Creature* creature) : CombatAI(creature, 0), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -60,6 +67,7 @@ struct boss_nethermancer_sepethreaAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         m_creature->SetInCombatWithZone();
@@ -71,6 +79,7 @@ struct boss_nethermancer_sepethreaAI : public CombatAI
             m_instance->SetData(TYPE_SEPETHREA, IN_PROGRESS);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -79,12 +88,14 @@ struct boss_nethermancer_sepethreaAI : public CombatAI
             m_instance->SetData(TYPE_SEPETHREA, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_SEPETHREA, FAIL);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* target) override
     {
         switch (spellInfo->Id)
@@ -100,6 +111,7 @@ struct boss_nethermancer_sepethreaAI : public CombatAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_INVIS_AND_STEALTH_DETECT = 18950,
@@ -108,6 +120,7 @@ enum
     SPELL_INFERNO_H     = 39346,
 };
 
+// npc_raging_flamesAI 逻辑实现
 struct npc_raging_flamesAI : public CombatAI
 {
     npc_raging_flamesAI(Creature* creature) : CombatAI(creature, 0), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -122,6 +135,7 @@ struct npc_raging_flamesAI : public CombatAI
 
     ObjectGuid m_summonerGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -129,6 +143,7 @@ struct npc_raging_flamesAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_INVIS_AND_STEALTH_DETECT, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         FixateRandomTarget();
@@ -145,8 +160,10 @@ struct npc_raging_flamesAI : public CombatAI
 };
 
 // 35268,39346 - Inferno
+// RagingFlamesInferno 光环脚本
 struct RagingFlamesInferno : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -156,6 +173,7 @@ struct RagingFlamesInferno : public AuraScript
     }
 };
 
+// 注册 boss_nethermancer_sepethrea 脚本
 void AddSC_boss_nethermancer_sepethrea()
 {
     Script* pNewScript = new Script;

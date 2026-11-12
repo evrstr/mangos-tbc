@@ -27,6 +27,7 @@ namespace Movement
     extern float computeFallElevation(float time_passed, bool isSafeFall, float start_velocy);
     extern float computeFallElevation(float time_passed);
 
+    /// 根据当前已流逝时间计算样条上的三维坐标与朝向
     Location MoveSpline::ComputePosition() const
     {
         MANGOS_ASSERT(Initialized());
@@ -47,7 +48,7 @@ namespace Movement
                 c.orientation = facing.angle;
             else if (splineflags.final_point)
                 c.orientation = atan2(facing.f.y - c.y, facing.f.x - c.x);
-            // nothing to do for MoveSplineFlag::Final_Target flag
+            // nothing to do for MoveSplineFlag::Final_Target flag (Final_Target 无需在此计算朝向)
         }
         else
         {
@@ -58,6 +59,7 @@ namespace Movement
         return c;
     }
 
+    /// 结合自由落体公式与终点高度钳位计算当前 Z 轴高度
     void MoveSpline::computeFallElevation(float& el) const
     {
         float z_now = spline.getPoint(spline.first()).z - Movement::computeFallElevation(MSToSec(time_passed));
@@ -73,6 +75,7 @@ namespace Movement
         return SecToMS(length / velocity);
     }
 
+    /// 坠落样条时间戳计算器：按自由落体耗时累加段长度
     struct FallInitializer
     {
         FallInitializer(float _start_elevation) : start_elevation(_start_elevation) {}
@@ -85,9 +88,10 @@ namespace Movement
 
     enum
     {
-        minimal_duration = 1,
+        minimal_duration = 1, // 样条最小有效持续时间（1 毫秒），避免除以零
     };
 
+    /// 常规样条时间戳计算器：按各段弧长与速度换算毫秒耗时
     struct CommonInitializer
     {
         CommonInitializer(float _velocity) : velocityInv(1000.f / _velocity), time(minimal_duration) {}
@@ -100,6 +104,7 @@ namespace Movement
         }
     };
 
+    /// 初始化底层几何样条及每段的毫秒时间戳表
     void MoveSpline::init_spline(const MoveSplineInitArgs& args)
     {
         const SplineBase::EvaluationMode modes[2] = {SplineBase::ModeLinear, SplineBase::ModeCatmullrom};
@@ -107,7 +112,7 @@ namespace Movement
         {
             uint32 cyclic_point = 0;
             if (splineflags.enter_cycle)
-                cyclic_point = 1;   // shouldn't be modified, came from client
+                cyclic_point = 1;   // shouldn't be modified, came from client (不可修改，客户端协议固定跳过首点入环)
             spline.init_cyclic_spline(&args.path[0], args.path.size(), modes[args.flags.isSmooth()], cyclic_point);
         }
         else
@@ -115,7 +120,7 @@ namespace Movement
             spline.init_spline(&args.path[0], args.path.size(), modes[args.flags.isSmooth()]);
         }
 
-        // init spline timestamps
+        // init spline timestamps (初始化样条各段时间戳)
         if (splineflags.falling)
         {
             FallInitializer init(spline.getPoint(spline.first()).z);
@@ -128,6 +133,7 @@ namespace Movement
         }
 
         // TODO: what to do in such cases? problem is in input data (all points are at same coords)
+        // 若所有控制点重合导致总时长不足最小时长，则保底设置时长并记录错误日志
         if (spline.length() < minimal_duration)
         {
             sLog.outError("MoveSpline::init_spline: zero length spline, wrong input data?");
@@ -137,6 +143,7 @@ namespace Movement
         speed = args.velocity;
     }
 
+    /// 载入 MoveSplineInitArgs 参数并启动或停止样条
     void MoveSpline::Initialize(const MoveSplineInitArgs& args)
     {
         splineflags = args.flags;
@@ -145,7 +152,7 @@ namespace Movement
         point_Idx_offset = args.path_Idx_offset;
         time_passed = 0;
 
-        // detect Stop command
+        // detect Stop command (检测到 Done 标志则视为停止移动指令，清空样条)
         if (splineflags.done)
         {
             spline.clear();
@@ -162,6 +169,7 @@ namespace Movement
 
 /// ============================================================================================
 
+    /// 校验样条初始化参数（至少 2 个顶点且速度大于 0）
     bool MoveSplineInitArgs::Validate(Unit* unit) const
     {
 #define CHECK(exp) \
@@ -182,6 +190,7 @@ namespace Movement
 
 // MONSTER_MOVE packet format limitation for not CatmullRom movement:
 // each vertex offset packed into 11 bytes
+// 非 Catmull-Rom 模式下 MONSTER_MOVE 封包格式限制：中间点偏移按 11-bit 有符号定点数打包（精度 0.25 码）
     bool MoveSplineInitArgs::_checkPathBounds() const
     {
         if (!(flags & MoveSplineFlag::Mask_CatmullRom) && path.size() > 2)
@@ -206,6 +215,7 @@ namespace Movement
 
 /// ============================================================================================
 
+    /// 步进更新样条时间轴，处理跨段、循环回绕（含移除首轮切入点）以及到达终点
     MoveSpline::UpdateResult MoveSpline::_updateState(uint32& ms_time_diff)
     {
         if (Finalized())
@@ -237,6 +247,7 @@ namespace Movement
 
                     // Remove first point from the path after one full cycle.
                     // That point was the position of the unit prior to entering the cycle and it shouldn't be repeated with continuous cycles.
+                    // 第一轮循环结束后移除首点（该点为入环前起始位置，后续循环不再重复经过）
                     if (splineflags.enter_cycle)
                     {
                         splineflags.enter_cycle = false;
@@ -246,11 +257,11 @@ namespace Movement
                         args.facing = facing;
                         args.flags = splineflags;
                         args.path_Idx_offset = point_Idx_offset;
-                        // MoveSplineFlag::Parabolic | MoveSplineFlag::Animation not supported currently
+                        // MoveSplineFlag::Parabolic | MoveSplineFlag::Animation not supported currently (暂不支持抛物线与附加动画标志)
                             //args.parabolic_amplitude = ?;
                             //args.time_perc = ?;
                         args.splineId = m_Id;
-                        args.velocity = 1.0f; // Calculated below
+                        args.velocity = 1.0f; // Calculated below (占位速度，下方按原周期总时长反推实际速度)
                         if (args.Validate(nullptr))
                         {
                             // New cycle should preserve previous cycle's duration for some weird reason, even though
@@ -258,6 +269,7 @@ namespace Movement
                             // Since our splines precalculate length with zspeed in mind, if we want to find the desired
                             // zspeed, we have to make a fake spline, calculate its duration and then compare it to the
                             // desired duration, thus finding out how much the zspeed has to be increased for them to match.
+                            // 客户端行为要求后续循环保持首轮总时长，因此先用单位速度构造临时样条算出时长比例再重算速度
                             MoveSpline tempSpline;
                             tempSpline.Initialize(args);
                             args.velocity = (float)tempSpline.Duration() / Duration();

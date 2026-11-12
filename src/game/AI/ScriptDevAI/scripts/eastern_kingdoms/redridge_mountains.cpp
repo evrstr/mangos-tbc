@@ -21,6 +21,8 @@ SDComment: Quest support: 219
 SDCategory: Redridge Mountains
 EndScriptData */
 
+// 赤脊山（Redridge Mountains）黑石兽人与护送任务脚本
+
 /* ContentData
 npc_corporal_keeshan */
 
@@ -31,17 +33,19 @@ npc_corporal_keeshan */
 ## npc_corporal_keehsan
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_MISSING_IN_ACTION = 219,
+    QUEST_MISSING_IN_ACTION = 219,                          // missingin动作 任务 ID
 
-    KEESHAN_PATH_ID         = 349,
-    SAY_CORPORAL_KEESHAN_1  = 25,
-    SAY_CORPORAL_KEESHAN_2  = 26,
-    SAY_CORPORAL_KEESHAN_3  = 27,
-    SAY_CORPORAL_KEESHAN_4  = 30,
+    KEESHAN_PATH_ID         = 349,                          // 路径ID 标识 ID
+    SAY_CORPORAL_KEESHAN_1  = 25,                           // corporalkeeshan1 台词广播 ID
+    SAY_CORPORAL_KEESHAN_2  = 26,                           // corporalkeeshan2 台词广播 ID
+    SAY_CORPORAL_KEESHAN_3  = 27,                           // corporalkeeshan3 台词广播 ID
+    SAY_CORPORAL_KEESHAN_4  = 30,                           // corporalkeeshan4 台词广播 ID
 };
 
+// 随从/NPC AI：keeshanescort（corporal_keeshan_escort）
 struct npc_corporal_keeshan_escortAI : public npc_escortAI
 {
     npc_corporal_keeshan_escortAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -82,11 +86,13 @@ struct npc_corporal_keeshan_escortAI : public npc_escortAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_corporal_keeshan
 UnitAI* GetAI_npc_corporal_keeshan(Creature* pCreature)
 {
     return new npc_corporal_keeshan_escortAI(pCreature);
 }
 
+// 任务接取回调函数：npc_corporal_keeshan
 bool QuestAccept_npc_corporal_keeshan(Player* player, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_MISSING_IN_ACTION)
@@ -95,6 +101,7 @@ bool QuestAccept_npc_corporal_keeshan(Player* player, Creature* pCreature, const
     return true;
 }
 
+// 注册并载入脚本模块：redridge_mountains
 void AddSC_redridge_mountains()
 {
     Script* pNewScript = new Script;

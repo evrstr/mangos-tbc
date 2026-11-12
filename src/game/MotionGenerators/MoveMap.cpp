@@ -28,12 +28,13 @@ namespace MMAP
     constexpr char GO_FILE_NAME_FORMAT[] = "mmaps/go%04i.mmtile";
 
     // ######################## MMapFactory ########################
-    // our global singleton copy
+    // our global singleton copy (全局 MMapManager 单例指针)
     MMapManager* g_MMapManager = nullptr;
 
-    // stores list of mapids which do not use pathfinding
+    // stores list of mapids which do not use pathfinding (禁用 MMAP 寻路的地图 ID 集合)
     std::set<uint32>* g_mmapDisabledIds = nullptr;
 
+    /// 获取或惰性创建全局 MMapManager 单例
     MMapManager* MMapFactory::createOrGetMMapManager()
     {
         if (g_MMapManager == nullptr)
@@ -42,6 +43,7 @@ namespace MMAP
         return g_MMapManager;
     }
 
+    /// 解析配置中的逗号分隔地图 ID 列表并加入禁用寻路集合
     void MMapFactory::preventPathfindingOnMaps(const char* ignoreMapIds)
     {
         if (!g_mmapDisabledIds)
@@ -61,6 +63,7 @@ namespace MMAP
         delete[] mapList;
     }
 
+    /// 判断指定地图（及可选具体单位）是否启用了 MMAP 寻路
     bool MMapFactory::IsPathfindingEnabled(uint32 mapId, const Unit* unit = nullptr)
     {
         if (!createOrGetMMapManager()->IsEnabled())
@@ -99,6 +102,7 @@ namespace MMAP
         // if we had, tiles in MMapData->mmapLoadedTiles, their actual data is lost!
     }
 
+    /// 加载地图全局 .mmap 文件（读取 dtNavMeshParams 并创建空 dtNavMesh）
     bool MMapManager::loadMapData(std::string const& basePath, uint32 mapId)
     {
         // we already have this map loaded?
@@ -165,6 +169,7 @@ namespace MMAP
         return false;
     }
 
+    /// 扫描 mmaps 目录并一次性加载属于 mapId 的全部 .mmtile 瓦片
     void MMapManager::loadAllMapTiles(std::string const& basePath, uint32 mapId)
     {
         auto itr = loadedMMaps.find(mapId);
@@ -219,6 +224,7 @@ namespace MMAP
         return loadMapInternal(fileName.get(), mmapData, packedGridPos, mapId, x, y);
     }
 
+    /// 读取单个 .mmtile 瓦片文件，校验魔数与版本后挂载到 dtNavMesh
     bool MMapManager::loadMapInternal(const char* filePath, const std::unique_ptr<MMapData>& mmapData, uint32 packedGridPos, uint32 mapId, int32 x, int32 y)
     {
         FILE* file = fopen(filePath, "rb");
@@ -287,6 +293,7 @@ namespace MMAP
             loadGameObject(basePath, displayId);
     }
 
+    /// 加载单个动态 GameObject 显示模型对应的导航网格（mmaps/goXXXX.mmtile）
     bool MMapManager::loadGameObject(std::string const& basePath, uint32 displayId)
     {
         // we already have this map loaded?
@@ -353,6 +360,7 @@ namespace MMAP
         return true;
     }
 
+    /// 为指定地图副本实例分配并初始化独立的 dtNavMeshQuery（节点池上限 1024）
     bool MMapManager::loadMapInstance(std::string const& basePath, uint32 mapId, uint32 instanceId)
     {
         if (!loadMapData(basePath, mapId))
@@ -509,6 +517,7 @@ namespace MMAP
         return queryItr->second;
     }
 
+    /// 按当前线程 ID 获取（或在加锁下惰性创建）GameObject 模型的 dtNavMeshQuery
     dtNavMeshQuery const* MMapManager::GetModelNavMeshQuery(uint32 displayId)
     {
         if (m_loadedModels.find(displayId) == m_loadedModels.end())

@@ -37,6 +37,7 @@
 #include "Entities/Transports.h"
 #include <string>
 
+/// 调试命令：模拟发送法术施放失败封包 (SMSG_CAST_RESULT)
 bool ChatHandler::HandleDebugSendSpellFailCommand(char* args)
 {
     if (!*args)
@@ -67,6 +68,7 @@ bool ChatHandler::HandleDebugSendSpellFailCommand(char* args)
     return true;
 }
 
+/// 调试命令：向客户端发送测试地图兴趣点 (POI) 图标
 bool ChatHandler::HandleDebugSendPoiCommand(char* args)
 {
     Player* pPlayer = m_session->GetPlayer();
@@ -90,6 +92,7 @@ bool ChatHandler::HandleDebugSendPoiCommand(char* args)
     return true;
 }
 
+/// 调试命令：模拟发送装备错误提示封包
 bool ChatHandler::HandleDebugSendEquipErrorCommand(char* args)
 {
     if (!*args)
@@ -100,6 +103,7 @@ bool ChatHandler::HandleDebugSendEquipErrorCommand(char* args)
     return true;
 }
 
+/// 调试命令：模拟发送出售物品错误提示封包
 bool ChatHandler::HandleDebugSendSellErrorCommand(char* args)
 {
     if (!*args)
@@ -110,6 +114,7 @@ bool ChatHandler::HandleDebugSendSellErrorCommand(char* args)
     return true;
 }
 
+/// 调试命令：模拟发送购买物品错误提示封包
 bool ChatHandler::HandleDebugSendBuyErrorCommand(char* args)
 {
     if (!*args)
@@ -120,6 +125,7 @@ bool ChatHandler::HandleDebugSendBuyErrorCommand(char* args)
     return true;
 }
 
+/// 调试命令：读取当前目录下 opcode.txt 定义并向目标玩家发送自定义封包
 bool ChatHandler::HandleDebugSendOpcodeCommand(char* /*args*/)
 {
     Unit* unit = getSelectedUnit();
@@ -203,6 +209,7 @@ bool ChatHandler::HandleDebugSendOpcodeCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：向当前玩家客户端推送指定世界状态更新
 bool ChatHandler::HandleDebugUpdateWorldStateCommand(char* args)
 {
     uint32 world;
@@ -217,10 +224,11 @@ bool ChatHandler::HandleDebugUpdateWorldStateCommand(char* args)
     return true;
 }
 
+/// 调试命令：播放指定过场动画并打印摄影机路径点信息
 bool ChatHandler::HandleDebugPlayCinematicCommand(char* args)
 {
-    // USAGE: .debug play cinematic #cinematicid
-    // #cinematicid - ID decimal number from CinemaicSequences.dbc (1st column)
+    // USAGE: .debug play cinematic #cinematicid | 用法：.debug play cinematic #动画ID
+    // #cinematicid - ID decimal number from CinemaicSequences.dbc (1st column) | 对应 CinematicSequences.dbc 第一列十进制 ID
     uint32 dwId;
     if (!ExtractUInt32(&args, dwId))
         return false;
@@ -232,7 +240,7 @@ bool ChatHandler::HandleDebugPlayCinematicCommand(char* args)
         return false;
     }
 
-    // Dump camera locations
+    // Dump camera locations | 打印该动画关联摄影机轨迹的路径点坐标与朝向
     if (CinematicSequencesEntry const* cineSeq = sCinematicSequencesStore.LookupEntry(dwId))
     {
         std::unordered_map<uint32, FlyByCameraCollection>::const_iterator itr = sFlyByCameraStore.find(cineSeq->cinematicCamera);
@@ -253,11 +261,11 @@ bool ChatHandler::HandleDebugPlayCinematicCommand(char* args)
     return true;
 }
 
-// Play sound
+// Play sound | 播放指定 ID 的音效（来自 SoundEntries.dbc）
 bool ChatHandler::HandleDebugPlaySoundCommand(char* args)
 {
-    // USAGE: .debug playsound #soundid
-    // #soundid - ID decimal number from SoundEntries.dbc (1st column)
+    // USAGE: .debug playsound #soundid | 用法：.debug playsound #音效ID
+    // #soundid - ID decimal number from SoundEntries.dbc (1st column) | 对应 SoundEntries.dbc 第一列十进制 ID
     uint32 dwSoundId;
     if (!ExtractUInt32(&args, dwSoundId))
         return false;
@@ -286,11 +294,11 @@ bool ChatHandler::HandleDebugPlaySoundCommand(char* args)
     return true;
 }
 
-// Play Music
+// Play Music | 播放指定 ID 的背景音乐
 bool ChatHandler::HandleDebugPlayMusicCommand(char* args)
 {
-    // USAGE: .debug playmusic #musicid
-    // #musicid - ID decimal number from SoundEntries.dbc (1st column)
+    // USAGE: .debug playmusic #musicid | 用法：.debug playmusic #音乐ID
+    // #musicid - ID decimal number from SoundEntries.dbc (1st column) | 对应 SoundEntries.dbc 第一列十进制 ID
     uint32 dwMusicId;
     if (!ExtractUInt32(&args, dwMusicId))
         return false;
@@ -308,7 +316,7 @@ bool ChatHandler::HandleDebugPlayMusicCommand(char* args)
     return true;
 }
 
-// Play pet dismiss sound
+// Play pet dismiss sound | 模拟发送宠物解散音效封包
 bool ChatHandler::HandleDebugPetDismissSound(char* args)
 {
     uint32 petDismissSound;
@@ -320,6 +328,7 @@ bool ChatHandler::HandleDebugPetDismissSound(char* args)
     return true;
 }
 
+/// 调试命令：切换区域触发器 (AreaTrigger) 进入/离开调试提示开关
 bool ChatHandler::HandleDebugAreaTriggersCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -336,7 +345,7 @@ bool ChatHandler::HandleDebugAreaTriggersCommand(char* /*args*/)
     return true;
 }
 
-// Send notification in channel
+// Send notification in channel | 发送指定通知码的频道测试通知封包
 bool ChatHandler::HandleDebugSendChannelNotifyCommand(char* args)
 {
     const char* name = "test";
@@ -346,15 +355,15 @@ bool ChatHandler::HandleDebugSendChannelNotifyCommand(char* args)
         return false;
 
     WorldPacket data(SMSG_CHANNEL_NOTIFY, (1 + 10));
-    data << uint8(code);                                    // notify type
-    data << name;                                           // channel name
+    data << uint8(code);                                    // notify type | 通知类型码
+    data << name;                                           // channel name | 频道名称
     data << uint32(0);
     data << uint32(0);
     m_session->SendPacket(data);
     return true;
 }
 
-// Send notification in chat
+// Send notification in chat | 发送指定类型的测试聊天消息封包
 bool ChatHandler::HandleDebugSendChatMsgCommand(char* args)
 {
     const char* msg = "testtest";
@@ -393,6 +402,7 @@ bool ChatHandler::HandleDebugSendQuestPartyMsgCommand(char* args)
     return true;
 }
 
+/// 调试命令：查看选中生物的当前战利品归属者与队伍拾取权
 bool ChatHandler::HandleDebugGetLootRecipientCommand(char* /*args*/)
 {
     Creature* target = getSelectedCreature();
@@ -435,6 +445,7 @@ bool ChatHandler::HandleDebugListUpdateFieldsCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：检查或诊断玩家背包物品状态及更新队列一致性
 bool ChatHandler::HandleDebugGetItemStateCommand(char* args)
 {
     if (!*args)
@@ -719,6 +730,7 @@ bool ChatHandler::HandleDebugGetItemStateCommand(char* args)
     return true;
 }
 
+/// 调试命令：切换战场快速开启测试模式
 bool ChatHandler::HandleDebugBattlegroundCommand(char* /*args*/)
 {
     sBattleGroundMgr.GetMessager().AddMessage([](BattleGroundMgr* mgr)
@@ -728,6 +740,7 @@ bool ChatHandler::HandleDebugBattlegroundCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：切换竞技场测试模式
 bool ChatHandler::HandleDebugArenaCommand(char* /*args*/)
 {
     sBattleGroundMgr.GetMessager().AddMessage([](BattleGroundMgr* mgr)
@@ -737,6 +750,7 @@ bool ChatHandler::HandleDebugArenaCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：依据 spell_check 表校验全服法术属性一致性
 bool ChatHandler::HandleDebugSpellCheckCommand(char* /*args*/)
 {
     sLog.outString("Check expected in code spell properties base at table 'spell_check' content...");
@@ -744,7 +758,7 @@ bool ChatHandler::HandleDebugSpellCheckCommand(char* /*args*/)
     return true;
 }
 
-// show animation
+// show animation | 播放指定 ID 的表情动画
 bool ChatHandler::HandleDebugAnimCommand(char* args)
 {
     uint32 emote_id;
@@ -755,6 +769,7 @@ bool ChatHandler::HandleDebugAnimCommand(char* args)
     return true;
 }
 
+/// 调试命令：设置或清除目标单位的 AuraState 标志位
 bool ChatHandler::HandleDebugSetAuraStateCommand(char* args)
 {
     int32 state;
@@ -771,7 +786,7 @@ bool ChatHandler::HandleDebugSetAuraStateCommand(char* args)
 
     if (!state)
     {
-        // reset all states
+        // reset all states | 参数为 0 时重置全部 32 个光环状态位
         for (int i = 1; i <= 32; ++i)
             unit->ModifyAuraState(AuraState(i), false);
         return true;
@@ -781,18 +796,19 @@ bool ChatHandler::HandleDebugSetAuraStateCommand(char* args)
     return true;
 }
 
+/// 辅助函数：按指定数据类型设置对象 UpdateField 字段值
 bool ChatHandler::HandleSetValueHelper(Object* target, uint32 field, char* typeStr, char* valStr)
 {
     ObjectGuid guid = target->GetObjectGuid();
 
-    // not allow access to nonexistent or critical for work field
+    // not allow access to nonexistent or critical for work field | 禁止访问越界索引或核心只读字段（<= OBJECT_FIELD_ENTRY）
     if (field >= target->GetValuesCount() || field <= OBJECT_FIELD_ENTRY)
     {
         PSendSysMessage(LANG_TOO_BIG_INDEX, field, guid.GetString().c_str(), uint32(target->GetValuesCount()));
         return false;
     }
 
-    uint32 base;                                            // 0 -> float
+    uint32 base;                                            // 0 -> float | 0 表示浮点数，其余为进制基数
     if (!typeStr)
         base = 10;
     else if (strncmp(typeStr, "int", strlen(typeStr)) == 0)
@@ -880,6 +896,7 @@ bool ChatHandler::HandleDebugSetValueByIndexCommand(char* args)
     return HandleSetValueHelper(target, field, typeStr, valStr);
 }
 
+/// 辅助函数：按指定进制或浮点格式读取对象 UpdateField 字段值
 bool ChatHandler::HandleGetValueHelper(Object* target, uint32 field, char* typeStr)
 {
     ObjectGuid guid = target->GetObjectGuid();
@@ -890,7 +907,7 @@ bool ChatHandler::HandleGetValueHelper(Object* target, uint32 field, char* typeS
         return false;
     }
 
-    uint32 base;                                            // 0 -> float
+    uint32 base;                                            // 0 -> float | 0 表示浮点数，其余为进制基数
     if (!typeStr)
         base = 10;
     else if (strncmp(typeStr, "int", strlen(typeStr)) == 0)
@@ -912,7 +929,7 @@ bool ChatHandler::HandleGetValueHelper(Object* target, uint32 field, char* typeS
         {
             case 2:
             {
-                // starting 0 if need as required bitstring format
+                // starting 0 if need as required bitstring format | 按 32 位二进制字符串格式化输出
                 std::string res;
                 res.reserve(1 + 32 + 1);
                 res = iValue & (1 << (32 - 1)) ? "0" : " ";
@@ -942,6 +959,7 @@ bool ChatHandler::HandleGetValueHelper(Object* target, uint32 field, char* typeS
     return true;
 }
 
+/// 调试命令：按索引获取玩家身上指定 GUID 物品的字段值
 bool ChatHandler::HandleDebugGetItemValueCommand(char* args)
 {
     uint32 guid;
@@ -953,7 +971,7 @@ bool ChatHandler::HandleDebugGetItemValueCommand(char* args)
         return false;
 
     char* typeStr = ExtractLiteralArg(&args);
-    if (!typeStr && *args)                                  // optional arg but check format fail case
+    if (!typeStr && *args)                                  // optional arg but check format fail case | 可选参数但需校验非法格式
         return false;
 
     Item* item = m_session->GetPlayer()->GetItemByGuid(ObjectGuid(HIGHGUID_ITEM, guid));
@@ -963,6 +981,7 @@ bool ChatHandler::HandleDebugGetItemValueCommand(char* args)
     return HandleGetValueHelper(item, field, typeStr);
 }
 
+/// 调试命令：按索引获取选中单位的 UpdateField 字段值
 bool ChatHandler::HandleDebugGetValueByIndexCommand(char* args)
 {
     Unit* target = getSelectedUnit();
@@ -978,33 +997,34 @@ bool ChatHandler::HandleDebugGetValueByIndexCommand(char* args)
         return false;
 
     char* typeStr = ExtractLiteralArg(&args);
-    if (!typeStr && *args)                                  // optional arg but check format fail case
+    if (!typeStr && *args)                                  // optional arg but check format fail case | 可选参数但需校验非法格式
         return false;
 
     return HandleGetValueHelper(target, field, typeStr);
 }
 
+/// 辅助函数：按算术加减或位掩码运算符修改对象 UpdateField 字段
 bool ChatHandler::HandlerDebugModValueHelper(Object* target, uint32 field, char* typeStr, char* valStr)
 {
     ObjectGuid guid = target->GetObjectGuid();
 
-    // not allow access to nonexistent or critical for work field
+    // not allow access to nonexistent or critical for work field | 禁止修改越界或核心只读字段
     if (field >= target->GetValuesCount() || field <= OBJECT_FIELD_ENTRY)
     {
         PSendSysMessage(LANG_TOO_BIG_INDEX, field, guid.GetString().c_str(), uint32(target->GetValuesCount()));
         return false;
     }
 
-    uint32 type;                                            // 0 -> float 1 -> int add 2-> bit or 3 -> bit and  4 -> bit and not
+    uint32 type;                                            // 0 -> float 1 -> int add 2-> bit or 3 -> bit and  4 -> bit and not | 操作类型：0 浮点加，1 整数加，2 按位或，3 按位与，4 按位与非
     if (strncmp(typeStr, "int", strlen(typeStr)) == 0)
         type = 1;
     else if (strncmp(typeStr, "float", strlen(typeStr)) == 0)
         type = 0;
-    else if (strncmp(typeStr, "|=", strlen("|=") + 1) == 0) // exactly copy
+    else if (strncmp(typeStr, "|=", strlen("|=") + 1) == 0) // exactly copy | 精确匹配 "|="
         type = 2;
-    else if (strncmp(typeStr, "&=", strlen("&=") + 1) == 0) // exactly copy
+    else if (strncmp(typeStr, "&=", strlen("&=") + 1) == 0) // exactly copy | 精确匹配 "&="
         type = 3;
-    else if (strncmp(typeStr, "&=~", strlen("&=~") + 1) == 0) // exactly copy
+    else if (strncmp(typeStr, "&=~", strlen("&=~") + 1) == 0) // exactly copy | 精确匹配 "&=~"
         type = 4;
     else
         return false;
@@ -1020,22 +1040,22 @@ bool ChatHandler::HandlerDebugModValueHelper(Object* target, uint32 field, char*
         switch (type)
         {
             default:
-            case 1:                                         // int +
+            case 1:                                         // int + | 整数累加
                 value = uint32(int32(value) + int32(iValue));
                 DEBUG_LOG(GetMangosString(LANG_CHANGE_INT32), guid.GetString().c_str(), field, iValue, value, value);
                 PSendSysMessage(LANG_CHANGE_INT32_FIELD, guid.GetString().c_str(), field, iValue, value, value);
                 break;
-            case 2:                                         // |= bit or
+            case 2:                                         // |= bit or | 按位或置位
                 value |= iValue;
                 DEBUG_LOG(GetMangosString(LANG_CHANGE_HEX), guid.GetString().c_str(), field, typeStr, iValue, value);
                 PSendSysMessage(LANG_CHANGE_HEX_FIELD, guid.GetString().c_str(), field, typeStr, iValue, value);
                 break;
-            case 3:                                         // &= bit and
+            case 3:                                         // &= bit and | 按位与掩码
                 value &= iValue;
                 DEBUG_LOG(GetMangosString(LANG_CHANGE_HEX), guid.GetString().c_str(), field, typeStr, iValue, value);
                 PSendSysMessage(LANG_CHANGE_HEX_FIELD, guid.GetString().c_str(), field, typeStr, iValue, value);
                 break;
-            case 4:                                         // &=~ bit and not
+            case 4:                                         // &=~ bit and not | 按位清除指定标志位
                 value &= ~iValue;
                 DEBUG_LOG(GetMangosString(LANG_CHANGE_HEX), guid.GetString().c_str(), field, typeStr, iValue, value);
                 PSendSysMessage(LANG_CHANGE_HEX_FIELD, guid.GetString().c_str(), field, typeStr, iValue, value);
@@ -1063,6 +1083,7 @@ bool ChatHandler::HandlerDebugModValueHelper(Object* target, uint32 field, char*
     return true;
 }
 
+/// 调试命令：按名称设置选中单位的 UpdateField 字段值
 bool ChatHandler::HandleDebugSetValueByNameCommand(char* args)
 {
     Unit* target = getSelectedUnit();
@@ -1289,6 +1310,7 @@ bool ChatHandler::HandleDebugModValueCommand(char* args)
     return HandlerDebugModValueHelper(target, field, typeStr, valStr);
 }
 
+/// 调试命令：计算并显示指定法术的直接伤害/治疗与持续效果加成系数
 bool ChatHandler::HandleDebugSpellCoefsCommand(char* args)
 {
     uint32 spellid = ExtractSpellIdFromLink(&args);
@@ -1305,7 +1327,7 @@ bool ChatHandler::HandleDebugSpellCoefsCommand(char* args)
     bool isDirectHeal = false;
     for (int i = 0; i < 3; ++i)
     {
-        // Heals (Also count Mana Shield and Absorb effects as heals)
+        // Heals (Also count Mana Shield and Absorb effects as heals) | 治疗效果（同时将吸收护盾等视作直接治疗系数）
         if (spellEntry->Effect[i] == SPELL_EFFECT_HEAL || spellEntry->Effect[i] == SPELL_EFFECT_HEAL_MAX_HEALTH ||
                 (spellEntry->Effect[i] == SPELL_EFFECT_APPLY_AURA && (spellEntry->EffectApplyAuraName[i] == SPELL_AURA_SCHOOL_ABSORB || spellEntry->EffectApplyAuraName[i] == SPELL_AURA_PERIODIC_HEAL)))
         {
@@ -1317,7 +1339,7 @@ bool ChatHandler::HandleDebugSpellCoefsCommand(char* args)
     bool isDotHeal = false;
     for (int i = 0; i < 3; ++i)
     {
-        // Periodic Heals
+        // Periodic Heals | 周期性持续治疗效果
         if (spellEntry->Effect[i] == SPELL_EFFECT_APPLY_AURA && spellEntry->EffectApplyAuraName[i] == SPELL_AURA_PERIODIC_HEAL)
         {
             isDotHeal = true;
@@ -1338,6 +1360,7 @@ bool ChatHandler::HandleDebugSpellCoefsCommand(char* args)
     return true;
 }
 
+/// 调试命令：直接向目标客户端下发法术修正器封包 (flat/pct)
 bool ChatHandler::HandleDebugSpellModsCommand(char* args)
 {
     char* typeStr = ExtractLiteralArg(&args);
@@ -1391,6 +1414,7 @@ bool ChatHandler::HandleDebugSpellModsCommand(char* args)
     return true;
 }
 
+/// 调试命令：切换飞行点路径调试模式
 bool ChatHandler::HandleDebugTaxiCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -1399,6 +1423,7 @@ bool ChatHandler::HandleDebugTaxiCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：列出当前地图中临时刷出的生物与宠物数量
 bool ChatHandler::HandleShowTemporarySpawnList(char* /*args*/)
 {
     Player* pPlayer = m_session->GetPlayer();
@@ -1419,6 +1444,7 @@ bool ChatHandler::HandleShowTemporarySpawnList(char* /*args*/)
     return true;
 }
 
+/// 调试命令：显示当前地图已加载的 Grid 网格数量
 bool ChatHandler::HandleGridsLoadedCount(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -1429,6 +1455,7 @@ bool ChatHandler::HandleGridsLoadedCount(char* /*args*/)
     return true;
 }
 
+/// 调试命令：查询或切换选中生物的巡逻路径点 (Waypoint) 编号
 bool ChatHandler::HandleDebugWaypoint(char* args)
 {
     Creature* target = getSelectedCreature();
@@ -1607,6 +1634,7 @@ bool ChatHandler::HandleDebugChatFreezeCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：切换悬停/悬浮/飞行权限及飞行动画标志
 bool ChatHandler::HandleDebugFlyCommand(char* args)
 {
     Unit* target = getSelectedUnit();
@@ -1640,6 +1668,7 @@ bool ChatHandler::HandleDebugFlyCommand(char* args)
     return true;
 }
 
+/// 调试命令：开关或切换选中单位的 CMaNGOS 内部调试追踪标志 (CMDebugFlags)
 bool ChatHandler::HandleDebugObjectFlags(char* args)
 {
     char* debugCmd = ExtractLiteralArg(&args);
@@ -1727,6 +1756,7 @@ bool ChatHandler::HandleDebugObjectFlags(char* args)
     return true;
 }
 
+/// 调试命令：查看最近下行 (SMSG) 操作码历史记录
 bool ChatHandler::HandleDebugOutPacketHistory(char* /*args*/)
 {
     Player* player = getSelectedPlayer();
@@ -1745,6 +1775,7 @@ bool ChatHandler::HandleDebugOutPacketHistory(char* /*args*/)
     return true;
 }
 
+/// 调试命令：查看最近上行 (CMSG) 操作码历史记录
 bool ChatHandler::HandleDebugIncPacketHistory(char* /*args*/)
 {
     Player* player = getSelectedPlayer();
@@ -1763,6 +1794,7 @@ bool ChatHandler::HandleDebugIncPacketHistory(char* /*args*/)
     return true;
 }
 
+/// 调试命令：列出当前地图上所有传输载具（飞艇/船只）信息
 bool ChatHandler::HandleDebugTransports(char* /*args*/)
 {
     Player* player = GetSession()->GetPlayer();
@@ -1776,6 +1808,7 @@ bool ChatHandler::HandleDebugTransports(char* /*args*/)
     return true;
 }
 
+/// 调试命令：列出当前地图刷新管理器的待重生生物列表
 bool ChatHandler::HandleDebugSpawnsList(char* /*args*/)
 {
     Player* player = GetSession()->GetPlayer();
@@ -1786,6 +1819,7 @@ bool ChatHandler::HandleDebugSpawnsList(char* /*args*/)
     return true;
 }
 
+/// 调试命令：立即重生选中生物或当前地图所有等待重生的生物
 bool ChatHandler::HandleDebugRespawnDynguid(char* /*args*/)
 {
     Creature* target = getSelectedCreature();
@@ -1801,6 +1835,7 @@ bool ChatHandler::HandleDebugRespawnDynguid(char* /*args*/)
     return true;
 }
 
+/// 调试命令：开启或关闭当前会话的封包日志记录
 bool ChatHandler::HandleDebugPacketLog(char* args)
 {
     uint32 value;
@@ -1811,6 +1846,7 @@ bool ChatHandler::HandleDebugPacketLog(char* args)
     return true;
 }
 
+/// 调试命令：直接触发执行指定类型和 ID 的数据库脚本 (dbscripts)
 bool ChatHandler::HandleDebugDbscript(char* args)
 {
     Unit* target = getSelectedUnit();

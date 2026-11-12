@@ -14,6 +14,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+// 东部王国跨区域全局实体交互与通用脚本
+
 #include "world_eastern_kingdoms.h"
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/scripts/world/world_map_scripts.h"
@@ -154,6 +156,7 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
     // Brewfest events
     BrewfestEvent m_brewfestEvent;
 
+    // 初始化副本数据结构
     void Initialize() override
     {
         m_shadeData.Reset();
@@ -214,6 +217,7 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
         }
     }
 
+    // 副本内生物创建加载回调
     void OnCreatureCreate(Creature* pCreature) override
     {
         switch (pCreature->GetEntry())
@@ -272,6 +276,7 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
         }
     }
 
+    // 副本内生物死亡回调
     void OnCreatureDeath(Creature* pCreature) override
     {
         switch (pCreature->GetEntry())
@@ -300,6 +305,7 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
         }
     }
 
+    // 副本内游戏对象创建加载回调
     void OnObjectCreate(GameObject* pGo) override
     {
         switch (pGo->GetEntry())
@@ -447,6 +453,7 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
             m_brewfestEvent.Update(diff);
     }
 
+    // 获取遭遇战或自定义数据状态
     uint32 GetData(uint32 type) const override
     {
         if (type >= TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE && type <= TYPE_SHADE_OF_THE_HORSEMAN_MAX)
@@ -454,6 +461,7 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
         return 0;
     }
 
+    // 更新遭遇战或自定义数据状态
     void SetData(uint32 type, uint32 data) override
     {
         if (type >= TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE && type <= TYPE_SHADE_OF_THE_HORSEMAN_MAX)
@@ -468,8 +476,9 @@ struct go_infernaling_summoner_portal_hound : public GameObjectAI
         m_uiSummonTimer = 15000;
     }
 
-    uint32 m_uiSummonTimer;
+    uint32 m_uiSummonTimer;                                 // Summon 技能计时器
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_go->IsSpawned())
@@ -513,6 +522,7 @@ struct npc_agent_proudwell : public ScriptedAI
 {
     npc_agent_proudwell(Creature* pCreature) : ScriptedAI(pCreature) { }
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
     void SummonedCreatureDespawn(Creature* pSummoned) override
@@ -535,6 +545,7 @@ struct npc_agent_proudwell : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_agent_proudwell
 UnitAI* GetAI_npc_agent_proudwell(Creature* pCreature)
 {
     return new npc_agent_proudwell(pCreature);
@@ -545,6 +556,7 @@ InstanceData* GetInstanceData_world_map_eastern_kingdoms(Map* pMap)
     return new world_map_eastern_kingdoms(pMap);
 }
 
+// 注册并载入脚本模块：world_eastern_kingdoms
 void AddSC_world_eastern_kingdoms()
 {
     Script* pNewScript = new Script;

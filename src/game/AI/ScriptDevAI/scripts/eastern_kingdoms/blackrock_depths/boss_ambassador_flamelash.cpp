@@ -21,17 +21,21 @@ SDComment: Texts probably missing; Spirits handling could be improved.
 SDCategory: Blackrock Depths
 EndScriptData */
 
+// 弗莱拉斯大使（Ambassador Flamelash）首领战 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackrock_depths.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_FIREBLAST             = 15573,
-    SPELL_BURNING_SPIRIT        = 13489,
+    SPELL_FIREBLAST             = 15573,                    // fireblast 法术 ID
+    SPELL_BURNING_SPIRIT        = 13489,                    // 燃烧之魂 法术 ID
 
-    NPC_BURNING_SPIRIT          = 9178,
+    NPC_BURNING_SPIRIT          = 9178,                     // 燃烧之魂 Entry ID
 };
 
+// 首领战 AI：弗莱拉斯（ambassador_flamelash）
 struct boss_ambassador_flamelashAI : public ScriptedAI
 {
     boss_ambassador_flamelashAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -40,12 +44,13 @@ struct boss_ambassador_flamelashAI : public ScriptedAI
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_pInstance;                          // 副本数据实例指针
 
-    uint32 m_uiSpiritTimer[MAX_DWARF_RUNES];
+    uint32 m_uiSpiritTimer[MAX_DWARF_RUNES];                // Spirit 技能计时器
 
-    GuidSet m_sSpiritsGuidsSet;
+    GuidSet m_sSpiritsGuidsSet;                             // sSpiritsGuidsSet GUID 集合
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         for (unsigned int& i : m_uiSpiritTimer)
@@ -54,7 +59,7 @@ struct boss_ambassador_flamelashAI : public ScriptedAI
         m_sSpiritsGuidsSet.clear();
     }
 
-    // function that will summon spirits periodically
+    // function that will summon spirits periodically (周期性召唤烈焰之魂的辅助函数)
     void DoSummonSpirit(uint8 uiIndex)
     {
         if (!m_pInstance)
@@ -95,12 +100,14 @@ struct boss_ambassador_flamelashAI : public ScriptedAI
             m_pInstance->SetData(TYPE_FLAMELASH, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_FLAMELASH, FAIL);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         switch (pSummoned->GetEntry())
@@ -116,9 +123,10 @@ struct boss_ambassador_flamelashAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -134,15 +142,17 @@ struct boss_ambassador_flamelashAI : public ScriptedAI
                 m_uiSpiritTimer[i] -= uiDiff;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_ambassador_flamelash
 UnitAI* GetAI_boss_ambassador_flamelash(Creature* pCreature)
 {
     return new boss_ambassador_flamelashAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_ambassador_flamelash
 void AddSC_boss_ambassador_flamelash()
 {
     Script* pNewScript = new Script;

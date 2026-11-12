@@ -23,6 +23,7 @@
 #include <deque>
 #include <iterator>
 
+/// 通用三维路径点结构
 struct PathNode
 {
     PathNode(): x(0.0f), y(0.0f), z(0.0f) { }
@@ -30,6 +31,7 @@ struct PathNode
     float x, y, z;
 };
 
+/// 通用路径节点序列容器（支持裁剪、分段长度与已走过距离计算）
 template < typename PathElem, typename PathNode = PathElem >
 class Path
 {
@@ -37,6 +39,7 @@ class Path
         size_t size() const { return i_nodes.size(); }
         bool empty() const { return i_nodes.empty(); }
         void resize(unsigned int sz) { i_nodes.resize(sz); }
+        /// 裁剪掉首部 start 个节点与尾部 end 个节点
         void crop(unsigned int start, unsigned int end)
         {
             while (start && !i_nodes.empty())
@@ -54,6 +57,7 @@ class Path
 
         void clear() { i_nodes.clear(); }
 
+        /// 计算索引区间 [start, end) 内折线的三维总长度
         float GetTotalLength(uint32 start, uint32 end) const
         {
             float len = 0.0f;
@@ -71,6 +75,7 @@ class Path
 
         float GetTotalLength() const { return GetTotalLength(0, size()); }
 
+        /// 计算从起点经过 curnode 前置节点再到当前坐标 (x, y, z) 的累计路程
         float GetPassedLength(uint32 curnode, float x, float y, float z) const
         {
             float len = GetTotalLength(0, curnode);

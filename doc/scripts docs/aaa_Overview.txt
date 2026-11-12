@@ -1,42 +1,60 @@
 Overview of ScriptDev2 Documentation Section
+ScriptDev2 文档部分概览
 ============================================
 
 License
+许可证
 -------
 
 ScriptDev2 is GPL Software, you can find the link:LICENSE.txt[GNU General Public License] here.
+ScriptDev2 是基于 GPL 协议的自由软件，你可以在此处查看 link:LICENSE.txt[GNU 通用公共许可证]（link:LICENSE.txt[GNU General Public License]）。
 
 
 Basic Installation instructions
+基础安装说明
 -------------------------------
 
 See link:How_to_install.html[How to install] for basic instructions
+基本安装步骤请参阅 link:How_to_install.html[How to install]（如何安装）。
 
 ScriptDev2 ChangeLog and TODO list
+ScriptDev2 更新日志与待办列表
 ----------------------------------
 See link:ChangeLog.html[Changelog] for basic points reached with the last milestones
+各里程碑版本的主要变更请参阅 link:ChangeLog.html[Changelog]（更新日志）。
 
 See link:ToDo.html[TODO List] for rough points that the SD2-Team wants to be adressed in the next milestones
+SD2 团队计划在后续里程碑中处理的大致事项请参阅 link:ToDo.html[TODO List]（待办列表）。
 
 Various Guides related to Git
+Git 相关指南
 -----------------------------
 
 link:GIT_guide_1_easy_use.html[Easy use of Git] - Look here if you are new to Git
+link:GIT_guide_1_easy_use.html[Easy use of Git]（Git 简易使用指南）- 如果你是 Git 新手，请查看此文档。
 
 link:GIT_guide_2_normal_use.html[Normal use of Git] - Look here if you want to do basic work with Git
+link:GIT_guide_2_normal_use.html[Normal use of Git]（Git 日常使用指南）- 如果你想用 Git 进行常规开发工作，请查看此文档。
 
 link:GIT_guide_3_advanced_use.html[Advanced use of Git] - Look here if you want to dig deeper into Git, this also contains some configuration settings for Git
+link:GIT_guide_3_advanced_use.html[Advanced use of Git]（Git 高级使用指南）- 如果你想深入使用 Git，请查看此文档（其中也包含部分 Git 配置说明）。
 
 Database content used with SD2
+SD2 所使用的数据库内容
 ------------------------------
 
 link:SQL_guide.html[Guide for SD2 SQL-Files] - Look here for an overview how to manipulate the database content in SD2
+link:SQL_guide.html[Guide for SD2 SQL-Files]（SD2 SQL 文件指南）- 查看如何操作与维护 SD2 数据库内容的概览。
 
 link:Text-tables.txt[] - Manual like documentation for the tables \`script_texts` and \`custom_texts`
+link:Text-tables.txt[] - 关于 \`script_texts` 和 \`custom_texts` 数据表的手册式说明文档。
 
 Old documentation files
+旧版文档文件
 -----------------------
 
 link:Script_Layout.txt[] :: Information about the subfolders of the `scripts` directory
+link:Script_Layout.txt[] :: 关于 `scripts` 目录各子文件夹结构的说明。
 
 link:Text-tables.txt[] :: Documentation of the layout of the tables \`script_texts`, \`custom_texts` and \`gossip_texts`
+link:Text-tables.txt[] :: 关于 \`script_texts`、`custom_texts` 和 \`gossip_texts` 数据表结构的说明文档。

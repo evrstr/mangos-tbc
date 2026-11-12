@@ -26,10 +26,11 @@
 #include "Common.h"
 #include "Multithreading/Threading.h"
 
-/// Heartbeat thread for the World
+/// Heartbeat thread for the World | 世界主循环心跳线程
 class WorldRunnable : public MaNGOS::Runnable
 {
     public:
+        /// 线程主循环入口：按固定时间步长持续驱动世界状态更新
         void run() override;
 };
 #endif

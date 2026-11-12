@@ -21,6 +21,11 @@ SDComment: Quest support: 9868, 9879, 9918, 10085, 10646, 11090.
 SDCategory: Nagrand
 EndScriptData */
 
+// 纳格兰野外任务与生物脚本
+/* 遭遇战概述：
+ * 纳格兰鲜血竞技场系列擂台首领、玛格汉与库雷尼生物 AI。
+ */
+
 /* ContentData
 mob_lump
 npc_nagrand_captive
@@ -37,6 +42,7 @@ EndContentData */
 ## mob_lump
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_LUMP_AGGRO_1            = -1000190,
@@ -49,6 +55,7 @@ enum
     FACTION_FRIENDLY            = 35
 };
 
+// mob_lumpAI 逻辑实现
 struct mob_lumpAI : public ScriptedAI
 {
     mob_lumpAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -61,6 +68,7 @@ struct mob_lumpAI : public ScriptedAI
     uint32 m_uiSpearThrowTimer;
     bool m_bReset;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiResetTimer = MINUTE * IN_MILLISECONDS;
@@ -139,6 +147,7 @@ struct mob_lumpAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_mob_lump(Creature* pCreature)
 {
     return new mob_lumpAI(pCreature);
@@ -148,6 +157,7 @@ UnitAI* GetAI_mob_lump(Creature* pCreature)
 ## npc_nagrand_captive
 #####*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_MAG_START               = -1000482,
@@ -185,6 +195,7 @@ enum
     FACTION_UNKWN				= 10
 };
 
+// npc_nagrand_captiveAI 逻辑实现
 struct npc_nagrand_captiveAI : public npc_escortAI
 {
     npc_nagrand_captiveAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -194,6 +205,7 @@ struct npc_nagrand_captiveAI : public npc_escortAI
     uint32 m_uiHealTimer;
     uint32 m_uiFrostShockTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiChainLightningTimer = 1000;
@@ -299,6 +311,7 @@ struct npc_nagrand_captiveAI : public npc_escortAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->IsTotem())
@@ -381,6 +394,7 @@ struct npc_nagrand_captiveAI : public npc_escortAI
     }
 };
 
+// 接受任务交互回调
 bool QuestAccept_npc_nagrand_captive(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_TOTEM_KARDASH_H || pQuest->GetQuestId() == QUEST_TOTEM_KARDASH_A)
@@ -398,6 +412,7 @@ bool QuestAccept_npc_nagrand_captive(Player* pPlayer, Creature* pCreature, const
     return false;
 }
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_nagrand_captive(Creature* pCreature)
 {
     return new npc_nagrand_captiveAI(pCreature);
@@ -407,6 +422,7 @@ UnitAI* GetAI_npc_nagrand_captive(Creature* pCreature)
 ## npc_creditmarker_visit_with_ancestors (Quest 10085)
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     QUEST_VISIT_WITH_ANCESTORS      = 10085,
@@ -418,12 +434,15 @@ enum
     NPC_VISION_OF_THE_FORGOTTEN     = 18904
 };
 
+// npc_creditmarker_visit_with_ancestorsAI 逻辑实现
 struct npc_creditmarker_visit_with_ancestorsAI : public ScriptedAI
 {
     npc_creditmarker_visit_with_ancestorsAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
+    // 遭遇战/状态重置回调
     void Reset() override {}
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* pWho) override
     {
         if (pWho->GetTypeId() == TYPEID_PLAYER && m_creature->IsWithinDistInMap(pWho, 30.0f))
@@ -453,6 +472,7 @@ struct npc_creditmarker_visit_with_ancestorsAI : public ScriptedAI
     }
 };
 
+// 获取生物 AI 实例函数
 UnitAI* GetAI_npc_creditmarker_visit_with_ancestors(Creature* pCreature)
 {
     return new npc_creditmarker_visit_with_ancestorsAI(pCreature);
@@ -462,6 +482,7 @@ UnitAI* GetAI_npc_creditmarker_visit_with_ancestors(Creature* pCreature)
 ## npc_rethhedron
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_LOW_HP                      = -1000966,
@@ -490,6 +511,7 @@ enum
     SOUND_ID_ABYSSAL_TOSS           = 10667,                // Played after abyssal toss
 };
 
+// npc_rethhedronAI 逻辑实现
 struct npc_rethhedronAI : public ScriptedAI
 {
     npc_rethhedronAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -506,6 +528,7 @@ struct npc_rethhedronAI : public ScriptedAI
     bool m_bLowHpYell;
     bool m_bEventFinished;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiCrippleTimer     = urand(5000, 9000);
@@ -619,6 +642,7 @@ struct npc_rethhedronAI : public ScriptedAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     GOSSIP_IN_BATTLE = 7700,
@@ -626,6 +650,7 @@ enum
     QUEST_RING_OF_BLOOD_FINAL_CHALLENGE = 9977,
 };
 
+// 接受任务交互回调
 bool QuestAccept_npc_gurthock(Player* /*player*/, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_RING_OF_BLOOD_FINAL_CHALLENGE)
@@ -638,6 +663,7 @@ bool QuestAccept_npc_gurthock(Player* /*player*/, Creature* creature, const Ques
     return true;
 }
 
+// NPC 对话开始交互回调
 bool GossipHello_npc_gurthock(Player* player, Creature* creature)
 {
     if (creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
@@ -647,6 +673,7 @@ bool GossipHello_npc_gurthock(Player* player, Creature* creature)
     return true;
 }
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     NPC_WILD_SPARROWHAWK = 22979,
@@ -655,6 +682,7 @@ enum
 };
 
 // 39810 - Sparrowhawk Net
+// SparrowhawkNet 法术脚本
 struct SparrowhawkNet : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -664,6 +692,7 @@ struct SparrowhawkNet : public SpellScript
         return SPELL_CAST_OK;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_1 || !spell->GetUnitTarget())
@@ -673,12 +702,14 @@ struct SparrowhawkNet : public SpellScript
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     NPC_SHATTERED_RUMBLER = 17157,
 };
 
 // 32001 - Throw Gordawg's Boulder
+// ThrowGordawgsBoulder 法术脚本
 struct ThrowGordawgsBoulder : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -690,6 +721,7 @@ struct ThrowGordawgsBoulder : public SpellScript
         return SPELL_CAST_OK;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
@@ -699,6 +731,7 @@ struct ThrowGordawgsBoulder : public SpellScript
     }
 };
 
+// 注册 nagrand 脚本
 void AddSC_nagrand()
 {
     Script* pNewScript = new Script;

@@ -24,12 +24,16 @@
 //
 // All functions return the number of output bytes or -1 on error. If the
 // output buffer is too small, the result will silently be truncated.
+//
+// 使用 RFC 4648/3548 字母表（ABCDEFGHIJKLMNOPQRSTUVWXYZ234567）进行 Base32 编解码；
+// 解码时允许空白符与连字符 '-'，其余非法字符返回 -1，缓冲区不足时静默截断。
 
 #ifndef _BASE32_H_
 #define _BASE32_H_
 
 #include <stdint.h>
 
+/// 将 Base32 编码字符串解码为原始字节序列（用于双因素动态口令密钥解析）
 int base32_decode(char const* encoded, char* result, int bufSize);
 
 #endif /* _BASE32_H_ */

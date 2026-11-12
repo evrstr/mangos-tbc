@@ -21,21 +21,25 @@ SDComment: With script for Moria
 SDCategory: Blackrock Depths
 EndScriptData */
 
+// 达格兰·索瑞森大帝与铁炉堡公主麦拉·铜须首领战 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackrock_depths.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum eEmperor
 {
-    FACTION_NEUTRAL             = 734,
-    YELL_AGGRO_1                = -1230001,
-    YELL_AGGRO_2                = -1230064,
-    YELL_AGGRO_3                = -1230065,
-    YELL_SLAY                   = -1230002,
+    FACTION_NEUTRAL             = 734,                      // neutral 阵营 ID
+    YELL_AGGRO_1                = -1230001,                 // 开战1 大喊台词广播 ID
+    YELL_AGGRO_2                = -1230064,                 // 开战2 大喊台词广播 ID
+    YELL_AGGRO_3                = -1230065,                 // 开战3 大喊台词广播 ID
+    YELL_SLAY                   = -1230002,                 // 击杀 大喊台词广播 ID
 
-    SPELL_HANDOFTHAURISSAN      = 17492,
-    SPELL_AVATAROFFLAME         = 15636
+    SPELL_HANDOFTHAURISSAN      = 17492,                    // handofthaurissan 法术 ID
+    SPELL_AVATAROFFLAME         = 15636                     // avatarofflame 法术 ID
 };
 
+// 首领战 AI：dagran索瑞森（emperor_dagran_thaurissan）
 struct boss_emperor_dagran_thaurissanAI : public ScriptedAI
 {
     boss_emperor_dagran_thaurissanAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -44,11 +48,12 @@ struct boss_emperor_dagran_thaurissanAI : public ScriptedAI
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_pInstance;                          // 副本数据实例指针
 
-    uint32 m_uiHandOfThaurissanTimer;
-    uint32 m_uiAvatarOfFlameTimer;
+    uint32 m_uiHandOfThaurissanTimer;                       // HandOfThaurissan 技能计时器
+    uint32 m_uiAvatarOfFlameTimer;                          // AvatarOfFlame 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiHandOfThaurissanTimer = 4000;
@@ -90,6 +95,7 @@ struct boss_emperor_dagran_thaurissanAI : public ScriptedAI
         DoScriptText(YELL_SLAY, m_creature);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -115,10 +121,11 @@ struct boss_emperor_dagran_thaurissanAI : public ScriptedAI
         else
             m_uiAvatarOfFlameTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_emperor_dagran_thaurissan
 UnitAI* GetAI_boss_emperor_dagran_thaurissan(Creature* pCreature)
 {
     return new boss_emperor_dagran_thaurissanAI(pCreature);
@@ -128,18 +135,20 @@ UnitAI* GetAI_boss_emperor_dagran_thaurissan(Creature* pCreature)
 ## boss_moira_bronzebeard
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum ePrincess
 {
-    SPELL_HEAL                  = 15586,
-    SPELL_RENEW                 = 10929,
-    SPELL_SHIELD                = 10901,
-    SPELL_MINDBLAST             = 15587,
-    SPELL_SHADOWWORDPAIN        = 15654,
-    SPELL_SMITE                 = 10934,
-    SPELL_SHADOW_BOLT           = 15537,
-    SPELL_OPEN_PORTAL           = 13912
+    SPELL_HEAL                  = 15586,                    // 治疗 法术 ID
+    SPELL_RENEW                 = 10929,                    // renew 法术 ID
+    SPELL_SHIELD                = 10901,                    // 护盾 法术 ID
+    SPELL_MINDBLAST             = 15587,                    // mindblast 法术 ID
+    SPELL_SHADOWWORDPAIN        = 15654,                    // shadowwordpain 法术 ID
+    SPELL_SMITE                 = 10934,                    // 重拳先生 法术 ID
+    SPELL_SHADOW_BOLT           = 15537,                    // 暗影箭 法术 ID
+    SPELL_OPEN_PORTAL           = 13912                     // open传送门 法术 ID
 };
 
+// 首领战 AI：bronzebeard（moira_bronzebeard）
 struct boss_moira_bronzebeardAI : public ScriptedAI
 {
     boss_moira_bronzebeardAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -148,16 +157,17 @@ struct boss_moira_bronzebeardAI : public ScriptedAI
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_pInstance;                          // 副本数据实例指针
 
-    uint32 m_uiHealTimer;
-    uint32 m_uiMindBlastTimer;
-    uint32 m_uiShadowWordPainTimer;
-    uint32 m_uiSmiteTimer;
+    uint32 m_uiHealTimer;                                   // Heal 技能计时器
+    uint32 m_uiMindBlastTimer;                              // MindBlast 技能计时器
+    uint32 m_uiShadowWordPainTimer;                         // ShadowWordPain 技能计时器
+    uint32 m_uiSmiteTimer;                                  // Smite 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
-        m_uiHealTimer           = 12000;                             // These times are probably wrong
+        m_uiHealTimer           = 12000;                             // These times are probably wrong (此时间参数可能需进一步校对)
         m_uiMindBlastTimer      = 16000;
         m_uiShadowWordPainTimer = 2000;
         m_uiSmiteTimer          = 8000;
@@ -166,6 +176,7 @@ struct boss_moira_bronzebeardAI : public ScriptedAI
         m_meleeEnabled = false;
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_pInstance)
@@ -179,9 +190,10 @@ struct boss_moira_bronzebeardAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -194,7 +206,7 @@ struct boss_moira_bronzebeardAI : public ScriptedAI
         else
             m_uiMindBlastTimer -= uiDiff;
 
-        // ShadowWordPain_Timer
+        // ShadowWordPain_Timer (暗言术痛计时器)
         if (m_uiShadowWordPainTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SHADOWWORDPAIN) == CAST_OK)
@@ -231,11 +243,13 @@ struct boss_moira_bronzebeardAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_moira_bronzebeard
 UnitAI* GetAI_boss_moira_bronzebeard(Creature* pCreature)
 {
     return new boss_moira_bronzebeardAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_draganthaurissan
 void AddSC_boss_draganthaurissan()
 {
     Script* pNewScript = new Script;

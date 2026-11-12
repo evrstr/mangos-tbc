@@ -21,11 +21,17 @@ SDComment:
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
+// 鱼斯拉（毒蛇神殿二号首领）
+/* 遭遇战概述：
+ * 鱼斯拉是通过在漩涡中钓鱼引出的深海海怪，核心技能包括 360 度喷水喷涌旋风与潜入水下召唤鱼人。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     EMOTE_DEEP_BREATH               = -1548056,
@@ -47,6 +53,7 @@ enum
     MAX_SUBMERGE_ADDS               = 9,
 };
 
+// Phases 相关枚举
 enum Phases
 {
     PHASE_EMERGING              = 0,
@@ -75,6 +82,7 @@ static const AddsLocations aLurkerLoc[MAX_SUBMERGE_ADDS] =
     {NPC_COILFANG_GUARDIAN, -49.6826f, -414.9719f, -20.54604f, 2},
 };
 
+// LurkerActions 相关枚举
 enum LurkerActions
 {
     LURKER_SUBMERGE_PHASE,
@@ -88,6 +96,7 @@ enum LurkerActions
     LURKER_SPOUT_END,
 };
 
+// boss_the_lurker_belowAI 逻辑实现
 struct boss_the_lurker_belowAI : public CombatAI
 {
     boss_the_lurker_belowAI(Creature* pCreature) : CombatAI(pCreature, LURKER_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(pCreature->GetInstanceData()))
@@ -110,6 +119,7 @@ struct boss_the_lurker_belowAI : public CombatAI
 
     int32 m_rangeCheckState;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -122,6 +132,7 @@ struct boss_the_lurker_belowAI : public CombatAI
         SetMeleeEnabled(false);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -160,6 +171,7 @@ struct boss_the_lurker_belowAI : public CombatAI
             m_creature->SummonCreature(i.uiEntry, i.fX, i.fY, i.fZ, 0.0f, TEMPSPAWN_DEAD_DESPAWN, 0, false, true, i.uiPathId);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SWIMMING);
@@ -223,6 +235,7 @@ struct boss_the_lurker_belowAI : public CombatAI
         ResetCombatAction(LURKER_WHIRL, 2000);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -300,6 +313,7 @@ struct boss_the_lurker_belowAI : public CombatAI
 };
 
 // Cast the spell that should summon the Lurker-Below
+// 游戏对象使用交互回调
 bool GOUse_go_strange_pool(Player* /*player*/, GameObject* go)
 {
     // There is some chance to fish The Lurker Below, sources are from 20s to 10minutes, average 5min => 20 tries, hence 5%
@@ -318,8 +332,10 @@ bool GOUse_go_strange_pool(Player* /*player*/, GameObject* go)
     return false;
 }
 
+// Spout 法术脚本
 struct Spout : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (!spell->GetUnitTarget())
@@ -330,6 +346,7 @@ struct Spout : public SpellScript
     }
 };
 
+// SpoutTurning 光环脚本
 struct SpoutTurning : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
@@ -353,6 +370,7 @@ struct SpoutTurning : public AuraScript
     }
 };
 
+// 注册 boss_the_lurker_below 脚本
 void AddSC_boss_the_lurker_below()
 {
     Script* pNewScript = new Script;

@@ -26,6 +26,7 @@
 #include "MotionGenerators/MovementGenerator.h"
 #include "Spells/SpellAuras.h"
 
+// 刷新重复事件触发间隔计时器（min == max 固定值，否则取随机区间）
 bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatMin, uint32 repeatMax)
 {
     if (repeatMin == repeatMax)
@@ -42,6 +43,7 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
     return true;
 }
 
+// 许可度检查：按 AIName 显式指定或生物阵营主动性评估 EventAI 优先级
 int CreatureEventAI::Permissible(const Creature* creature)
 {
     if (creature->GetAIName() == "EventAI")
@@ -56,6 +58,7 @@ int CreatureEventAI::Permissible(const Creature* creature)
     return PERMIT_BASE_NO;
 }
 
+// 向 GM 命令控制台输出当前生物的阶段、战斗开关、EventAI 事件及动作集运行状态
 void CreatureEventAI::GetAIInformation(ChatHandler& reader)
 {
     reader.PSendSysMessage(LANG_NPC_EVENTAI_PHASE, uint32(m_Phase));
@@ -81,13 +84,14 @@ void CreatureEventAI::GetAIInformation(ChatHandler& reader)
         reader.PSendSysMessage("Action set engaged %d. Index %u. MaxIndex %u. Timer %u. Repeat %s", m_setId, m_index, m_maxIndex, m_timer, m_repeat ? "true" : "false");
 }
 
-// For Non Dungeon map only allow non-difficulty flags or EFLAG_NORMAL mode
+// For Non Dungeon map only allow non-difficulty flags or EFLAG_NORMAL mode (非副本地图仅加载无难度标记或普通难度标记的事件)
 inline bool IsEventFlagsFitForNormalMap(uint8 eFlags)
 {
     return !(eFlags & (EFLAG_NORMAL | EFLAG_HEROIC)) ||
            (eFlags & EFLAG_NORMAL);
 }
 
+// 构造函数：初始化 EventAI 运行期变量
 CreatureEventAI::CreatureEventAI(Creature* creature) : CreatureAI(creature),
     m_EventUpdateTime(0),
     m_EventDiff(0),
@@ -104,6 +108,7 @@ CreatureEventAI::CreatureEventAI(Creature* creature) : CreatureAI(creature),
 
 }
 
+// 初始化 EventAI：从地图数据容器加载匹配生物 Entry 与 DBGUID 的事件脚本并缓存 OOC LoS 与主法术信息
 void CreatureEventAI::InitAI()
 {
     m_CreatureEventAIList.clear();
@@ -196,6 +201,7 @@ void CreatureEventAI::InitAI()
     }
 }
 
+// 判断事件是否属于每 500ms 轮询检查的定时/条件类事件
 bool CreatureEventAI::IsTimerExecutedEvent(EventAI_Type type) const
 {
     switch (type)
@@ -225,6 +231,7 @@ bool CreatureEventAI::IsTimerExecutedEvent(EventAI_Type type) const
     }
 }
 
+// 判断事件是否支持重复触发（刷新/死亡/进战/脱战/归位单次生命期仅触发一次）
 bool CreatureEventAI::IsRepeatableEvent(EventAI_Type type) const
 {
     switch (type)
@@ -240,6 +247,7 @@ bool CreatureEventAI::IsRepeatableEvent(EventAI_Type type) const
     }
 }
 
+// 判断事件是否在触发后需要重置重复间隔计时器
 bool CreatureEventAI::IsTimerBasedEvent(EventAI_Type type) const
 {
     switch (type)
@@ -275,6 +283,7 @@ bool CreatureEventAI::IsTimerBasedEvent(EventAI_Type type) const
     }
 }
 
+// 按当前递归深度执行暂存的就绪事件列表，完成后清空该层缓存
 void CreatureEventAI::ProcessEvents(Unit* actionInvoker, Unit* AIEventSender)
 {
     const int curDepth = m_depth;
@@ -286,6 +295,7 @@ void CreatureEventAI::ProcessEvents(Unit* actionInvoker, Unit* AIEventSender)
     --m_depth;
 }
 
+// 校验事件是否激活、倒计时归零、阶段掩码匹配、近远程模式符合且满足具体事件触发条件
 bool CreatureEventAI::CheckEvent(CreatureEventAIHolder& holder, Unit* actionInvoker, Unit* /*AIEventSender =nullptr*/)
 {
     if (!holder.enabled || holder.timer || holder.inProgress)
@@ -612,6 +622,7 @@ void GetRepeatTimers(CreatureEventAIHolder& holder, uint32& repeatMin, uint32& r
     }
 }
 
+// 重置事件：刷新重复计时器，若非可重复事件则禁用之
 void CreatureEventAI::ResetEvent(CreatureEventAIHolder& holder)
 {
     if (IsTimerBasedEvent(holder.event.event_type))
@@ -626,6 +637,7 @@ void CreatureEventAI::ResetEvent(CreatureEventAIHolder& holder)
         holder.enabled = false;
 }
 
+// 检查事件并将通过校验的事件标记为 inProgress 并入队等待执行
 bool CreatureEventAI::CheckAndReadyEventForExecution(CreatureEventAIHolder& holder, Unit* actionInvoker, Unit* AIEventSender)
 {
     if (CheckEvent(holder, actionInvoker, AIEventSender))
@@ -637,6 +649,7 @@ bool CreatureEventAI::CheckAndReadyEventForExecution(CreatureEventAIHolder& hold
     return false;
 }
 
+// 执行单个已就绪事件：判定触发概率，按顺序执行 3 个动作或随机挑选 1 个动作，并重置事件
 bool CreatureEventAI::ProcessEvent(CreatureEventAIHolder& holder, Unit* actionInvoker, Unit* AIEventSender /*=nullptr*/)
 {
     bool actionSuccess = false;
@@ -704,6 +717,7 @@ bool CreatureEventAI::ProcessEvent(CreatureEventAIHolder& holder, Unit* actionIn
     return true;
 }
 
+// 执行单条 EventAI 动作指令（依据 action.type 分派处理各类战斗、移动、说话、召唤、阶段切换等行为）
 bool CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32 rnd, uint32 eventId, Unit* actionInvoker, Unit* AIEventSender, Unit* eventTarget)
 {
     if (action.type == ACTION_T_NONE)
@@ -1440,6 +1454,7 @@ bool CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
     return true;
 }
 
+// 生物生成或重生时触发（注意：构造函数中亦会间接触发），初始化 AI 并执行 EVENT_T_SPAWNED
 void CreatureEventAI::JustRespawned()                       // NOTE that this is called from the AI's constructor as well
 {
     CreatureAI::JustRespawned();
@@ -1483,6 +1498,7 @@ void CreatureEventAI::JustRespawned()                       // NOTE that this is
     ProcessEvents();
 }
 
+// 重置 AI 阶段外状态及脱战计时器（不重置战斗计时器，因通常在归位/死亡时调用）
 void CreatureEventAI::Reset()
 {
     m_EventUpdateTime = EVENT_UPDATE_TIME;
@@ -1520,6 +1536,7 @@ void CreatureEventAI::Reset()
     }
 }
 
+// 返回出生点到达时触发 EVENT_T_REACHED_HOME 并重置状态
 void CreatureEventAI::JustReachedHome()
 {
     IncreaseDepthIfNecessary();
@@ -1533,6 +1550,7 @@ void CreatureEventAI::JustReachedHome()
     Reset();
 }
 
+// 脱离战斗时触发 EVENT_T_EVADE 并清理聚合收集的召唤物
 void CreatureEventAI::EnterEvadeMode()
 {
     UnitAI::EnterEvadeMode();
@@ -1550,6 +1568,7 @@ void CreatureEventAI::EnterEvadeMode()
         DespawnGuids(m_despawnGuids);
 }
 
+// 死亡时重置状态、发送死亡 AI 事件、执行 EVENT_T_DEATH、归零阶段并销毁聚合召唤物
 void CreatureEventAI::JustDied(Unit* killer)
 {
     CreatureAI::JustDied(killer);
@@ -1574,6 +1593,7 @@ void CreatureEventAI::JustDied(Unit* killer)
         DespawnGuids(m_despawnGuids);
 }
 
+// 击杀目标时触发 EVENT_T_KILL
 void CreatureEventAI::KilledUnit(Unit* victim)
 {
     IncreaseDepthIfNecessary();
@@ -1585,6 +1605,7 @@ void CreatureEventAI::KilledUnit(Unit* victim)
     ProcessEvents(victim);
 }
 
+// 成功召唤生物时触发 EVENT_T_SUMMONED_UNIT 并按过滤规则加入聚合销毁列表
 void CreatureEventAI::JustSummoned(Creature* summoned)
 {
     IncreaseDepthIfNecessary();
@@ -1599,6 +1620,7 @@ void CreatureEventAI::JustSummoned(Creature* summoned)
             m_despawnGuids.push_back(summoned->GetObjectGuid());
 }
 
+// 所召唤生物死亡时触发 EVENT_T_SUMMONED_JUST_DIED
 void CreatureEventAI::SummonedCreatureJustDied(Creature* summoned)
 {
     IncreaseDepthIfNecessary();
@@ -1610,6 +1632,7 @@ void CreatureEventAI::SummonedCreatureJustDied(Creature* summoned)
     ProcessEvents(summoned);
 }
 
+// 所召唤生物消失时触发 EVENT_T_SUMMONED_JUST_DESPAWN
 void CreatureEventAI::SummonedCreatureDespawn(Creature* summoned)
 {
     IncreaseDepthIfNecessary();
@@ -1621,6 +1644,7 @@ void CreatureEventAI::SummonedCreatureDespawn(Creature* summoned)
     ProcessEvents(summoned);
 }
 
+// 收到其他生物投递的 AI 事件时匹配事件类型与发送者 Entry 并执行
 void CreatureEventAI::ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* invoker, uint32 /*miscValue*/)
 {
     MANGOS_ASSERT(sender);
@@ -1635,6 +1659,7 @@ void CreatureEventAI::ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* 
     ProcessEvents(invoker, sender);
 }
 
+// 尸体移除时清理 AGGREGATION_EVADE 聚合召唤物
 void CreatureEventAI::CorpseRemoved(uint32& respawnDelay)
 {
     CreatureAI::CorpseRemoved(respawnDelay);
@@ -1643,6 +1668,7 @@ void CreatureEventAI::CorpseRemoved(uint32& respawnDelay)
         DespawnGuids(m_despawnGuids);
 }
 
+// 施放法术完成时触发 EVENT_T_SPELL_CAST
 void CreatureEventAI::OnSpellCast(SpellEntry const* spellInfo, Unit* target)
 {
     IncreaseDepthIfNecessary();
@@ -1655,6 +1681,7 @@ void CreatureEventAI::OnSpellCast(SpellEntry const* spellInfo, Unit* target)
     ProcessEvents(target);
 }
 
+// 进入战斗：触发 EVENT_T_AGGRO 并初始化战斗定时事件计时器
 void CreatureEventAI::EnterCombat(Unit* enemy)
 {
     CreatureAI::EnterCombat(enemy);
@@ -1692,6 +1719,7 @@ void CreatureEventAI::EnterCombat(Unit* enemy)
     m_EventDiff = 0;
 }
 
+// 视野内单位移动：先检查脱战视线 (OOC LoS) 脚本事件，再交由基类执行常规索敌
 void CreatureEventAI::MoveInLineOfSight(Unit* who)
 {
     // Check for OOC LOS Event
@@ -1725,6 +1753,7 @@ void CreatureEventAI::MoveInLineOfSight(Unit* who)
     UnitAI::MoveInLineOfSight(who);
 }
 
+// 被法术命中时匹配法术 ID 与学派掩码，触发 EVENT_T_SPELLHIT
 void CreatureEventAI::SpellHit(Unit* unit, const SpellEntry* spellInfo)
 {
     IncreaseDepthIfNecessary();
@@ -1738,6 +1767,7 @@ void CreatureEventAI::SpellHit(Unit* unit, const SpellEntry* spellInfo)
     ProcessEvents(unit);
 }
 
+// 自身法术命中目标时匹配法术 ID 与学派掩码，触发 EVENT_T_SPELLHIT_TARGET
 void CreatureEventAI::SpellHitTarget(Unit* target, const SpellEntry* spellInfo)
 {
     IncreaseDepthIfNecessary();
@@ -1773,6 +1803,7 @@ inline int32 CreatureEventAI::GetRandActionParam(uint32 rnd, int32 param1, int32
     return 0;
 }
 
+// 根据 Target 枚举类型解析动作目标单位指针
 inline Unit* CreatureEventAI::GetTargetByType(uint32 target, Unit* actionInvoker, Unit* AIEventSender, Unit* eventTarget, bool& isError, uint32 forSpellId, uint32 selectFlags) const
 {
     Unit* resTarget;
@@ -1904,6 +1935,7 @@ void CreatureEventAI::ReceiveEmote(Player* player, uint32 textEmote)
 
 #define HEALTH_STEPS            3
 
+// 受伤回调：按 90%、50%、10% 血量阈值自动向周围广播对应 AI 事件
 void CreatureEventAI::DamageTaken(Unit* dealer, uint32& damage, DamageEffectType damagetype, SpellEntry const* spellInfo)
 {
     CreatureAI::DamageTaken(dealer, damage, damagetype, spellInfo);
@@ -1911,7 +1943,7 @@ void CreatureEventAI::DamageTaken(Unit* dealer, uint32& damage, DamageEffectType
     uint32 step = m_throwAIEventStep != 100 ? m_throwAIEventStep : 0;
     if (step < HEALTH_STEPS)
     {
-        // Throw at 90%, 50% and 10% health
+        // Throw at 90%, 50% and 10% health (依次检测 90%、50%、10% 血量阶梯)
         float healthSteps[HEALTH_STEPS] = { 90.0f, 50.0f, 10.0f };
         float newHealthPercent = (m_creature->GetHealth() - damage) * 100.0f / m_creature->GetMaxHealth();
         AIEventType sendEvent[HEALTH_STEPS] = { AI_EVENT_LOST_SOME_HEALTH, AI_EVENT_LOST_HEALTH, AI_EVENT_CRITICAL_HEALTH };
@@ -1919,7 +1951,7 @@ void CreatureEventAI::DamageTaken(Unit* dealer, uint32& damage, DamageEffectType
         if (newHealthPercent > healthSteps[step])
             return;                                         // Not reached the next mark
 
-        // search for highest reached mark (with actual event attached)
+        // search for highest reached mark (with actual event attached) (若一次受伤跨越多档，直接跳至已跨越的最高档位)
         for (uint32 i = HEALTH_STEPS - 1; i > step; --i)
         {
             if (newHealthPercent < healthSteps[i] && (m_throwAIEventMask & (1 << sendEvent[i])))
@@ -1936,6 +1968,7 @@ void CreatureEventAI::DamageTaken(Unit* dealer, uint32& damage, DamageEffectType
     }
 }
 
+// 触发免死锁血保护时派发 EVENT_T_DEATH_PREVENTED
 void CreatureEventAI::JustPreventedDeath(Unit* attacker)
 {
     IncreaseDepthIfNecessary();
@@ -1947,6 +1980,7 @@ void CreatureEventAI::JustPreventedDeath(Unit* attacker)
     ProcessEvents(attacker);
 }
 
+// 受治疗回满血时广播 AI_EVENT_GOT_FULL_HEALTH 事件
 void CreatureEventAI::HealedBy(Unit* healer, uint32& healedAmount)
 {
     if (m_throwAIEventStep == 100)
@@ -1960,6 +1994,7 @@ void CreatureEventAI::HealedBy(Unit* healer, uint32& healedAmount)
     }
 }
 
+// 校验 EVENT_T_SPAWNED 的地图/区域条件
 bool CreatureEventAI::SpawnedEventConditionsCheck(CreatureEventAI_Event const& event) const
 {
     if (event.event_type != EVENT_T_SPAWNED)
@@ -1987,6 +2022,7 @@ bool CreatureEventAI::SpawnedEventConditionsCheck(CreatureEventAI_Event const& e
     return false;
 }
 
+// 定时轮询更新：每 500ms 批量递减事件计时器、推进动作集步骤并触发所有满足条件的定时事件
 void CreatureEventAI::UpdateEventTimers(const uint32 diff)
 {
     // Events are only updated once every EVENT_UPDATE_TIME ms to prevent lag with large amount of events
@@ -2068,6 +2104,7 @@ void CreatureEventAI::UpdateEventTimers(const uint32 diff)
     }
 }
 
+// 移动到达指定点或路径点时触发 EVENT_T_MOVEMENT_INFORM
 void CreatureEventAI::MovementInform(uint32 motionType, uint32 pointId)
 {
     IncreaseDepthIfNecessary();

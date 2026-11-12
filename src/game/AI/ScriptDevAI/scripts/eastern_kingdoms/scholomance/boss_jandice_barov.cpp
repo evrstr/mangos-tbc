@@ -21,25 +21,30 @@ SDComment: Jandice's Illusions are missing their AoE immunity, they should only 
 SDCategory: Scholomance
 EndScriptData */
 
+// 詹迪斯·巴罗夫（Jandice Barov）首领战 AI（镜像分身术迷阵与物理近战打击）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_CURSE_OF_BLOOD        = 16098,
-    SPELL_SPREAD_ILLUSIONS      = 17772,
-    SPELL_SUMMON_ILLUSIONS      = 17773,
-    SPELL_SPREAD_JANDICE        = 17774,
-    SPELL_BANISH                = 8994,
+    SPELL_CURSE_OF_BLOOD        = 16098,                    // 诅咒of鲜血 法术 ID
+    SPELL_SPREAD_ILLUSIONS      = 17772,                    // spreadillusions 法术 ID
+    SPELL_SUMMON_ILLUSIONS      = 17773,                    // 召唤illusions 法术 ID
+    SPELL_SPREAD_JANDICE        = 17774,                    // spreadjandice 法术 ID
+    SPELL_BANISH                = 8994,                     // banish 法术 ID
 };
 
+// 首领战 AI：标识 ID（jandicebarov）
 struct boss_jandicebarovAI : public ScriptedAI
 {
     boss_jandicebarovAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiCurseOfBloodTimer;
-    uint32 m_uiIllusionTimer;
-    uint32 m_uiBanishTimer;
+    uint32 m_uiCurseOfBloodTimer;                           // CurseOfBlood 技能计时器
+    uint32 m_uiIllusionTimer;                               // Illusion 技能计时器
+    uint32 m_uiBanishTimer;                                 // Banish 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiCurseOfBloodTimer = 5000;
@@ -47,14 +52,16 @@ struct boss_jandicebarovAI : public ScriptedAI
         m_uiBanishTimer = urand(9000, 13000);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->CastSpell(pSummoned, SPELL_SPREAD_ILLUSIONS, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -82,7 +89,7 @@ struct boss_jandicebarovAI : public ScriptedAI
         // Illusion_Timer
         if (m_uiIllusionTimer < uiDiff)
         {
-            // Summon illusions and becomes invisible for 8 seconds while hiding into the illusions
+            // Summon illusions and becomes invisible for 8 seconds while hiding into the illusions (召唤 illusions and becomes invisible for 8 seconds while hiding into the illusions)
             if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_ILLUSIONS) == CAST_OK)
             {
                 m_uiIllusionTimer = 25000;
@@ -92,15 +99,17 @@ struct boss_jandicebarovAI : public ScriptedAI
         else
             m_uiIllusionTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_jandicebarov
 UnitAI* GetAI_boss_jandicebarov(Creature* pCreature)
 {
     return new boss_jandicebarovAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_jandicebarov
 void AddSC_boss_jandicebarov()
 {
     Script* pNewScript = new Script;

@@ -15,12 +15,14 @@ EndScriptData */
 ScriptedPetAI::ScriptedPetAI(Creature* creature) : CreatureAI(creature)
 {}
 
+// 开始攻击并让宠物追击目标
 void ScriptedPetAI::AttackStart(Unit* who)
 {
     if (who && m_creature->Attack(who, m_meleeEnabled))
         m_creature->GetMotionMaster()->MoveChase(who);
 }
 
+// 受到攻击时的反击判定（处于非被动状态时反击近战可达目标）
 void ScriptedPetAI::AttackedBy(Unit* attacker)
 {
     if (m_creature->GetVictim())
@@ -30,6 +32,7 @@ void ScriptedPetAI::AttackedBy(Unit* attacker)
         AttackStart(attacker);
 }
 
+// 重置宠物战斗状态：停止攻击并恢复跟随主人
 void ScriptedPetAI::ResetPetCombat()
 {
     Unit* owner = m_creature->GetMaster();
@@ -50,11 +53,13 @@ void ScriptedPetAI::ResetPetCombat()
     Reset();
 }
 
+// 宠物战斗中周期更新：执行近战平砍
 void ScriptedPetAI::UpdatePetAI(const uint32 /*diff*/)
 {
     DoMeleeAttackIfReady();
 }
 
+// 宠物主更新循环：处理目标合法性、协助主人战斗与脱战跟随
 void ScriptedPetAI::UpdateAI(const uint32 diff)
 {
     if (!m_creature->IsAlive())                             // should not be needed, IsAlive is checked in mangos before calling UpdateAI
@@ -105,6 +110,7 @@ void ScriptedPetAI::UpdateAI(const uint32 diff)
     }
 }
 
+// 战斗结束回调
 void ScriptedPetAI::CombatStop()
 {
     ResetPetCombat();

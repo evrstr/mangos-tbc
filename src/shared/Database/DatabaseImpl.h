@@ -22,10 +22,12 @@
 #include <cstdarg>
 #include <functional>
 
-/// Function body definitions for the template function members of the Database class
+/// Function body definitions for the template function members of the Database class | Database 类异步查询模板成员函数的实现体
 
+// 检查 QueryHolder 与结果队列是否有效 | Validate QueryHolder pointer and result queue
 #define ASYNC_DELAYHOLDER_BODY(holder) if (!holder || !m_pResultQueue) return false;
 
+// 格式化异步查询字符串辅助宏 | Helper macro to format async SQL query string
 #define ASYNC_PQUERY_BODY(format, szQuery) \
     if(!format) return false; \
     \
@@ -45,7 +47,7 @@
         } \
     }
 
-// -- Query --
+// -- Query -- | 异步原始 SQL 查询
 
 template <typename Callable>
 bool
@@ -58,7 +60,7 @@ Database::AsyncQuery(Callable callback, const char* sql)
     return m_threadBody->Delay(new SqlQuery(sql, new MaNGOS::QueryCallback(std::move(callback)), m_pResultQueue));
 }
 
-// -- PQuery --
+// -- PQuery -- | 异步格式化 SQL 查询
 
 template <typename Callable>
 bool
@@ -68,7 +70,7 @@ Database::AsyncPQuery(Callable callback, const char* format, ...)
     return AsyncQuery(std::move(callback), szQuery);
 }
 
-// -- PQuery / member --
+// -- PQuery / member -- | 异步格式化查询（绑定对象成员函数回调）
 
 template<class Class>
 bool
@@ -106,7 +108,7 @@ Database::AsyncPQuery(Class* object, void (Class::*method)(QueryResult*, ParamTy
     return AsyncQuery(std::move(callback), szQuery);
 }
 
-// -- PQuery / static --
+// -- PQuery / static -- | 异步格式化查询（绑定静态或全局函数回调）
 
 template<typename ParamType1>
 bool
@@ -135,7 +137,7 @@ Database::AsyncPQuery(void (*method)(QueryResult*, ParamType1, ParamType2, Param
     return AsyncQuery(std::move(callback), szQuery);
 }
 
-// -- QueryHolder --
+// -- QueryHolder -- | 异步查询持有器（批量查询）延迟执行
 
 template<class Class>
 bool

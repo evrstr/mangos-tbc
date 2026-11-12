@@ -21,47 +21,51 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 堕落的瓦拉斯塔兹（Vaelastrasz the Corrupt）2号首领战 AI（红龙精华与燃烧刺激）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_LINE_1                      = -1469026,
-    SAY_LINE_2                      = -1469027,
-    SAY_LINE_3                      = -1469028,
-    SAY_HALFLIFE                    = -1469029,
-    SAY_KILLTARGET                  = -1469030,
+    SAY_LINE_1                      = -1469026,             // line1 台词广播 ID
+    SAY_LINE_2                      = -1469027,             // line2 台词广播 ID
+    SAY_LINE_3                      = -1469028,             // line3 台词广播 ID
+    SAY_HALFLIFE                    = -1469029,             // halflife 台词广播 ID
+    SAY_KILLTARGET                  = -1469030,             // killtarget 台词广播 ID
     SAY_NEFARIUS_CORRUPT_1          = -1469006,                 // When he corrupts Vaelastrasz
-    SAY_NEFARIUS_CORRUPT_2          = -1469032,
-    SAY_TECHNICIAN_RUN              = -1469034,
+    SAY_NEFARIUS_CORRUPT_2          = -1469032,             // 奈法利奥斯堕落2 台词广播 ID
+    SAY_TECHNICIAN_RUN              = -1469034,             // technicianrun 台词广播 ID
 
     NPC_BLACKWING_TECHNICIAN        = 13996,                    // Flees at Vael intro event
 
     SPELL_ESSENCE_OF_THE_RED        = 23513,                    // and 55740 in wotlk
-    SPELL_FLAME_BREATH              = 23461,
-    SPELL_FIRE_NOVA                 = 23462,
-    SPELL_TAIL_SWEEP                = 15847,
-    SPELL_BURNING_ADRENALINE_TANK   = 18173,
-    SPELL_BURNING_ADRENALINE        = 23620,
-    SPELL_CLEAVE                    = 19983,
+    SPELL_FLAME_BREATH              = 23461,                // 烈焰吐息 法术 ID
+    SPELL_FIRE_NOVA                 = 23462,                // 火焰新星 法术 ID
+    SPELL_TAIL_SWEEP                = 15847,                // 扫尾横扫 法术 ID
+    SPELL_BURNING_ADRENALINE_TANK   = 18173,                // 燃烧adrenalinetank 法术 ID
+    SPELL_BURNING_ADRENALINE        = 23620,                // 燃烧adrenaline 法术 ID
+    SPELL_CLEAVE                    = 19983,                // 顺劈斩 法术 ID
 
-    SPELL_NEFARIUS_CORRUPTION       = 23642,
-    SPELL_RED_LIGHTNING             = 19484,
+    SPELL_NEFARIUS_CORRUPTION       = 23642,                // 奈法利奥斯腐蚀 法术 ID
+    SPELL_RED_LIGHTNING             = 19484,                // red闪电 法术 ID
 
-    GOSSIP_ITEM_VAEL_1              = -3469003,
-    GOSSIP_ITEM_VAEL_2              = -3469004,
+    GOSSIP_ITEM_VAEL_1              = -3469003,             // 物品vael1 对话菜单选项 ID
+    GOSSIP_ITEM_VAEL_2              = -3469004,             // 物品vael2 对话菜单选项 ID
 
-    GOSSIP_TEXT_VAEL_1              = 7156,
-    GOSSIP_TEXT_VAEL_2              = 7256,
+    GOSSIP_TEXT_VAEL_1              = 7156,                 // textvael1 对话菜单选项 ID
+    GOSSIP_TEXT_VAEL_2              = 7256,                 // textvael2 对话菜单选项 ID
 
-    FACTION_HOSTILE                 = 14,
+    FACTION_HOSTILE                 = 14,                   // hostile 阵营 ID
 
-    AREATRIGGER_VAEL_INTRO          = 3626,
+    AREATRIGGER_VAEL_INTRO          = 3626,                 // vael开场 标识 ID
 
-    QUEST_NEFARIUS_CORRUPTION       = 8730,
+    QUEST_NEFARIUS_CORRUPTION       = 8730,                 // 奈法利奥斯腐蚀 任务 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum VaelaastraszActions
 {
     VAEL_LOW_HP_YELL,
@@ -76,6 +80,7 @@ enum VaelaastraszActions
     VAEL_SPEECH,
 };
 
+// 首领战 AI：标识 ID（vaelastrasz）
 struct boss_vaelastraszAI : public CombatAI
 {
     boss_vaelastraszAI(Creature* creature) : CombatAI(creature, VAEL_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -97,11 +102,12 @@ struct boss_vaelastraszAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
-    ObjectGuid m_nefariusGuid;
+    ObjectGuid m_nefariusGuid;                              // nefarius 实体 GUID
     uint8 m_uiIntroPhase;
 
     uint8 m_uiSpeechNum;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -115,7 +121,7 @@ struct boss_vaelastraszAI : public CombatAI
 
     void BeginIntro()
     {
-        // Start Intro delayed
+        // Start Intro delayed (开始开场delayed)
         ResetTimer(VAEL_INTRO, 1000);
 
         if (m_instance)
@@ -124,7 +130,7 @@ struct boss_vaelastraszAI : public CombatAI
 
     void BeginSpeech(Player* /*target*/)
     {
-        // 10 seconds
+        // 10 seconds (10秒倒计时)
         DoScriptText(SAY_LINE_1, m_creature);
 
         // Make boss stand
@@ -134,6 +140,7 @@ struct boss_vaelastraszAI : public CombatAI
         m_uiSpeechNum = 0;
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* pVictim) override
     {
         if (urand(0, 4))
@@ -147,7 +154,7 @@ struct boss_vaelastraszAI : public CombatAI
         if (m_instance)
             m_instance->SetData(TYPE_VAELASTRASZ, IN_PROGRESS);
 
-        // Buff players on aggro
+        // Buff players on aggro (增益playerson开战)
         DoCastSpellIfCan(nullptr, SPELL_ESSENCE_OF_THE_RED);
     }
 
@@ -157,12 +164,14 @@ struct boss_vaelastraszAI : public CombatAI
             m_instance->SetData(TYPE_VAELASTRASZ, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_VAELASTRASZ, FAIL);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_LORD_VICTOR_NEFARIUS)
@@ -180,7 +189,7 @@ struct boss_vaelastraszAI : public CombatAI
         {
             case 0:
             {
-                // Summon Lord Victor Nefarius in front of the Throne
+                // Summon Lord Victor Nefarius in front of the Throne (召唤 Lord Victor Nefarius in front of the Throne)
                 m_creature->SummonCreature(NPC_LORD_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSPAWN_TIMED_DESPAWN, 25000);
 
                 bool bHasYelled = false;
@@ -250,7 +259,7 @@ struct boss_vaelastraszAI : public CombatAI
         switch (m_uiSpeechNum)
         {
             case 0:
-                // 16 seconds till next line
+                // 16 seconds till next line (16秒倒计时)
                 DoScriptText(SAY_LINE_2, m_creature);
                 timer = 16000;
                 ++m_uiSpeechNum;
@@ -343,6 +352,7 @@ bool GossipSelect_boss_vaelastrasz(Player* pPlayer, Creature* creature, uint32 /
     return true;
 }
 
+// NPC 对话交互入口函数：boss_vaelastrasz
 bool GossipHello_boss_vaelastrasz(Player* pPlayer, Creature* creature)
 {
     if (creature->isQuestGiver())
@@ -374,7 +384,7 @@ bool AreaTrigger_at_vaelastrasz(Player* pPlayer, AreaTriggerEntry const* pAt)
 
         if (instance_blackwing_lair* pInstance = (instance_blackwing_lair*)pPlayer->GetInstanceData())
         {
-            // Handle intro event
+            // Handle intro event (Handle开场事件)
             if (pInstance->GetData(TYPE_VAELASTRASZ) == NOT_STARTED)
             {
                 if (Creature* pVaelastrasz = pInstance->GetSingleCreatureFromStorage(NPC_VAELASTRASZ))
@@ -387,6 +397,7 @@ bool AreaTrigger_at_vaelastrasz(Player* pPlayer, AreaTriggerEntry const* pAt)
     return false;
 }
 
+// 注册并载入脚本模块：boss_vaelastrasz
 void AddSC_boss_vaelastrasz()
 {
     Script* pNewScript = new Script;

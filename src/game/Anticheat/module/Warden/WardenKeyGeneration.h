@@ -11,9 +11,11 @@
 #ifndef _WARDEN_KEY_GENERATION_H
 #define _WARDEN_KEY_GENERATION_H
 
+// Warden 会话密钥流生成器：基于客户端认证会话密钥 K 通过双半段 SHA-1 迭代派生 RC4 输入/输出密钥
 class SHA1Randx
 {
 public:
+    // 使用会话密钥缓冲区初始化内部两个半段摘要 o1、o2，并预生成首块输出 o0
     SHA1Randx(const uint8* buff, size_t size)
     {
         auto const taken = size/2;
@@ -35,6 +37,7 @@ public:
         FillUp();
     }
 
+    // 连续输出指定长度 sz 的派生密钥字节流
     void Generate(uint8* buf, size_t sz)
     {
         for (uint32 i = 0; i < sz; ++i)
@@ -48,6 +51,7 @@ public:
     }
 
 private:
+    // 按 SHA1(o1 || o0 || o2) 刷新 20 字节密钥缓冲区并重置读取游标
     void FillUp()
     {
         sh.Initialize();

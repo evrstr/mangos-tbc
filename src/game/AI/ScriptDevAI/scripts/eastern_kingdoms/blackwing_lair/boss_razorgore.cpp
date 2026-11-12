@@ -21,30 +21,34 @@ SDComment: Threat management after Mind Control is released needs core support (
 SDCategory: Blackwing Lair
 EndScriptData */
 
+// 狂野的拉佐格尔（Razorgore the Untamed）1号首领战 AI（控制宝珠与龙蛋孵化）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "blackwing_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_EGGS_BROKEN_1           = -1469022,
-    SAY_EGGS_BROKEN_2           = -1469023,
-    SAY_EGGS_BROKEN_3           = -1469024,
+    SAY_EGGS_BROKEN_1           = -1469022,                 // eggsbroken1 台词广播 ID
+    SAY_EGGS_BROKEN_2           = -1469023,                 // eggsbroken2 台词广播 ID
+    SAY_EGGS_BROKEN_3           = -1469024,                 // eggsbroken3 台词广播 ID
 
     SPELL_POSSESS_VISUAL        = 23014,                    // visual effect and increase the damage taken
-    SPELL_DESTROY_EGG           = 19873,
+    SPELL_DESTROY_EGG           = 19873,                    // 摧毁龙蛋 法术 ID
     // SPELL_POSSESS               = 19832,                    // actual possess spell
     SPELL_DRAGON_ORB            = 23021,                    // shrink - not in sniff
-    SPELL_MIND_EXHAUSTION       = 23958,
+    SPELL_MIND_EXHAUSTION       = 23958,                    // mindexhaustion 法术 ID
 
-    SPELL_CLEAVE                = 19632,
-    SPELL_WARSTOMP              = 24375,
-    SPELL_FIREBALL_VOLLEY       = 22425,
-    SPELL_CONFLAGRATION         = 23023,
+    SPELL_CLEAVE                = 19632,                    // 顺劈斩 法术 ID
+    SPELL_WARSTOMP              = 24375,                    // warstomp 法术 ID
+    SPELL_FIREBALL_VOLLEY       = 22425,                    // fireball箭雨 法术 ID
+    SPELL_CONFLAGRATION         = 23023,                    // conflagration 法术 ID
 
-    SPELL_DOUBLE_ATTACK         = 18943,
+    SPELL_DOUBLE_ATTACK         = 18943,                    // 双重攻击 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum RazorgoreActions
 {
     RAZORGORE_CONFLAGRATION,
@@ -54,6 +58,7 @@ enum RazorgoreActions
     RAZORGORE_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（razorgore）
 struct boss_razorgoreAI : public CombatAI
 {
     boss_razorgoreAI(Creature* creature) : CombatAI(creature, RAZORGORE_ACTION_MAX), m_instance(static_cast<instance_blackwing_lair*>(creature->GetInstanceData()))
@@ -75,6 +80,7 @@ struct boss_razorgoreAI : public CombatAI
 
     instance_blackwing_lair* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -104,6 +110,7 @@ struct boss_razorgoreAI : public CombatAI
         m_instance->SetData(TYPE_RAZORGORE, FAIL);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -142,6 +149,7 @@ struct boss_razorgoreAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：orb（blackwing_orb）
 struct npc_blackwing_orbAI : public ScriptedAI
 {
     npc_blackwing_orbAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<instance_blackwing_lair*>(creature->GetInstanceData()))
@@ -151,8 +159,9 @@ struct npc_blackwing_orbAI : public ScriptedAI
 
     instance_blackwing_lair* m_instance;
 
-    uint32 m_uiIntroVisualTimer;
+    uint32 m_uiIntroVisualTimer;                            // IntroVisual 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiIntroVisualTimer = 4000;
@@ -169,6 +178,7 @@ struct npc_blackwing_orbAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         // Set visual only on OOC timer
@@ -223,6 +233,7 @@ bool ProcessEventIdRazorgorePossess(uint32 /*eventId*/, Object* source, Object* 
     return true;
 }
 
+// 法术脚本逻辑实现：标识 ID（DestroyEgg）
 struct DestroyEgg : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -250,6 +261,7 @@ struct DestroyEgg : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（ExplosionRazorgore）
 struct ExplosionRazorgore : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*effIdx*/) const override
@@ -288,6 +300,7 @@ struct PossessRazorgore : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（CalmDragonkin）
 struct CalmDragonkin : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -299,6 +312,7 @@ struct CalmDragonkin : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_razorgore
 void AddSC_boss_razorgore()
 {
     Script* pNewScript = new Script;

@@ -22,8 +22,10 @@
 #include "Server/WorldPacket.h"
 #include "Globals/ObjectMgr.h"
 
+// 从仇恨(36000)到崇拜(1000)各声望阶梯所需点数
 const int32 ReputationMgr::PointsInRank[MAX_REPUTATION_RANK] = {36000, 3000, 3000, 3000, 6000, 12000, 21000, 1000};
 
+// 根据声望总值换算对应的声望等级（ReputationRank）
 ReputationRank ReputationMgr::ReputationToRank(int32 standing)
 {
     int32 limit = Reputation_Cap + 1;
@@ -36,17 +38,20 @@ ReputationRank ReputationMgr::ReputationToRank(int32 standing)
     return MIN_REPUTATION_RANK;
 }
 
+// 获取指定 FactionEntry 对应的玩家声望状态记录
 FactionState const* ReputationMgr::GetState(FactionEntry const* factionEntry) const
 {
     return (factionEntry && factionEntry->HasReputation()) ? GetState(RepListID(factionEntry->reputationListID)) : nullptr;
 }
 
+// 按声望列表索引获取状态记录
 FactionState const* ReputationMgr::GetState(RepListID id) const
 {
     FactionStateList::const_iterator repItr = m_factions.find(id);
     return repItr != m_factions.end() ? &repItr->second : nullptr;
 }
 
+// 获取指定阵营 ID 的当前总声望（基础声望 + 增量）
 int32 ReputationMgr::GetReputation(uint32 faction_id) const
 {
     FactionEntry const* factionEntry = sFactionStore.LookupEntry<FactionEntry>(faction_id);
@@ -60,6 +65,7 @@ int32 ReputationMgr::GetReputation(uint32 faction_id) const
     return GetReputation(factionEntry);
 }
 
+// 获取指定阵营条目的当前总声望（基础声望 + 增量）
 int32 ReputationMgr::GetReputation(FactionEntry const* factionEntry) const
 {
     if (!factionEntry)
@@ -71,6 +77,7 @@ int32 ReputationMgr::GetReputation(FactionEntry const* factionEntry) const
     return 0;
 }
 
+// 根据玩家种族与职业掩码获取该阵营的初始基础声望
 int32 ReputationMgr::GetBaseReputation(FactionEntry const* factionEntry) const
 {
     if (!factionEntry)
@@ -84,6 +91,7 @@ int32 ReputationMgr::GetBaseReputation(FactionEntry const* factionEntry) const
     return idx >= 0 ? factionEntry->BaseRepValue[idx] : 0;
 }
 
+// 检查玩家是否对指定阵营 ID 处于交战状态
 bool ReputationMgr::IsAtWar(uint32 faction_id) const
 {
     FactionEntry const* factionEntry = sFactionStore.LookupEntry<FactionEntry>(faction_id);
@@ -97,6 +105,7 @@ bool ReputationMgr::IsAtWar(uint32 faction_id) const
     return IsAtWar(factionEntry);
 }
 
+// 检查玩家是否对指定阵营处于交战状态
 bool ReputationMgr::IsAtWar(FactionEntry const* factionEntry) const
 {
     if (!factionEntry)
@@ -108,18 +117,21 @@ bool ReputationMgr::IsAtWar(FactionEntry const* factionEntry) const
     return false;
 }
 
+// 获取玩家在指定阵营的当前声望等级
 ReputationRank ReputationMgr::GetRank(FactionEntry const* factionEntry) const
 {
     int32 reputation = GetReputation(factionEntry);
     return ReputationToRank(reputation);
 }
 
+// 获取玩家在指定阵营的初始声望等级
 ReputationRank ReputationMgr::GetBaseRank(FactionEntry const* factionEntry) const
 {
     int32 reputation = GetBaseReputation(factionEntry);
     return ReputationToRank(reputation);
 }
 
+// 若该阵营受光环/效果强制覆盖反应态度，返回强制声望等级
 ReputationRank const* ReputationMgr::GetForcedRankIfAny(FactionTemplateEntry const* factionTemplateEntry) const
 {
     if (!factionTemplateEntry)
@@ -129,6 +141,7 @@ ReputationRank const* ReputationMgr::GetForcedRankIfAny(FactionTemplateEntry con
     return forceItr != m_forcedReactions.end() ? &forceItr->second : nullptr;
 }
 
+// 应用或移除对某阵营的强制态度覆盖
 void ReputationMgr::ApplyForceReaction(uint32 faction_id, ReputationRank rank, bool apply)
 {
     if (apply)
@@ -137,6 +150,7 @@ void ReputationMgr::ApplyForceReaction(uint32 faction_id, ReputationRank rank, b
         m_forcedReactions.erase(faction_id);
 }
 
+// 按玩家种族与职业计算阵营默认状态标志位
 uint32 ReputationMgr::GetDefaultStateFlags(FactionEntry const* factionEntry) const
 {
     if (!factionEntry)
@@ -150,6 +164,7 @@ uint32 ReputationMgr::GetDefaultStateFlags(FactionEntry const* factionEntry) con
     return idx >= 0 ? factionEntry->ReputationFlags[idx] : 0;
 }
 
+// 向客户端下发所有强制阵营态度表（SMSG_SET_FORCED_REACTIONS）
 void ReputationMgr::SendForceReactions()
 {
     WorldPacket data;
@@ -157,21 +172,22 @@ void ReputationMgr::SendForceReactions()
     data << uint32(m_forcedReactions.size());
     for (ForcedReactions::const_iterator itr = m_forcedReactions.begin(); itr != m_forcedReactions.end(); ++itr)
     {
-        data << uint32(itr->first);                         // faction_id (Faction.dbc)
-        data << uint32(itr->second);                        // reputation rank
+        data << uint32(itr->first);                         // faction_id (Faction.dbc) (阵营 ID)
+        data << uint32(itr->second);                        // reputation rank (强制声望等级)
     }
     m_player->SendDirectMessage(data);
 }
 
+// 发送指定阵营及所有待同步阵营的声望变更包（SMSG_SET_FACTION_STANDING）
 void ReputationMgr::SendState(FactionState const* faction)
 {
     uint32 count = 1;
 
-    WorldPacket data(SMSG_SET_FACTION_STANDING, (16));      // last check 2.4.0
-    data << (float) 0;                                      // refer-a-friend bonus reputation
+    WorldPacket data(SMSG_SET_FACTION_STANDING, (16));      // last check 2.4.0 (基于 2.4.0 协议校验)
+    data << (float) 0;                                      // refer-a-friend bonus reputation (战友招募声望加成系数)
 
     size_t p_count = data.wpos();
-    data << (uint32) count;                                 // placeholder
+    data << (uint32) count;                                 // placeholder (阵营数量占位符)
 
     data << (uint32) faction->ReputationListID;
     data << (uint32) faction->Standing;
@@ -196,6 +212,7 @@ void ReputationMgr::SendState(FactionState const* faction)
     m_player->SendDirectMessage(data);
 }
 
+// 登录时向客户端下发全部 128 个声望槽位的初始化数据（SMSG_INITIALIZE_FACTIONS）
 void ReputationMgr::SendInitialReputations()
 {
     WorldPacket data(SMSG_INITIALIZE_FACTIONS, (4 + 128 * 5));
@@ -205,14 +222,14 @@ void ReputationMgr::SendInitialReputations()
 
     for (auto& m_faction : m_factions)
     {
-        // fill in absent fields
+        // fill in absent fields (填充空缺索引槽位)
         for (; a != m_faction.first; ++a)
         {
             data << uint8(0x00);
             data << uint32(0x00000000);
         }
 
-        // fill in encountered data
+        // fill in encountered data (写入当前阵营标志与声望增量)
         data << uint8(m_faction.second.Flags);
         data << uint32(m_faction.second.Standing);
 
@@ -221,7 +238,7 @@ void ReputationMgr::SendInitialReputations()
         ++a;
     }
 
-    // fill in absent fields
+    // fill in absent fields (补齐剩余至 128 个槽位)
     for (; a != 128; ++a)
     {
         data << uint8(0x00);
@@ -231,17 +248,19 @@ void ReputationMgr::SendInitialReputations()
     m_player->SendDirectMessage(data);
 }
 
+// 通知客户端将指定阵营设为在声望面板中可见（SMSG_SET_FACTION_VISIBLE）
 void ReputationMgr::SendVisible(FactionState const* faction) const
 {
     if (m_player->GetSession()->PlayerLoading())
         return;
 
-    // make faction visible in reputation list at client
+    // make faction visible in reputation list at client (在客户端声望列表中显示该阵营)
     WorldPacket data(SMSG_SET_FACTION_VISIBLE, 4);
     data << faction->ReputationListID;
     m_player->SendDirectMessage(data);
 }
 
+// 根据 Faction.dbc 初始化玩家的所有可追踪声望条目为默认状态
 void ReputationMgr::Initialize()
 {
     m_factions.clear();
@@ -265,6 +284,7 @@ void ReputationMgr::Initialize()
     }
 }
 
+// 设置或增量修改阵营声望，并处理数据库/DBC 定义的阵营声望溢出（Spillover）
 bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standing, bool incremental, bool noSpillover)
 {
     if (!factionEntry)
@@ -273,7 +293,7 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
     bool anyRankIncreased = false;
     if (!noSpillover)
     {
-        // if spillover definition exists in DB, override DBC
+        // if spillover definition exists in DB, override DBC (若数据库存在声望溢出配置则覆盖 DBC 规则)
         if (const RepSpilloverTemplate* repTemplate = sObjectMgr.GetRepSpilloverTemplate(factionEntry->ID))
         {
             for (uint32 i = 0; i < MAX_SPILLOVER_FACTIONS; ++i)
@@ -282,7 +302,7 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
                 {
                     if (m_player->GetReputationRank(repTemplate->faction[i]) <= ReputationRank(repTemplate->faction_rank[i]))
                     {
-                        // bonuses are already given, so just modify standing by rate
+                        // bonuses are already given, so just modify standing by rate (加成已在主声望中应用，此处按溢出比例同步调整关联阵营)
                         int32 spilloverRep = standing * repTemplate->faction_rate[i];
                         if (SetOneFactionReputation(sFactionStore.LookupEntry<FactionEntry>(repTemplate->faction[i]), spilloverRep, incremental))
                             anyRankIncreased = true;
@@ -293,9 +313,9 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
         else
         {
             float spillOverRepOut = standing;
-            // check for sub-factions that receive spillover
+            // check for sub-factions that receive spillover (查找接收溢出的子阵营列表)
             SimpleFactionsList const* flist = GetFactionTeamList(factionEntry->ID);
-            // if has no sub-factions, check for factions with same parent
+            // if has no sub-factions, check for factions with same parent (若无子阵营，则检查同属一个父阵营的姐妹/母阵营)
             if (!flist && factionEntry->team && factionEntry->spilloverRateOut != 0.0f)
             {
                 spillOverRepOut *= factionEntry->spilloverRateOut;
@@ -303,12 +323,13 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
                 {
                     FactionStateList::iterator parentState = m_factions.find(parent->reputationListID);
                     // some team factions have own reputation standing, in this case do not spill to other sub-factions
+                    // 若父阵营自身拥有独立声望条，则仅溢出给父阵营而不平分给其他子阵营
                     if (parentState != m_factions.end() && (parentState->second.Flags & FACTION_FLAG_TEAM_REPUTATION))
                     {
                         if (SetOneFactionReputation(parent, int32(spillOverRepOut), incremental))
                             anyRankIncreased = true;
                     }
-                    else    // spill to "sister" factions
+                    else    // spill to "sister" factions (溢出至同组姐妹阵营)
                     {
                         flist = GetFactionTeamList(factionEntry->team);
                     }
@@ -316,7 +337,7 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
             }
             if (flist)
             {
-                // Spillover to affiliated factions
+                // Spillover to affiliated factions (向关联子阵营逐一应用溢出声望)
                 for (uint32 itr : *flist)
                 {
                     if (FactionEntry const* factionEntryCalc = sFactionStore.LookupEntry<FactionEntry>(itr))
@@ -334,7 +355,7 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
         }
     }
 
-    // spillover done, update faction itself
+    // spillover done, update faction itself (溢出处理完毕后更新目标阵营自身声望并下发客户端)
     FactionStateList::iterator faction = m_factions.find(RepListID(factionEntry->reputationListID));
     if (faction != m_factions.end())
     {
@@ -342,11 +363,13 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
             anyRankIncreased = true;
 
         // only this faction gets reported to client, even if it has no own visible standing
+        // 仅将该目标阵营与待发送队列下发给客户端
         SendState(&faction->second);
     }
     return anyRankIncreased;
 }
 
+// 更新单个阵营的声望值、截断上下限并自动维护交战标志，返回声望等级是否提升
 bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, int32 standing, bool incremental)
 {
     if (!factionEntry)
@@ -377,11 +400,11 @@ bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, in
 
         if (rankNew != rankOld)
         {
-            // Server alters "At war" flag on two occasions:
-            // * When reputation dips to "Hostile": forced tick and now locked for manual changes
+            // Server alters "At war" flag on two occasions: (服务端在以下两种等级跨界时自动调整“交战”标志：)
+            // * When reputation dips to "Hostile": forced tick and now locked for manual changes (跌入敌对及以下时强制勾选交战)
             if (rankNew < REP_UNFRIENDLY && rankNew < rankOld && rankOld > REP_HOSTILE)
                 SetAtWar(&itr->second, true);
-            // * When reputation improves to "Neutral": untick by id, can be manually overriden for eligible factions
+            // * When reputation improves to "Neutral": untick by id, can be manually overriden for eligible factions (提升至中立及以上时取消交战)
             else if (rankNew > REP_UNFRIENDLY && rankNew > rankOld && rankOld < REP_NEUTRAL)
                 SetAtWar(RepListID(factionEntry->reputationListID), false);
         }
@@ -394,6 +417,7 @@ bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, in
     return false;
 }
 
+// 通过阵营模板将对应阵营设为可见
 void ReputationMgr::SetVisible(FactionTemplateEntry const* factionTemplateEntry)
 {
     if (!factionTemplateEntry || !factionTemplateEntry->faction)
@@ -403,6 +427,7 @@ void ReputationMgr::SetVisible(FactionTemplateEntry const* factionTemplateEntry)
         SetVisible(factionEntry);
 }
 
+// 将指定阵营条目设为可见
 void ReputationMgr::SetVisible(FactionEntry const* factionEntry)
 {
     if (!factionEntry || !factionEntry->HasReputation())
@@ -415,12 +440,13 @@ void ReputationMgr::SetVisible(FactionEntry const* factionEntry)
     SetVisible(&itr->second);
 }
 
+// 设置阵营可见标志并通知客户端（受强制隐藏标志约束）
 void ReputationMgr::SetVisible(FactionState* faction)
 {
     if (!faction)
         return;
 
-    // always invisible or hidden faction can't be make visible
+    // always invisible or hidden faction can't be make visible (强制不可见或隐藏的阵营禁止设为可见)
     if (faction->Flags & (FACTION_FLAG_INVISIBLE_FORCED | FACTION_FLAG_HIDDEN))
         return;
 
@@ -435,25 +461,27 @@ void ReputationMgr::SetVisible(FactionState* faction)
     SendVisible(faction);
 }
 
+// 按列表 ID 切换交战状态
 void ReputationMgr::SetAtWar(RepListID repListID, bool on)
 {
     FactionStateList::iterator itr = m_factions.find(repListID);
     if (itr == m_factions.end())
         return;
 
-    // always invisible or hidden faction can't change war state
+    // always invisible or hidden faction can't change war state (强制隐藏阵营不允许修改交战状态)
     if (itr->second.Flags & (FACTION_FLAG_INVISIBLE_FORCED | FACTION_FLAG_HIDDEN))
         return;
 
     SetAtWar(&itr->second, on);
 }
 
+// 内部设置交战状态（受 FACTION_FLAG_PEACE_FORCED 限制）
 void ReputationMgr::SetAtWar(FactionState* faction, bool atWar)
 {
     if (!faction)
         return;
 
-    // not allow declare war to faction unless already hated or less
+    // not allow declare war to faction unless already hated or less (强制和平阵营除非声望已达仇恨，否则不允许宣战)
     if (atWar && (faction->Flags & FACTION_FLAG_PEACE_FORCED) != 0 && ReputationToRank(faction->Standing) > REP_HATED)
         return;
 
@@ -470,6 +498,7 @@ void ReputationMgr::SetAtWar(FactionState* faction, bool atWar)
     faction->needSave = true;
 }
 
+// 按列表 ID 切换阵营“闲置”状态
 void ReputationMgr::SetInactive(RepListID repListID, bool on)
 {
     FactionStateList::iterator itr = m_factions.find(repListID);
@@ -479,12 +508,13 @@ void ReputationMgr::SetInactive(RepListID repListID, bool on)
     SetInactive(&itr->second, on);
 }
 
+// 内部设置阵营“闲置”标志
 void ReputationMgr::SetInactive(FactionState* faction, bool inactive)
 {
     if (!faction)
         return;
 
-    // always invisible or hidden faction can't be inactive
+    // always invisible or hidden faction can't be inactive (不可见或隐藏阵营不能设为闲置)
     if (inactive && ((faction->Flags & (FACTION_FLAG_INVISIBLE_FORCED | FACTION_FLAG_HIDDEN)) || !(faction->Flags & FACTION_FLAG_VISIBLE)))
         return;
 
@@ -501,9 +531,10 @@ void ReputationMgr::SetInactive(FactionState* faction, bool inactive)
     faction->needSave = true;
 }
 
+// 从数据库查询结果加载玩家声望及标志位，并校验强制态度与和平约束
 void ReputationMgr::LoadFromDB(std::unique_ptr<QueryResult> queryResult)
 {
-    // Set initial reputations (so everything is nifty before DB data load)
+    // Set initial reputations (so everything is nifty before DB data load) (先初始化全部默认阵营，再覆盖数据库记录)
     Initialize();
 
     // QueryResult *result = CharacterDatabase.PQuery("SELECT faction,standing,flags FROM character_reputation WHERE guid = '%u'",GetGUIDLow());
@@ -519,19 +550,19 @@ void ReputationMgr::LoadFromDB(std::unique_ptr<QueryResult> queryResult)
             {
                 FactionState* faction = &m_factions[factionEntry->reputationListID];
 
-                // update standing to current
+                // update standing to current (恢复已保存的声望增量值)
                 faction->Standing = int32(fields[1].GetUInt32());
 
                 uint32 dbFactionFlags = fields[2].GetUInt32();
 
                 if (dbFactionFlags & FACTION_FLAG_VISIBLE)
-                    SetVisible(faction);                    // have internal checks for forced invisibility
+                    SetVisible(faction);                    // have internal checks for forced invisibility (内部会校验强制不可见标志)
 
                 if (dbFactionFlags & FACTION_FLAG_INACTIVE)
-                    SetInactive(faction, true);             // have internal checks for visibility requirement
+                    SetInactive(faction, true);             // have internal checks for visibility requirement (内部会校验可见性前提)
 
                 if (dbFactionFlags & FACTION_FLAG_AT_WAR)   // DB at war
-                    SetAtWar(faction, true);                // have internal checks for FACTION_FLAG_PEACE_FORCED
+                    SetAtWar(faction, true);                // have internal checks for FACTION_FLAG_PEACE_FORCED (内部会校验强制和平标志)
                 else                                        // DB not at war
                 {
                     // allow remove if visible (and then not FACTION_FLAG_INVISIBLE_FORCED or FACTION_FLAG_HIDDEN)
@@ -539,7 +570,7 @@ void ReputationMgr::LoadFromDB(std::unique_ptr<QueryResult> queryResult)
                         SetAtWar(faction, false);           // have internal checks for FACTION_FLAG_PEACE_FORCED
                 }
 
-                // set atWar for hostile
+                // set atWar for hostile (若当前实际或强制声望为敌对及以下，强制启用交战标志)
                 ForcedReactions::const_iterator forceItr = m_forcedReactions.find(factionEntry->ID);
                 if (forceItr != m_forcedReactions.end())
                 {
@@ -549,7 +580,7 @@ void ReputationMgr::LoadFromDB(std::unique_ptr<QueryResult> queryResult)
                 else if (GetRank(factionEntry) <= REP_HOSTILE)
                     SetAtWar(faction, true);
 
-                // reset changed flag if values similar to saved in DB
+                // reset changed flag if values similar to saved in DB (若最终标志与数据库一致则无需重复下发或保存)
                 if (faction->Flags == dbFactionFlags)
                 {
                     faction->needSend = false;
@@ -561,6 +592,7 @@ void ReputationMgr::LoadFromDB(std::unique_ptr<QueryResult> queryResult)
     }
 }
 
+// 将带有 needSave 脏标记的阵营声望写入 character_reputation 表
 void ReputationMgr::SaveToDB()
 {
     static SqlStatementID delRep ;

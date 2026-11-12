@@ -26,6 +26,7 @@
 
 namespace
 {
+// 将服务端下发的移动指令操作码映射为客户端应回传的确认（ACK）操作码
 uint16 GetOrderResponse(uint16 opcode)
 {
     switch (opcode)
@@ -63,6 +64,7 @@ uint16 GetOrderResponse(uint16 opcode)
     }
 }
 
+// 计算两点间距离的平方（可选是否包含 Z 轴高度差）
 float DistanceSquared(const Position &a, const Position &b, bool includeZ)
 {
     float ret = pow(a.x - b.x, 2);
@@ -74,6 +76,7 @@ float DistanceSquared(const Position &a, const Position &b, bool includeZ)
     return ret;
 }
 
+// 根据移动标志位推断当前使用的 UnitMoveType 速度类型
 uint32 GetMoveType(uint32 moveFlags)
 {
     if (moveFlags & MOVEFLAG_SWIMMING)
@@ -86,7 +89,7 @@ uint32 GetMoveType(uint32 moveFlags)
     return MOVE_RUN;
 }
 
-constexpr float extrapolationEpsilon = 0.0002f;
+constexpr float extrapolationEpsilon = 0.0002f;             // 移动外推浮点误差容限
 }
 
 namespace Movement
@@ -96,6 +99,7 @@ extern float computeFallElevation(float time, bool slowFall, float initialSpeed)
 
 namespace NamreebAnticheat
 {
+// 构造玩家移动反作弊追踪器
 Movement::Movement(Player* me) :
     _anticheat(reinterpret_cast<SessionAnticheat *>(me->GetSession()->GetAnticheat())),
     _me(me), _totalDistanceTraveled(0.f), _wasMovingOther(false), _justTeleported(false),
@@ -107,6 +111,7 @@ Movement::Movement(Player* me) :
     MANGOS_ASSERT(!!_anticheat);
 }
 
+// 记录服务端击退动作参数并进入击退状态（避免击退期间误报超速或跳速异常）
 void Movement::KnockBack(float speedxy, float speedz, float cos, float sin)
 {
     GetLastMovementInfo().jump.startClientTime = WorldTimer::getMSTime() - GetLastMovementInfo().stime + GetLastMovementInfo().ctime;
@@ -122,15 +127,16 @@ void Movement::KnockBack(float speedxy, float speedz, float cos, float sin)
     _inKnockBack = true;
 }
 
+// 校验并清理移动标志位中的非法状态（飞行、水上行走、缓落、定身脱离等）
 void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool strict) const
 {
     removeFlags = 0;
 
-    // do not apply to gms for now
+    // do not apply to gms for now (暂不对 GM 账号执行移动标志检测)
     if (_me->GetSession()->GetSecurity() != SEC_PLAYER)
         return;
 
-    // if under spline movement, do nothing
+    // if under spline movement, do nothing (服务端样条路径控制期间跳过检测)
     if (!_me->movespline->Finalized())
         return;
 
@@ -146,7 +152,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
             removeFlags |= flags;
         }
 
-        // detect flyhack (these two flags should never happen at the same time)
+        // detect flyhack (these two flags should never happen at the same time) (游泳与飞行标志绝不应同时存在)
         if ((flags & flyHackFlags2) == flyHackFlags2)
         {
             _anticheat->RecordCheatInternal(CHEAT_TYPE_FLY_HACK, "MovementFlags hack: Player %s had MOVE_SWIMMING and MOVE_FLYING (flags: 0x%lx)",
@@ -154,7 +160,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
             removeFlags |= flyHackFlags2;
         }
 
-        // no need to check pending orders.  players should never have this.
+        // no need to check pending orders.  players should never have this. (玩家绝不可能拥有仅生物使用的悬浮标志)
         if (flags & MOVEFLAG_LEVITATING)
         {
             _anticheat->RecordCheatInternal(CHEAT_TYPE_FLY_HACK, "MovementFlags hack: Player %s had MOVE_LEVITATING (only for creatures!) (flags: 0x%lx)",
@@ -162,7 +168,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
             removeFlags |= MOVEFLAG_LEVITATING;
         }
 
-        // no need to check pending orders.  players should never have this.
+        // no need to check pending orders.  players should never have this. (玩家不应在未受控状态下携带下降飞行标志)
         if (flags & MOVEFLAG_DESCENDING)
         {
             _anticheat->RecordCheatInternal(CHEAT_TYPE_FLY_HACK, "MovementFlags hack: Player %s had MOVE_CAN_FLY (flags: 0x%lx)",
@@ -181,7 +187,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
     //    sLog.out(LOG_ANTICHEAT_DEBUG, "z: %f ground: %f water level: %f", _me->GetPositionZ(), ground, waterLevel);
     //}
 
-    // if we are not performing a strict check, go no further
+    // if we are not performing a strict check, go no further (非严格模式下跳过后续待确认指令与光环校验)
     if (!strict)
         return;
 
@@ -200,6 +206,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
 
     // if the client is claiming to not be rooted, but the player actually is rooted, and there is
     // no pending root order (in case the order had not arrived yet), assume the order was ignored
+    // 玩家处于定身/昏迷状态且无待确认定身指令，但客户端上报缺少 MOVEFLAG_ROOT 时，判定为无视定身外挂
     if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_ROOT_MOVE) &&
         !(flags & MOVEFLAG_ROOT) &&
         _me->hasUnitState(UNIT_STAT_STUNNED | UNIT_STAT_ROOT) &&
@@ -208,6 +215,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
 
     // if the client is claiming to be water walking, but the player has no aura for it, and no
     // pending cancellation order, assume it is illegitimate
+    // 无水上行走光环（且非幽灵状态）也无待取消指令却携带水上行走标志，判定为水上行走外挂
     if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_WATER_WALK) &&
         !!(flags & MOVEFLAG_WATERWALKING) &&
         !_me->HasAuraType(SPELL_AURA_WATER_WALK) &&
@@ -220,7 +228,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
 
     // XXX check correct movement flag on slow fall
 
-    // if safe falling with no aura and no pending removal order, cheater
+    // if safe falling with no aura and no pending removal order, cheater (无缓落光环也无待取消指令却携带安全坠落标志)
     if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_SLOW_FALL) &&
         !!(flags & MOVEFLAG_SAFE_FALL) &&
         !_me->HasAuraType(SPELL_AURA_FEATHER_FALL) &&
@@ -233,6 +241,7 @@ void Movement::VerifyMovementFlags(uint32 flags, uint32 &removeFlags, bool stric
     // things to check: hover
 }
 
+// 记录服务端下发的强制移动状态指令及序号
 void Movement::OrderSent(uint16 opcode, uint32 counter)
 {
     _orderHistory.push_back({ opcode, WorldTimer::getMSTime() });
@@ -242,6 +251,7 @@ void Movement::OrderSent(uint16 opcode, uint32 counter)
     sLog.outDebug("ORDER: %s (%u) sent to %s (counter = %u)", LookupOpcodeName(opcode), opcode, _me->GetName(), counter);
 }
 
+// 校验客户端回传的移动指令确认包（ACK）是否与待确认队列中的操作码及序号匹配
 void Movement::OrderAck(uint16 opcode, uint32 counter)
 {
     _ackHistory.push_back({ opcode, WorldTimer::getMSTime() });
@@ -257,7 +267,7 @@ void Movement::OrderAck(uint16 opcode, uint32 counter)
         return;
     }
 
-    // if this detection method is disabled, just empty the results and stop
+    // if this detection method is disabled, just empty the results and stop (未启用 ACK 校验时直接清空队列)
     if (!sAnticheatConfig.IsEnabled(CHEAT_TYPE_BAD_ORDER_ACK))
     {
         _orders.clear();
@@ -269,6 +279,7 @@ void Movement::OrderAck(uint16 opcode, uint32 counter)
     // are not guaranteed to arrive in the same order they were sent.  once that bug is fixed, the below code
     // can be replaced with one which is both faster and more strict, where only the front of the queue is
     // checked against the data received from the client.
+    // 遍历待确认队列匹配响应操作码与序号（兼容核心向宠物等非直接控制单位发送指令导致的乱序 ACK）
     for (auto i = _orders.begin(); i != _orders.end(); ++i)
     {
         auto const response = GetOrderResponse(i->opcode);
@@ -283,11 +294,12 @@ void Movement::OrderAck(uint16 opcode, uint32 counter)
 
     // if execution reaches here, it means that the acknowledgement we received was not in the queue to be received.
     // this should never happen for legitimate players.
-
+    // 收到队列中不存在的指令确认，判定为伪造 ACK 包
     _anticheat->RecordCheatInternal(CHEAT_TYPE_BAD_ORDER_ACK, "Received ACK %s (%u) counter = %u which was not pending",
         LookupOpcodeName(opcode), opcode, counter);
 }
 
+// 清理超过 2.5 倍网络延迟仍未收到回执的过期移动指令
 void Movement::CheckExpiredOrders(uint32 latency)
 {
     auto const now = WorldTimer::getMSTime();
@@ -309,7 +321,7 @@ void Movement::CheckExpiredOrders(uint32 latency)
     }
 }
 
-// Movement processing anticheat main routine
+// Movement processing anticheat main routine (移动包反作弊检测主入口：连跳、时钟加速/倒流、战歌高度/出界、坠落重置及外推/限速检测)
 bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* session, const WorldPacket& packet)
 {
     MANGOS_ASSERT(!!_me);
@@ -318,13 +330,13 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
     if (!sAnticheatConfig.EnableAnticheat())
         return true;
 
-    // TODO: Currently anticheat is disabled with Mind Controlled players!
+    // TODO: Currently anticheat is disabled with Mind Controlled players! (控制其他单位如精神控制期间暂不检测)
     if (!_me->IsSelfMover())
     {
         _wasMovingOther = true;
         return true;
     }
-    // if we were moving someone else, but are no longer, skip one more tick
+    // if we were moving someone else, but are no longer, skip one more tick (刚结束控制他人的首帧放行一次以同步状态)
     else if (_wasMovingOther)
     {
         _wasMovingOther = false;
@@ -333,11 +345,11 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
 
     auto const opcode = packet.GetOpcode();
 
-    // Dont accept movement packets while movement is controlled by server (fear, charge, etc..)
+    // Dont accept movement packets while movement is controlled by server (fear, charge, etc..) (样条运动控制期间跳过)
     if (!_me->movespline->Finalized())
         return false;
 
-    // two dimensional distance traveled
+    // two dimensional distance traveled (累加二维平面移动距离供反垃圾与统计使用)
     auto const dist2d =
         (movementInfo.pos.x - GetLastMovementInfo().pos.x) * (movementInfo.pos.x - GetLastMovementInfo().pos.x) +
         (movementInfo.pos.y - GetLastMovementInfo().pos.y) * (movementInfo.pos.y - GetLastMovementInfo().pos.y);
@@ -357,6 +369,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
     /*if ((movementInfo.moveFlags & MOVE_ROOT) && (movementInfo.moveFlags & MOVE_MASK_MOVING_OR_TURN))
         APPEND_CHEAT(CHEAT_TYPE_ROOT_MOVE);*/
 
+    // 连跳检测：下落过程中再次发出起跳包
     if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_MULTIJUMP) &&
         opcode == MSG_MOVE_JUMP &&
         GetLastMovementInfo().moveFlags & MOVEFLAG_FALLING)
@@ -375,13 +388,14 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
     if (!movementInfo.ctime && sAnticheatConfig.IsEnabled(CHEAT_TYPE_NULL_CLIENT_TIME))
         _anticheat->RecordCheatInternal(CHEAT_TYPE_NULL_CLIENT_TIME);
 
-    // This can happen if the player is knocked back while jumping
+    // This can happen if the player is knocked back while jumping (非击退状态下的起跳水平速度超限检测)
     if (opcode == MSG_MOVE_JUMP && sAnticheatConfig.IsEnabled(CHEAT_TYPE_OVERSPEED_JUMP) && !IsInKnockBack())
     {
         // if the player is jumping, use the movement speed based on flags from the last movement.
         // otherwise, use this one.  note that if the player was swimming, we should also use the
         // old movement flags.  this is because the client will use the swimming speed for this
         // case, rather than the ground speed.
+        // 起跳瞬间沿用上一帧（若处于下落或游泳状态）或当前帧的速度类型作为期望上限
         auto const expected = !!(GetLastMovementInfo().moveFlags & (MOVEFLAG_FALLING | MOVEFLAG_SWIMMING)) ?
             GetXYFlagBasedClientSpeed(GetLastMovementInfo().moveFlags) :
             GetXYFlagBasedClientSpeed(movementInfo.moveFlags);
@@ -407,7 +421,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
         }
     }
 
-    // Not allowed to change horizontal speed while jumping (unless it was zero)
+    // Not allowed to change horizontal speed while jumping (unless it was zero) (跳跃空中禁止私自提高水平速度，入水瞬间水上行走除外)
     if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_JUMP_SPEED_CHANGE) &&
         !IsInKnockBack() &&
         opcode != CMSG_MOVE_KNOCK_BACK_ACK && opcode != MSG_MOVE_STOP &&
@@ -429,7 +443,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
         sLog.outBasic("Lateral check recent movements:\n%s", str.c_str());
     }
 
-    // use the first processed movement as a client/server clock sync
+    // use the first processed movement as a client/server clock sync (以首次有效移动包同步客户端与服务端时钟基准)
     if (!_serverInitTime || !_clientInitTime)
     {
         _serverInitTime = movementInfo.stime;
@@ -447,6 +461,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
             // which accelerates the clock by merely 500ms per minute as this would resemble an increase
             // of only 0.8% movement speed.  therefore we will apply a tolerance of 500ms per minute since
             // the clock has synced.
+            // 允许每分钟最多 500ms（约 0.8% 增速）的晶振时钟漂移容限；客户端时间推进显著快于服务端则判定变速齿轮
 
             auto const serverDiff = WorldTimer::getMSTimeDiff(movementInfo.stime, _serverInitTime);
             auto const clientDiff = WorldTimer::getMSTimeDiff(movementInfo.ctime, _clientInitTime);
@@ -462,7 +477,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
             }
         }
 
-        // Client going back in time ... ?!
+        // Client going back in time ... ?! (客户端时间戳倒流检测)
         if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_TIME_BACK) && movementInfo.ctime < GetLastMovementInfo().ctime)
         {
             // temporary measure to remove false positives
@@ -481,10 +496,10 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
         }
     }
 
-    // Warsong Battleground - specific checks
+    // Warsong Battleground - specific checks (战歌峡谷战场专用限制：禁高空及开战前出出生区域)
     if (_me->GetMapId() == 489 && sAnticheatConfig.IsEnabled(CHEAT_TYPE_FORBIDDEN))
     {
-        // Too high - not allowed (but possible with some engineering items malfunction)
+        // Too high - not allowed (but possible with some engineering items malfunction) (高度异常检测)
         if (!(movementInfo.moveFlags & (MOVEFLAG_FALLINGFAR | MOVEFLAG_FALLING)) && movementInfo.pos.z > 380.0f)
             _anticheat->RecordCheatInternal(CHEAT_TYPE_FORBIDDEN, "Too high in Warsong Gulch (z = %f)", movementInfo.pos.z);
 
@@ -492,7 +507,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
         {
             if (bg->GetStatus() == STATUS_WAIT_JOIN)
             {
-                // Battleground not started. Players should be in their starting areas.
+                // Battleground not started. Players should be in their starting areas. (开战前禁止提前离开各自准备区)
                 if (_me->GetTeam() == ALLIANCE && movementInfo.pos.x < 1490.0f)
                     _anticheat->RecordCheatInternal(CHEAT_TYPE_FORBIDDEN, "Outside alliance starting area (%f, %f, %f)",
                         movementInfo.pos.x, movementInfo.pos.y, movementInfo.pos.z);
@@ -503,7 +518,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
         }
     }
 
-    // Minimal checks on transports
+    // Minimal checks on transports (瞬间远距离登上载具/交通工具的瞬移检测)
     if (movementInfo.moveFlags & MOVEFLAG_ONTRANSPORT &&
         sAnticheatConfig.IsEnabled(CHEAT_TYPE_TELE_TO_TRANSPORT) &&
         GetLastMovementInfo().ctime &&
@@ -518,7 +533,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
     if (opcode == CMSG_MOVE_FALL_RESET && CheckFallReset(movementInfo))
         _anticheat->RecordCheatInternal(CHEAT_TYPE_BAD_FALL_RESET, "Bad fall reset");
 
-    // Distance computation related
+    // Distance computation related (非飞行点、非载具、非刚传送时进行位移外推或速度上限校验)
     if (!_me->IsTaxiFlying() &&
         !(movementInfo.moveFlags & MOVEFLAG_ONTRANSPORT) &&
         sAnticheatConfig.EnableAntiSpeedHack() &&
@@ -530,7 +545,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
 
         auto const dt = movementInfo.ctime - GetLastMovementInfo().ctime;
 
-        // Check vs extrapolation
+        // Check vs extrapolation (基于上一帧位置与速度外推预期位置并累计超速偏移距离)
         if (sAnticheatConfig.EnableExtrapolation())
         {
             Position extrap;
@@ -540,13 +555,13 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
             {
                 auto const includeZ = !!((movementInfo.moveFlags | GetLastMovementInfo().moveFlags) & MOVEFLAG_FALLING);
 
-                // how far our extrapolation predicted they will go (squared)
+                // how far our extrapolation predicted they will go (squared) (外推理论移动距离平方)
                 auto const extrapDist2 = DistanceSquared(GetLastMovementInfo().pos, extrap, includeZ);
 
-                // how far they actually went (squared)
+                // how far they actually went (squared) (客户端实际上报移动距离平方)
                 auto const theirDist2 = DistanceSquared(GetLastMovementInfo().pos, movementInfo.pos, includeZ);
 
-                // if they went further than we expected, record it
+                // if they went further than we expected, record it (超出外推距离则计入超速距离累计)
                 if (theirDist2 > extrapDist2)
                 {
                     constexpr float minErr = 1.f;
@@ -574,7 +589,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
         }
         else if (GetMaxAllowedDist(GetLastMovementInfo(), dt, allowedDXY, allowedDZ))
         {
-            // Allow some margin
+            // Allow some margin (常规最大允许位移检测，预留 0.5 码容错)
             allowedDXY += 0.5f;
             allowedDZ += 0.5f;
 
@@ -598,6 +613,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
 
         // Client should send heartbeats every 500ms at the most (it can send them sooner
         // if movement flags change, i.e. entering or exiting a transport)
+        // 移动期间客户端最迟应每 500ms 发送心跳包，超过 1000ms 无移动包则记录心跳丢失异常
         if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_SKIPPED_HEARTBEATS) &&
             dt > 1000 &&
             GetLastMovementInfo().ctime &&
@@ -627,6 +643,7 @@ bool Movement::HandleAnticheatTests(MovementInfo& movementInfo, WorldSession* se
     return true;
 }
 
+// 处理客户端速度变更确认包，比对服务端速度并在更新速度前基于旧速度执行反作弊检查
 bool Movement::HandleSpeedChangeAck(MovementInfo& movementInfo, WorldSession* session, const WorldPacket& packet, float newSpeed)
 {
     static char const* move_type_name[MAX_MOVE_TYPE] = {"Walk", "Run", "RunBack", "Swim", "SwimBack", "TurnRate"};
@@ -661,7 +678,7 @@ bool Movement::HandleSpeedChangeAck(MovementInfo& movementInfo, WorldSession* se
             return false;
     }
 
-    // Compare to server side speed.
+    // Compare to server side speed. (若确认速度与服务端记录不一致则重新下发服务端速度同步)
     if (!_me->GetTransport() && fabs(_me->GetSpeed(moveType) - newSpeed) > 0.01f)
     {
         DETAIL_LOG("%sSpeedChange player %s incorrect. %f -> %f (instead of %f)",
@@ -669,12 +686,13 @@ bool Movement::HandleSpeedChangeAck(MovementInfo& movementInfo, WorldSession* se
         _me->SetSpeedRate(moveType, _me->GetSpeedRate(moveType), true);
     }
 
-    // Compute anticheat generic checks - with old speed.
+    // Compute anticheat generic checks - with old speed. (先按变更前的旧速度校验本次附带的移动信息，再更新 clientSpeeds)
     HandleAnticheatTests(movementInfo, session, packet);
     clientSpeeds[moveType] = newSpeed;
     return true;
 }
 
+// 进入世界时记录切换历史并初始化客户端各移动模式速度表
 void Movement::HandleEnterWorld()
 {
     _worldChangeHistory.push_back({ true, WorldTimer::getMSTime() });
@@ -683,6 +701,7 @@ void Movement::HandleEnterWorld()
         clientSpeeds[i] = _me->GetSpeed(static_cast<UnitMoveType>(i));
 }
 
+// 离开世界时记录切换历史并重置时钟同步基准
 void Movement::HandleLeaveWorld()
 {
     _worldChangeHistory.push_back({ false, WorldTimer::getMSTime() });
@@ -690,6 +709,7 @@ void Movement::HandleLeaveWorld()
     _serverInitTime = _clientInitTime = 0;
 }
 
+// 记录客户端时间跳变并将客户端初始时间基准前移对应毫秒数
 void Movement::TimeSkipped(const ObjectGuid &mover, uint32 ms)
 {
     _timeSkipHistory.push_back({ mover, ms, WorldTimer::getMSTime() });
@@ -705,6 +725,7 @@ MovementInfo& Movement::GetLastMovementInfo() const
     return _me->m_movementInfo;
 }
 
+// 根据当前移动标志位返回客户端应使用的水平移动速度
 float Movement::GetXYFlagBasedClientSpeed(uint32 moveFlags) const
 {
     // swimming?
@@ -723,7 +744,7 @@ float Movement::GetXYFlagBasedClientSpeed(uint32 moveFlags) const
     // walking?
     if (!!(moveFlags & MOVEFLAG_WALK_MODE))
     {
-        // Seems to always be same speed forward and backward when walking
+        // Seems to always be same speed forward and backward when walking (步行前后速度一致)
         return clientSpeeds[MOVE_WALK];
     }
 
@@ -734,23 +755,24 @@ float Movement::GetXYFlagBasedClientSpeed(uint32 moveFlags) const
     return clientSpeeds[MOVE_RUN];
 }
 
+// 基于上一移动状态与时间差外推玩家理论位置（涵盖静止、下落抛物线、圆弧转向及直线移动，并校验视线阻挡）
 bool Movement::ExtrapolateMovement(MovementInfo const& mi, uint32 diffMs, Position &pos) const
 {
     // TODO: These cases are not handled in movement extrapolation
-    // - Transports
+    // - Transports (载具/俯仰移动暂不外推)
     if (mi.moveFlags & (MOVEFLAG_PITCH_UP | MOVEFLAG_PITCH_DOWN | MOVEFLAG_ONTRANSPORT))
         return false;
-    // - Not correctly handled yet (issues regarding feather fall auras)
+    // - Not correctly handled yet (issues regarding feather fall auras) (长距离坠落暂不外推)
     if (mi.moveFlags & MOVEFLAG_FALLINGFAR)
         return false;
-    // - Server side movement (should be easy to extrapolate actually)
+    // - Server side movement (should be easy to extrapolate actually) (服务端样条移动中不外推)
     if (!_me->movespline->Finalized())
         return false;
-    // Dernier paquet pas a jour (connexion, TP autre map ...)
+    // Dernier paquet pas a jour (connexion, TP autre map ...) (上一数据包时间戳尚未更新，如刚登录或跨图传送)
     if (mi.ctime == 0)
         return false;
 
-    // if we are not moving, position shouldn't change
+    // if we are not moving, position shouldn't change (未处于移动状态时位置应保持不变)
     if (!(mi.moveFlags & MOVEFLAG_MASK_MOVING))
     {
         pos = mi.pos;
@@ -790,7 +812,7 @@ bool Movement::ExtrapolateMovement(MovementInfo const& mi, uint32 diffMs, Positi
         pos.x = mi.jump.start.x;
         pos.y = mi.jump.start.y;
         pos.z = mi.jump.start.z;
-        // Fatal error. Avoid crashing here ...
+        // Fatal error. Avoid crashing here ... (起跳坐标无效或时间差异常时放弃外推)
         if (!pos.x || !pos.y || !pos.z || diffT > 10000.f)
             return false;
         pos.x += mi.jump.cosAngle * mi.jump.xyspeed * diffT;
@@ -801,11 +823,11 @@ bool Movement::ExtrapolateMovement(MovementInfo const& mi, uint32 diffMs, Positi
     {
         if (mi.moveFlags & MOVEFLAG_MASK_MOVING)
         {
-            // Every 2 sec
+            // Every 2 sec (边移动边转向：沿圆弧轨迹计算位置变化)
             float T = 0.75f * (clientSpeeds[MOVE_TURN_RATE]) * (diffMs / 1000.f);
             float R = 1.295f * speed / M_PI * cos(mi.s_pitch);
             pos.z += diffMs * speed / 1000.0f * sin(mi.s_pitch);
-            // Find the center of the circle we are moving on
+            // Find the center of the circle we are moving on (计算圆弧运动圆心并沿切线弧度推进)
             if (mi.moveFlags & MOVEFLAG_TURN_LEFT)
             {
                 pos.x += R * cos(o + M_PI / 2);
@@ -853,6 +875,7 @@ bool Movement::ExtrapolateMovement(MovementInfo const& mi, uint32 diffMs, Positi
     return _me->GetMap()->IsInLineOfSight(mi.pos.x, mi.pos.y, mi.pos.z + 0.5f, pos.x, pos.y, pos.z + 0.5f, false);
 }
 
+// 计算在给定时间间隔内允许的水平最大位移 dxy 与垂直最大位移 dz
 bool Movement::GetMaxAllowedDist(MovementInfo const& mi, uint32 diffMs, float &dxy, float &dz) const
 {
     dxy = dz = 0.001f; // Epsilon
@@ -863,7 +886,7 @@ bool Movement::GetMaxAllowedDist(MovementInfo const& mi, uint32 diffMs, float &d
     if (!_me->movespline->Finalized())
         return false;
 
-    // Dernier paquet pas a jour (connexion, TP autre map ...)
+    // Dernier paquet pas a jour (connexion, TP autre map ...) (上一数据包时间戳尚未初始化)
     if (!mi.ctime)
         return false;
 
@@ -896,6 +919,7 @@ bool Movement::GetMaxAllowedDist(MovementInfo const& mi, uint32 diffMs, float &d
     return true;
 }
 
+// 玩家探索区域回调：按配置记录普通/高等级异常探索作弊
 void Movement::OnExplore(AreaTableEntry const* p)
 {
     if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_EXPLORE))
@@ -905,42 +929,46 @@ void Movement::OnExplore(AreaTableEntry const* p)
         _anticheat->RecordCheatInternal(CHEAT_TYPE_EXPLORE_HIGH_LEVEL);
 }
 
+// 标记刚刚发生合法传送，下一帧清空移动历史避免误报瞬移
 void Movement::HandleTeleport(const Position &)
 {
     _justTeleported = true;
 }
 
+// 校验玩家声称所在的交通工具/载具是否真实存在且处于合法距离内
 void Movement::OnTransport(Player* plMover, ObjectGuid transportGuid)
 {
     // The anticheat is disabled on transports, so we need to be sure that the player is indeed on a transport.
+    // 乘坐交通工具期间豁免常规位移检测，因此必须校验目标载具确实存在且玩家位于其附近
     GameObject* transportGobj = plMover->GetMap()->GetGameObject(transportGuid);
 
-    auto const maxDist2d = plMover->GetMapId() == 369 ? 3000.f : 70.f; // Transports usually dont go far away (exception is deeprun tram)
+    auto const maxDist2d = plMover->GetMapId() == 369 ? 3000.f : 70.f; // Transports usually dont go far away (exception is deeprun tram) (矿道地铁 369 地图放宽距离上限)
 
     if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_FAKE_TRANSPORT) &&
         (!transportGobj || !transportGobj->IsTransport() || !transportGobj->IsWithinDist(plMover, maxDist2d, false)))
         _anticheat->RecordCheatInternal(CHEAT_TYPE_FAKE_TRANSPORT);
 }
 
+// 判断本次位置跃迁是否属于合法范围（如电梯区域、击退、服务端传送或短距离移动）
 bool Movement::IsTeleportAllowed(MovementInfo const& movementInfo, float& distance)
 {
-    // check valid source coordinates
+    // check valid source coordinates (忽略起点零坐标)
     if (_me->GetPositionX() == 0.0f || _me->GetPositionY() == 0.0f || _me->GetPositionZ() == 0.0f)
         return true;
 
-    // check valid destination coordinates
+    // check valid destination coordinates (忽略终点零坐标)
     if (movementInfo.GetPos().x == 0.0f || movementInfo.GetPos().y == 0.0f || movementInfo.GetPos().z == 0.0f)
         return true;
 
-    // if knockbacked
+    // if knockbacked (处于击退发射状态)
     if (_me->IsLaunched())
         return true;
 
-    // ignore valid teleport state
+    // ignore valid teleport state (处于服务端合法传送状态)
     if (_me->IsBeingTeleported())
         return true;
 
-    // some exclude zones - lifts and other, but..
+    // some exclude zones - lifts and other, but.. (豁免特定升降梯区域，如千针石林大升降梯、幽暗城电梯)
     uint32 destZoneId = 0;
     uint32 destAreaId = 0;
 
@@ -949,11 +977,11 @@ bool Movement::IsTeleportAllowed(MovementInfo const& movementInfo, float& distan
     // checks far teleports
     if (destZoneId == _me->GetZoneId() && destAreaId == _me->GetAreaId())
     {
-        // Thousand Needles - Great Lift
+        // Thousand Needles - Great Lift (千针石林大升降梯 / 矿道地铁)
         if (_me->GetZoneId() == 2257 || (_me->GetZoneId() == 400 && _me->GetAreaId() == 485))
             return true;
 
-        // Undercity Lift
+        // Undercity Lift (幽暗城电梯)
         if (_me->GetZoneId() == 1497 && _me->GetAreaId() == 1497)
             return true;
     }
@@ -969,6 +997,7 @@ bool Movement::IsTeleportAllowed(MovementInfo const& movementInfo, float& distan
     return false;
 }
 
+// 检查 CMSG_MOVE_FALL_RESET 是否存在异常（非坠落状态重置或参数非零）
 bool Movement::CheckFallReset(MovementInfo const& movementInfo) const
 {
     if (!sAnticheatConfig.getConfig(CONFIG_BOOL_AC_MOVEMENT_CHEAT_BAD_FALL_RESET_ENABLED))
@@ -983,6 +1012,7 @@ bool Movement::CheckFallReset(MovementInfo const& movementInfo) const
     return movementInfo.fallTime != 0 || movementInfo.jump.zspeed != 0.0f;
 }
 
+// 检查当前移动包是否存在非法瞬移、擅自进入 GM 岛及非法移动标志位
 bool Movement::CheckTeleport(uint16 opcode, MovementInfo& movementInfo)
 {
     if (_me->GetMover()->GetTypeId() != TYPEID_PLAYER)
@@ -990,7 +1020,7 @@ bool Movement::CheckTeleport(uint16 opcode, MovementInfo& movementInfo)
 
     auto const mover = reinterpret_cast<const Player *>(_me->GetMover());
 
-    // teleport hack check
+    // teleport hack check (非载具、非飞行路径状态下检查瞬移)
     if (!mover->GetTransport() && !mover->HasMovementFlag(MOVEFLAG_ONTRANSPORT) && !mover->IsTaxiFlying())
     {
         float distance;
@@ -1034,11 +1064,11 @@ bool Movement::CheckTeleport(uint16 opcode, MovementInfo& movementInfo)
                     destZoneId, destZoneName, destAreaId, destAreaName,
                     movementInfo.pos.x, movementInfo.pos.y, movementInfo.pos.z);
 
-            // on gm island?
+            // on gm island? (普通玩家进入 GM 岛区域 876 触发禁区告警)
             if (sAnticheatConfig.IsEnabled(CHEAT_TYPE_FORBIDDEN) && _me->GetSession()->GetSecurity() == SEC_PLAYER && destZoneId == 876 && destAreaId == 876)
                 _anticheat->RecordCheatInternal(CHEAT_TYPE_FORBIDDEN, "Player is on GM Island");
 
-            // save prevoius point
+            // save prevoius point (瞬移被拦截时将上次合法坐标写入数据库)
             Player::SavePositionInDB(mover->GetObjectGuid(), mover->GetMapId(),
                 mover->m_movementInfo.pos.x,
                 mover->m_movementInfo.pos.y,
@@ -1049,7 +1079,7 @@ bool Movement::CheckTeleport(uint16 opcode, MovementInfo& movementInfo)
         }
     }
 
-    // in launched/falling/spline movement - maybe false positives
+    // in launched/falling/spline movement - maybe false positives (非击飞/样条控制状态下严格清理非法移动标志位)
     if (!mover->IsLaunched() && (!mover->movespline || mover->movespline->Finalized()))
     {
         auto const moveFlags = movementInfo.GetMovementFlags();
@@ -1069,6 +1099,7 @@ bool Movement::CheckTeleport(uint16 opcode, MovementInfo& movementInfo)
     return true;
 }
 
+// 向 GM 输出当前待确认移动指令及详细移动调试日志
 void Movement::SendOrderInfo(ChatHandler *handler) const
 {
     handler->PSendSysMessage("Order ACKs pending: %lu Current time: %u", uint64(_orders.size()), WorldTimer::getMSTime());
@@ -1094,6 +1125,7 @@ void Movement::SendOrderInfo(ChatHandler *handler) const
     handler->PSendSysMessage("%s", str.c_str());
 }
 
+// 导出近期服务端下发移动指令历史文本
 size_t Movement::DumpOrders(std::string &out) const
 {
     std::stringstream str;
@@ -1114,6 +1146,7 @@ size_t Movement::DumpOrders(std::string &out) const
     return result;
 }
 
+// 导出近期客户端移动确认历史文本
 size_t Movement::DumpAcks(std::string &out) const
 {
     std::stringstream str;
@@ -1134,6 +1167,7 @@ size_t Movement::DumpAcks(std::string &out) const
     return result;
 }
 
+// 导出近期客户端时间跳变历史文本
 size_t Movement::DumpTimeSkips(std::string &out) const
 {
     std::stringstream str;
@@ -1154,6 +1188,7 @@ size_t Movement::DumpTimeSkips(std::string &out) const
     return result;
 }
 
+// 导出近期进入/离开世界记录
 size_t Movement::DumpWorldChanges(std::string &out) const
 {
     std::stringstream str;
@@ -1171,6 +1206,7 @@ size_t Movement::DumpWorldChanges(std::string &out) const
     return result;
 }
 
+// 导出近期移动历史包明细
 size_t Movement::DumpMovement(std::string &out) const
 {
     std::stringstream str;

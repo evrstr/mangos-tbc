@@ -19,20 +19,23 @@
 #include "Groups/Group.h"
 #include "GroupReference.h"
 
+/// 将成员引用挂载到目标 Group 链表头部
 void GroupReference::targetObjectBuildLink()
 {
-    // called from link()
+    // called from link() (由 Reference::link() 调用)
     getTarget()->LinkMember(this);
 }
 
+/// 解除成员引用与目标 Group 的链接
 void GroupReference::targetObjectDestroyLink()
 {
-    // called from unlink()
+    // called from unlink() (由 Reference::unlink() 调用)
     getTarget()->DelinkMember(this);
 }
 
+/// 源对象（玩家）销毁时通知目标 Group 断开链接
 void GroupReference::sourceObjectDestroyLink()
 {
-    // called from invalidate()
+    // called from invalidate() (由 Reference::invalidate() 调用)
     getTarget()->DelinkMember(this);
 }

@@ -22,6 +22,8 @@ SDCategory: Uldaman
 EndScriptData
 */
 
+// 奥达曼（Uldaman）副本状态机与阿扎达斯大厅石门控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "uldaman.h"
 
@@ -244,7 +246,7 @@ Creature* instance_uldaman::GetClosestDwarfNotInCombat(Creature* pSearcher)
 
 void instance_uldaman::OnCreatureEvade(Creature* pCreature)
 {
-    // Reset Altar event
+    // Reset Altar event (重置Altar事件)
     if (pCreature->GetEntry() == NPC_STONE_KEEPER)
         SetData(TYPE_ALTAR_EVENT, NOT_STARTED);
 }
@@ -322,6 +324,7 @@ bool ProcessEventId_event_spell_altar_boss_aggro(uint32 uiEventId, Object* pSour
     return false;
 }
 
+// 注册并载入脚本模块：instance_uldaman
 void AddSC_instance_uldaman()
 {
     Script* pNewScript = new Script;

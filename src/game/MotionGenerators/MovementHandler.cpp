@@ -36,12 +36,14 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 
+/// 处理跨地图远距离传送确认报文（MSG_MOVE_WORLDPORT_ACK）
 void WorldSession::HandleMoveWorldportAckOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_LOG("WORLD: got MSG_MOVE_WORLDPORT_ACK.");
     HandleMoveWorldportAckOpcode();
 }
 
+/// 完成跨地图远传送落地：校验目标坐标/战场/副本入口/载具状态，切换 Map 并推送进图初始包
 void WorldSession::HandleMoveWorldportAckOpcode()
 {
     if (!GetPlayer())
@@ -280,6 +282,7 @@ void WorldSession::HandleMoveWorldportAckOpcode()
         map->GetMessager().AddMessage(lambda);
 }
 
+/// 处理同地图近距离传送确认报文（MSG_MOVE_TELEPORT_ACK）：更新位置、载具乘员、区域与反作弊状态
 void WorldSession::HandleMoveTeleportAckOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("MSG_MOVE_TELEPORT_ACK");
@@ -381,6 +384,7 @@ void WorldSession::HandleMoveTeleportAckOpcode(WorldPacket& recv_data)
     GetPlayer()->ProcessDelayedOperations();
 }
 
+/// 处理常规客户端移动状态包（走跑跳转向泳飞等）并转发给视野内其他玩家
 void WorldSession::HandleMovementOpcodes(WorldPacket& recv_data)
 {
     Opcodes opcode = recv_data.GetOpcode();
@@ -415,6 +419,7 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recv_data)
     mover->SendMessageToAllWhoSeeMeMove(data, _player->GetObjectGuid());
 }
 
+/// 处理服务端强制变更移动速度后的客户端确认回执（CMSG_FORCE_*_SPEED_CHANGE_ACK）并校验防作弊
 void WorldSession::HandleForceSpeedChangeAckOpcodes(WorldPacket& recv_data)
 {
     Opcodes opcode = recv_data.GetOpcode();
@@ -499,6 +504,7 @@ void WorldSession::HandleForceSpeedChangeAckOpcodes(WorldPacket& recv_data)
     }
 }
 
+/// 处理客户端切换当前主控移动对象通知（如载具/心灵控制切换）
 void WorldSession::HandleSetActiveMoverOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_SET_ACTIVE_MOVER");
@@ -550,6 +556,7 @@ void WorldSession::HandleMountSpecialAnimOpcode(WorldPacket& /*recvdata*/)
     GetPlayer()->SendMessageToSet(data, false);
 }
 
+/// 处理击退效果客户端确认回执（CMSG_MOVE_KNOCK_BACK_ACK）并广播给周边观察者
 void WorldSession::HandleMoveKnockBackAck(WorldPacket& recv_data)
 {
     DEBUG_LOG("CMSG_MOVE_KNOCK_BACK_ACK");
@@ -589,6 +596,7 @@ void WorldSession::HandleMoveKnockBackAck(WorldPacket& recv_data)
     mover->SendMessageToAllWhoSeeMeMove(data, _player->GetObjectGuid());
 }
 
+/// 向客户端下发击退指令封包（SMSG_MOVE_KNOCK_BACK）并同步登记反作弊预期轨迹
 void WorldSession::SendKnockBack(Unit* who, float angle, float horizontalSpeed, float verticalSpeed)
 {
     GetPlayer()->SetLaunched(true);
@@ -711,6 +719,7 @@ void WorldSession::HandleSummonResponseOpcode(WorldPacket& recv_data)
     _player->SummonIfPossible(agree, summonerGuid);
 }
 
+/// 校验客户端上报的 MovementInfo 合法性（归属 GUID、地图坐标有效、定身互斥及载具局部偏移上限）
 bool WorldSession::VerifyMovementInfo(MovementInfo const& movementInfo, Unit* mover, bool unroot) const
 {
     // ignore wrong guid (player attempt cheating own session for not own guid possible...)
@@ -741,6 +750,7 @@ bool WorldSession::VerifyMovementInfo(MovementInfo const& movementInfo, Unit* mo
     return true;
 }
 
+/// 将已通过校验的 MovementInfo 应用到玩家或被魅惑生物（处理上下船、位置重定位与掉出地图底面虚空致死）
 void WorldSession::HandleMoverRelocation(MovementInfo& movementInfo)
 {
     SynchronizeMovement(movementInfo);
@@ -825,6 +835,7 @@ void WorldSession::HandleMoveTimeSkippedOpcode(WorldPacket& recv_data)
     mover->SendMessageToSetExcept(data, _player);
 }
 
+/// 统一前置处理客户端移动报文：载具标志清理、合法性校验、坠落伤害、反作弊检查与位置重定位
 bool WorldSession::ProcessMovementInfo(MovementInfo& movementInfo, Unit* mover, Player* plMover, WorldPacket& recv_data)
 {
     if (plMover && plMover->IsBeingTeleported())
@@ -870,6 +881,7 @@ bool WorldSession::ProcessMovementInfo(MovementInfo& movementInfo, Unit* mover, 
     return true;
 }
 
+/// 处理客户端时间同步响应（CMSG_TIME_SYNC_RESP），记录往返延迟与时钟差样本
 void WorldSession::HandleTimeSyncResp(WorldPacket& recvData)
 {
     DEBUG_LOG("CMSG_TIME_SYNC_RESP");
@@ -904,6 +916,7 @@ void WorldSession::HandleTimeSyncResp(WorldPacket& recvData)
     ComputeNewClockDelta();
 }
 
+/// 基于样本中位数与标准差剔除 TCP 重传毛刺，动态更新服务器与客户端的时钟偏差
 void WorldSession::ComputeNewClockDelta()
 {
     // implementation of the technique described here: https://web.archive.org/web/20180430214420/http://www.mine-control.com/zack/timesync/timesync.html

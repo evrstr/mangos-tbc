@@ -20,6 +20,7 @@
 
 #include <string>
 
+/// 构造函数：初始化 gSOAP 上下文、UTF-8 字符串模式及超时参数
 SOAPThread::SOAPThread(const std::string& host, int port) : m_host(host), m_port(port)
 {
     soap_init(&m_soap);
@@ -31,6 +32,7 @@ SOAPThread::SOAPThread(const std::string& host, int port) : m_host(host), m_port
     m_soap.send_timeout = DataTimeout;
 }
 
+/// 工厂方法：绑定监听地址和端口并创建 SOAPThread 实例
 std::unique_ptr<SOAPThread> SOAPThread::Create(const std::string& host, int port)
 {
     std::unique_ptr<SOAPThread> soapThread(new SOAPThread(host, port));
@@ -44,11 +46,13 @@ std::unique_ptr<SOAPThread> SOAPThread::Create(const std::string& host, int port
     return soapThread;
 }
 
+/// 启动 SOAP 后台监听工作线程
 void SOAPThread::Start()
 {
     m_workerThread = std::thread(&SOAPThread::Work, this);
 }
 
+/// 析构函数：等待工作线程结束并释放 gSOAP 资源
 SOAPThread::~SOAPThread()
 {
     sLog.outError("SOAP shutting down");
@@ -59,13 +63,14 @@ SOAPThread::~SOAPThread()
     soap_done(&m_soap);
 }
 
+/// 工作线程循环：接受客户端连接并交由 gSOAP 处理请求
 void SOAPThread::Work()
 {
     while (!World::IsStopped())
     {
         auto s = soap_accept(&m_soap);
 
-        // timeout?
+        // timeout? | 是否超时？
         if (s == SOAP_INVALID_SOCKET)
             continue;
 
@@ -79,12 +84,14 @@ void SOAPThread::Work()
 
 /*
 Code used for generating stubs:
+用于生成 gSOAP 存根（stub）的原型声明：
 
 int ns1__executeCommand(char* command, char** result);
 */
+/// SOAP 服务端操作实现：校验账号权限并将控制台命令投递到世界线程执行
 int ns1__executeCommand(soap* soap, char* command, char** result)
 {
-    // security check
+    // security check | 安全检查（HTTP Basic 认证与账号权限校验）
     if (!soap->userid || !soap->passwd)
     {
         DEBUG_LOG("MaNGOSsoap: Client didn't provide login information");
@@ -119,7 +126,7 @@ int ns1__executeCommand(soap* soap, char* command, char** result)
     std::vector<char> buffer;
     buffer.reserve(SOAPThread::CommandOutputBufferSize);
 
-    // commands are executed in the world thread. We have to wait for them to be completed
+    // commands are executed in the world thread. We have to wait for them to be completed | 命令在世界线程中异步执行，此处需等待其执行完成
     sWorld.QueueCliCommand(new CliCommandHolder(accountId, SEC_CONSOLE, command,
                            [&buffer](const char* output)
     {
@@ -153,16 +160,16 @@ int ns1__executeCommand(soap* soap, char* command, char** result)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  Namespace Definition Table
+//  Namespace Definition Table | 命名空间定义表
 //
 ////////////////////////////////////////////////////////////////////////////////
 
 struct Namespace namespaces[] =
 {
-    { "SOAP-ENV", "http://schemas.xmlsoap.org/soap/envelope/" }, // must be first
-    { "SOAP-ENC", "http://schemas.xmlsoap.org/soap/encoding/" }, // must be second
+    { "SOAP-ENV", "http://schemas.xmlsoap.org/soap/envelope/" }, // must be first | 必须位于第一项
+    { "SOAP-ENC", "http://schemas.xmlsoap.org/soap/encoding/" }, // must be second | 必须位于第二项
     { "xsi", "http://www.w3.org/1999/XMLSchema-instance", "http://www.w3.org/*/XMLSchema-instance" },
     { "xsd", "http://www.w3.org/1999/XMLSchema",          "http://www.w3.org/*/XMLSchema" },
-    { "ns1", "urn:MaNGOS" },     // "ns1" namespace prefix
+    { "ns1", "urn:MaNGOS" },     // "ns1" namespace prefix | "ns1" 命名空间前缀
     { nullptr, nullptr }
 };

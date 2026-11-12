@@ -44,6 +44,7 @@ struct WMOAreaTableTripple
     }
 
     // ordered by entropy; that way memcmp will have a minimal medium runtime
+    // 按信息熵排序，使 memcmp 在平均情况下能以最少比较字节快速得出大小结果
     int32 groupId;
     int32 rootId;
     int32 adtId;
@@ -53,7 +54,7 @@ typedef std::map<WMOAreaTableTripple, std::vector<WMOAreaTableEntry const*>> WMO
 
 DBCStorage <AreaTableEntry> sAreaStore(AreaTableEntryfmt);
 static AreaFlagByAreaID sAreaFlagByAreaID;
-static AreaFlagByMapID  sAreaFlagByMapID;                   // for instances without generated *.map files
+static AreaFlagByMapID  sAreaFlagByMapID;                   // for instances without generated *.map files | 供未生成 *.map 文件的副本查询默认 AreaFlag
 
 static WMOAreaInfoByTripple sWMOAreaInfoByTripple;
 
@@ -163,7 +164,7 @@ DBCStorage <TalentEntry> sTalentStore(TalentEntryfmt);
 TalentSpellPosMap sTalentSpellPosMap;
 DBCStorage <TalentTabEntry> sTalentTabStore(TalentTabEntryfmt);
 
-// store absolute bit position for first rank for talent inspect
+// store absolute bit position for first rank for talent inspect | 存储观察天赋时的绝对位偏移及各天赋页总位数
 typedef std::map<uint32, uint32> TalentInspectMap;
 static TalentInspectMap sTalentPosInInspect;
 static TalentInspectMap sTalentTabSizeInInspect;
@@ -172,11 +173,12 @@ static uint32 sTalentTabPages[12/*MAX_CLASSES*/][3];
 DBCStorage <TaxiNodesEntry> sTaxiNodesStore(TaxiNodesEntryfmt);
 TaxiMask sTaxiNodesMask;
 
-// DBC used only for initialization sTaxiPathSetBySource at startup.
+// DBC used only for initialization sTaxiPathSetBySource at startup. | 仅在启动时用于初始化 sTaxiPathSetBySource 查找表
 TaxiPathSetBySource sTaxiPathSetBySource;
 DBCStorage <TaxiPathEntry> sTaxiPathStore(TaxiPathEntryfmt);
 
 // DBC store data but sTaxiPathNodesByPath used for fast access to entries (it's not owner pointed data).
+// 航点路径按 path ID 索引的快速访问表（指针指向 sTaxiPathNodeStore 内部元素）
 TaxiPathNodesByPath sTaxiPathNodesByPath;
 static DBCStorage <TaxiPathNodeEntry> sTaxiPathNodeStore(TaxiPathNodeEntryfmt);
 
@@ -212,14 +214,14 @@ static bool LoadDBC_assert_print(uint32 fsize, uint32 rsize, const std::string& 
 {
     sLog.outError("Size of '%s' setted by format string (%u) not equal size of C++ structure (%u).", filename.c_str(), fsize, rsize);
 
-    // ASSERT must fail after function call
+    // ASSERT must fail after function call | 返回 false 以触发外层 MANGOS_ASSERT 断言失败
     return false;
 }
 
 template<class T>
 inline void LoadDBC(uint32& availableDbcLocales, BarGoLink& bar, StoreProblemList& errlist, DBCStorage<T>& storage, const std::string& dbc_path, const std::string& filename)
 {
-    // compatibility format and C++ structure sizes
+    // compatibility format and C++ structure sizes | 校验 DBC 格式串计算出的记录字节数是否与 C++ 结构体大小严格一致
     MANGOS_ASSERT(DBCFileLoader::GetFormatRecordSize(storage.GetFormat()) == sizeof(T) || LoadDBC_assert_print(DBCFileLoader::GetFormatRecordSize(storage.GetFormat()), sizeof(T), filename));
 
     std::string dbc_filename = dbc_path + filename;
@@ -233,12 +235,12 @@ inline void LoadDBC(uint32& availableDbcLocales, BarGoLink& bar, StoreProblemLis
 
             std::string dbc_filename_loc = dbc_path + fullLocaleNameList[i].name + "/" + filename;
             if (!storage.LoadStringsFrom(dbc_filename_loc.c_str()))
-                availableDbcLocales &= ~(1 << i);           // mark as not available for speedup next checks
+                availableDbcLocales &= ~(1 << i);           // mark as not available for speedup next checks | 标记该语言目录不可用，加速后续 DBC 加载
         }
     }
     else
     {
-        // sort problematic dbc to (1) non compatible and (2) nonexistent
+        // sort problematic dbc to (1) non compatible and (2) nonexistent | 区分不兼容（字段数不匹配）与文件缺失两类错误
         FILE* f = fopen(dbc_filename.c_str(), "rb");
         if (f)
         {
@@ -269,20 +271,20 @@ void LoadDBCStores(const std::string& dataPath)
 
     StoreProblemList bad_dbc_files;
 
-    // bitmask for index of fullLocaleNameList
+    // bitmask for index of fullLocaleNameList | 可用本地化语言位掩码（按 fullLocaleNameList 索引）
     uint32 availableDbcLocales = 0xFFFFFFFF;
 
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sAreaStore,                dbcPath, "AreaTable.dbc");
 
-    // must be after sAreaStore loading
-    for (uint32 i = 0; i < sAreaStore.GetNumRows(); ++i)    // areaflag numbered from 0
+    // must be after sAreaStore loading | 必须在 sAreaStore 加载完成后构建 AreaID/MapID 到 exploreFlag 的映射
+    for (uint32 i = 0; i < sAreaStore.GetNumRows(); ++i)    // areaflag numbered from 0 | exploreFlag 从 0 开始编号
     {
         if (AreaTableEntry const* area = sAreaStore.LookupEntry(i))
         {
-            // fill AreaId->DBC records
+            // fill AreaId->DBC records | 填充 AreaID -> exploreFlag 映射
             sAreaFlagByAreaID.insert(AreaFlagByAreaID::value_type(uint16(area->ID), area->exploreFlag));
 
-            // fill MapId->DBC records ( skip sub zones and continents )
+            // fill MapId->DBC records ( skip sub zones and continents ) | 填充非大陆主图与非子区域的 MapID -> exploreFlag 映射
             if (area->zone == 0 && area->mapid != 0 && area->mapid != 1 && area->mapid != 530)
                 sAreaFlagByMapID.insert(AreaFlagByMapID::value_type(area->mapid, area->exploreFlag));
         }
@@ -376,7 +378,7 @@ void LoadDBCStores(const std::string& dataPath)
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sMailTemplateStore,        dbcPath, "MailTemplate.dbc");
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sMapStore,                 dbcPath, "Map.dbc");
     {
-        // repairs entry for netherstorm - should be moved to SQL
+        // repairs entry for netherstorm - should be moved to SQL | 修正风暴要塞（地图 550）灵魂入口对应的外域地图 ID（后续应迁移至 SQL）
         if (MapEntry const* mEntry = sMapStore.LookupEntry(550))
         {
             MapEntry* tempestKeepMap = new MapEntry(*mEntry);
@@ -454,7 +456,7 @@ void LoadDBCStores(const std::string& dataPath)
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sSummonPropertiesStore,    dbcPath, "SummonProperties.dbc");
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sTalentStore,              dbcPath, "Talent.dbc");
 
-    // create talent spells set
+    // create talent spells set | 构建天赋法术 ID 到 (talent_id, rank) 的反向映射表
     for (unsigned int i = 0; i < sTalentStore.GetNumRows(); ++i)
     {
         TalentEntry const* talentInfo = sTalentStore.LookupEntry(i);
@@ -467,9 +469,11 @@ void LoadDBCStores(const std::string& dataPath)
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sTalentTabStore,           dbcPath, "TalentTab.dbc");
 
     // prepare fast data access to bit pos of talent ranks for use at inspecting
+    // 预计算观察天赋（Inspect）数据包所需的天赋页位宽及各个天赋的位偏移
     {
         // fill table by amount of talent ranks and fill sTalentTabBitSizeInInspect
         // store in with (row,col,talent)->size key for correct sorting by (row,col)
+        // 按 (Row, Col, TalentID) 键排序统计每个天赋的最大等级数与所属天赋页总位数
         typedef std::map<uint32, uint32> TalentBitSize;
         TalentBitSize sTalentBitSize;
         for (uint32 i = 1; i < sTalentStore.GetNumRows(); ++i)
@@ -481,7 +485,7 @@ void LoadDBCStores(const std::string& dataPath)
             if (!talentTabInfo)
                 continue;
 
-            // find talent rank
+            // find talent rank | 确定该天赋的最大等级数
             uint32 curtalent_maxrank = 0;
             for (uint32 k = 5; k > 0; --k)
             {
@@ -497,23 +501,25 @@ void LoadDBCStores(const std::string& dataPath)
         }
 
         // now have all max ranks (and then bit amount used for store talent ranks in inspect)
+        // 为各职业填充天赋分页索引表并计算每个天赋在该页内的起始位偏移
         for (uint32 talentTabId = 1; talentTabId < sTalentTabStore.GetNumRows(); ++talentTabId)
         {
             TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentTabId);
             if (!talentTabInfo)
                 continue;
 
-            // prevent memory corruption; otherwise cls will become 12 below
+            // prevent memory corruption; otherwise cls will become 12 below | 过滤非玩家可用职业的天赋页，防止数组越界
             if ((talentTabInfo->ClassMask & CLASSMASK_ALL_PLAYABLE) == 0)
                 continue;
 
-            // store class talent tab pages
+            // store class talent tab pages | 记录职业对应的三个天赋分页 ID
             uint32 cls = 1;
             for (uint32 m = 1; !(m & talentTabInfo->ClassMask) && cls < MAX_CLASSES; m <<= 1, ++cls) {}
 
             sTalentTabPages[cls][talentTabInfo->tabpage] = talentTabId;
 
             // add total amount bits for first rank starting from talent tab first talent rank pos.
+            // 累加同页前置天赋等级数，确定当前天赋在观察掩码中的起始位位置
             uint32 pos = 0;
             for (TalentBitSize::iterator itr = sTalentBitSize.begin(); itr != sTalentBitSize.end(); ++itr)
             {
@@ -561,6 +567,7 @@ void LoadDBCStores(const std::string& dataPath)
 
     // Initialize global taxinodes mask
     // include existing nodes that have at least single not spell base (scripted) path
+    // 初始化全局有效飞行点位掩码：仅收录至少拥有一条常规（非纯法术脚本触发）航线的飞行节点
     {
         std::set<uint32> spellPaths;
         for (uint32 i = 1; i < sSpellTemplate.GetMaxEntry(); ++i)
@@ -582,7 +589,7 @@ void LoadDBCStores(const std::string& dataPath)
                 bool ok = false;
                 for (const auto& dest_i : src_i->second)
                 {
-                    // not spell path
+                    // not spell path | 非法术触发路径
                     if (spellPaths.find(dest_i.second.ID) == spellPaths.end())
                     {
                         ok = true;
@@ -594,7 +601,7 @@ void LoadDBCStores(const std::string& dataPath)
                     continue;
             }
 
-            // valid taxi network node
+            // valid taxi network node | 登记为有效飞行网络节点
             uint8  field   = (uint8)((i - 1) / 32);
             uint32 submask = 1 << ((i - 1) % 32);
             sTaxiNodesMask[field] |= submask;
@@ -616,7 +623,7 @@ void LoadDBCStores(const std::string& dataPath)
     // LoadDBC(availableDbcLocales,bar,bad_dbc_files,sWorldMapOverlayStore,     dbcPath,"WorldMapOverlay.dbc");
     // LoadDBC(availableDbcLocales, bar, bad_dbc_files, sWorldSafeLocsStore,       dbcPath, "WorldSafeLocs.dbc");
 
-    // error checks
+    // error checks | 校验 DBC 文件是否全部成功加载
     if (bad_dbc_files.size() >= DBCFilesCount)
     {
         sLog.outError("\nIncorrect DataDir value in mangosd.conf or ALL required *.dbc files (%d) not found by path: %sdbc", DBCFilesCount, dataPath.c_str());
@@ -634,7 +641,7 @@ void LoadDBCStores(const std::string& dataPath)
         exit(1);
     }
 
-    // Check loaded DBC files proper version
+    // Check loaded DBC files proper version | 抽取关键条目验证 DBC 文件版本是否与 2.4.3 客户端匹配
     if (!sSkillLineAbilityStore.LookupEntry(17514) ||
             !sMapStore.LookupEntry(598)                ||
             !sGemPropertiesStore.LookupEntry(1127)     ||
@@ -932,7 +939,7 @@ bool IsPointInAreaTriggerZone(AreaTriggerEntry const* atEntry, uint32 mapid, flo
 
     if (atEntry->radius > 0)
     {
-        // if we have radius check it
+        // if we have radius check it | 球形区域触发器：校验到触发点中心的欧氏距离平方
         float dist2 = (x - atEntry->x) * (x - atEntry->x) + (y - atEntry->y) * (y - atEntry->y) + (z - atEntry->z) * (z - atEntry->z);
         if (dist2 > (atEntry->radius + delta) * (atEntry->radius + delta))
             return false;
@@ -945,6 +952,7 @@ bool IsPointInAreaTriggerZone(AreaTriggerEntry const* atEntry, uint32 mapid, flo
         // is-in-cube check and we have to calculate only one point instead of 4
 
         // 2PI = 360, keep in mind that ingame orientation is counter-clockwise
+        // 长方体区域触发器：将玩家坐标反向旋转至触发器局部坐标系，从而简化轴对齐包围盒判定
         double rotation = 2 * M_PI - atEntry->box_orientation;
         double sinVal = sin(rotation);
         double cosVal = cos(rotation);
@@ -956,6 +964,7 @@ bool IsPointInAreaTriggerZone(AreaTriggerEntry const* atEntry, uint32 mapid, flo
         float rotPlayerY = float(atEntry->y + playerBoxDistY * cosVal + playerBoxDistX * sinVal);
 
         // box edges are parallel to coordiante axis, so we can treat every dimension independently :D
+        // 旋转后各边与坐标轴平行，可逐轴独立比较半边长
         float dz = z - atEntry->z;
         float dx = rotPlayerX - atEntry->x;
         float dy = rotPlayerY - atEntry->y;

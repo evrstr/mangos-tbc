@@ -14,45 +14,60 @@ A commercial use license is available from Genivia Inc., contact@genivia.com
 #ifndef soapH_H
 #define soapH_H
 #include "soapStub.h"
+/// gSOAP 自动生成的序列化/反序列化辅助函数声明与内联包装
 #ifndef WITH_NOIDREF
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+/// 标记对象树中的元素引用（用于多引用 SOAP ID/HREF 检测）
 SOAP_FMAC3 void SOAP_FMAC4 soap_markelement(struct soap*, const void*, int);
 
 #ifdef __cplusplus
 }
 #endif
+/// 序列化独立的多引用对象
 SOAP_FMAC3 int SOAP_FMAC4 soap_putindependent(struct soap*);
+/// 反序列化独立的多引用对象
 SOAP_FMAC3 int SOAP_FMAC4 soap_getindependent(struct soap*);
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+/// 根据类型读取任意 SOAP XML 元素
 SOAP_FMAC3 void* SOAP_FMAC4 soap_getelement(struct soap*, int*);
+/// 根据类型输出任意 SOAP XML 元素
 SOAP_FMAC3 int SOAP_FMAC4 soap_putelement(struct soap*, const void*, const char*, int, int);
+/// 复制指定类型的 SOAP 元素（占位实现）
 SOAP_FMAC3 void* SOAP_FMAC4 soap_dupelement(struct soap*, const void*, int);
+/// 释放指定类型的 SOAP 元素（占位实现）
 SOAP_FMAC3 void SOAP_FMAC4 soap_delelement(const void*, int);
 
 #ifdef __cplusplus
 }
 #endif
+/// 忽略或校验未知的 SOAP XML 元素
 SOAP_FMAC3 int SOAP_FMAC4 soap_ignore_element(struct soap*);
 
+/// 返回 SOAP 错误码字符串指针
 SOAP_FMAC3 const char** SOAP_FMAC4 soap_faultcode(struct soap* soap);
+/// 按类型 ID 实例化对应的 SOAP 数据结构
 SOAP_FMAC3 void* SOAP_FMAC4 soap_instantiate(struct soap*, int, const char*, const char*, size_t*);
+/// 释放由 gSOAP 管理链表记录的堆对象
 SOAP_FMAC3 int SOAP_FMAC4 soap_fdelete(struct soap_clist*);
+/// 判断派生类型关系（基类查询）
 SOAP_FMAC3 int SOAP_FMAC4 soap_fbase(int, int);
+/// 将前向引用（forward reference）的对象内容拷贝填充到目标地址
 SOAP_FMAC3 void SOAP_FMAC4 soap_finsert(struct soap*, int, int, void*, size_t, const void*, void**);
 
+/// xsd:byte 基础类型的默认初始化与读写接口
 #ifndef SOAP_TYPE_byte_DEFINED
 #define SOAP_TYPE_byte_DEFINED
 
 inline void soap_default_byte(struct soap* soap, char* a)
 {
-    (void)soap; /* appease -Wall -Werror */
+    (void)soap; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifdef SOAP_DEFAULT_byte
     *a = SOAP_DEFAULT_byte;
 #else
@@ -118,12 +133,13 @@ inline int soap_POST_recv_byte(struct soap* soap, char* p)
 }
 #endif
 
+/// xsd:int 基础类型的默认初始化与读写接口
 #ifndef SOAP_TYPE_int_DEFINED
 #define SOAP_TYPE_int_DEFINED
 
 inline void soap_default_int(struct soap* soap, int* a)
 {
-    (void)soap; /* appease -Wall -Werror */
+    (void)soap; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifdef SOAP_DEFAULT_int
     *a = SOAP_DEFAULT_int;
 #else
@@ -191,6 +207,7 @@ inline int soap_POST_recv_int(struct soap* soap, int* p)
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP-ENV:Fault 结构体序列化与 HTTP/XML 读写接口
 #ifndef SOAP_TYPE_SOAP_ENV__Fault_DEFINED
 #define SOAP_TYPE_SOAP_ENV__Fault_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Fault(struct soap*, struct SOAP_ENV__Fault*);
@@ -300,6 +317,7 @@ inline int soap_POST_recv_SOAP_ENV__Fault(struct soap* soap, struct SOAP_ENV__Fa
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP-ENV:Reason 结构体序列化与 HTTP/XML 读写接口
 #ifndef SOAP_TYPE_SOAP_ENV__Reason_DEFINED
 #define SOAP_TYPE_SOAP_ENV__Reason_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Reason(struct soap*, struct SOAP_ENV__Reason*);
@@ -393,6 +411,7 @@ inline int soap_POST_recv_SOAP_ENV__Reason(struct soap* soap, struct SOAP_ENV__R
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP-ENV:Detail 结构体序列化与 HTTP/XML 读写接口
 #ifndef SOAP_TYPE_SOAP_ENV__Detail_DEFINED
 #define SOAP_TYPE_SOAP_ENV__Detail_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Detail(struct soap*, struct SOAP_ENV__Detail*);
@@ -494,6 +513,7 @@ inline int soap_POST_recv_SOAP_ENV__Detail(struct soap* soap, struct SOAP_ENV__D
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP-ENV:Code 结构体序列化与 HTTP/XML 读写接口
 #ifndef SOAP_TYPE_SOAP_ENV__Code_DEFINED
 #define SOAP_TYPE_SOAP_ENV__Code_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Code(struct soap*, struct SOAP_ENV__Code*);
@@ -589,6 +609,7 @@ inline int soap_POST_recv_SOAP_ENV__Code(struct soap* soap, struct SOAP_ENV__Cod
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP-ENV:Header 结构体序列化与 HTTP/XML 读写接口
 #ifndef SOAP_TYPE_SOAP_ENV__Header_DEFINED
 #define SOAP_TYPE_SOAP_ENV__Header_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_SOAP_ENV__Header(struct soap*, struct SOAP_ENV__Header*);
@@ -678,6 +699,7 @@ inline int soap_POST_recv_SOAP_ENV__Header(struct soap* soap, struct SOAP_ENV__H
 
 #endif
 
+/// ns1:executeCommand 请求结构体序列化与 HTTP/XML 读写接口
 #ifndef SOAP_TYPE_ns1__executeCommand_DEFINED
 #define SOAP_TYPE_ns1__executeCommand_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_ns1__executeCommand(struct soap*, struct ns1__executeCommand*);
@@ -767,6 +789,7 @@ inline int soap_POST_recv_ns1__executeCommand(struct soap* soap, struct ns1__exe
 }
 #endif
 
+/// ns1:executeCommandResponse 响应结构体序列化与 HTTP/XML 读写接口
 #ifndef SOAP_TYPE_ns1__executeCommandResponse_DEFINED
 #define SOAP_TYPE_ns1__executeCommandResponse_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_default_ns1__executeCommandResponse(struct soap*, struct ns1__executeCommandResponse*);
@@ -858,6 +881,7 @@ inline int soap_POST_recv_ns1__executeCommandResponse(struct soap* soap, struct 
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Reason* 指针类型序列化声明
 #ifndef SOAP_TYPE_PointerToSOAP_ENV__Reason_DEFINED
 #define SOAP_TYPE_PointerToSOAP_ENV__Reason_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerToSOAP_ENV__Reason(struct soap*, struct SOAP_ENV__Reason* const*);
@@ -871,6 +895,7 @@ SOAP_FMAC3 struct SOAP_ENV__Reason** SOAP_FMAC4 soap_get_PointerToSOAP_ENV__Reas
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Detail* 指针类型序列化声明
 #ifndef SOAP_TYPE_PointerToSOAP_ENV__Detail_DEFINED
 #define SOAP_TYPE_PointerToSOAP_ENV__Detail_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerToSOAP_ENV__Detail(struct soap*, struct SOAP_ENV__Detail* const*);
@@ -884,6 +909,7 @@ SOAP_FMAC3 struct SOAP_ENV__Detail** SOAP_FMAC4 soap_get_PointerToSOAP_ENV__Deta
 
 #ifndef WITH_NOGLOBAL
 
+/// SOAP_ENV__Code* 指针类型序列化声明
 #ifndef SOAP_TYPE_PointerToSOAP_ENV__Code_DEFINED
 #define SOAP_TYPE_PointerToSOAP_ENV__Code_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerToSOAP_ENV__Code(struct soap*, struct SOAP_ENV__Code* const*);
@@ -895,6 +921,7 @@ SOAP_FMAC3 struct SOAP_ENV__Code** SOAP_FMAC4 soap_get_PointerToSOAP_ENV__Code(s
 
 #endif
 
+/// char** 指针类型序列化声明
 #ifndef SOAP_TYPE_PointerTostring_DEFINED
 #define SOAP_TYPE_PointerTostring_DEFINED
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerTostring(struct soap*, char** const*);
@@ -904,12 +931,13 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_put_PointerTostring(struct soap*, char** const*, 
 SOAP_FMAC3 char*** SOAP_FMAC4 soap_get_PointerTostring(struct soap*, char***, const char*, const char*);
 #endif
 
+/// xsd:QName 类型默认初始化与读写接口
 #ifndef SOAP_TYPE__QName_DEFINED
 #define SOAP_TYPE__QName_DEFINED
 
 inline void soap_default__QName(struct soap* soap, char** a)
 {
-    (void)soap; /* appease -Wall -Werror */
+    (void)soap; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifdef SOAP_DEFAULT__QName
     *a = SOAP_DEFAULT__QName;
 #else
@@ -988,12 +1016,13 @@ inline int soap_POST_recv__QName(struct soap* soap, char** p)
 #define SOAP_TYPE__XML_DEFINED
 #endif
 
+/// xsd:string 字符串类型默认初始化与读写接口
 #ifndef SOAP_TYPE_string_DEFINED
 #define SOAP_TYPE_string_DEFINED
 
 inline void soap_default_string(struct soap* soap, char** a)
 {
-    (void)soap; /* appease -Wall -Werror */
+    (void)soap; /* appease -Wall -Werror | 消除 -Wall -Werror 未使用参数告警 */
 #ifdef SOAP_DEFAULT_string
     *a = SOAP_DEFAULT_string;
 #else
@@ -1066,4 +1095,4 @@ inline int soap_POST_recv_string(struct soap* soap, char** p)
 
 #endif
 
-/* End of soapH.h */
+/* End of soapH.h | soapH.h 文件结束 */

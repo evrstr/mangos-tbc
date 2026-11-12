@@ -27,16 +27,18 @@
 
 // some type definitions
 // no use putting them in the header file, they're only used in this .cpp
+// 仅在当前实现文件内使用的专精额外产出数据结构
 
 // struct to store information about extra item creation
 // one entry for every spell that is able to create an extra item
+// 专业专精额外产出配置项（对应一个制造法术）
 struct SkillExtraItemEntry
 {
-    // the spell id of the specialization required to create extra items
+    // the spell id of the specialization required to create extra items (触发额外产出所需拥有的专精法术 ID，如药水专精/转化专精)
     uint32 requiredSpecialization;
-    // the chance to create one additional item
+    // the chance to create one additional item (每次额外产出一个物品的概率)
     float additionalCreateChance;
-    // maximum number of extra items created per crafting
+    // maximum number of extra items created per crafting (单次制造最多可额外产出的物品数量)
     uint8 additionalMaxNum;
 
     SkillExtraItemEntry()
@@ -47,16 +49,17 @@ struct SkillExtraItemEntry
 };
 
 // map to store the extra item creation info, the key is the spellId of the creation spell, the mapped value is the assigned SkillExtraItemEntry
+// 制造法术 ID 到额外产出配置的映射表
 typedef std::map<uint32, SkillExtraItemEntry> SkillExtraItemMap;
 
 SkillExtraItemMap SkillExtraItemStore;
 
-// loads the extra item creation info from DB
+// loads the extra item creation info from DB (从 skill_extra_item_template 表加载专精额外产出规则)
 void LoadSkillExtraItemTable()
 {
     uint32 count = 0;
 
-    SkillExtraItemStore.clear();                            // need for reload
+    SkillExtraItemStore.clear();                            // need for reload (支持重载)
 
     //                                                 0        1                       2                       3
     auto queryResult = WorldDatabase.Query("SELECT spellId, requiredSpecialization, additionalCreateChance, additionalMaxNum FROM skill_extra_item_template");
@@ -117,9 +120,10 @@ void LoadSkillExtraItemTable()
     sLog.outString();
 }
 
+// 检查玩家是否已学会所需专精并输出对应的额外产出概率与数量上限
 bool canCreateExtraItems(Player* player, uint32 spellId, float& additionalChance, uint8& additionalMax)
 {
-    // get the info for the specified spell
+    // get the info for the specified spell (查找该制造法术的专精配置)
     SkillExtraItemMap::const_iterator ret = SkillExtraItemStore.find(spellId);
     if (ret == SkillExtraItemStore.end())
         return false;
@@ -130,11 +134,11 @@ bool canCreateExtraItems(Player* player, uint32 spellId, float& additionalChance
     if (!specEntry)
         return false;
 
-    // the player doesn't have the required specialization, return false
+    // the player doesn't have the required specialization, return false (玩家未学会所需专精法术则不触发)
     if (!player->HasSpell(specEntry->requiredSpecialization))
         return false;
 
-    // set the arguments to the appropriate values
+    // set the arguments to the appropriate values (回填额外产出概率与最大额外件数)
     additionalChance = specEntry->additionalCreateChance;
     additionalMax = specEntry->additionalMaxNum;
 

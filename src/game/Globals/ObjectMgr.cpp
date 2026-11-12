@@ -65,6 +65,7 @@ INSTANTIATE_SINGLETON_1(ObjectMgr);
 typedef std::map<uint32, SimpleFactionsList> FactionTeamMap;
 static FactionTeamMap sFactionTeamMap;
 
+/// 规范化角色名称（校验长度并转为首字母大写、其余字母小写）
 bool normalizePlayerName(std::string& name, size_t max_len)
 {
     if (name.empty())
@@ -85,6 +86,7 @@ bool normalizePlayerName(std::string& name, size_t max_len)
     return WStrToUtf8(wstr_buf, name);
 }
 
+/// 游戏语言 ID、对应法术 ID 与语言技能 ID 映射表
 LanguageDesc lang_description[LANGUAGES_COUNT] =
 {
     { LANG_ADDON,           0, 0                       },
@@ -133,6 +135,7 @@ T IdGenerator<T>::Generate()
 template uint32 IdGenerator<uint32>::Generate();
 template uint64 IdGenerator<uint64>::Generate();
 
+/// 构造函数：初始化全局 ID/GUID 生成器、NPC 属性及各条件子管理器
 ObjectMgr::ObjectMgr() :
     m_Dbc2StorageLocaleIndex(DEFAULT_LOCALE),
     m_ArenaTeamIds("Arena team ids"),
@@ -151,6 +154,7 @@ ObjectMgr::ObjectMgr() :
 {
 }
 
+/// 析构函数：释放动态分配的队伍、竞技场战队、物品文本、宠物等级属性、生物刷新模板等资源
 ObjectMgr::~ObjectMgr()
 {
     for (auto& i : petInfo)
@@ -438,6 +442,7 @@ struct SQLCreatureLoader : public SQLStorageLoaderBase<SQLCreatureLoader, SQLSto
     }
 };
 
+/// 加载并校验全部生物模板 (creature_template) 数据
 void ObjectMgr::LoadCreatureTemplates()
 {
     SQLCreatureLoader loader;
@@ -851,6 +856,7 @@ void ObjectMgr::LoadCreatureAddons()
                 sLog.outErrorDb("Creature (GUID: %u) does not exist but has a record in `creature_addon`", addon->guidOrEntry);
 }
 
+/// 加载各职业/等级/资料片的生物基础属性系数表 (creature_template_classlevelstats)
 void ObjectMgr::LoadCreatureClassLvlStats()
 {
     // initialize data array
@@ -1280,6 +1286,7 @@ std::shared_ptr<CreatureSpellListContainer> ObjectMgr::LoadCreatureSpellLists()
     return newContainer;
 }
 
+/// 加载生物刷新组 (spawn_group) 及其编队阵型与成员关联配置
 void ObjectMgr::LoadSpawnGroups()
 {
     std::shared_ptr<SpawnGroupEntryContainer> newContainer = std::make_shared<SpawnGroupEntryContainer>();
@@ -2197,6 +2204,7 @@ void ObjectMgr::LoadCreatureSpawnEntry()
     sLog.outString();
 }
 
+/// 加载世界中全部静态刷出的生物实例数据 (creature 表) 并注册至对应网格
 void ObjectMgr::LoadCreatures()
 {
     uint32 count = 0;
@@ -2440,6 +2448,7 @@ void ObjectMgr::RemoveCreatureFromGrid(uint32 guid, CreatureData const* data)
     }
 }
 
+/// 加载世界中全部静态刷出的游戏对象实例数据 (gameobject 表) 并注册至对应网格
 void ObjectMgr::LoadGameObjects()
 {
     uint32 count = 0;
@@ -2706,6 +2715,7 @@ void ObjectMgr::LoadGameObjectSpawnEntry()
     sLog.outString();
 }
 
+/// 加载游戏对象模板扩展附加数据 (gameobject_template_addon)
 void ObjectMgr::LoadGameObjectTemplateAddons()
 {
     m_gameobjectAddonTemplates.clear();
@@ -2725,31 +2735,31 @@ void ObjectMgr::LoadGameObjectTemplateAddons()
 
     uint32 count = 0;
 
-	do
-	{
-		bar.step();
+    do
+    {
+        bar.step();
 
-		Field* fields = result->Fetch();
+        Field* fields = result->Fetch();
 
-		uint32 entry = fields[0].GetUInt32();
+        uint32 entry = fields[0].GetUInt32();
 
-		GameObjectTemplateAddon& gameObjectAddon = m_gameobjectAddonTemplates[entry];
+        GameObjectTemplateAddon& gameObjectAddon = m_gameobjectAddonTemplates[entry];
 
-		for (uint32 i = 1; i < gameObjectAddon.artKits.size(); ++i)
-		{
-			uint32 artKitID = fields[i].GetUInt32();
-			if (!artKitID)
-				continue;
+        for (uint32 i = 1; i < gameObjectAddon.artKits.size(); ++i)
+        {
+            uint32 artKitID = fields[i].GetUInt32();
+            if (!artKitID)
+                continue;
 
-			if (!sGameObjectArtKitStore.LookupEntry(artKitID))
-			{
-				sLog.outErrorDb("GameObject (Entry: %u) has invalid `artkit%d` (%d) defined, set to zero instead.", entry, i, artKitID);
-				continue;
-			}
+            if (!sGameObjectArtKitStore.LookupEntry(artKitID))
+            {
+                sLog.outErrorDb("GameObject (Entry: %u) has invalid `artkit%d` (%d) defined, set to zero instead.", entry, i, artKitID);
+                continue;
+            }
 
-			gameObjectAddon.artKits[i] = artKitID;
-		}
-	} while (result->NextRow());
+            gameObjectAddon.artKits[i] = artKitID;
+        }
+    } while (result->NextRow());
 
     sLog.outString(">> Loaded %u gameobject_template_addon entries", count);
     sLog.outString();
@@ -2788,6 +2798,7 @@ void ObjectMgr::RemoveGameobjectFromGrid(uint32 guid, GameObjectData const* data
 }
 
 // Get player map id of offline player. Return -1 if not found!
+/// 通过角色 GUID 或角色名查询在线/离线角色地图、GUID、名称、阵营与账号信息
 int32 ObjectMgr::GetPlayerMapIdByGUID(ObjectGuid const& guid) const
 {
     // prevent DB access for online player
@@ -2971,6 +2982,7 @@ struct SQLItemLoader : public SQLStorageLoaderBase<SQLItemLoader, SQLStorage>
     }
 };
 
+/// 加载并校验全部物品模板 (item_template) 数据
 void ObjectMgr::LoadItemPrototypes()
 {
     SQLItemLoader loader;
@@ -3660,6 +3672,7 @@ PetLevelInfo const* ObjectMgr::GetPetLevelInfo(uint32 creature_id, uint32 level)
     return &itr->second[level - 1];                         // data for level 1 stored in [0] array element, ...
 }
 
+/// 加载玩家初始创建数据、初始属性、出生点、动作栏、初始法术与升级经验表
 void ObjectMgr::LoadPlayerInfo()
 {
     // Load playercreate
@@ -4441,6 +4454,7 @@ CreatureConditionalSpawn const* ObjectMgr::GetCreatureConditionalSpawn(uint32 lo
 /* ********************************************************************************************* */
 /* *                                Loading Functions                                            */
 /* ********************************************************************************************* */
+/// 从角色数据库加载所有竞技场战队及其成员信息
 void ObjectMgr::LoadArenaTeams()
 {
     uint32 count = 0;
@@ -4489,6 +4503,7 @@ void ObjectMgr::LoadArenaTeams()
     sLog.outString();
 }
 
+/// 从角色数据库加载所有持久化小队/团队及副本绑定关联
 void ObjectMgr::LoadGroups()
 {
     // -- loading groups --
@@ -4657,6 +4672,7 @@ void ObjectMgr::LoadGroups()
     sLog.outString();
 }
 
+/// 加载并校验全部任务模板 (quest_template) 及任务链关系
 void ObjectMgr::LoadQuests()
 {
     // For reload case
@@ -5971,6 +5987,7 @@ void ObjectMgr::LoadWorldStateNames()
     sLog.outString();
 }
 
+/// 加载全部全局条件表 (conditions) 并校验递归引用合法性
 void ObjectMgr::LoadConditions()
 {
     SQLWorldLoader loader;
@@ -6579,6 +6596,7 @@ void ObjectMgr::GenerateZoneAndAreaIds()
 
 // not very fast function but it is called only once a day, or on starting-up
 /// @param serverUp true if the server is already running, false when the server is started
+/// 服务器启动或定时清理过期邮件（退回发件人或彻底删除到期邮件及附件）
 void ObjectMgr::ReturnOrDeleteOldMails(bool serverUp)
 {
     time_t basetime = time(nullptr);
@@ -7200,6 +7218,7 @@ AreaTrigger const* ObjectMgr::GetMapEntranceTrigger(uint32 Map) const
     return compareTrigger;
 }
 
+/// 压缩并重新分配紧凑的队伍全局 ID（防止高并发长期运行后 ID 溢出）
 void ObjectMgr::PackGroupIds()
 {
     // this routine renumbers groups in such a way so they start from 1 and go up
@@ -7257,6 +7276,7 @@ void ObjectMgr::PackGroupIds()
     sLog.outString();
 }
 
+/// 从角色/世界数据库扫描各表最大已用 ID/GUID 并初始化所有生成器起始值
 void ObjectMgr::SetHighestGuids()
 {
     auto result = CharacterDatabase.Query("SELECT MAX(guid) FROM characters");
@@ -7543,6 +7563,7 @@ inline void CheckAndFixGOCaptureMinTime(GameObjectInfo const* goInfo, uint32 con
     const_cast<uint32&>(dataN) = 1;
 }
 
+/// 加载并校验游戏对象模板 (gameobject_template) 数据并返回所有有效的 entry 列表
 std::vector<uint32> ObjectMgr::LoadGameobjectInfo()
 {
     SQLGameObjectLoader loader;
@@ -7909,6 +7930,7 @@ std::string ObjectMgr::GeneratePetName(uint32 entry)
     return *(list0.begin() + urand(0, list0.size() - 1)) + *(list1.begin() + urand(0, list1.size() - 1));
 }
 
+/// 从服务器重启后加载角色尸体记录，清理过期尸体并注册至对应网格
 void ObjectMgr::LoadCorpses()
 {
     uint32 count = 0;
@@ -8372,6 +8394,7 @@ void ObjectMgr::LoadFactions()
     sLog.outString();
 }
 
+/// 加载广播文本主表 (broadcast_text) 及多语言译文表 (broadcast_text_locale)
 void ObjectMgr::LoadBroadcastText()
 {
     uint32 count = 0;
@@ -8473,6 +8496,7 @@ void ObjectMgr::LoadBroadcastTextLocales()
     sLog.outString();
 }
 
+/// 统一加载或热重载 UnitCondition、WorldStateExpression 与 CombatCondition 三组条件管理器
 std::tuple<std::shared_ptr<std::map<int32, UnitConditionEntry>>, std::shared_ptr<std::map<int32, WorldStateExpressionEntry>>, std::shared_ptr<std::map<int32, CombatConditionEntry>>> ObjectMgr::LoadConditionsAndExpressions()
 {
     auto unitConditions = m_unitConditionMgr->Load();
@@ -8636,6 +8660,7 @@ void ObjectMgr::LoadCreatureInvolvedRelations()
     }
 }
 
+/// 加载并校验玩家/宠物/公会宪章名称合法性及保留字屏蔽名单
 void ObjectMgr::LoadReservedPlayersNames()
 {
     m_ReservedNames.clear();                                // need for reload case
@@ -8763,6 +8788,7 @@ bool isValidString(const std::wstring& wstr, uint32 strictMask, bool numericOrSp
     return false;
 }
 
+/// 检查公共聊天消息语言字符集是否符合服务器配置的区域语言模式
 bool ObjectMgr::CheckPublicMessageLanguage(const std::string& message)
 {
     LanguageType lt = GetRealmLanguageType(false);
@@ -8803,6 +8829,7 @@ bool ObjectMgr::CheckPublicMessageLanguage(const std::string& message)
     return true;
 }
 
+/// 校验角色名长度、合法字符集、保留字与禁用词
 uint8 ObjectMgr::CheckPlayerName(const std::string& name, bool create)
 {
     std::wstring wname;
@@ -8995,6 +9022,7 @@ inline void _DoStringError(char const* text, ...)
     sLog.outError("%s", buf);
 }
 
+/// 分段加载指定数据库表的 mangos_string 本地化文本并建立广播文本关联
 bool ObjectMgr::LoadMangosStrings(DatabaseType& db, char const* table, int32 min_value, int32 max_value, bool extra_content)
 {
     int32 start_value = min_value;
@@ -9677,6 +9705,7 @@ void ObjectMgr::LoadTrainerTemplates()
         sLog.outString();
 }
 
+/// 加载并校验商人 NPC 售卖物品列表及商人模板列表 (npc_vendor / npc_vendor_template)
 void ObjectMgr::LoadVendors(char const* tableName, bool isTemplates)
 {
     CacheVendorItemMap& vendorList = isTemplates ? m_mCacheVendorTemplateItemMap : m_mCacheVendorItemMap;
@@ -9912,6 +9941,7 @@ void ObjectMgr::LoadNpcGossips()
     sLog.outString();
 }
 
+/// 加载并校验 NPC 对话菜单头、菜单选项及其条件和跳转关系
 void ObjectMgr::LoadGossipMenu(std::set<uint32>& gossipScriptSet)
 {
     m_mGossipMenusMap.clear();
@@ -10197,6 +10227,7 @@ void ObjectMgr::LoadDungeonEncounters()
     sDungeonEncounterStore.Load();
 }
 
+/// 动态向指定商人售卖列表新增物品并写入数据库
 void ObjectMgr::AddVendorItem(uint32 entry, uint32 item, uint32 maxcount, uint32 incrtime, uint32 extendedcost)
 {
     VendorItemData& vList = m_mCacheVendorItemMap[entry];
@@ -10613,6 +10644,7 @@ MangosStringLocale const* GetMangosStringData(int32 entry)
     return sObjectMgr.GetMangosStringLocale(entry);
 }
 
+/// 生物位置检索仿函数：按同地图已刷出最近 > 同地图最近 > 任意地图首次命中顺序选择目标
 bool FindCreatureData::operator()(CreatureDataPair const& dataPair)
 {
     // skip wrong entry ids
@@ -10663,6 +10695,7 @@ CreatureDataPair const* FindCreatureData::GetResult() const
     return i_anyData;
 }
 
+/// 游戏对象位置检索仿函数：优先同地图最近刷新点
 bool FindGOData::operator()(GameObjectDataPair const& dataPair)
 {
     // skip wrong entry ids
@@ -10713,6 +10746,7 @@ GameObjectDataPair const* FindGOData::GetResult() const
     return i_anyData;
 }
 
+/// 通用脚本/系统文本播报函数：按 BroadcastText 或 mangos_string 条目播放音效、表情并向目标或区域广播多语言台词
 bool DoDisplayText(WorldObject* source, int32 entry, Unit const* target, uint32 chatTypeOverride)
 {
     uint32 sound, emote, type = 0;

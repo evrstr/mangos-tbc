@@ -28,6 +28,7 @@
 
 pid_t parent_pid = 0, sid = 0;
 
+/// 父进程信号处理函数：收到 SIGUSR1 表示子进程已就绪并正常退出，其余信号转发给守护子进程
 void daemonSignal(int s)
 {
 
@@ -73,6 +74,7 @@ void startDaemon(uint32_t timeout)
         exit(EXIT_FAILURE);
     }
 
+    // 创建独立会话脱离控制终端，切换工作目录至根目录并重定向标准输入输出到 /dev/null
     umask(0);
 
     sid = setsid();
@@ -123,6 +125,7 @@ void detachDaemon()
     }
 }
 
+/// 守护子进程异常退出时通知父进程终止
 void exitDaemon()
 {
     if (parent_pid && parent_pid != getpid())
@@ -131,6 +134,7 @@ void exitDaemon()
     }
 }
 
+/// 进程退出看门狗：析构时确保向父进程发送终止信号
 struct WatchDog
 {
     ~WatchDog()

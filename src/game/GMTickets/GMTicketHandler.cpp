@@ -25,6 +25,7 @@
 #include "Entities/Player.h"
 #include "Chat/Chat.h"
 
+/// 发送简单的 4 字节工单操作结果数据包
 void WorldSession::SendGMTicketResult(uint32 opcode, uint32 result) const
 {
     WorldPacket data(Opcodes(opcode), 4);
@@ -32,6 +33,7 @@ void WorldSession::SendGMTicketResult(uint32 opcode, uint32 result) const
     SendPacket(data);
 }
 
+/// 下发玩家当前工单详情与队列等待时间统计
 void WorldSession::SendGMTicket(const GMTicket& ticket, time_t now/* = time(nullptr)*/) const
 {
     float daysTicketAge = sTicketMgr.GetTicketAgeDays(now, ticket.GetCreatedAt());
@@ -40,21 +42,23 @@ void WorldSession::SendGMTicket(const GMTicket& ticket, time_t now/* = time(null
 
     WorldPacket data(SMSG_GMTICKET_GETTICKET, 4);
     data << uint32(GMTICKET_STATUS_HASTEXT);
-    data << ticket.GetText();                   // Ticket text: data, should never exceed 1999 bytes
-    data << uint8(ticket.GetCategory());        // Ticket category
-    data << float(daysTicketAge);               // Days passed since the ticket got in the queue
-    data << float(daysOldestTicketAge);         // Days passed since oldest ticket got in the queue
-    data << float(daysLastUpdated);             // Days passed since the last update to oldestTicketTime
-    data << uint8(ticket.GetStatus());          // Escalated status of the ticket
-    data << uint8(ticket.IsSeen());             // Ticket has been read by a gm
+    data << ticket.GetText();                   // Ticket text: data, should never exceed 1999 bytes (工单正文，不超过 1999 字节)
+    data << uint8(ticket.GetCategory());        // Ticket category (工单分类)
+    data << float(daysTicketAge);               // Days passed since the ticket got in the queue (本工单入队天数)
+    data << float(daysOldestTicketAge);         // Days passed since oldest ticket got in the queue (队首最老工单等待天数)
+    data << float(daysLastUpdated);             // Days passed since the last update to oldestTicketTime (最老工单计时器距上次更新天数)
+    data << uint8(ticket.GetStatus());          // Escalated status of the ticket (工单分配/升级状态)
+    data << uint8(ticket.IsSeen());             // Ticket has been read by a gm (是否已被 GM 查阅)
     SendPacket(data);
 }
 
+/// 响应客户端查询 GM 工单系统启用状态
 void WorldSession::HandleGMTicketSystemStatusOpcode(WorldPacket& /*recv_data*/)
 {
     SendGMTicketResult(SMSG_GMTICKET_SYSTEMSTATUS, sTicketMgr.GetSystemStatus());
 }
 
+/// 响应客户端获取当前玩家未关闭工单请求
 void WorldSession::HandleGMTicketGetTicketOpcode(WorldPacket& /*recv_data*/)
 {
     if (sTicketMgr.GetSystemStatus() != GMTICKET_QUEUE_STATUS_ENABLED)
@@ -66,6 +70,7 @@ void WorldSession::HandleGMTicketGetTicketOpcode(WorldPacket& /*recv_data*/)
         SendGMTicketResult(SMSG_GMTICKET_GETTICKET, GMTICKET_STATUS_DEFAULT);
 }
 
+/// 处理玩家新建 GM 工单请求（含防刷冷却校验及复用已放弃工单）
 void WorldSession::HandleGMTicketCreateOpcode(WorldPacket& recv_data)
 {
     if (sTicketMgr.GetSystemStatus() != GMTICKET_QUEUE_STATUS_ENABLED || !m_ticketSquelchTimer.Passed())
@@ -142,6 +147,7 @@ void WorldSession::HandleGMTicketCreateOpcode(WorldPacket& recv_data)
     }
 }
 
+/// 处理玩家修改工单正文请求
 void WorldSession::HandleGMTicketUpdateTextOpcode(WorldPacket& recv_data)
 {
     if (sTicketMgr.GetSystemStatus() != GMTICKET_QUEUE_STATUS_ENABLED || !m_ticketSquelchTimer.Passed())
@@ -169,6 +175,7 @@ void WorldSession::HandleGMTicketUpdateTextOpcode(WorldPacket& recv_data)
         SendGMTicketResult(SMSG_GMTICKET_UPDATETEXT, GMTICKET_RESPONSE_UPDATE_ERROR);
 }
 
+/// 处理玩家主动删除/放弃工单请求
 void WorldSession::HandleGMTicketDeleteTicketOpcode(WorldPacket& /*recv_data*/)
 {
     if (sTicketMgr.GetSystemStatus() != GMTICKET_QUEUE_STATUS_ENABLED)
@@ -183,6 +190,7 @@ void WorldSession::HandleGMTicketDeleteTicketOpcode(WorldPacket& /*recv_data*/)
         SendGMTicketResult(SMSG_GMTICKET_DELETETICKET, GMTICKET_RESPONSE_NOT_EXIST);
 }
 
+/// 处理玩家提交 GM 服务满意度调查问卷请求并校验题目与评分范围
 void WorldSession::HandleGMSurveySubmitOpcode(WorldPacket& recv_data)
 {
     if (sTicketMgr.GetSystemStatus() != GMTICKET_QUEUE_STATUS_ENABLED || !m_ticketSquelchTimer.Passed())

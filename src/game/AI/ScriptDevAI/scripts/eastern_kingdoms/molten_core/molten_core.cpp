@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Molten Core
 EndScriptData */
 
+// 熔火之心（Molten Core）符文封印熄灭与管理者埃克索图斯召唤状态机
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 
@@ -59,7 +61,7 @@ bool instance_molten_core::IsEncounterInProgress() const
 
 void instance_molten_core::OnPlayerEnter(Player* /*pPlayer*/)
 {
-    // Summon Majordomo if can
+    // Summon Majordomo if can (召唤 Majordomo if can)
     DoSpawnMajordomoIfCan(true);
 }
 
@@ -80,7 +82,7 @@ void instance_molten_core::OnObjectCreate(GameObject* pGo)
 {
     switch (pGo->GetEntry())
     {
-        // Runes
+        // Runes (符文)
         case GO_RUNE_KRESS:
         case GO_RUNE_MOHN:
         case GO_RUNE_BLAZ:
@@ -119,9 +121,9 @@ void instance_molten_core::OnObjectCreate(GameObject* pGo)
             }
             break;
 
-        // Majordomo event chest
+        // Majordomo event chest (Majordomo事件宝箱)
         case GO_CACHE_OF_THE_FIRE_LORD:
-        // Ragnaros GOs
+        // Ragnaros GOs (拉格纳罗斯GOs)
         case GO_LAVA_STEAM:
         case GO_LAVA_SPLASH:
             m_goEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
@@ -229,7 +231,7 @@ void instance_molten_core::DoSpawnMajordomoIfCan(bool bByPlayerEnter)
 
 void instance_molten_core::SpawnMajordomo(Unit* summoner, bool initialSummon, uint8 summonPos)
 {
-    // Summon Majordomo
+    // Summon Majordomo (召唤 Majordomo)
     // If Majordomo encounter isn't done, summon at encounter place, else near Ragnaros
     if (Creature* pMajordomo = summoner->SummonCreature(m_aMajordomoLocations[summonPos].m_spawnEntry, m_aMajordomoLocations[summonPos].m_fx, m_aMajordomoLocations[summonPos].m_fy, m_aMajordomoLocations[summonPos].m_fz, m_aMajordomoLocations[summonPos].m_fo, TEMPSPAWN_MANUAL_DESPAWN, 2 * HOUR * IN_MILLISECONDS))
     {
@@ -306,6 +308,7 @@ InstanceData* GetInstance_instance_molten_core(Map* pMap)
     return new instance_molten_core(pMap);
 }
 
+// 注册并载入脚本模块：instance_molten_core
 void AddSC_instance_molten_core()
 {
     Script* pNewScript = new Script;

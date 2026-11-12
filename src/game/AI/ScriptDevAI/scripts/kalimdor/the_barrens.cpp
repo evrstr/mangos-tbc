@@ -21,6 +21,10 @@ SDComment: Quest support: 863, 898, 1719, 2458.
 SDCategory: Barrens
 EndScriptData */
 
+/**
+ * 贫瘠之地 (The Barrens) 绿洲、十字路口与护送任务脚本
+ */
+
 /* ContentData
 npc_gilthares
 npc_taskmaster_fizzule
@@ -36,29 +40,31 @@ EndContentData */
 # npc_gilthares
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_GIL_START               = -1000370,
-    SAY_GIL_AT_LAST             = -1000371,
-    SAY_GIL_PROCEED             = -1000372,
-    SAY_GIL_FREEBOOTERS         = -1000373,
-    SAY_GIL_AGGRO_1             = -1000374,
-    SAY_GIL_AGGRO_2             = -1000375,
-    SAY_GIL_AGGRO_3             = -1000376,
-    SAY_GIL_AGGRO_4             = -1000377,
-    SAY_GIL_ALMOST              = -1000378,
-    SAY_GIL_SWEET               = -1000379,
-    SAY_GIL_FREED               = -1000380,
+    SAY_GIL_START               = -1000370,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_AT_LAST             = -1000371,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_PROCEED             = -1000372,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_FREEBOOTERS         = -1000373,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_AGGRO_1             = -1000374,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_AGGRO_2             = -1000375,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_AGGRO_3             = -1000376,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_AGGRO_4             = -1000377,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_ALMOST              = -1000378,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_SWEET               = -1000379,                 // 剧情台词/喊话文本 ID
+    SAY_GIL_FREED               = -1000380,                 // 剧情台词/喊话文本 ID
 
-    QUEST_FREE_FROM_HOLD        = 898,
+    QUEST_FREE_FROM_HOLD        = 898,                      // 任务 ID
     AREA_MERCHANT_COAST         = 391
 };
 
+// npc_giltharesAI NPC 脚本 AI
 struct npc_giltharesAI : public npc_escortAI
 {
     npc_giltharesAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
     void JustReachedHome() override 
     {
@@ -66,7 +72,7 @@ struct npc_giltharesAI : public npc_escortAI
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         Player* pPlayer = GetPlayerForEscort();
 
@@ -97,16 +103,16 @@ struct npc_giltharesAI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
-        // not always use
+        // not always use (说明)
         if (urand(0, 3))
             return;
 
-        // only aggro text if not player and only in this area
+        // only aggro text if not player and only in this area (说明)
         if (pWho->GetTypeId() != TYPEID_PLAYER && m_creature->GetAreaId() == AREA_MERCHANT_COAST)
         {
-            // appears to be pretty much random (possible only if escorter not in combat with pWho yet?)
+            // appears to be pretty much random (possible only if escorter not in combat with pWho yet?) (说明)
             switch (urand(0, 3))
             {
                 case 0: DoScriptText(SAY_GIL_AGGRO_1, m_creature, pWho); break;
@@ -118,12 +124,12 @@ struct npc_giltharesAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_gilthares(Creature* pCreature)
+UnitAI* GetAI_npc_gilthares(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_giltharesAI(pCreature);
 }
 
-bool QuestAccept_npc_gilthares(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_gilthares(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_FREE_FROM_HOLD)
     {
@@ -142,11 +148,12 @@ bool QuestAccept_npc_gilthares(Player* pPlayer, Creature* pCreature, const Quest
 ## npc_taskmaster_fizzule
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    FACTION_FRIENDLY_F  = 35,
-    SPELL_FLARE         = 10113,
-    SPELL_FOLLY         = 10137,
+    FACTION_FRIENDLY_F  = 35,                               // 阵营 ID
+    SPELL_FLARE         = 10113,                            // 技能法术 ID
+    SPELL_FOLLY         = 10137,                            // 技能法术 ID
 
     FIZZULE_FLARE_1             = 1,
     FIZZULE_FLARE_2             = 2,
@@ -154,6 +161,7 @@ enum
     FIZZULE_WHISTLE             = 4,
 };
 
+// npc_taskmaster_fizzuleAI NPC 脚本 AI
 struct npc_taskmaster_fizzuleAI : public ScriptedAI
 {
     npc_taskmaster_fizzuleAI(Creature* creature) : ScriptedAI(creature)
@@ -165,9 +173,9 @@ struct npc_taskmaster_fizzuleAI : public ScriptedAI
     uint32 resetTimer;
     uint8 flareCount;
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
-    void EnterEvadeMode() override
+    void EnterEvadeMode() override                          // 脱战重置并返回原位
     {
         if (resetTimer)
         {
@@ -178,7 +186,7 @@ struct npc_taskmaster_fizzuleAI : public ScriptedAI
             ScriptedAI::EnterEvadeMode();
     }
 
-    void SpellHit(Unit* caster, const SpellEntry* spell) override
+    void SpellHit(Unit* caster, const SpellEntry* spell) override    // 被法术命中回调处理
     {
         if (caster->GetTypeId() != TYPEID_PLAYER)
             return;
@@ -203,7 +211,7 @@ struct npc_taskmaster_fizzuleAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 diff) override
+    void UpdateAI(const uint32 diff) override               // AI 核心帧更新处理
     {
         if (resetTimer)
         {
@@ -263,7 +271,7 @@ struct npc_taskmaster_fizzuleAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_taskmaster_fizzule(Creature* creature)
+UnitAI* GetAI_npc_taskmaster_fizzule(Creature* creature) // 创建并返回 AI 实例
 {
     return new npc_taskmaster_fizzuleAI(creature);
 }
@@ -272,23 +280,24 @@ UnitAI* GetAI_npc_taskmaster_fizzule(Creature* creature)
 ## npc_twiggy_flathead
 #####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_BIG_WILL_READY                  = -1000123,
-    SAY_TWIGGY_BEGIN                    = -1000124,
-    SAY_TWIGGY_FRAY                     = -1000125,
-    SAY_TWIGGY_DOWN                     = -1000126,
-    SAY_TWIGGY_OVER                     = -1000127,
+    SAY_BIG_WILL_READY                  = -1000123,         // 剧情台词/喊话文本 ID
+    SAY_TWIGGY_BEGIN                    = -1000124,         // 剧情台词/喊话文本 ID
+    SAY_TWIGGY_FRAY                     = -1000125,         // 剧情台词/喊话文本 ID
+    SAY_TWIGGY_DOWN                     = -1000126,         // 剧情台词/喊话文本 ID
+    SAY_TWIGGY_OVER                     = -1000127,         // 剧情台词/喊话文本 ID
 
-    NPC_TWIGGY                          = 6248,
-    NPC_BIG_WILL                        = 6238,
-    NPC_AFFRAY_CHALLENGER               = 6240,
+    NPC_TWIGGY                          = 6248,             // NPC 条目 ID
+    NPC_BIG_WILL                        = 6238,             // NPC 条目 ID
+    NPC_AFFRAY_CHALLENGER               = 6240,             // NPC 条目 ID
 
-    QUEST_AFFRAY                        = 1719,
+    QUEST_AFFRAY                        = 1719,             // 任务 ID
 
-    FACTION_FRIENDLY                    = 35,
-    FACTION_HOSTILE_WILL                = 32,
-    FACTION_HOSTILE_CHALLENGER          = 14,
+    FACTION_FRIENDLY                    = 35,               // 阵营 ID
+    FACTION_HOSTILE_WILL                = 32,               // 阵营 ID
+    FACTION_HOSTILE_CHALLENGER          = 14,               // 阵营 ID
 
     MAX_CHALLENGERS                     = 6,
 };
@@ -301,10 +310,11 @@ static const float aAffrayChallengerLoc[8][4] =
     { -1680.0f, -4334.0f, 2.79f, 1.49f},
     { -1674.0f, -4326.0f, 2.79f, 3.49f},
     { -1677.0f, -4334.0f, 2.79f, 1.66f},
-    { -1713.79f, -4342.09f, 6.05f, 6.15f},          // Big Will spawn loc
-    { -1682.31f, -4329.68f, 2.78f, 0.0f},           // Big Will move loc
+    { -1713.79f, -4342.09f, 6.05f, 6.15f},          // Big Will spawn loc (刷新)
+    { -1682.31f, -4329.68f, 2.78f, 0.0f},           // Big Will move loc (说明)
 };
 
+// npc_twiggy_flatheadAI NPC 脚本 AI
 struct npc_twiggy_flatheadAI : public ScriptedAI
 {
     npc_twiggy_flatheadAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -319,7 +329,7 @@ struct npc_twiggy_flatheadAI : public ScriptedAI
     ObjectGuid m_bigWillGuid;
     GuidVector m_vAffrayChallengerGuidsVector;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_bIsEventInProgress = false;
 
@@ -380,7 +390,7 @@ struct npc_twiggy_flatheadAI : public ScriptedAI
             pChallenger->AI()->AttackStart(pPlayer);
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         if (pSummoned->GetEntry() == NPC_BIG_WILL)
         {
@@ -425,7 +435,7 @@ struct npc_twiggy_flatheadAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (!m_bIsEventInProgress)
             return;
@@ -453,7 +463,7 @@ struct npc_twiggy_flatheadAI : public ScriptedAI
                         SetChallengerReady(pChallenger);
                     else
                     {
-                        FailEvent(); // this should never happen
+                        FailEvent(); // this should never happen (说明)
                         return;
                     }
 
@@ -480,7 +490,7 @@ struct npc_twiggy_flatheadAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_twiggy_flathead(Creature* pCreature)
+UnitAI* GetAI_npc_twiggy_flathead(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_twiggy_flatheadAI(pCreature);
 }
@@ -496,7 +506,7 @@ bool AreaTrigger_at_twiggy_flathead(Player* pPlayer, AreaTriggerEntry const* /*p
         if (npc_twiggy_flatheadAI* pTwiggyAI = dynamic_cast<npc_twiggy_flatheadAI*>(pCreature->AI()))
         {
             if (pTwiggyAI->CanStartEvent(pPlayer))
-                return false;                               // ok to let mangos process further
+                return false;                               // ok to let mangos process further (说明)
         }
 
         return true;
@@ -508,23 +518,25 @@ bool AreaTrigger_at_twiggy_flathead(Player* pPlayer, AreaTriggerEntry const* /*p
 ## npc_wizzlecranks_shredder
 #####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_START           = -1000298,
-    SAY_STARTUP1        = -1000299,
-    SAY_STARTUP2        = -1000300,
-    SAY_MERCENARY       = -1000301,
-    SAY_PROGRESS_1      = -1000302,
-    SAY_PROGRESS_2      = -1000303,
-    SAY_PROGRESS_3      = -1000304,
-    SAY_END             = -1000305,
+    SAY_START           = -1000298,                         // 剧情台词/喊话文本 ID
+    SAY_STARTUP1        = -1000299,                         // 剧情台词/喊话文本 ID
+    SAY_STARTUP2        = -1000300,                         // 剧情台词/喊话文本 ID
+    SAY_MERCENARY       = -1000301,                         // 剧情台词/喊话文本 ID
+    SAY_PROGRESS_1      = -1000302,                         // 剧情台词/喊话文本 ID
+    SAY_PROGRESS_2      = -1000303,                         // 剧情台词/喊话文本 ID
+    SAY_PROGRESS_3      = -1000304,                         // 剧情台词/喊话文本 ID
+    SAY_END             = -1000305,                         // 剧情台词/喊话文本 ID
 
-    QUEST_ESCAPE        = 863,
-    FACTION_RATCHET     = 637,
-    NPC_PILOT_WIZZ      = 3451,
+    QUEST_ESCAPE        = 863,                              // 任务 ID
+    FACTION_RATCHET     = 637,                              // 阵营 ID
+    NPC_PILOT_WIZZ      = 3451,                             // NPC 条目 ID
     NPC_MERCENARY       = 3282
 };
 
+// npc_wizzlecranks_shredderAI NPC 脚本 AI
 struct npc_wizzlecranks_shredderAI : public npc_escortAI
 {
     npc_wizzlecranks_shredderAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -539,7 +551,7 @@ struct npc_wizzlecranks_shredderAI : public npc_escortAI
     uint32 m_uiPostEventTimer;
     uint32 m_uiPostEventCount;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
         {
@@ -552,7 +564,7 @@ struct npc_wizzlecranks_shredderAI : public npc_escortAI
         }
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -576,7 +588,7 @@ struct npc_wizzlecranks_shredderAI : public npc_escortAI
         }
     }
 
-    void WaypointStart(uint32 uiPointId) override
+    void WaypointStart(uint32 uiPointId) override           // 出发前往指定路径点回调
     {
         switch (uiPointId)
         {
@@ -592,7 +604,7 @@ struct npc_wizzlecranks_shredderAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         if (pSummoned->GetEntry() == NPC_PILOT_WIZZ)
             m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
@@ -601,7 +613,7 @@ struct npc_wizzlecranks_shredderAI : public npc_escortAI
             pSummoned->AI()->AttackStart(m_creature);
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
         {
@@ -644,7 +656,7 @@ struct npc_wizzlecranks_shredderAI : public npc_escortAI
     }
 };
 
-bool QuestAccept_npc_wizzlecranks_shredder(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_wizzlecranks_shredder(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_ESCAPE)
     {
@@ -657,22 +669,24 @@ bool QuestAccept_npc_wizzlecranks_shredder(Player* pPlayer, Creature* pCreature,
     return true;
 }
 
-UnitAI* GetAI_npc_wizzlecranks_shredder(Creature* pCreature)
+UnitAI* GetAI_npc_wizzlecranks_shredder(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_wizzlecranks_shredderAI(pCreature);
 }
 
+// 常量与事件枚举
 enum
 {
-    SPELL_DECIMATE = 10268,
-    SPELL_SLUSH    = 10267,
+    SPELL_DECIMATE = 10268,                                 // 技能法术 ID
+    SPELL_SLUSH    = 10267,                                 // 技能法术 ID
 
-    SAY_STEALTH_ALERT_GALLYWIX   = -1010005,
-    SAY_STEALTH_ALERT_SILIXIZ    = -1010006,
-    SAY_STEALTH_ALERT_LOOKOUT_1  = -1010007,
-    SAY_STEALTH_ALERT_LOOKOUT_2  = -1010008,
+    SAY_STEALTH_ALERT_GALLYWIX   = -1010005,                // 剧情台词/喊话文本 ID
+    SAY_STEALTH_ALERT_SILIXIZ    = -1010006,                // 剧情台词/喊话文本 ID
+    SAY_STEALTH_ALERT_LOOKOUT_1  = -1010007,                // 剧情台词/喊话文本 ID
+    SAY_STEALTH_ALERT_LOOKOUT_2  = -1010008,                // 剧情台词/喊话文本 ID
 };
 
+// npc_gallywixAI NPC 脚本 AI
 struct npc_gallywixAI : public ScriptedAI
 {
     npc_gallywixAI(Creature* creature) : ScriptedAI(creature)
@@ -680,7 +694,7 @@ struct npc_gallywixAI : public ScriptedAI
         Reset();
     }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void OnStealthAlert(Unit* who) override
     {
@@ -689,11 +703,12 @@ struct npc_gallywixAI : public ScriptedAI
 
     void DamageTaken(Unit* /*dealer*/, uint32& /*damage*/, DamageEffectType /*damagetype*/, SpellEntry const* spellInfo) override
     {
-        if (spellInfo && spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && spellInfo->IsFitToFamilyMask(0x0000000000800200)) // on Ambush
+        if (spellInfo && spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && spellInfo->IsFitToFamilyMask(0x0000000000800200)) // on Ambush (说明)
             m_creature->CastSpell(nullptr, SPELL_DECIMATE, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
+// npc_venture_co_lookoutAI NPC 脚本 AI
 struct npc_venture_co_lookoutAI : public ScriptedAI
 {
     npc_venture_co_lookoutAI(Creature* creature) : ScriptedAI(creature)
@@ -701,7 +716,7 @@ struct npc_venture_co_lookoutAI : public ScriptedAI
         Reset();
     }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void OnStealthAlert(Unit* who) override
     {
@@ -710,11 +725,12 @@ struct npc_venture_co_lookoutAI : public ScriptedAI
 
     void DamageTaken(Unit* /*dealer*/, uint32& /*damage*/, DamageEffectType /*damagetype*/, SpellEntry const* spellInfo) override
     {
-        if (spellInfo && spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && spellInfo->IsFitToFamilyMask(0x0000000000820000)) // on Eviscerate
+        if (spellInfo && spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && spellInfo->IsFitToFamilyMask(0x0000000000820000)) // on Eviscerate (说明)
             m_creature->CastSpell(nullptr, SPELL_SLUSH, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
+// npc_foreman_silixizAI NPC 脚本 AI
 struct npc_foreman_silixizAI : public ScriptedAI
 {
     npc_foreman_silixizAI(Creature* creature) : ScriptedAI(creature)
@@ -722,7 +738,7 @@ struct npc_foreman_silixizAI : public ScriptedAI
         Reset();
     }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void OnStealthAlert(Unit* who) override
     {
@@ -730,17 +746,17 @@ struct npc_foreman_silixizAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_gallywix(Creature* creature)
+UnitAI* GetAI_npc_gallywix(Creature* creature) // 创建并返回 AI 实例
 {
     return new npc_gallywixAI(creature);
 }
 
-UnitAI* GetAI_npc_venture_co_lookout(Creature* creature)
+UnitAI* GetAI_npc_venture_co_lookout(Creature* creature) // 创建并返回 AI 实例
 {
     return new npc_venture_co_lookoutAI(creature);
 }
 
-UnitAI* GetAI_npc_foreman_silixiz(Creature* creature)
+UnitAI* GetAI_npc_foreman_silixiz(Creature* creature) // 创建并返回 AI 实例
 {
     return new npc_foreman_silixizAI(creature);
 }
@@ -749,27 +765,28 @@ UnitAI* GetAI_npc_foreman_silixiz(Creature* creature)
 ## npc_regthar_deathgate
 #####*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_COUNTERATTACK        = 4021,
+    QUEST_COUNTERATTACK        = 4021,                      // 任务 ID
 
-    SAY_START_REGTHAR          = -1010001,
-    SAY_DEFENDER               = -1010002,
-    YELL_RETREAT               = -1010003,
+    SAY_START_REGTHAR          = -1010001,                  // 剧情台词/喊话文本 ID
+    SAY_DEFENDER               = -1010002,                  // 剧情台词/喊话文本 ID
+    YELL_RETREAT               = -1010003,                  // 剧情台词/喊话文本 ID
 
-    NPC_REGTHAR_DEATHGATE      = 3389,
-    NPC_WARLORD_KROMZAR        = 9456,
-    NPC_HORDE_DEFENDER         = 9457,
-    NPC_HORDE_AXE_THROWER      = 9458,
-    NPC_KOLKAR_INVADER         = 9524,
-    NPC_KOLKAR_STORMSEER       = 9523,
+    NPC_REGTHAR_DEATHGATE      = 3389,                      // NPC 条目 ID
+    NPC_WARLORD_KROMZAR        = 9456,                      // NPC 条目 ID
+    NPC_HORDE_DEFENDER         = 9457,                      // NPC 条目 ID
+    NPC_HORDE_AXE_THROWER      = 9458,                      // NPC 条目 ID
+    NPC_KOLKAR_INVADER         = 9524,                      // NPC 条目 ID
+    NPC_KOLKAR_STORMSEER       = 9523,                      // NPC 条目 ID
 
     KILL_LIMIT                 = 20
 };
 
-// respawn time in seconds
-#define COUNTERATTACK_RESPAWN_TIME_HORDE      12 // normal respawn time
-#define COUNTERATTACK_RESPAWN_TIME_HORDE_INC  1  // increased respawn time to have enough defender everytime
+// respawn time in seconds (复活)
+#define COUNTERATTACK_RESPAWN_TIME_HORDE      12 // normal respawn time (复活)
+#define COUNTERATTACK_RESPAWN_TIME_HORDE_INC  1  // increased respawn time to have enough defender everytime (说明)
 #define COUNTERATTACK_RESPAWN_TIME_KOLKAR     10
 
 struct SpawnPoint
@@ -816,6 +833,7 @@ static const SpawnPointVector spawnPointsKolkar
     { -197.50f, -1929.31f, 94.03f, 3.51f}
 };
 
+// npc_regthar_deathgateAI NPC 脚本 AI
 struct npc_regthar_deathgateAI : public ScriptedAI
 {
 private:
@@ -829,11 +847,11 @@ private:
     typedef std::map<ObjectGuid, uint32> SpawnPointIndexMap;
     typedef std::list<KilledSlot> FullGuidList;
 
-    // keep track of spawned creature by saving their guid and assigned slot
+    // keep track of spawned creature by saving their guid and assigned slot (说明)
     SpawnPointIndexMap m_hordeCreatureMap;
     SpawnPointIndexMap m_kolkarCreatureMap;
 
-    // keep track of killed creature by saving their respawntime those lists are sorted, the first one should be respawned first
+    // keep track of killed creature by saving their respawntime those lists are sorted, the first one should be respawned first (说明)
     FullGuidList m_killedHordeGuid;
     FullGuidList m_killedKolkarGuid;
 
@@ -844,7 +862,7 @@ private:
     bool   m_eventStarted;
     bool   m_isKromzarSpawned;
 
-    // Spawn one creature if there is at least one killed in killedGuidList (DB waypoint for all spawnpoint index less or equal given moveToWP argument)
+    // Spawn one creature if there is at least one killed in killedGuidList (DB waypoint for all spawnpoint index less or equal given moveToWP argument) (说明)
     bool SpawnCreature(SpawnPointVector const& spawnPoints, SpawnPointIndexMap& creatureSlotMap, FullGuidList& killedGuidList, uint32 entry1, uint32 entry2, int32 moveToWP = -1)
     {
         if (killedGuidList.empty())
@@ -868,11 +886,11 @@ private:
             SpawnPoint const& spawnPoint = spawnPoints[spawnPointIdx];
             if (Creature * creature = m_creature->SummonCreature(summonEntry, spawnPoint.fX, spawnPoint.fY, spawnPoint.fZ, spawnPoint.fO, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 40 * IN_MILLISECONDS))
             {
-                // Force Horde NPCs spawned in main point to move towards kolkar invaders. We give them WP movement to ensure they always move there event after evade/reset. WP are handled in DB
+                // Force Horde NPCs spawned in main point to move towards kolkar invaders. We give them WP movement to ensure they always move there event after evade/reset. WP are handled in DB (说明)
                 if (spawnPointIdx < moveToWP)
                     creature->GetMotionMaster()->MoveWaypoint();
 
-                // update creature map
+                // update creature map (说明)
                 creatureSlotMap[creature->GetObjectGuid()] = spawnPointIdx;
                 creatureSlotMap.erase(itr);
                 result = true;
@@ -881,7 +899,7 @@ private:
         return result;
     }
 
-    // spawn all slot with given entry1/entry2 randomly and store them to SpawnPointIndexMap storage (moveTOWP is max slot index that should use DB waypoint)
+    // spawn all slot with given entry1/entry2 randomly and store them to SpawnPointIndexMap storage (moveTOWP is max slot index that should use DB waypoint) (说明)
     void SpawnAllSlot(SpawnPointVector const& spawnPoints, SpawnPointIndexMap& creatureSlotMap, uint32 entry1, uint32 entry2, int32 moveToWP = -1)
     {
         int32 counter = 0;
@@ -892,7 +910,7 @@ private:
             {
                 if (counter < moveToWP)
                 {
-                    // Force Horde NPCs spawned in main point to move towards kolkar invaders. We give them WP movement to ensure they always move there event after evade/reset. WP are handled in DB
+                    // Force Horde NPCs spawned in main point to move towards kolkar invaders. We give them WP movement to ensure they always move there event after evade/reset. WP are handled in DB (说明)
                     creature->GetMotionMaster()->MoveWaypoint();
                 }
 
@@ -902,7 +920,7 @@ private:
         }
     }
 
-    // despawn all creature in provided SpawnPointIndexMap if they are still exist
+    // despawn all creature in provided SpawnPointIndexMap if they are still exist (说明)
     void ForceDespawn(SpawnPointIndexMap& spawnPoints)
     {
         for (auto spawnItr : spawnPoints)
@@ -911,7 +929,7 @@ private:
             {
                 if (creature->IsInCombat())
                 {
-                    // Give one minute to the NPCs still fighting before despawning them
+                    // Give one minute to the NPCs still fighting before despawning them (说明)
                     creature->ForcedDespawn(MINUTE * IN_MILLISECONDS);
                 }
                 else
@@ -951,14 +969,14 @@ public:
         m_eventStarted         = true;
         m_eventTimer           = 20 * MINUTE * IN_MILLISECONDS;
  
-        // Initial summon of NPCs, they will be resummon when killed based on their spawn point
+        // Initial summon of NPCs, they will be resummon when killed based on their spawn point (说明)
         SpawnAllSlot(spawnPointsHorde, m_hordeCreatureMap, NPC_HORDE_DEFENDER, NPC_HORDE_AXE_THROWER, 5);
         SpawnAllSlot(spawnPointsKolkar, m_kolkarCreatureMap, NPC_KOLKAR_INVADER, NPC_KOLKAR_STORMSEER);
     }
 
     void FinishEvent()
     {
-        // despawn all remaining creature
+        // despawn all remaining creature (消失)
         DoScriptText(YELL_RETREAT, m_creature);
         ForceDespawn(m_hordeCreatureMap);
         ForceDespawn(m_kolkarCreatureMap);
@@ -975,16 +993,16 @@ public:
             case NPC_HORDE_DEFENDER:
             case NPC_HORDE_AXE_THROWER:
             {
-                // handle respawn time
+                // handle respawn time (复活)
                 if (m_killedHordeGuid.size() > 3)
                 {
-                    // speed up summon if too many defenders are dead
+                    // speed up summon if too many defenders are dead (说明)
                     respTime += std::chrono::seconds(COUNTERATTACK_RESPAWN_TIME_HORDE_INC);
                 }
                 else
                     respTime += std::chrono::seconds(COUNTERATTACK_RESPAWN_TIME_HORDE);
 
-                // save the killed guid and respawn time for later use in SpawnCreature
+                // save the killed guid and respawn time for later use in SpawnCreature (说明)
                 m_killedHordeGuid.emplace_back(killed->GetObjectGuid(), respTime);
 
                 if (urand(0,1))
@@ -995,13 +1013,13 @@ public:
             case NPC_KOLKAR_INVADER:
             case NPC_KOLKAR_STORMSEER:
             {
-                // handle respawn time
+                // handle respawn time (复活)
                 respTime += std::chrono::seconds(COUNTERATTACK_RESPAWN_TIME_KOLKAR);
 
-                // save the killed guid and respawn time for later use in SpawnCreature
+                // save the killed guid and respawn time for later use in SpawnCreature (说明)
                 m_killedKolkarGuid.emplace_back(killed->GetObjectGuid(), respTime);
 
-                // increment killed creature count
+                // increment killed creature count (说明)
                 ++m_kolkarKillCount;
                 break;
             }
@@ -1027,7 +1045,7 @@ public:
 
         if (!m_isKromzarSpawned)
         {
-            if (m_kolkarKillCount >= KILL_LIMIT)  // Kill count reached: spawn Warlord Kromzar and his bodyguards
+            if (m_kolkarKillCount >= KILL_LIMIT)  // Kill count reached: spawn Warlord Kromzar and his bodyguards (说明)
             {
                 m_creature->SummonCreature(NPC_KOLKAR_INVADER,  spawnPointsKromzar[0].fX, spawnPointsKromzar[0].fY, spawnPointsKromzar[0].fZ, spawnPointsKromzar[0].fO, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 40 * IN_MILLISECONDS);
                 m_creature->SummonCreature(NPC_WARLORD_KROMZAR,  spawnPointsKromzar[1].fX, spawnPointsKromzar[1].fY, spawnPointsKromzar[1].fZ, spawnPointsKromzar[1].fO, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 40 * IN_MILLISECONDS);
@@ -1036,23 +1054,23 @@ public:
                 return;
             }
 
-            // Summon Horde defender if need
+            // Summon Horde defender if need (召唤)
             SpawnCreature(spawnPointsHorde, m_hordeCreatureMap, m_killedHordeGuid, NPC_HORDE_DEFENDER, NPC_HORDE_AXE_THROWER, 5);
 
-            // Summon kolkar if need
+            // Summon kolkar if need (召唤)
             SpawnCreature(spawnPointsKolkar, m_kolkarCreatureMap, m_killedKolkarGuid, NPC_KOLKAR_STORMSEER, NPC_KOLKAR_INVADER);
         }
-        else    // Nothing to spawn: update all timers
+        else    // Nothing to spawn: update all timers (刷新)
             m_eventTimer -= uiDiff;
     }
 };
 
-UnitAI* GetAI_npc_regthar_deathgate(Creature* creature)
+UnitAI* GetAI_npc_regthar_deathgate(Creature* creature) // 创建并返回 AI 实例
 {
     return new npc_regthar_deathgateAI(creature);
 }
 
-bool GossipHello_npc_regthar_deathgate(Player* player, Creature* creature)
+bool GossipHello_npc_regthar_deathgate(Player* player, Creature* creature) // 对话交互问候处理
 {
     if (creature->isQuestGiver())
         player->PrepareQuestMenu(creature->GetObjectGuid());
@@ -1068,7 +1086,7 @@ bool GossipHello_npc_regthar_deathgate(Player* player, Creature* creature)
     return true;
 }
 
-bool QuestAccept_npc_regthar_deathgate(Player* player, Creature* creature, Quest const* quest)
+bool QuestAccept_npc_regthar_deathgate(Player* player, Creature* creature, Quest const* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_COUNTERATTACK)
     {
@@ -1092,7 +1110,7 @@ bool GossipSelect_npc_regthar_deathgate(Player* player, Creature* creature, uint
     return true;
 }
 
-void AddSC_the_barrens()
+void AddSC_the_barrens() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_gilthares";

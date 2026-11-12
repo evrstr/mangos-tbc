@@ -21,6 +21,8 @@ SDComment: Quest support: 4121, 4122
 SDCategory: Burning Steppes
 EndScriptData */
 
+// 燃烧平原（Burning Steppes）区域杂项与护送任务脚本
+
 /* ContentData
 npc_grark_lorkrub
 EndContentData */
@@ -32,42 +34,43 @@ EndContentData */
 ## npc_grark_lorkrub
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START                   = -1000873,
-    SAY_PAY                     = -1000874,
-    SAY_FIRST_AMBUSH_START      = -1000875,
-    SAY_FIRST_AMBUSH_END        = -1000876,
-    SAY_SEC_AMBUSH_START        = -1000877,
-    SAY_SEC_AMBUSH_END          = -1000878,
-    SAY_THIRD_AMBUSH_START      = -1000879,
-    SAY_THIRD_AMBUSH_END        = -1000880,
-    EMOTE_LAUGH                 = -1000881,
-    SAY_LAST_STAND              = -1000882,
-    SAY_LEXLORT_1               = -1000883,
-    SAY_LEXLORT_2               = -1000884,
-    EMOTE_RAISE_AXE             = -1000885,
-    EMOTE_LOWER_HAND            = -1000886,
-    SAY_LEXLORT_3               = -1000887,
-    SAY_LEXLORT_4               = -1000888,
+    SAY_START                   = -1000873,                 // 开始 台词广播 ID
+    SAY_PAY                     = -1000874,                 // pay 台词广播 ID
+    SAY_FIRST_AMBUSH_START      = -1000875,                 // firstambush开始 台词广播 ID
+    SAY_FIRST_AMBUSH_END        = -1000876,                 // firstambushend 台词广播 ID
+    SAY_SEC_AMBUSH_START        = -1000877,                 // secambush开始 台词广播 ID
+    SAY_SEC_AMBUSH_END          = -1000878,                 // secambushend 台词广播 ID
+    SAY_THIRD_AMBUSH_START      = -1000879,                 // thirdambush开始 台词广播 ID
+    SAY_THIRD_AMBUSH_END        = -1000880,                 // thirdambushend 台词广播 ID
+    EMOTE_LAUGH                 = -1000881,                 // laugh 表情动作 ID
+    SAY_LAST_STAND              = -1000882,                 // laststand 台词广播 ID
+    SAY_LEXLORT_1               = -1000883,                 // lexlort1 台词广播 ID
+    SAY_LEXLORT_2               = -1000884,                 // lexlort2 台词广播 ID
+    EMOTE_RAISE_AXE             = -1000885,                 // raiseaxe 表情动作 ID
+    EMOTE_LOWER_HAND            = -1000886,                 // lowerhand 表情动作 ID
+    SAY_LEXLORT_3               = -1000887,                 // lexlort3 台词广播 ID
+    SAY_LEXLORT_4               = -1000888,                 // lexlort4 台词广播 ID
 
-    EMOTE_SUBMIT                = -1000889,
-    SAY_AGGRO                   = -1000890,
+    EMOTE_SUBMIT                = -1000889,                 // submit 表情动作 ID
+    SAY_AGGRO                   = -1000890,                 // 开战 台词广播 ID
 
-    SPELL_CAPTURE_GRARK             = 14250,
+    SPELL_CAPTURE_GRARK             = 14250,                // 捕获grark 法术 ID
 
-    NPC_BLACKROCK_AMBUSHER          = 9522,
-    NPC_BLACKROCK_RAIDER            = 9605,
-    NPC_FLAMESCALE_DRAGONSPAWN      = 7042,
-    NPC_SEARSCALE_DRAKE             = 7046,
+    NPC_BLACKROCK_AMBUSHER          = 9522,                 // blackrockambusher Entry ID
+    NPC_BLACKROCK_RAIDER            = 9605,                 // blackrockraider Entry ID
+    NPC_FLAMESCALE_DRAGONSPAWN      = 7042,                 // flamescaledragonspawn Entry ID
+    NPC_SEARSCALE_DRAKE             = 7046,                 // searscale幼龙 Entry ID
 
-    NPC_GRARK_LORKRUB               = 9520,
-    NPC_HIGH_EXECUTIONER_NUZARK     = 9538,
-    NPC_SHADOW_OF_LEXLORT           = 9539,
+    NPC_GRARK_LORKRUB               = 9520,                 // grarklorkrub Entry ID
+    NPC_HIGH_EXECUTIONER_NUZARK     = 9538,                 // highexecutionernuzark Entry ID
+    NPC_SHADOW_OF_LEXLORT           = 9539,                 // 暗影oflexlort Entry ID
 
-    FACTION_GRARK_FRIENDLY          = 29,
+    FACTION_GRARK_FRIENDLY          = 29,                   // grarkfriendly 阵营 ID
 
-    QUEST_ID_PRECARIOUS_PREDICAMENT = 4121
+    QUEST_ID_PRECARIOUS_PREDICAMENT = 4121                  // IDprecariouspredicament 任务 ID
 };
 
 static const DialogueEntry aOutroDialogue[] =
@@ -83,6 +86,7 @@ static const DialogueEntry aOutroDialogue[] =
     {0, 0, 0},
 };
 
+// 随从/NPC AI：lorkrub（grark_lorkrub）
 struct npc_grark_lorkrubAI : public npc_escortAI, private DialogueHelper
 {
     npc_grark_lorkrubAI(Creature* pCreature) : npc_escortAI(pCreature), DialogueHelper(aOutroDialogue), m_shackled(false)
@@ -90,15 +94,16 @@ struct npc_grark_lorkrubAI : public npc_escortAI, private DialogueHelper
         Reset();
     }
 
-    ObjectGuid m_nuzarkGuid;
-    ObjectGuid m_lexlortGuid;
+    ObjectGuid m_nuzarkGuid;                                // nuzark 实体 GUID
+    ObjectGuid m_lexlortGuid;                               // lexlort 实体 GUID
 
     GuidList m_lSearscaleGuidList;
 
     uint8 m_uiKilledCreatures;
-    bool m_bIsFirstSearScale;
+    bool m_bIsFirstSearScale;                               // IsFirstSearScale 状态标记
     bool m_shackled;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
@@ -130,7 +135,7 @@ struct npc_grark_lorkrubAI : public npc_escortAI, private DialogueHelper
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* /*pInvoker*/, uint32 /*uiMiscValue*/) override
     {
-        // rejoin head on request
+        // rejoin head on request (响应请求头部回归身体)
         if (eventType == AI_EVENT_CUSTOM_A)
         {
             m_shackled = true;
@@ -240,12 +245,13 @@ struct npc_grark_lorkrubAI : public npc_escortAI, private DialogueHelper
                 // Finish the quest
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_ID_PRECARIOUS_PREDICAMENT, m_creature);
-                // Kill self
+                // Kill self (击杀self)
                 m_creature->Suicide();
                 break;
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         switch (pSummoned->GetEntry())
@@ -315,11 +321,13 @@ struct npc_grark_lorkrubAI : public npc_escortAI, private DialogueHelper
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_grark_lorkrub
 UnitAI* GetAI_npc_grark_lorkrub(Creature* pCreature)
 {
     return new npc_grark_lorkrubAI(pCreature);
 }
 
+// 任务接取回调函数：npc_grark_lorkrub
 bool QuestAccept_npc_grark_lorkrub(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ID_PRECARIOUS_PREDICAMENT)
@@ -333,7 +341,7 @@ bool QuestAccept_npc_grark_lorkrub(Player* pPlayer, Creature* pCreature, const Q
     return false;
 }
 
-// 14250 - Capture Grark
+// 14250 - Capture Grark (14250 - 捕获 Grark)
 struct CaptureGrark : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -343,20 +351,21 @@ struct CaptureGrark : public SpellScript
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_FOOLS_PLIGHT          = 23504,
+    SPELL_FOOLS_PLIGHT          = 23504,                    // foolsplight 法术 ID
 
-    SPELL_DEMONIC_FRENZY        = 23257,
-    SPELL_ENTROPIC_STING        = 23260,
+    SPELL_DEMONIC_FRENZY        = 23257,                    // demonic狂乱 法术 ID
+    SPELL_ENTROPIC_STING        = 23260,                    // entropic钉刺 法术 ID
 
-    EMOTE_FRENZY                = -1000001,
+    EMOTE_FRENZY                = -1000001,                 // 狂乱 表情动作 ID
 
-    NPC_NELSON_THE_NICE         = 14529,
-    NPC_KLINFRAN_THE_CRAZED     = 14534,
-    NPC_THE_CLEANER             = 14503,
+    NPC_NELSON_THE_NICE         = 14529,                    // nelsonthenice Entry ID
+    NPC_KLINFRAN_THE_CRAZED     = 14534,                    // klinfranthecrazed Entry ID
+    NPC_THE_CLEANER             = 14503,                    // thecleaner Entry ID
 
-    QUEST_STAVE_OF_THE_ANCIENTS = 7636
+    QUEST_STAVE_OF_THE_ANCIENTS = 7636                      // staveoftheancients 任务 ID
 };
 
 #define GOSSIP_ITEM                 "Show me your real face, demon."
@@ -369,6 +378,7 @@ enum
 ## npc_klinfran_the_crazed
 ######*/
 
+// 随从/NPC AI：标识 ID（klinfran）
 struct npc_klinfranAI : public ScriptedAI
 {
     npc_klinfranAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -378,14 +388,15 @@ struct npc_klinfranAI : public ScriptedAI
         Reset();
     }
 
-    uint32 m_uiTransform_Timer;
-    uint32 m_uiTransformEmote_Timer;
-    bool m_bTransform;
+    uint32 m_uiTransform_Timer;                             // Transform_ 技能计时器
+    uint32 m_uiTransformEmote_Timer;                        // TransformEmote_ 技能计时器
+    bool m_bTransform;                                      // Transform 状态标记
 
-    ObjectGuid m_hunterGuid;
-    uint32 m_uiDemonic_Frenzy_Timer;
-    uint32 m_uiDespawn_Timer;
+    ObjectGuid m_hunterGuid;                                // hunter 实体 GUID
+    uint32 m_uiDemonic_Frenzy_Timer;                        // Demonic_Frenzy_ 技能计时器
+    uint32 m_uiDespawn_Timer;                               // Despawn_ 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         switch (m_creature->GetEntry())
@@ -434,6 +445,7 @@ struct npc_klinfranAI : public ScriptedAI
     }
 
     /** Klinfran the Crazed */
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* pWho) override
     {
         if (pWho->getClass() == CLASS_HUNTER && (m_hunterGuid.IsEmpty() || m_hunterGuid == pWho->GetObjectGuid()))
@@ -488,6 +500,7 @@ struct npc_klinfranAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         /** Franklin the Friendly */
@@ -542,10 +555,11 @@ struct npc_klinfranAI : public ScriptedAI
         else
             m_uiDemonic_Frenzy_Timer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// NPC 对话交互入口函数：npc_klinfran
 bool GossipHello_npc_klinfran(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->GetQuestStatus(QUEST_STAVE_OF_THE_ANCIENTS) == QUEST_STATUS_INCOMPLETE)
@@ -562,11 +576,13 @@ bool GossipSelect_npc_klinfran(Player* pPlayer, Creature* pCreature, uint32 /*ui
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_klinfran
 UnitAI* GetAI_npc_klinfran(Creature* pCreature)
 {
     return new npc_klinfranAI(pCreature);
 }
 
+// 注册并载入脚本模块：burning_steppes
 void AddSC_burning_steppes()
 {
     Script* pNewScript = new Script;

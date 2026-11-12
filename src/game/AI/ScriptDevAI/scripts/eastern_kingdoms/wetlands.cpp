@@ -21,6 +21,8 @@ SDComment: Quest support: 1249
 SDCategory: Wetlands
 EndScriptData */
 
+// 湿地（Wetlands）丹加洛克黑铁挖掘场与湿地巡山人脚本
+
 /* ContentData
 npc_mikhail
 npc_tapoke_slim_jahn
@@ -33,21 +35,22 @@ EndContentData */
 ## npc_tapoke_slim_jahn
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_SLIM_AGGRO              = -1000977,
-    SAY_SLIM_DEFEAT             = -1000978,
-    SAY_FRIEND_DEFEAT           = -1000979,
-    SAY_SLIM_NOTES              = -1000980,
+    SAY_SLIM_AGGRO              = -1000977,                 // slim开战 台词广播 ID
+    SAY_SLIM_DEFEAT             = -1000978,                 // slimdefeat 台词广播 ID
+    SAY_FRIEND_DEFEAT           = -1000979,                 // frienddefeat 台词广播 ID
+    SAY_SLIM_NOTES              = -1000980,                 // slimnotes 台词广播 ID
 
-    QUEST_MISSING_DIPLOMAT11    = 1249,
+    QUEST_MISSING_DIPLOMAT11    = 1249,                     // missingdiplomat11 任务 ID
     FACTION_ENEMY               = 168,                      // ToDo: faction needs to be confirmed!
 
-    SPELL_STEALTH               = 1785,
-    SPELL_CALL_FRIENDS          = 16457,                    // summon npc 4971
+    SPELL_STEALTH               = 1785,                     // 潜行 法术 ID
+    SPELL_CALL_FRIENDS          = 16457,                    // summon npc 4971 (召唤 npc 4971)
 
-    NPC_SLIMS_FRIEND            = 4971,
-    NPC_TAPOKE_SLIM_JAHN        = 4962
+    NPC_SLIMS_FRIEND            = 4971,                     // slimsfriend Entry ID
+    NPC_TAPOKE_SLIM_JAHN        = 4962                      // tapokeslimjahn Entry ID
 };
 
 static const DialogueEntry aDiplomatDialogue[] =
@@ -58,6 +61,7 @@ static const DialogueEntry aDiplomatDialogue[] =
     {0, 0, 0},
 };
 
+// 随从/NPC AI：slimjahn（tapoke_slim_jahn）
 struct npc_tapoke_slim_jahnAI : public npc_escortAI, private DialogueHelper
 {
     npc_tapoke_slim_jahnAI(Creature* pCreature) : npc_escortAI(pCreature),
@@ -66,9 +70,10 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI, private DialogueHelper
         Reset();
     }
 
-    bool m_bFriendSummoned;
-    bool m_bEventComplete;
+    bool m_bFriendSummoned;                                 // FriendSummoned 状态标记
+    bool m_bEventComplete;                                  // EventComplete 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
@@ -81,6 +86,7 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI, private DialogueHelper
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         // after the npc is defeated, start the dialog right after it reaches the evade point
@@ -124,6 +130,7 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI, private DialogueHelper
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         // Note: may not work on guardian pets
@@ -155,7 +162,7 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI, private DialogueHelper
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
     {
-        // start escort
+        // start escort (开始escort)
         if (eventType == AI_EVENT_START_ESCORT && pInvoker->GetTypeId() == TYPEID_PLAYER)
             Start(false, (Player*)pInvoker, GetQuestTemplateStore(uiMiscValue), true);
     }
@@ -164,7 +171,7 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI, private DialogueHelper
     {
         if (iEntry == QUEST_MISSING_DIPLOMAT11)
         {
-            // complete quest
+            // complete quest (complete任务)
             if (Player* pPlayer = GetPlayerForEscort())
                 pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_MISSING_DIPLOMAT11, m_creature);
 
@@ -189,10 +196,11 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI, private DialogueHelper
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_tapoke_slim_jahn
 UnitAI* GetAI_npc_tapoke_slim_jahn(Creature* pCreature)
 {
     return new npc_tapoke_slim_jahnAI(pCreature);
@@ -202,6 +210,7 @@ UnitAI* GetAI_npc_tapoke_slim_jahn(Creature* pCreature)
 ## npc_mikhail
 ######*/
 
+// 任务接取回调函数：npc_mikhail
 bool QuestAccept_npc_mikhail(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_MISSING_DIPLOMAT11)
@@ -220,10 +229,11 @@ bool QuestAccept_npc_mikhail(Player* pPlayer, Creature* pCreature, const Quest* 
     return false;
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    NPC_PROSPECTOR_WHELGAR  = 1077,
-    SAY_ITEM_LOOTED         = 1235
+    NPC_PROSPECTOR_WHELGAR  = 1077,                         // prospectorwhelgar Entry ID
+    SAY_ITEM_LOOTED         = 1235                          // 物品looted 台词广播 ID
 };
 
 // Flagongut's Fossil ID: 9630
@@ -255,6 +265,7 @@ GameObjectAI* GetAI_go_flagongut_fossil(GameObject* go)
 ## AddSC
 ######*/
 
+// 注册并载入脚本模块：wetlands
 void AddSC_wetlands()
 {
     Script* pNewScript = new Script;

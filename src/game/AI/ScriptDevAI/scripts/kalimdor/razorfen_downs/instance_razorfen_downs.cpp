@@ -21,6 +21,10 @@ SDComment: Spawns coords can be improved
 SDCategory: Razorfen Downs
 EndScriptData */
 
+/**
+ * 剃刀高地 (Razorfen Downs) 副本数据管理脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "razorfen_downs.h"
 
@@ -108,7 +112,7 @@ void instance_razorfen_downs::Load(const char* chrIn)
 
 void instance_razorfen_downs::OnCreatureDeath(Creature* pCreature)
 {
-    // Only use this function if gong event is in progress
+    // Only use this function if gong event is in progress (说明)
     if (GetData(TYPE_TUTEN_KASH) != IN_PROGRESS)
         return;
 
@@ -118,7 +122,7 @@ void instance_razorfen_downs::OnCreatureDeath(Creature* pCreature)
         case NPC_TOMB_REAVER:
             m_lSpawnedMobsList.remove(pCreature->GetObjectGuid());
 
-            // No more wave-mobs around, enable the gong for the next wave
+            // No more wave-mobs around, enable the gong for the next wave (说明)
             if (m_lSpawnedMobsList.empty())
             {
                 if (GameObject* pGo = GetSingleGameObjectFromStorage(GO_GONG))
@@ -138,7 +142,7 @@ void instance_razorfen_downs::OnCreatureDeath(Creature* pCreature)
 
 void instance_razorfen_downs::DoSpawnWaveIfCan(GameObject* pGo)
 {
-    // safety checks
+    // safety checks (说明)
     if (GetData(TYPE_TUTEN_KASH) == DONE)
         return;
 
@@ -152,13 +156,13 @@ void instance_razorfen_downs::DoSpawnWaveIfCan(GameObject* pGo)
 
     for (uint8 i = 0; i < aWaveSummonInformation[m_uiWaveCounter].m_uiNPCperWave; ++i)
     {
-        uint8 uiPos = i % 2;                                        // alternate spawn between the left and right corridor
+        uint8 uiPos = i % 2;                                        // alternate spawn between the left and right corridor (说明)
         float fPosX, fPosY, fPosZ;
         float fTargetPosX, fTargetPosY, fTargetPosZ;
 
         pGo->GetRandomPoint(aSpawnLocations[uiPos].x, aSpawnLocations[uiPos].y, aSpawnLocations[uiPos].z, 5.0f, fPosX, fPosY, fPosZ);
 
-        // move the summoned NPC toward the gong
+        // move the summoned NPC toward the gong (说明)
         if (Creature* pSummoned = pGo->SummonCreature(aWaveSummonInformation[m_uiWaveCounter].m_uiNpcEntry, fPosX, fPosY, fPosZ, aSpawnLocations[uiPos].o, TEMPSPAWN_DEAD_DESPAWN, 0))
         {
             pSummoned->SetWalk(false);
@@ -167,12 +171,12 @@ void instance_razorfen_downs::DoSpawnWaveIfCan(GameObject* pGo)
         }
     }
 
-    // Will increase m_uiWaveCounter, hence after the wave is summoned
+    // Will increase m_uiWaveCounter, hence after the wave is summoned (说明)
     SetData(TYPE_TUTEN_KASH, IN_PROGRESS);
     pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
 }
 
-InstanceData* GetInstanceData_instance_razorfen_downs(Map* pMap)
+InstanceData* GetInstanceData_instance_razorfen_downs(Map* pMap) // 创建并返回副本数据实例
 {
     return new instance_razorfen_downs(pMap);
 }
@@ -192,7 +196,7 @@ bool ProcessEventId_event_go_tutenkash_gong(uint32 /*uiEventId*/, Object* pSourc
     return false;
 }
 
-void AddSC_instance_razorfen_downs()
+void AddSC_instance_razorfen_downs() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_razorfen_downs";

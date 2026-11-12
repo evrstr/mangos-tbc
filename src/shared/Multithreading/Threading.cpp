@@ -32,7 +32,7 @@ Thread::Thread(Runnable* instance) : m_task(instance), m_ThreadImp(&Thread::Thre
 {
     m_iThreadId = m_ThreadImp.get_id();
 
-    // register reference to m_task to prevent it deeltion until destructor
+    // register reference to m_task to prevent it deeltion until destructor | 增加任务引用计数，防止析构前被提前释放
     if (m_task)
         m_task->incReference();
 }
@@ -41,7 +41,7 @@ Thread::~Thread()
 {
     // Wait();
 
-    // deleted runnable object (if no other references)
+    // deleted runnable object (if no other references) | 释放对任务对象的引用（若无其他引用则自动销毁）
     if (m_task)
         m_task->decReference();
 }
@@ -74,6 +74,7 @@ void Thread::destroy()
 
     // FIXME: We need to make sure that all threads can be trusted to
     // halt execution on their own as this is not an interrupt
+    // | FIXME：此处仅等待线程自行退出而非强制中断，需确保各线程任务能响应退出信号
     m_ThreadImp.join();
     m_iThreadId = std::thread::id();
 }
@@ -127,7 +128,7 @@ void Thread::setPriority(Priority priority)
      */
 #endif
 
-    // remove this ASSERT in case you don't want to know is thread priority change was successful or not
+    // remove this ASSERT in case you don't want to know is thread priority change was successful or not | 若不关心优先级修改是否成功可移除此断言
     MANGOS_ASSERT(_ok);
 }
 

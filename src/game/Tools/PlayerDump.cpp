@@ -24,7 +24,7 @@
 #include "Globals/ObjectMgr.h"
 #include "Accounts/AccountMgr.h"
 
-// Character Dump tables
+// Character Dump tables (角色导出/导入涉及的数据表顺序及类型配置)
 struct DumpTable
 {
     char const* name;
@@ -34,9 +34,10 @@ struct DumpTable
     bool isValid() const { return name != nullptr; }
 };
 
+// 按依赖顺序排列的表清单（须先导出主表以收集关联 GUID）
 static DumpTable dumpTables[] =
 {
-    { "characters",                       DTT_CHARACTER  }, // -> guid, must be first for name check
+    { "characters",                       DTT_CHARACTER  }, // -> guid, must be first for name check (必须排在首位以校验角色名并生成新 GUID)
     { "character_action",                 DTT_CHAR_TABLE },
     { "character_aura",                   DTT_CHAR_TABLE },
     { "character_declinedname",           DTT_CHAR_NAME_TABLE },
@@ -58,10 +59,11 @@ static DumpTable dumpTables[] =
     { "item_instance",                    DTT_ITEM       }, //                  <- item guids
     { "item_loot",                        DTT_ITEM_LOOT  }, //                  <- item guids
     { "item_text",                        DTT_ITEM_TEXT  },
-    { nullptr,                            DTT_CHAR_TABLE }, // end marker
+    { nullptr,                            DTT_CHAR_TABLE }, // end marker (结束哨兵)
 };
 
-// Low level functions
+// Low level functions (底层字符串解析与 SQL 字段替换辅助函数)
+// 查找按空格分隔的第 n 个 token 的起止下标
 static bool findtoknth(std::string& str, int n, std::string::size_type& s, std::string::size_type& e)
 {
     int i; s = e = 0;
@@ -75,6 +77,7 @@ static bool findtoknth(std::string& str, int n, std::string::size_type& s, std::
     return e != std::string::npos;
 }
 
+// 提取按空格分隔的第 n 个 token
 std::string gettoknth(std::string& str, int n)
 {
     std::string::size_type s = 0, e = 0;
@@ -84,6 +87,7 @@ std::string gettoknth(std::string& str, int n)
     return str.substr(s, e - s);
 }
 
+// 查找 INSERT VALUES ('...') 中第 n 个单引号包裹字段的起止下标
 bool findnth(std::string& str, int n, std::string::size_type& s, std::string::size_type& e)
 {
     s = str.find("VALUES ('") + 9;
@@ -112,6 +116,7 @@ bool findnth(std::string& str, int n, std::string::size_type& s, std::string::si
     return true;
 }
 
+// 从 INSERT 语句中提取目标表名
 std::string gettablename(std::string& str)
 {
     std::string::size_type s = 13;
@@ -122,6 +127,7 @@ std::string gettablename(std::string& str)
     return str.substr(s, e - s);
 }
 
+// 替换或插入 INSERT 语句中第 n 个字段的值
 bool changenth(std::string& str, int n, const char* with, bool insert = false, bool nonzero = false)
 {
     std::string::size_type s, e;
@@ -129,7 +135,7 @@ bool changenth(std::string& str, int n, const char* with, bool insert = false, b
         return false;
 
     if (nonzero && str.substr(s, e - s) == "0")
-        return true;                                        // not an error
+        return true;                                        // not an error (值为 0 时按约定保留不改)
     if (!insert)
         str.replace(s, e - s, with);
     else
@@ -138,6 +144,7 @@ bool changenth(std::string& str, int n, const char* with, bool insert = false, b
     return true;
 }
 
+// 获取 INSERT 语句中第 n 个字段的字符串内容
 std::string getnth(std::string& str, int n)
 {
     std::string::size_type s, e;
@@ -147,6 +154,7 @@ std::string getnth(std::string& str, int n)
     return str.substr(s, e - s);
 }
 
+// 将旧 GUID 映射到递增分配的新 GUID
 uint32 registerNewGuid(uint32 oldGuid, std::map<uint32, uint32>& guidMap, uint32 hiGuid)
 {
     std::map<uint32, uint32>::const_iterator itr = guidMap.find(oldGuid);
@@ -158,12 +166,13 @@ uint32 registerNewGuid(uint32 oldGuid, std::map<uint32, uint32>& guidMap, uint32
     return newguid;
 }
 
+// 重映射 INSERT 语句第 n 个字段中的 GUID
 bool changeGuid(std::string& str, int n, std::map<uint32, uint32>& guidMap, uint32 hiGuid, bool nonzero = false)
 {
     char chritem[20];
     uint32 oldGuid = atoi(getnth(str, n).c_str());
     if (nonzero && oldGuid == 0)
-        return true;                                        // not an error
+        return true;                                        // not an error (0 表示空槽位或无背包，跳过映射)
 
     uint32 newGuid = registerNewGuid(oldGuid, guidMap, hiGuid);
     snprintf(chritem, 20, "%u", newGuid);
@@ -171,6 +180,7 @@ bool changeGuid(std::string& str, int n, std::map<uint32, uint32>& guidMap, uint
     return changenth(str, n, chritem, false, nonzero);
 }
 
+// 将单行查询结果序列化为 INSERT INTO 语句
 std::string CreateDumpString(char const* tableName, QueryResult* result)
 {
     if (!tableName || !result)
@@ -198,6 +208,7 @@ std::string CreateDumpString(char const* tableName, QueryResult* result)
     return ss.str();
 }
 
+// 生成单值 WHERE 条件片段
 std::string PlayerDumpWriter::GenerateWhereStr(char const* field, uint32 guid)
 {
     std::ostringstream wherestr;
@@ -205,6 +216,7 @@ std::string PlayerDumpWriter::GenerateWhereStr(char const* field, uint32 guid)
     return wherestr.str();
 }
 
+// 生成分批 IN (...) WHERE 条件片段（受最大 SQL 长度限制自动分段）
 std::string PlayerDumpWriter::GenerateWhereStr(char const* field, GUIDs const& guids, GUIDs::const_iterator& itr)
 {
     std::ostringstream wherestr;
@@ -213,7 +225,7 @@ std::string PlayerDumpWriter::GenerateWhereStr(char const* field, GUIDs const& g
     {
         wherestr << *itr;
 
-        if (wherestr.str().size() > MAX_QUERY_LEN - 50)     // near to max query
+        if (wherestr.str().size() > MAX_QUERY_LEN - 50)     // near to max query (接近 SQL 查询最大长度上限时截断并留给下一批)
         {
             ++itr;
             break;
@@ -227,6 +239,7 @@ std::string PlayerDumpWriter::GenerateWhereStr(char const* field, GUIDs const& g
     return wherestr.str();
 }
 
+// 从结果集指定整型列收集非零 GUID
 void StoreGUID(QueryResult* result, uint32 field, std::set<uint32>& guids)
 {
     Field* fields = result->Fetch();
@@ -235,6 +248,7 @@ void StoreGUID(QueryResult* result, uint32 field, std::set<uint32>& guids)
         guids.insert(guid);
 }
 
+// 从空格分隔的字段串（如 item_instance.data）指定下标提取非零 GUID
 void StoreGUID(QueryResult* result, uint32 data, uint32 field, std::set<uint32>& guids)
 {
     Field* fields = result->Fetch();
@@ -244,7 +258,8 @@ void StoreGUID(QueryResult* result, uint32 data, uint32 field, std::set<uint32>&
         guids.insert(guid);
 }
 
-// Writing - High-level functions
+// Writing - High-level functions (角色导出高层函数)
+// 导出指定表内容到转储字符串，并按表类型收集需要级联导出的子 GUID
 void PlayerDumpWriter::DumpTableContent(std::string& dump, uint32 guid, char const* tableFrom, char const* tableTo, DumpTableType type)
 {
     GUIDs const* guids = nullptr;
@@ -264,7 +279,7 @@ void PlayerDumpWriter::DumpTableContent(std::string& dump, uint32 guid, char con
         default:            fieldname = "guid";                      break;
     }
 
-    // for guid set stop if set is empty
+    // for guid set stop if set is empty (关联 GUID 集合为空则跳过查询)
     if (guids && guids->empty())
         return;                                             // nothing to do
 
@@ -277,9 +292,9 @@ void PlayerDumpWriter::DumpTableContent(std::string& dump, uint32 guid, char con
     {
         std::string wherestr;
 
-        if (guids)                                          // set case, get next guids string
+        if (guids)                                          // set case, get next guids string (集合模式：构造分批 IN 查询)
             wherestr = GenerateWhereStr(fieldname, *guids, guids_itr);
-        else                                                // not set case, get single guid string
+        else                                                // not set case, get single guid string (单值模式：按角色 GUID 查询)
             wherestr = GenerateWhereStr(fieldname, guid);
 
         auto queryResult = CharacterDatabase.PQuery("SELECT * FROM %s WHERE %s", tableFrom, wherestr.c_str());
@@ -288,21 +303,21 @@ void PlayerDumpWriter::DumpTableContent(std::string& dump, uint32 guid, char con
 
         do
         {
-            // collect guids
+            // collect guids (收集关联的子对象 GUID/ID 供后续表导出使用)
             switch (type)
             {
                 case DTT_INVENTORY:
-                    StoreGUID(queryResult.get(), 3, items); break;     // item guid collection
+                    StoreGUID(queryResult.get(), 3, items); break;     // item guid collection (背包物品 GUID)
                 case DTT_ITEM:
                     StoreGUID(queryResult.get(), 0, ITEM_FIELD_ITEM_TEXT_ID, texts); break;
-                // item text id collection
+                // item text id collection (物品附带文本 ID)
                 case DTT_PET:
-                    StoreGUID(queryResult.get(), 0, pets);  break;     // pet petnumber collection (character_pet.id)
+                    StoreGUID(queryResult.get(), 0, pets);  break;     // pet petnumber collection (character_pet.id) (宠物编号)
                 case DTT_MAIL:
-                    StoreGUID(queryResult.get(), 0, mails);            // mail id collection (mail.id)
-                    StoreGUID(queryResult.get(), 7, texts); break;     // item text id collection
+                    StoreGUID(queryResult.get(), 0, mails);            // mail id collection (mail.id) (邮件 ID)
+                    StoreGUID(queryResult.get(), 7, texts); break;     // item text id collection (邮件正文 ID)
                 case DTT_MAIL_ITEM:
-                    StoreGUID(queryResult.get(), 1, items); break;     // item guid collection (mail_items.item_guid)
+                    StoreGUID(queryResult.get(), 1, items); break;     // item guid collection (mail_items.item_guid) (邮件附件物品 GUID)
                 default:                       break;
             }
 
@@ -314,6 +329,7 @@ void PlayerDumpWriter::DumpTableContent(std::string& dump, uint32 guid, char con
     while (guids && guids_itr != guids->end());             // not set case iterate single time, set case iterate for all guids
 }
 
+// 生成指定角色完整的 SQL 转储文本（包含数据库版本校验守卫语句）
 std::string PlayerDumpWriter::GetDump(uint32 guid)
 {
     std::string dump;
@@ -321,7 +337,7 @@ std::string PlayerDumpWriter::GetDump(uint32 guid)
     dump += "IMPORTANT NOTE: This sql queries not created for apply directly, use '.pdump load' command in console or client chat instead.\n";
     dump += "IMPORTANT NOTE: NOT APPLY ITS DIRECTLY to character DB or you will DAMAGE and CORRUPT character DB\n\n";
 
-    // revision check guard
+    // revision check guard (写入 character_db_version 版本字段校验守卫)
     QueryNamedResult* result = CharacterDatabase.QueryNamed("SELECT * FROM character_db_version LIMIT 1");
     if (result)
     {
@@ -338,7 +354,7 @@ std::string PlayerDumpWriter::GetDump(uint32 guid)
 
         if (!reqName.empty())
         {
-            // this will fail at wrong character DB version
+            // this will fail at wrong character DB version (若目标库版本不匹配则使导入失败)
             dump += "UPDATE character_db_version SET " + reqName + " = 1 WHERE FALSE;\n\n";
         }
         else
@@ -358,6 +374,7 @@ std::string PlayerDumpWriter::GetDump(uint32 guid)
     return dump;
 }
 
+// 将角色转储 SQL 写入指定文件
 DumpReturn PlayerDumpWriter::WriteDump(const std::string& file, uint32 guid)
 {
     FILE* fout = fopen(file.c_str(), "w");
@@ -371,14 +388,15 @@ DumpReturn PlayerDumpWriter::WriteDump(const std::string& file, uint32 guid)
     return DUMP_SUCCESS;
 }
 
-// Reading - High-level functions
+// Reading - High-level functions (角色导入高层函数)
 #define ROLLBACK(DR) {CharacterDatabase.RollbackTransaction(); fclose(fin); return (DR);}
 
+// 从转储文件读取 SQL 并在事务内重映射角色、物品、宠物、邮件及文本 GUID 后导入数据库
 DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, std::string name, uint32 guid)
 {
-    bool nameInvalidated = false;                           // set when name changed or will requested changed at next login
+    bool nameInvalidated = false;                           // set when name changed or will requested changed at next login (若改名或强制下次登录改名，则忽略变格名表)
 
-    // check character count
+    // check character count (检查目标账号是否已达到单服 10 个角色上限)
     uint32 charcount = sAccountMgr.GetCharactersCount(account);
     if (charcount >= 10)
         return DUMP_TOO_MANY_CHARS;
@@ -389,7 +407,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
 
     char newguid[20], chraccount[20], newpetid[20], currpetid[20], lastpetid[20];
 
-    // make sure the same guid doesn't already exist and is safe to use
+    // make sure the same guid doesn't already exist and is safe to use (确保分配的角色 GUID 未被占用)
     bool incHighest = true;
     if (guid != 0 && guid < sObjectMgr.m_CharGuids.GetNextAfterMaxUsed())
     {
@@ -403,7 +421,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
     else
         guid = sObjectMgr.m_CharGuids.GetNextAfterMaxUsed();
 
-    // normalize the name if specified and check if it exists
+    // normalize the name if specified and check if it exists (规范化并校验指定的新角色名是否可用)
     if (!normalizePlayerName(name))
         name.clear();
 
@@ -413,7 +431,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
         auto queryResult = CharacterDatabase.PQuery("SELECT * FROM characters WHERE name = '%s'", name.c_str());
         if (queryResult)
         {
-            name.clear();                                   // use the one from the dump
+            name.clear();                                   // use the one from the dump (新名字冲突则回退使用转储文件中的原名)
         }
     }
     else
@@ -431,7 +449,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
     std::map<uint32, uint32> itemTexts;
     char buf[32000] = "";
 
-    typedef std::map<uint32, uint32> PetIds;                // old->new petid relation
+    typedef std::map<uint32, uint32> PetIds;                // old->new petid relation (旧宠物编号到新宠物编号的映射)
     typedef PetIds::value_type PetIdsPair;
     PetIds petids;
 
@@ -446,16 +464,16 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
 
         std::string line; line.assign(buf);
 
-        // skip empty strings
+        // skip empty strings (跳过空行)
         size_t nw_pos = line.find_first_not_of(" \t\n\r\7");
         if (nw_pos == std::string::npos)
             continue;
 
-        // skip NOTE
+        // skip NOTE (跳过文件头警示注释)
         if (line.substr(nw_pos, 15) == "IMPORTANT NOTE:")
             continue;
 
-        // add required_ check
+        // add required_ check (执行数据库版本守卫检查语句)
         if (line.substr(nw_pos, 41) == "UPDATE character_db_version SET required_")
         {
             if (!CharacterDatabase.Execute(line.c_str()))
@@ -464,7 +482,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
             continue;
         }
 
-        // determine table name and load type
+        // determine table name and load type (提取表名并匹配对应的重映射处理方式)
         std::string tn = gettablename(line);
         if (tn.empty())
         {
@@ -472,7 +490,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
             ROLLBACK(DUMP_FILE_BROKEN);
         }
 
-        DumpTableType type = DTT_CHARACTER;                 // Fixed: Using uninitialized memory 'type'
+        DumpTableType type = DTT_CHARACTER;                 // Fixed: Using uninitialized memory 'type' (初始化默认值避免未初始化警告)
         DumpTable* dTable = &dumpTables[0];
         for (; dTable->isValid(); ++dTable)
         {
@@ -489,18 +507,18 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
             ROLLBACK(DUMP_FILE_BROKEN);
         }
 
-        bool execute_ok = true;                             // false, if need skip soem query
+        bool execute_ok = true;                             // false, if need skip soem query (若为 false 则跳过执行本条 SQL)
 
-        // change the data to server values
+        // change the data to server values (按表类型重写各主键/外键字段为新服值)
         switch (type)
         {
             case DTT_CHAR_TABLE:
-                if (!changenth(line, 1, newguid))           // character_*.guid update
+                if (!changenth(line, 1, newguid))           // character_*.guid update (更新角色 GUID)
                     ROLLBACK(DUMP_FILE_BROKEN);
                 break;
 
             case DTT_CHAR_NAME_TABLE:
-                if (nameInvalidated)                        // ignore declined names if name will changed in some way
+                if (nameInvalidated)                        // ignore declined names if name will changed in some way (若角色名已改变则跳过变格名记录)
                 {
                     execute_ok = false;
                     break;
@@ -520,7 +538,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
 
                 if (name.empty())
                 {
-                    // check if the original name already exists
+                    // check if the original name already exists (未指定新名时检查原角色名是否冲突，冲突则强制下次登录改名)
                     name = getnth(line, 3);                 // characters.name
                     CharacterDatabase.escape_string(name);
 
@@ -556,7 +574,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
             }
             case DTT_ITEM:
             {
-                // item, owner
+                // item, owner (重映射物品实例 GUID 与所属玩家 GUID)
                 if (!changeGuid(line, 1, items, sObjectMgr.m_ItemGuids.GetNextAfterMaxUsed()))
                     ROLLBACK(DUMP_FILE_BROKEN);             // item_instance.guid update
                 if (!changenth(line, 2, newguid))           // item_instance.owner_guid update
@@ -582,7 +600,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
             }
             case DTT_PET:
             {
-                // store a map of old pet id to new inserted pet id for use by type 5 tables
+                // store a map of old pet id to new inserted pet id for use by type 5 tables (建立旧宠物编号到新宠物编号的映射供宠物附属表使用)
                 snprintf(currpetid, 20, "%s", getnth(line, 1).c_str());
                 if (lastpetid[0] == '\0')
                     snprintf(lastpetid, 20, "%s", currpetid);
@@ -611,7 +629,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
             {
                 snprintf(currpetid, 20, "%s", getnth(line, 1).c_str());
 
-                // lookup currpetid and match to new inserted pet id
+                // lookup currpetid and match to new inserted pet id (查找映射后的新宠物编号)
                 std::map<uint32, uint32> :: const_iterator petids_iter = petids.find(atoi(currpetid));
                 if (petids_iter == petids.end())            // couldn't find new inserted id
                     ROLLBACK(DUMP_FILE_BROKEN);
@@ -664,7 +682,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
             }
             case DTT_ITEM_TEXT:                             // item_text
             {
-                // id
+                // id (重映射物品/邮件文本 ID 并加入内存缓存)
                 if (!changeGuid(line, 1, itemTexts, sObjectMgr.m_ItemTextIds.GetNextAfterMaxUsed()))
                     ROLLBACK(DUMP_FILE_BROKEN);
 
@@ -686,6 +704,7 @@ DumpReturn PlayerDumpReader::LoadDump(const std::string& file, uint32 account, s
     CharacterDatabase.CommitTransaction();
 
     // FIXME: current code with post-updating guids not safe for future per-map threads
+    // 事务提交后更新全局 GUID 分配器高水位线（注意：非线程安全）
     sObjectMgr.m_ItemGuids.Set(sObjectMgr.m_ItemGuids.GetNextAfterMaxUsed() + items.size());
     sObjectMgr.m_MailIds.Set(sObjectMgr.m_MailIds.GetNextAfterMaxUsed() +  mails.size());
     sObjectMgr.m_ItemTextIds.Set(sObjectMgr.m_ItemTextIds.GetNextAfterMaxUsed() + itemTexts.size());

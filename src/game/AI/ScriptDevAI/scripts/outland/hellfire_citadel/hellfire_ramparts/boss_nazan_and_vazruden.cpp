@@ -21,11 +21,17 @@ SDComment: Bellowing Roar Timer (heroic) needs some love
 SDCategory: Hellfire Citadel, Hellfire Ramparts
 EndScriptData */
 
+// 传令官瓦兹德与纳赞（地狱火城墙最终首领）
+/* 遭遇战概述：
+ * 传令官瓦兹德与虚空幼龙纳赞协同作战，初阶段瓦兹德在地面迎战，纳赞在上空俯冲喷火；瓦兹德血量低后纳赞落地加入地面混战。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "hellfire_ramparts.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_INTRO               = 13981,
@@ -82,6 +88,7 @@ const Position flyingPositions[] =
 const Position landingPhasePos = { -1429.172f, 1749.129f, 84.3476f, 100.f };
 const Position landedPhasePos = { -1429.172f, 1749.129f, 81.26282f, 100.f };
 
+// NazanActions 相关枚举
 enum NazanActions
 {
     NAZAN_LAND,
@@ -96,6 +103,7 @@ enum NazanActions
 
 // This is the flying mob ("mounted" on dragon) spawned initially
 // This npc will morph into the "unmounted" dragon (nazan) after vazruden is summoned and continue flying
+// boss_vazruden_heraldAI 逻辑实现
 struct boss_vazruden_heraldAI : public CombatAI
 {
     boss_vazruden_heraldAI(Creature* creature) : CombatAI(creature, NAZAN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -127,6 +135,7 @@ struct boss_vazruden_heraldAI : public CombatAI
     ObjectGuid m_lastSeenPlayerGuid;
     ObjectGuid m_vazrudenGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -145,6 +154,7 @@ struct boss_vazruden_heraldAI : public CombatAI
         m_creature->SetImmobilizedState(false);
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -286,6 +296,7 @@ struct boss_vazruden_heraldAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() != NPC_VAZRUDEN)
@@ -299,18 +310,21 @@ struct boss_vazruden_heraldAI : public CombatAI
             m_instance->SetData(TYPE_VAZRUDEN, IN_PROGRESS);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
             m_instance->SetData(TYPE_NAZAN, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_NAZAN, FAIL);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -372,6 +386,7 @@ struct boss_vazruden_heraldAI : public CombatAI
     }
 };
 
+// VazrudenActions 相关枚举
 enum VazrudenActions
 {
     VAZRUDEN_PHASE_2,
@@ -380,6 +395,7 @@ enum VazrudenActions
 };
 
 // This is the summoned boss ("dismounted") that starts attacking the players
+// boss_vazrudenAI 逻辑实现
 struct boss_vazrudenAI : public CombatAI
 {
     boss_vazrudenAI(Creature* creature) : CombatAI(creature, VAZRUDEN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -399,6 +415,7 @@ struct boss_vazrudenAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_inRegularMode;
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 2))
@@ -418,6 +435,7 @@ struct boss_vazrudenAI : public CombatAI
                 nazan->AI()->EnterEvadeMode();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -439,12 +457,14 @@ struct boss_vazrudenAI : public CombatAI
         SetActionReadyStatus(VAZRUDEN_PHASE_2, false);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_VAZRUDEN, FAIL);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -470,6 +490,7 @@ struct boss_vazrudenAI : public CombatAI
     }
 };
 
+// VazrudenLiquidFire 法术脚本
 struct VazrudenLiquidFire : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const
@@ -485,8 +506,10 @@ struct VazrudenLiquidFire : public SpellScript
     }
 };
 
+// FaceHighestThreat 法术脚本
 struct FaceHighestThreat : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* caster = spell->GetCaster();
@@ -495,6 +518,7 @@ struct FaceHighestThreat : public SpellScript
     }
 };
 
+// 注册 boss_nazan_and_vazruden 脚本
 void AddSC_boss_nazan_and_vazruden()
 {
     Script* pNewScript = new Script;

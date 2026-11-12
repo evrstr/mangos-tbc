@@ -108,6 +108,7 @@ Guild::~Guild()
     DeleteGuildBankItems();
 }
 
+/// 创建新公会：校验名称、分配 ID、写入数据库并初始化默认职级与会长成员
 bool Guild::Create(Player* leader, std::string gname)
 {
     if (sGuildMgr.GetGuildByName(gname))
@@ -162,6 +163,7 @@ bool Guild::Create(Player* leader, std::string gname)
     return AddMember(m_LeaderGuid, (uint32)GR_GUILDMASTER);
 }
 
+/// 创建默认的 5 个基础公会职级（会长/官员/老兵/成员/新兵）
 void Guild::CreateDefaultGuildRanks(int locale_idx)
 {
     CharacterDatabase.PExecute("DELETE FROM guild_rank WHERE guildid='%u'", m_Id);
@@ -176,6 +178,7 @@ void Guild::CreateDefaultGuildRanks(int locale_idx)
     SetBankMoneyPerDay((uint32)GR_GUILDMASTER, WITHDRAW_MONEY_UNLIMITED);
 }
 
+/// 添加新成员到公会（支持在线与离线玩家），清理其他公会请愿书签名并同步入库
 bool Guild::AddMember(ObjectGuid plGuid, uint32 plRank)
 {
     Player* pl = sObjectMgr.GetPlayer(plGuid);
@@ -281,6 +284,7 @@ void Guild::SetGINFO(std::string ginfo)
     CharacterDatabase.PExecute("UPDATE guild SET info='%s' WHERE guildid='%u'", ginfo.c_str(), m_Id);
 }
 
+/// 从数据库查询行恢复公会基本属性
 bool Guild::LoadGuildFromDB(QueryResult* guildDataResult)
 {
     if (!guildDataResult)
@@ -319,6 +323,7 @@ bool Guild::LoadGuildFromDB(QueryResult* guildDataResult)
     return true;
 }
 
+/// 校验公会成员与职级结构完整性（如缺失成员或会长则判定异常）
 bool Guild::CheckGuildStructure()
 {
     // Repair the structure of guild
@@ -504,6 +509,7 @@ bool Guild::LoadMembersFromDB(QueryResult* guildMembersResult)
     return true;
 }
 
+/// 转移会长职位：原会长降为 1 级官员，新任者升为 0 级会长
 void Guild::SetLeader(ObjectGuid guid)
 {
     MemberSlot* slot = GetMemberSlot(guid);
@@ -524,6 +530,7 @@ void Guild::SetLeader(ObjectGuid guid)
  *
  * @return true, if guild need to be disband and erase (no members or can't setup leader)
  */
+/// 从公会移除指定成员（非解散情况下若删到会长则触发解散）
 bool Guild::DelMember(ObjectGuid guid, bool isDisbanding)
 {
     uint32 lowguid = guid.GetCounter();
@@ -731,6 +738,7 @@ void Guild::SetRankRights(uint32 rankId, uint32 rights)
 
 /**
  * Disband guild including cleanup structures and DB
+ * 解散公会并清理内存与数据库中的所有关联数据（调用方需在之后释放或移除对象）
  *
  * Note: guild object need deleted after this in caller code.
  */
@@ -760,6 +768,7 @@ void Guild::Disband()
     sGuildMgr.RemoveGuild(m_Id);
 }
 
+/// 发送或广播公会花名册数据包（含职级权限、银行页权限及成员在线/离线详情）
 void Guild::Roster(WorldSession* session /*= nullptr*/)
 {
     // we can only guess size
@@ -816,6 +825,7 @@ void Guild::Roster(WorldSession* session /*= nullptr*/)
     DEBUG_LOG("WORLD: Sent (SMSG_GUILD_ROSTER)");
 }
 
+/// 响应客户端查询公会基础信息（名称、各职级名与战袍徽章样式）
 void Guild::Query(WorldSession* session)
 {
     WorldPacket data(SMSG_GUILD_QUERY_RESPONSE, (8 * 32 + 200)); // we can only guess size
@@ -938,6 +948,7 @@ void Guild::LoadGuildEventLogFromDB()
 }
 
 // Add entry to guild eventlog
+/// 记录一条公会事件日志并按配置上限滚动覆盖旧记录
 void Guild::LogGuildEvent(uint8 EventType, ObjectGuid playerGuid1, ObjectGuid playerGuid2, uint8 newRank)
 {
     GuildEventLogEntry NewEvent;
@@ -964,6 +975,7 @@ void Guild::LogGuildEvent(uint8 EventType, ObjectGuid playerGuid1, ObjectGuid pl
 // Guild Bank part
 // *************************************************
 // Bank content related
+/// 发送指定公会银行标签页的物品内容给客户端
 void Guild::DisplayGuildBankContent(WorldSession* session, uint8 TabId)
 {
     GuildBankTab const& tab = m_TabList[TabId];
@@ -1156,6 +1168,7 @@ uint32 Guild::GetBankRights(uint32 rankId, uint8 TabId) const
 // Guild bank loading related
 
 // This load should be called on startup only
+/// 从数据库加载所有公会银行标签页及存放物品
 void Guild::LoadGuildBankFromDB()
 {
     //                                                     0      1        2        3
@@ -1242,6 +1255,7 @@ void Guild::SendMoneyInfo(WorldSession* session, uint32 LowGuid)
     DEBUG_LOG("WORLD: Sent MSG_GUILD_BANK_MONEY_WITHDRAWN");
 }
 
+/// 扣减成员当日公会银行金币提取额度（按 24 小时重置）
 bool Guild::MemberMoneyWithdraw(uint32 amount, uint32 LowGuid)
 {
     uint32 MoneyWithDrawRight = GetMemberMoneyWithdrawRem(LowGuid);
@@ -1275,6 +1289,7 @@ void Guild::SetBankMoney(int64 money)
 // *************************************************
 // Item per day and money per day related
 
+/// 扣减成员当日在指定银行页的物品提取次数（按 24 小时重置）
 bool Guild::MemberItemWithdraw(uint8 TabId, uint32 LowGuid)
 {
     uint32 SlotsWithDrawRight = GetMemberSlotWithdrawRem(LowGuid, TabId);
@@ -1935,6 +1950,7 @@ void Guild::SendGuildBankTabText(WorldSession* session, uint8 TabId)
         BroadcastPacket(data);
 }
 
+/// 在公会银行内部移动、拆分、合并或交换物品（跨页时检查存/取权限）
 void Guild::SwapItems(Player* pl, uint8 BankTab, uint8 BankTabSlot, uint8 BankTabDst, uint8 BankTabSlotDst, uint32 SplitedAmount)
 {
     // empty operation
@@ -2060,6 +2076,7 @@ void Guild::SwapItems(Player* pl, uint8 BankTab, uint8 BankTabSlot, uint8 BankTa
 }
 
 
+/// 将公会银行物品取出或拆分到玩家背包（或与背包物品交换）
 void Guild::MoveFromBankToChar(Player* pl, uint8 BankTab, uint8 BankTabSlot, uint8 PlayerBag, uint8 PlayerSlot, uint32 SplitedAmount)
 {
     Item* pItemBank = GetItem(BankTab, BankTabSlot);
@@ -2211,6 +2228,7 @@ void Guild::MoveFromBankToChar(Player* pl, uint8 BankTab, uint8 BankTabSlot, uin
 }
 
 
+/// 将玩家背包物品存入或合并到公会银行（或与银行物品交换）
 void Guild::MoveFromCharToBank(Player* pl, uint8 PlayerBag, uint8 PlayerSlot, uint8 BankTab, uint8 BankTabSlot, uint32 SplitedAmount)
 {
     Item* pItemBank = GetItem(BankTab, BankTabSlot);
@@ -2373,6 +2391,7 @@ ObjectGuid Guild::GetGuildInviter(ObjectGuid playerGuid) const
     return ObjectGuid();
 }
 
+/// 向所有在线成员广播公会事件通知（升职、降职、入退会、上线下线、银行变动等）
 void Guild::BroadcastEvent(GuildEvents event, ObjectGuid guid, char const* str1 /*=nullptr*/, char const* str2 /*=nullptr*/, char const* str3 /*=nullptr*/)
 {
     uint8 strCount = !str1 ? 0 : (!str2 ? 1 : (!str3 ? 2 : 3));

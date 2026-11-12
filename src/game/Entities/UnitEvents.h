@@ -28,35 +28,38 @@ class HostileReference;
 //==============================================================
 //==============================================================
 
+// 单位仇恨事件类型枚举
 enum UnitThreatEventType
 {
-    // Player/Pet changed on/offline status
+    // Player/Pet changed on/offline status (玩家或宠物在线/离线状态发生变更)
     UEV_THREAT_REF_ONLINE_STATUS        = 1 << 0,
 
-    // Threat for Player/Pet changed
+    // Threat for Player/Pet changed (玩家或宠物的仇恨值发生变化)
     UEV_THREAT_REF_THREAT_CHANGE        = 1 << 1,
 
-    // Player/Pet will be removed from list (dead) [for internal use]
+    // Player/Pet will be removed from list (dead) [for internal use] (玩家或宠物死亡后从仇恨列表移除，内部使用)
     UEV_THREAT_REF_REMOVE_FROM_LIST     = 1 << 2,
 
-    // Player/Pet entered/left  water or some other place where it is/was not accessible for the creature
+    // Player/Pet entered/left  water or some other place where it is/was not accessible for the creature (玩家或宠物进出水中或其他生物不可达区域导致可达性变化)
     UEV_THREAT_REF_ASSECCIBLE_STATUS    = 1 << 3,
 
-    // Suppressed state was updated
+    // Suppressed state was updated (仇恨抑制状态更新)
     UEV_THREAT_REF_SUPPRESSED_STATUS    = 1 << 4,
 };
 
+// 监听的仇恨引用事件组合掩码
 #define UEV_THREAT_REF_EVENT_MASK ( UEV_THREAT_REF_ONLINE_STATUS | UEV_THREAT_REF_THREAT_CHANGE | UEV_THREAT_REF_REMOVE_FROM_LIST | UEV_THREAT_REF_ASSECCIBLE_STATUS)
 
-// Future use
+// Future use (预留扩展定义)
 //#define UEV_UNIT_EVENT_MASK (UEV_UNIT_KILLED | UEV_UNIT_HEALTH_CHANGE)
 
 //==============================================================
 
+// 单位事件基类（封装事件类型位标识）
 class UnitBaseEvent
 {
     private:
-        uint32 iType;
+        uint32 iType;                                       // 事件类型位标识
     public:
         UnitBaseEvent(uint32 pType) { iType = pType; }
         uint32 getType() const { return iType; }
@@ -67,17 +70,18 @@ class UnitBaseEvent
 
 //==============================================================
 
+// 仇恨引用状态变更事件（由 HostileReference 触发通知 ThreatManager）
 class ThreatRefStatusChangeEvent : public UnitBaseEvent
 {
     private:
-        HostileReference* iHostileReference;
+        HostileReference* iHostileReference;                // 发生状态变更的敌对引用对象
         union
         {
-            float iFValue;
-            int32 iIValue;
-            bool iBValue;
+            float iFValue;                                  // 浮点型事件附加值（如仇恨变化量）
+            int32 iIValue;                                  // 整型事件附加值
+            bool iBValue;                                   // 布尔型事件附加值（如在线/可达状态）
         };
-        ThreatManager* iThreatManager;
+        ThreatManager* iThreatManager;                      // 关联的仇恨管理器
     public:
         ThreatRefStatusChangeEvent(uint32 pType) : UnitBaseEvent(pType), iThreatManager(nullptr)
         { iHostileReference = nullptr; }
@@ -108,10 +112,11 @@ class ThreatRefStatusChangeEvent : public UnitBaseEvent
 
 //==============================================================
 
+// 仇恨管理器级事件（附加指向 ThreatContainer 的指针）
 class ThreatManagerEvent : public ThreatRefStatusChangeEvent
 {
     private:
-        ThreatContainer* iThreatContainer;
+        ThreatContainer* iThreatContainer;                  // 关联的仇恨容器
     public:
         ThreatManagerEvent(uint32 pType) : ThreatRefStatusChangeEvent(pType), iThreatContainer(nullptr)
         {}

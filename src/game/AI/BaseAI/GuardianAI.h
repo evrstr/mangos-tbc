@@ -28,21 +28,22 @@
 class Creature;
 class Spell;
 
+// 守护者（非玩家直接操控的召唤随从/生物宠物）AI：继承 CreatureEventAI 以支持事件脚本与主人协同战斗
 class GuardianAI : public CreatureEventAI
 {
     public:
 
         explicit GuardianAI(Creature* creature);
-        static int Permissible(const Creature* creature);
+        static int Permissible(const Creature* creature);               // 判定生物是否为守护者类型
 
         //bool IsControllable() const override { return true; }
-        virtual void JustRespawned() override;
-        virtual void EnterEvadeMode() override;
-        virtual void UpdateAI(const uint32 diff) override;
+        virtual void JustRespawned() override;                          // 召唤/重生时按主人阵营状态及当前目标自动跟进攻击
+        virtual void EnterEvadeMode() override;                         // 脱战后恢复跟随主人
+        virtual void UpdateAI(const uint32 diff) override;              // 同步主人战斗状态、自动索敌与执行事件/法术动作
 
-        void JustDied(Unit* killer) override;
+        void JustDied(Unit* killer) override;                           // 死亡时清理事件队列与死亡状态
 
-        void OnUnsummon() override;
+        void OnUnsummon() override;                                     // 取消召唤时清理跟随关系
     protected:
         std::string GetAIName() override { return "GuardianAI"; }
 };

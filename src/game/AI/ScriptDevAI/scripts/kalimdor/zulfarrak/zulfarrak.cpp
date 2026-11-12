@@ -21,6 +21,10 @@ SDComment:
 SDCategory: Zul'Farrak
 EndScriptData */
 
+/**
+ * 祖尔法拉克：百人斩金字塔救援事件与水塘召唤多兹夏拉脚本
+ */
+
 /* ContentData
 event_go_zulfarrak_gong
 event_spell_unlocking
@@ -65,7 +69,7 @@ bool ProcessEventId_event_spell_unlocking(uint32 /*uiEventId*/, Object* pSource,
             if (pInstance->GetData(TYPE_PYRAMID_EVENT) == NOT_STARTED)
             {
                 pInstance->SetData(TYPE_PYRAMID_EVENT, IN_PROGRESS);
-                return false;                               // Summon pyramid trolls by Database Script
+                return false;                               // Summon pyramid trolls by Database Script (召唤)
             }
             return true;
         }
@@ -102,7 +106,7 @@ bool AreaTrigger_at_zulfarrak(Player* pPlayer, AreaTriggerEntry const* pAt)
     return false;
 }
 
-void AddSC_zulfarrak()
+void AddSC_zulfarrak() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "event_go_zulfarrak_gong";

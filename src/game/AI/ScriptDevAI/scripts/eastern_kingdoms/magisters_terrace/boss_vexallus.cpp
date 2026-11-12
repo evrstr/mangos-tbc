@@ -21,46 +21,50 @@ SDComment: Timers.
 SDCategory: Magister's Terrace
 EndScriptData */
 
+// 维萨鲁斯（Vexallus）2号首领战 AI（召唤纯净能量与能量过载反馈）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "magisters_terrace.h"
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                       = -1585007,
-    SAY_ENERGY                      = -1585008,
-    SAY_OVERLOAD                    = -1585009,
-    SAY_KILL                        = 25627,
-    EMOTE_DISCHARGE_ENERGY          = -1585011,
-    EMOTE_OVERLOAD                  = -1585031,
+    SAY_AGGRO                       = -1585007,             // 开战 台词广播 ID
+    SAY_ENERGY                      = -1585008,             // energy 台词广播 ID
+    SAY_OVERLOAD                    = -1585009,             // overload 台词广播 ID
+    SAY_KILL                        = 25627,                // 击杀 台词广播 ID
+    EMOTE_DISCHARGE_ENERGY          = -1585011,             // dischargeenergy 表情动作 ID
+    EMOTE_OVERLOAD                  = -1585031,             // overload 表情动作 ID
 
     // Pure energy spell info
-    SPELL_ENERGY_BOLT_PERIODIC      = 46156,
+    SPELL_ENERGY_BOLT_PERIODIC      = 46156,                // energy箭periodic 法术 ID
     SPELL_ENERGY_FEEDBACK_CHANNELED = 44328, // Channel
     SPELL_ENERGY_FEEDBACK_DEBUFF    = 44335, // The actual debuff
     //SPELL_ENERGY_FEEDBACK_VISUAL    = 44339, // Visual procced by 44328
 
-    SPELL_ENERGY_PASSIVE            = 44326,
-    SPELL_ENERGY_BOLT               = 44342,
+    SPELL_ENERGY_PASSIVE            = 44326,                // energypassive 法术 ID
+    SPELL_ENERGY_BOLT               = 44342,                // energy箭 法术 ID
 
-    // Vexallus spell info
-    SPELL_CHAIN_LIGHTNING           = 44318,
-    SPELL_CHAIN_LIGHTNING_H         = 46380,                // heroic spell
-    SPELL_OVERLOAD                  = 44352,
-    SPELL_ARCANE_SHOCK              = 44319,
-    SPELL_ARCANE_SHOCK_H            = 46381,                // heroic spell
+    // Vexallus spell info (维萨鲁斯法术info)
+    SPELL_CHAIN_LIGHTNING           = 44318,                // 连环闪电 法术 ID
+    SPELL_CHAIN_LIGHTNING_H         = 46380,                // heroic spell (heroic法术)
+    SPELL_OVERLOAD                  = 44352,                // overload 法术 ID
+    SPELL_ARCANE_SHOCK              = 44319,                // 奥术震击 法术 ID
+    SPELL_ARCANE_SHOCK_H            = 46381,                // heroic spell (heroic法术)
 
     SPELL_SUMMON_PURE_ENERGY        = 44322,                // mod scale -10
     SPELL_SUMMON_PURE_ENERGY1_H     = 46154,                // mod scale -5
     SPELL_SUMMON_PURE_ENERGY2_H     = 46159,                // mod scale -5
 
-    SPELL_CLEAR_ENERGY_FEEDBACK     = 47108,
+    SPELL_CLEAR_ENERGY_FEEDBACK     = 47108,                // clearenergyfeedback 法术 ID
 
-    // Creatures
-    NPC_PURE_ENERGY                 = 24745,
+    // Creatures (生物定义)
+    NPC_PURE_ENERGY                 = 24745,                // pureenergy Entry ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum VexallusActions
 {
     VEXALLUS_OVERLOAD,
@@ -70,6 +74,7 @@ enum VexallusActions
     VEXALLUS_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（vexallus）
 struct boss_vexallusAI : public CombatAI
 {
     boss_vexallusAI(Creature* creature) : CombatAI(creature, VEXALLUS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
@@ -97,6 +102,7 @@ struct boss_vexallusAI : public CombatAI
 
     GuidVector m_sparks;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -113,10 +119,11 @@ struct boss_vexallusAI : public CombatAI
         {
             case VEXALLUS_ACTION_CHAIN_LIGHTNING: return 8000;
             case VEXALLUS_ACTION_SHOCK: return 8000;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -141,6 +148,7 @@ struct boss_vexallusAI : public CombatAI
             m_instance->SetData(TYPE_VEXALLUS, IN_PROGRESS);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->CastSpell(nullptr, SPELL_ENERGY_BOLT_PERIODIC, TRIGGERED_OLD_TRIGGERED);
@@ -207,6 +215,7 @@ struct boss_vexallusAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：energy（pure_energy）
 struct mob_pure_energyAI : public ScriptedAI
 {
     mob_pure_energyAI(Creature* creature) : ScriptedAI(creature)
@@ -217,6 +226,7 @@ struct mob_pure_energyAI : public ScriptedAI
         Reset();
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
     void JustPreventedDeath(Unit* attacker) override
@@ -238,6 +248,7 @@ struct mob_pure_energyAI : public ScriptedAI
     }
 };
 
+// 法术脚本逻辑实现：clearenergyfeedback 法术 ID（spell_clear_energy_feedback）
 struct spell_clear_energy_feedback : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -247,6 +258,7 @@ struct spell_clear_energy_feedback : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_vexallus
 void AddSC_boss_vexallus()
 {
     Script* pNewScript = new Script;

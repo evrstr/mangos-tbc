@@ -21,11 +21,15 @@ SDComment: Placeholder
 SDCategory: Dun Morogh
 EndScriptData */
 
+// 丹莫罗（Dun Morogh）矮人与侏儒新手区域脚本
+
 /* ContentData
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 注册并载入脚本模块：dun_morogh
 void AddSC_dun_morogh()
 {
+    // 占位函数：当前该区域暂无特殊脚本逻辑
 }

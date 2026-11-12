@@ -20,10 +20,10 @@
 #define WORLD_STATE_DEFINES_H
 #include "Platform/Define.h"
 
-// corresponds to clientside data indices
+// corresponds to clientside data indices | 对应客户端 WorldState UI 索引常量定义
 enum WorldStateID : int32
 {
-    // Love is in the Air
+    // Love is in the Air | 情人节世界事件
     WORLD_STATE_LOVE_IS_IN_THE_AIR_THRALL           = 2200,
     WORLD_STATE_LOVE_IS_IN_THE_AIR_CAIRNE           = 2201,
     WORLD_STATE_LOVE_IS_IN_THE_AIR_SYLVANAS         = 2202,
@@ -34,7 +34,7 @@ enum WorldStateID : int32
     WORLD_STATE_LOVE_IS_IN_THE_AIR_TYRANDE          = 2205,
     WORLD_STATE_LOVE_IS_IN_THE_AIR_TOTAL_ALLIANCE   = 2206,
 
-    // Eastern Plaguelands Outdoor PVP
+    // Eastern Plaguelands Outdoor PVP | 东瘟疫之地野外 PvP 哨塔占领状态
     WORLD_STATE_EP_TOWER_COUNT_ALLIANCE = 2327,
     WORLD_STATE_EP_TOWER_COUNT_HORDE = 2328,
 
@@ -70,7 +70,7 @@ enum WorldStateID : int32
     WORLD_STATE_EP_CROWNGUARD_HORDE = 2379,
     WORLD_STATE_EP_CROWNGUARD_NEUTRAL = 2355,
 
-    // AQ War Effort
+    // AQ War Effort | 安其拉开门物资捐献战争事件
     WORLD_STATE_AQ_DAYS_LEFT = 2113,
 
     WORLD_STATE_AQ_COPPER_BARS_ALLY_NOW = 1997,
@@ -134,7 +134,7 @@ enum WorldStateID : int32
     WORLD_STATE_AQ_SINGED_CORESTONE_TOTAL = 2110,
     WORLD_STATE_AQ_SINGED_CORESTONE_HORDE_NOW = 2109,
 
-    // Scourge Invasion
+    // Scourge Invasion | 天灾入侵事件
     WORLD_STATE_SCOURGE_BATTLES_WON                     = 2219,
     // Zone icons    
     WORLD_STATE_SCOURGE_WINTERSPRING                    = 2259,
@@ -151,13 +151,13 @@ enum WorldStateID : int32
     WORLD_STATE_SCOURGE_NECROPOLIS_TANARIS              = 2283,
     WORLD_STATE_SCOURGE_NECROPOLIS_WINTERSPRING         = 2284,
 
-    // Silithus Outdoor PVP
+    // Silithus Outdoor PVP | 希利苏斯野外 PvP（水晶尘收集）
     // world states
     WORLD_STATE_SI_GATHERED_A = 2313,
     WORLD_STATE_SI_GATHERED_H = 2314,
     WORLD_STATE_SI_SILITHYST_MAX = 2317,
 
-    // Hellfire Peninsula Outdoor PVP
+    // Hellfire Peninsula Outdoor PVP | 地狱火半岛野外 PvP 占领点
     WORLD_STATE_HP_TOWER_DISPLAY_A = 2490,
     WORLD_STATE_HP_TOWER_DISPLAY_H = 2489,
     WORLD_STATE_HP_TOWER_COUNT_ALLIANCE = 2476,
@@ -175,7 +175,7 @@ enum WorldStateID : int32
     WORLD_STATE_HP_STADIUM_HORDE = 2470,
     WORLD_STATE_HP_STADIUM_NEUTRAL = 2472,
 
-    // Nagrand - Halaa Outdoor PVP
+    // Nagrand - Halaa Outdoor PVP | 纳格兰哈兰野外 PvP
     WORLD_STATE_NA_GUARDS_HORDE = 2503,
     WORLD_STATE_NA_GUARDS_ALLIANCE = 2502,
     WORLD_STATE_NA_GUARDS_MAX = 2493,
@@ -207,7 +207,7 @@ enum WorldStateID : int32
     WORLD_STATE_NA_HALAA_HORDE = 2672,
     WORLD_STATE_NA_HALAA_ALLIANCE = 2673,
 
-    // Terokkar Forest - Spirit Towers Outdoor PVP
+    // Terokkar Forest - Spirit Towers Outdoor PVP | 泰罗卡森林白骨荒野灵魂塔野外 PvP
     // tower counter before the lock event
     WORLD_STATE_TF_TOWER_COUNT_H = 2622,
     WORLD_STATE_TF_TOWER_COUNT_A = 2621,
@@ -244,7 +244,7 @@ enum WorldStateID : int32
     WORLD_STATE_TF_SOUTH_TOWER_HORDE = 2692,
     WORLD_STATE_TF_SOUTH_TOWER_NEUTRAL = 2693,
 
-    // Zangarmarsh - Graveyard Outdoor PVP
+    // Zangarmarsh - Graveyard Outdoor PVP | 赞加沼泽双塔墓地野外 PvP
     WORLD_STATE_ZM_BEACON_EAST_UI_ALLIANCE = 2558,
     WORLD_STATE_ZM_BEACON_EAST_UI_HORDE = 2559,
     WORLD_STATE_ZM_BEACON_EAST_UI_NEUTRAL = 2560,
@@ -305,8 +305,8 @@ enum WorldStateID : int32
     WORLD_STATE_DEATHS_DOOR_SOUTH_WARP_GATE_HEALTH = 2881,
     WORLD_STATE_DEATHS_DOOR_EVENT_ACTIVE           = 2889,
 
-    // Arenas
-    WORLD_STATE_ARENA_SEASON = 3191, // hardcoded in client
+    // Arenas | 竞技场存活人数与 HUD 状态
+    WORLD_STATE_ARENA_SEASON = 3191, // hardcoded in client | 客户端硬编码的竞技场赛季世界状态
 
     WORLD_STATE_ARENA_BE_ALLIANCE_ALIVE = 2545,
     WORLD_STATE_ARENA_BE_HORDE_ALIVE    = 2544,
@@ -326,7 +326,7 @@ enum WorldStateID : int32
 
     WORLD_STATE_BASHIR_TIMER_WOTLK = -4581, // Timer for TBC unknown - text ID stayed the same but content changed
 
-    // Suns Reach Reclamation
+    // Suns Reach Reclamation | 奎尔丹纳斯岛太阳之井高地阶段解锁进度
     WORLD_STATE_QUEL_DANAS_MUSIC        = 3426,
     WORLD_STATE_QUEL_DANAS_HARBOR       = 3238,
     WORLD_STATE_QUEL_DANAS_ALCHEMY_LAB  = 3223,
@@ -343,7 +343,7 @@ enum WorldStateID : int32
     // Shade of the Horseman
     WORLD_STATE_SHADE_OF_THE_HORSEMAN_TIMER = -4676,
 
-    // Custom Worldstates
+    // Custom Worldstates | 服务端自定义扩展世界状态（用于副本刷怪/事件控制）
     // Vanilla
     WORLD_STATE_CUSTOM_SPAWN_ANNORA    = 700001,
 

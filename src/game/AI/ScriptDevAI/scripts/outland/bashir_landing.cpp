@@ -22,6 +22,7 @@
 // Bashir Landing event scripts
 // also connected with world_map_scripts.cpp and WorldState
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     PATH_ID_BIG_PATH = 1,
@@ -36,6 +37,7 @@ enum
     SPELL_ETHEREAL_RING_SIGNAL_FLARE_BURST = 41293,
 };
 
+// npc_skyguard_aether_techAI 逻辑实现
 struct npc_skyguard_aether_techAI : public ScriptedAI
 {
     npc_skyguard_aether_techAI(Creature* creature) : ScriptedAI(creature)
@@ -44,11 +46,13 @@ struct npc_skyguard_aether_techAI : public ScriptedAI
         Reset();
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
 
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -109,6 +113,7 @@ struct npc_skyguard_aether_techAI : public ScriptedAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_WHIRLWIND = 38618,
@@ -124,12 +129,14 @@ enum
     SAY_AGGRO_7 = -1015061,
 };
 
+// RangerActions 相关枚举
 enum RangerActions
 {
     RANGER_COMBAT_ACTION_WHIRLWIND,
     RANGER_COMBAT_ACTION_MAX,
 };
 
+// npc_skyguard_rangerAI 逻辑实现
 struct npc_skyguard_rangerAI : public ScriptedAI
 {
     npc_skyguard_rangerAI(Creature* creature) : ScriptedAI(creature, RANGER_COMBAT_ACTION_MAX), m_spawnId(PATH_ID_DISMOUNT) // implicit default for lieutenant
@@ -140,6 +147,7 @@ struct npc_skyguard_rangerAI : public ScriptedAI
 
     uint32 m_spawnId;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         for (uint32 i = 0; i < RANGER_COMBAT_ACTION_MAX; ++i)
@@ -166,6 +174,7 @@ struct npc_skyguard_rangerAI : public ScriptedAI
         }
     }
 
+    // 接收 AI 事件通知回调
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 miscValue) override
     {
         if (eventType == AI_EVENT_CUSTOM_A)
@@ -205,6 +214,7 @@ struct npc_skyguard_rangerAI : public ScriptedAI
         }
     }
 
+    // 执行就绪的战斗动作
     void ExecuteActions() override
     {
         if (!CanExecuteCombatAction())
@@ -231,6 +241,7 @@ struct npc_skyguard_rangerAI : public ScriptedAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -243,6 +254,7 @@ struct npc_skyguard_rangerAI : public ScriptedAI
     }
 };
 
+// BashirVendors 相关枚举
 enum BashirVendors
 {
     PATH_ID_INITIAL = 1,
@@ -273,6 +285,7 @@ std::map<uint32, int32> vendorText =
     {23245, SAY_MASTER },
 };
 
+// npc_aether_tech_vendorAI 逻辑实现
 struct npc_aether_tech_vendorAI : public ScriptedAI
 {
     npc_aether_tech_vendorAI(Creature* creature) : ScriptedAI(creature, 0)
@@ -282,6 +295,7 @@ struct npc_aether_tech_vendorAI : public ScriptedAI
         Reset();
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
 
@@ -322,6 +336,7 @@ struct npc_aether_tech_vendorAI : public ScriptedAI
 
 // Bashir bosses
 
+// BashirFleshFiend 相关枚举
 enum BashirFleshFiend
 {
     SPELL_THRASH            = 3417,
@@ -334,6 +349,7 @@ enum BashirFleshFiend
     POINT_EAT_FRIEND = 1,
 };
 
+// FleshFiendActions 相关枚举
 enum FleshFiendActions
 {
     FIEND_ACTION_EAT_FRIEND,
@@ -343,6 +359,7 @@ enum FleshFiendActions
     FIEND_ACTION_EAT_FRIEND_END,
 };
 
+// npc_bashir_flesh_fiendAI 逻辑实现
 struct npc_bashir_flesh_fiendAI : public ScriptedAI
 {
     npc_bashir_flesh_fiendAI(Creature* creature) : ScriptedAI(creature, FIEND_ACTION_MAX)
@@ -360,6 +377,7 @@ struct npc_bashir_flesh_fiendAI : public ScriptedAI
 
     ObjectGuid m_slaveringSlave;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         for (uint32 i = 0; i < FIEND_ACTION_MAX; ++i)
@@ -405,6 +423,7 @@ struct npc_bashir_flesh_fiendAI : public ScriptedAI
         }
     }
 
+    // 执行就绪的战斗动作
     void ExecuteActions() override
     {
         if (!CanExecuteCombatAction())
@@ -461,6 +480,7 @@ struct npc_bashir_flesh_fiendAI : public ScriptedAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         UpdateTimers(diff, m_creature->IsInCombat());
@@ -473,6 +493,7 @@ struct npc_bashir_flesh_fiendAI : public ScriptedAI
     }
 };
 
+// DisruptorTower 相关枚举
 enum DisruptorTower
 {
     SPELL_CANNON_VISUAL       = 40858,
@@ -485,6 +506,7 @@ enum DisruptorTower
     SPELL_DISRUPTOR_EXPLOSION = 40799, // cast by bunny
 };
 
+// npc_disruptor_towerAI 逻辑实现
 struct npc_disruptor_towerAI : public ScriptedAI
 {
     npc_disruptor_towerAI(Creature* creature) : ScriptedAI(creature, 0)
@@ -500,6 +522,7 @@ struct npc_disruptor_towerAI : public ScriptedAI
         Reset();
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
 
@@ -513,17 +536,20 @@ struct npc_disruptor_towerAI : public ScriptedAI
         ResetTimer(0, 10000);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->CastSpell(m_creature, SPELL_BOLT_BURST, TRIGGERED_NONE);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         m_creature->CastSpell(nullptr, SPELL_CANNON_DEATH_VISUAL_START, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
+// GrandCollector 相关枚举
 enum GrandCollector
 {
     SPELL_BOSS_3_SPAWN_IN = 41569,
@@ -540,6 +566,7 @@ enum GrandCollector
     SAY_COLLECTOR_ATTACK = -1015051,
 };
 
+// GrandCollectorActions 相关枚举
 enum GrandCollectorActions
 {
     COLLECTOR_ACTION_MIRROR_IMAGE,
@@ -549,6 +576,7 @@ enum GrandCollectorActions
     COLLECTOR_ACTION_HANDLE_EVENT,
 };
 
+// npc_grand_collectorAI 逻辑实现
 struct npc_grand_collectorAI : public ScriptedAI
 {
     npc_grand_collectorAI(Creature* creature) : ScriptedAI(creature, COLLECTOR_COMBAT_ACTION_MAX), m_introEventId(0),
@@ -565,6 +593,7 @@ struct npc_grand_collectorAI : public ScriptedAI
     uint32 m_introEventId;
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         for (uint32 i = 0; i < COLLECTOR_COMBAT_ACTION_MAX; ++i)
@@ -627,6 +656,7 @@ struct npc_grand_collectorAI : public ScriptedAI
         DoScriptText(SAY_COLLECTOR_SPAWN, m_creature);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (Creature* tech = m_instance->GetSingleCreatureFromStorage(NPC_SKYGUARD_AETHER_TECH))
@@ -636,6 +666,7 @@ struct npc_grand_collectorAI : public ScriptedAI
         }
     }
 
+    // 执行就绪的战斗动作
     void ExecuteActions() override
     {
         if (!CanExecuteCombatAction())
@@ -680,6 +711,7 @@ struct npc_grand_collectorAI : public ScriptedAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         UpdateTimers(diff, m_creature->IsInCombat());
@@ -691,6 +723,7 @@ struct npc_grand_collectorAI : public ScriptedAI
     }
 };
 
+// EtherealRingSignalFlare 法术脚本
 struct EtherealRingSignalFlare : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
@@ -699,6 +732,7 @@ struct EtherealRingSignalFlare : public SpellScript
     }
 };
 
+// 注册 bashir_landing 脚本
 void AddSC_bashir_landing()
 {
     Script* pNewScript = new Script;

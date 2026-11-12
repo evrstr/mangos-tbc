@@ -3,10 +3,16 @@
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_ARCATRAZ_H
+
+// 禁魔监狱副本数据头文件
+/* 遭遇战概述：
+ * 定义禁魔监狱各首领与静滞牢房枚举。
+ */
 #define DEF_ARCATRAZ_H
 
 #include "World/WorldStateDefines.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ENCOUNTER                   = 10,
@@ -77,19 +83,26 @@ static const float aDalliahStartPos[4] = {118.6038f, 96.84682f, 22.44115f, 1.012
 static const float aSoccotharesStartPos[4] = {122.1035f, 192.7203f, 22.44115f, 5.235f};
 
 
+// instance_arcatraz 副本数据管理类
 class instance_arcatraz : public ScriptedInstance, private DialogueHelper
 {
     public:
         instance_arcatraz(Map* map);
 
+        // 初始化副本数据与状态
         void Initialize() override;
 
+        // 副本游戏对象创建登记
         void OnObjectCreate(GameObject* go) override;
+        // 副本生物创建登记
         void OnCreatureCreate(Creature* creature) override;
         void OnCreatureGroupDespawn(CreatureGroup* pGroup, Creature* pCreature) override;
+        // 副本生物重生处理
         void OnCreatureRespawn(Creature* creature) override;
 
+        // 设置遭遇战状态数据
         void SetData(uint32 type, uint32 data) override;
+        // 获取遭遇战状态数据
         uint32 GetData(uint32 type) const override;
 
         const char* Save() const override { return m_strInstData.c_str(); }

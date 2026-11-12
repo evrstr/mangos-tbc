@@ -29,6 +29,7 @@
 #include "Social/SocialMgr.h"
 #include "Server/DBCStores.h"
 
+// 向客户端发送交易状态更新数据包（SMSG_TRADE_STATUS）
 void WorldSession::SendTradeStatus(TradeStatusInfo const& info) const
 {
     WorldPacket data(SMSG_TRADE_STATUS, 13);
@@ -37,19 +38,20 @@ void WorldSession::SendTradeStatus(TradeStatusInfo const& info) const
     switch (info.Status)
     {
         case TRADE_STATUS_BEGIN_TRADE:
-            data << info.TraderGuid;                        // CGTradeInfo::m_tradingPlayer
+            data << info.TraderGuid;                        // CGTradeInfo::m_tradingPlayer (交易对象 GUID)
             break;
         case TRADE_STATUS_OPEN_WINDOW:
-            data << uint32(0);                              // CGTradeInfo::m_tradeID
+            data << uint32(0);                              // CGTradeInfo::m_tradeID (交易窗口 ID)
             break;
         case TRADE_STATUS_CLOSE_WINDOW:
-            data << uint32(info.Result);                    // InventoryResult
+            data << uint32(info.Result);                    // InventoryResult (背包/物品操作错误码)
             // the client reads this flag as "you" for EQUIP_ERR_BAG_FULL, but as "your trade partner" for EQUIP_ERR_CANT_CARRY_MORE_OF_THIS
+            // 客户端在 EQUIP_ERR_BAG_FULL 时将该标志解释为“你方”，在 EQUIP_ERR_CANT_CARRY_MORE_OF_THIS 时解释为“交易对方”
             data << uint8(info.Result == EQUIP_ERR_BAG_FULL ? !info.IsTargetResult : info.IsTargetResult);
-            data << uint32(info.ItemLimitCategoryId);       // ItemLimitCategory.dbc entry
+            data << uint32(info.ItemLimitCategoryId);       // ItemLimitCategory.dbc entry (物品唯一数量限制分类 ID)
             break;
         case TRADE_STATUS_WRONG_REALM:
-            data << uint8(info.Slot);                       // Trade slot; -1 here clears CGTradeInfo::m_tradeMoney
+            data << uint8(info.Slot);                       // Trade slot; -1 here clears CGTradeInfo::m_tradeMoney (交易栏位；-1 时清空交易金币)
             break;
         default:
             break;
@@ -58,55 +60,58 @@ void WorldSession::SendTradeStatus(TradeStatusInfo const& info) const
     SendPacket(data);
 }
 
+// 处理忽略交易请求（CMSG_IGNORE_TRADE）
 void WorldSession::HandleIgnoreTradeOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Ignore Trade %u", _player->GetGUIDLow());
     _player->TradeCancel(true, TRADE_STATUS_IGNORE_YOU);
 }
 
+// 处理忙碌拒绝对方交易请求（CMSG_BUSY_TRADE）
 void WorldSession::HandleBusyTradeOpcode(WorldPacket& /*recvPacket*/)
 {
     DEBUG_LOG("WORLD: Busy Trade %u", _player->GetGUIDLow());
     _player->TradeCancel(true, TRADE_STATUS_BUSY);
 }
 
+// 发送交易栏位与金币/附魔详情同步数据包（SMSG_TRADE_STATUS_EXTENDED）
 void WorldSession::SendUpdateTrade(bool trader_state /*= true*/) const
 {
     TradeData* view_trade = trader_state ? _player->GetTradeData()->GetTraderData() : _player->GetTradeData();
 
-    WorldPacket data(SMSG_TRADE_STATUS_EXTENDED, (100));    // guess size
-    data << uint8(trader_state ? 1 : 0);                    // send trader or own trade windows state (last need for proper show spell apply to non-trade slot)
-    data << uint32(0);                                      // CGTradeInfo::m_tradeID
-    data << uint32(view_trade->GetClientStateIndex());      // the client ignores an update of its own offer older than its last change
-    data << uint32(view_trade->GetServerStateIndex());      // the trader's client sends it back in CMSG_ACCEPT_TRADE
-    data << uint32(view_trade->GetMoney());                 // trader gold
-    data << uint32(view_trade->GetSpell());                 // spell casted on lowest slot item
+    WorldPacket data(SMSG_TRADE_STATUS_EXTENDED, (100));    // guess size (预估数据包容量)
+    data << uint8(trader_state ? 1 : 0);                    // send trader or own trade windows state (last need for proper show spell apply to non-trade slot) (1=对方栏位，0=己方栏位；后者用于正确显示不可交易栏位的附魔法术)
+    data << uint32(0);                                      // CGTradeInfo::m_tradeID (交易 ID)
+    data << uint32(view_trade->GetClientStateIndex());      // the client ignores an update of its own offer older than its last change (客户端状态序号，早于本地最新修改的更新会被忽略)
+    data << uint32(view_trade->GetServerStateIndex());      // the trader's client sends it back in CMSG_ACCEPT_TRADE (服务端状态序号，接受交易时需回传校验)
+    data << uint32(view_trade->GetMoney());                 // trader gold (交易金额，单位铜币)
+    data << uint32(view_trade->GetSpell());                 // spell casted on lowest slot item (施加在不可交易栏位物品上的法术 ID)
 
     for (uint8 i = 0; i < TRADE_SLOT_COUNT; ++i)
     {
-        data << uint8(i);                                   // trade slot number, if not specified, then end of packet
+        data << uint8(i);                                   // trade slot number, if not specified, then end of packet (交易栏位索引)
 
         if (Item* item = view_trade->GetItem(TradeSlots(i)))
         {
-            data << uint32(item->GetProto()->ItemId);       // entry
-            data << uint32(item->GetProto()->DisplayInfoID);// display id
-            data << uint32(item->GetCount());               // stack count
-            // wrapped: hide stats but show giftcreator name
+            data << uint32(item->GetProto()->ItemId);       // entry (物品模板 ID)
+            data << uint32(item->GetProto()->DisplayInfoID);// display id (物品显示模型 ID)
+            data << uint32(item->GetCount());               // stack count (堆叠数量)
+            // wrapped: hide stats but show giftcreator name (已包装物品：隐藏属性但显示赠送者名称)
             data << uint32(item->HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED) ? 1 : 0);
             data << item->GetGuidValue(ITEM_FIELD_GIFTCREATOR);
 
             data << uint32(item->GetEnchantmentId(PERM_ENCHANTMENT_SLOT));
             for (uint32 enchant_slot = SOCK_ENCHANTMENT_SLOT; enchant_slot < SOCK_ENCHANTMENT_SLOT + MAX_GEM_SOCKETS; ++enchant_slot)
                 data << uint32(item->GetEnchantmentId(EnchantmentSlot(enchant_slot)));
-            // creator
+            // creator (制造者 GUID)
             data << item->GetGuidValue(ITEM_FIELD_CREATOR);
-            data << uint32(item->GetSpellCharges());        // charges
-            data << uint32(item->GetItemSuffixFactor());    // SuffixFactor
-            data << uint32(item->GetItemRandomPropertyId());// random properties id
-            data << uint32(item->GetProto()->LockID);       // lock id
-            // max durability
+            data << uint32(item->GetSpellCharges());        // charges (法术充能次数)
+            data << uint32(item->GetItemSuffixFactor());    // SuffixFactor (随机后缀系数)
+            data << uint32(item->GetItemRandomPropertyId());// random properties id (随机属性 ID)
+            data << uint32(item->GetProto()->LockID);       // lock id (开锁 ID)
+            // max durability (最大耐久度)
             data << uint32(item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY));
-            // durability
+            // durability (当前耐久度)
             data << uint32(item->GetUInt32Value(ITEM_FIELD_DURABILITY));
         }
         else
@@ -119,7 +124,7 @@ void WorldSession::SendUpdateTrade(bool trader_state /*= true*/) const
 }
 
 //==============================================================
-// transfer the items to the players
+// transfer the items to the players (在双方背包间正式转移交易物品)
 
 void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
 {
@@ -139,9 +144,10 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
             // Ok, if trade item exists and can be stored
             // If we trade in both directions we had to check, if the trade will work before we actually do it
             // A roll back is not possible after we stored it
+            // 双方均可存入目标背包后再实际入库，避免部分存入后无法回滚
             if (myItems[i])
             {
-                // logging
+                // logging (记录物品移交日志及 GM 交易审计日志)
                 DEBUG_LOG("partner storing: %s", myItems[i]->GetGuidStr().c_str());
                 if (_player->GetSession()->GetSecurity() > SEC_PLAYER && sWorld.getConfig(CONFIG_BOOL_GM_LOG_TRADE))
                 {
@@ -151,13 +157,13 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
                                     trader->GetName(), trader->GetSession()->GetAccountId());
                 }
 
-                // store
+                // store (存入对方背包)
                 trader->MoveItemToInventory(traderDst, myItems[i], true, true);
             }
 
             if (hisItems[i])
             {
-                // logging
+                // logging (记录物品移交日志及 GM 交易审计日志)
                 DEBUG_LOG("player storing: %s", hisItems[i]->GetGuidStr().c_str());
                 if (trader->GetSession()->GetSecurity() > SEC_PLAYER && sWorld.getConfig(CONFIG_BOOL_GM_LOG_TRADE))
                 {
@@ -167,7 +173,7 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
                                     _player->GetName(), _player->GetSession()->GetAccountId());
                 }
 
-                // store
+                // store (存入己方背包)
                 _player->MoveItemToInventory(playerDst, hisItems[i], true, true);
             }
         }
@@ -175,6 +181,7 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
         {
             // in case of fatal error log error message
             // return the already removed items to the original owner
+            // 发生严重异常导致无法存放时记录错误，并将已移除的物品退回原主人
             if (myItems[i])
             {
                 uint8 bagSlot = 0;
@@ -185,7 +192,7 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
                 else
                     sLog.outError("player can't take item back: %s", myItems[i]->GetGuidStr().c_str());
             }
-            // return the already removed items to the original owner
+            // return the already removed items to the original owner (退回对方已移除的物品)
             if (hisItems[i])
             {
                 uint8 bagSlot = 0;
@@ -201,12 +208,13 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
 }
 
 //==============================================================
+// 进入交易确认阶段：锁定双方交易状态并收集待交易物品、标记 in-trade 标志
 static void setAcceptTradeMode(TradeData* myTrade, TradeData* hisTrade, Item** myItems, Item** hisItems)
 {
     myTrade->SetInAcceptProcess(true);
     hisTrade->SetInAcceptProcess(true);
 
-    // store items in local list and set 'in-trade' flag
+    // store items in local list and set 'in-trade' flag (缓存物品指针并标记为交易中)
     for (int i = 0; i < TRADE_SLOT_TRADED_COUNT; ++i)
     {
         if (Item* item = myTrade->GetItem(TradeSlots(i)))
@@ -226,15 +234,17 @@ static void setAcceptTradeMode(TradeData* myTrade, TradeData* hisTrade, Item** m
     }
 }
 
+// 清除双方的交易确认进行中标志
 static void clearAcceptTradeMode(TradeData* myTrade, TradeData* hisTrade)
 {
     myTrade->SetInAcceptProcess(false);
     hisTrade->SetInAcceptProcess(false);
 }
 
+// 清除物品列表上的 in-trade 锁定标志
 static void clearAcceptTradeMode(Item** myItems, Item** hisItems)
 {
-    // clear 'in-trade' flag
+    // clear 'in-trade' flag (清除物品的交易锁定标志)
     for (int i = 0; i < TRADE_SLOT_TRADED_COUNT; ++i)
     {
         if (myItems[i])
@@ -244,10 +254,11 @@ static void clearAcceptTradeMode(Item** myItems, Item** hisItems)
     }
 }
 
+// 处理玩家接受交易请求（CMSG_ACCEPT_TRADE）：校验状态、距离、金币、法术、背包容量并完成原子化物品金币交换
 void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
 {
     uint32 stateIndex;
-    recvPacket >> stateIndex;                               // the version of the trader's offer that the player accepts
+    recvPacket >> stateIndex;                               // the version of the trader's offer that the player accepts (玩家确认的对方交易报价版本号)
 
     TradeData* my_trade = _player->m_trade;
     if (!my_trade)
@@ -262,10 +273,10 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
     Item* myItems[TRADE_SLOT_TRADED_COUNT]  = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
     Item* hisItems[TRADE_SLOT_TRADED_COUNT] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
-    // set before checks to properly undo at problems (it already set in to client)
+    // set before checks to properly undo at problems (it already set in to client) (检查前先标记已接受，以便失败时正确撤销)
     my_trade->SetAccepted(true);
 
-    // the trader changed the offer after the player's client last received it
+    // the trader changed the offer after the player's client last received it (对方在玩家收到最新状态后又修改了交易内容，拒绝本次确认)
     if (stateIndex != his_trade->GetServerStateIndex())
     {
         my_trade->SetAccepted(false);
@@ -281,7 +292,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // not accept case incorrect money amount
+    // not accept case incorrect money amount (校验己方交易金币是否充足)
     if (my_trade->GetMoney() > _player->GetMoney())
     {
         info.Status = TRADE_STATUS_CLOSE_WINDOW;
@@ -291,7 +302,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // not accept case incorrect money amount
+    // not accept case incorrect money amount (校验对方交易金币是否充足)
     if (his_trade->GetMoney() > trader->GetMoney())
     {
         info.Status = TRADE_STATUS_CLOSE_WINDOW;
@@ -301,7 +312,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // not accept if some items now can't be trade (cheating)
+    // not accept if some items now can't be trade (cheating) (防作弊检查：确认物品当前仍可交易)
     for (int i = 0; i < TRADE_SLOT_TRADED_COUNT; ++i)
     {
         if (Item* item = my_trade->GetItem(TradeSlots(i)))
@@ -335,7 +346,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
         Spell* his_spell = nullptr;
         SpellCastTargets his_targets;
 
-        // not accept if spell can't be casted now (cheating)
+        // not accept if spell can't be casted now (cheating) (防作弊检查：校验己方附魔/交易栏法术是否可施放)
         if (uint32 my_spell_id = my_trade->GetSpell())
         {
             SpellEntry const* spellEntry = sSpellTemplate.LookupEntry<SpellEntry>(my_spell_id);
@@ -370,7 +381,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
             }
         }
 
-        // not accept if spell can't be casted now (cheating)
+        // not accept if spell can't be casted now (cheating) (防作弊检查：校验对方附魔/交易栏法术是否可施放)
         if (uint32 his_spell_id = his_trade->GetSpell())
         {
             SpellEntry const* spellEntry = sSpellTemplate.LookupEntry<SpellEntry>(his_spell_id);
@@ -408,18 +419,18 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
             }
         }
 
-        // inform partner client
+        // inform partner client (通知对方客户端交易已被接受)
         info.Status = TRADE_STATUS_TRADE_ACCEPT;
         trader->GetSession()->SendTradeStatus(info);
 
-        // test if item will fit in each inventory
+        // test if item will fit in each inventory (检查双方背包空间及唯一数量限制是否允许容纳交易物品)
         TradeStatusInfo myCanCompleteInfo, hisCanCompleteInfo;
         hisCanCompleteInfo.Result = trader->CanStoreItems(myItems, TRADE_SLOT_TRADED_COUNT);
         myCanCompleteInfo.Result = _player->CanStoreItems(hisItems, TRADE_SLOT_TRADED_COUNT);
 
         clearAcceptTradeMode(myItems, hisItems);
 
-        // in case of missing space report error
+        // in case of missing space report error (己方背包空间不足时报错并终止交易)
         if (myCanCompleteInfo.Result != EQUIP_ERR_OK)
         {
             clearAcceptTradeMode(my_trade, his_trade);
@@ -432,7 +443,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
             delete my_spell;
             delete his_spell;
 
-            // the client closes both windows on this status, so the trade ends here
+            // the client closes both windows on this status, so the trade ends here (客户端收到此状态后会关闭双方交易窗口，交易结束)
             delete _player->m_trade;
             _player->m_trade = nullptr;
             delete trader->m_trade;
@@ -451,7 +462,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
             delete my_spell;
             delete his_spell;
 
-            // the client closes both windows on this status, so the trade ends here
+            // the client closes both windows on this status, so the trade ends here (客户端收到此状态后会关闭双方交易窗口，交易结束)
             delete _player->m_trade;
             _player->m_trade = nullptr;
             delete trader->m_trade;
@@ -459,7 +470,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
             return;
         }
 
-        // execute trade: 1. remove
+        // execute trade: 1. remove (执行交易第一步：从原主人背包移除物品并记录赠送者)
         for (int i = 0; i < TRADE_SLOT_TRADED_COUNT; ++i)
         {
             if (Item* item = myItems[i])
@@ -474,10 +485,10 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
             }
         }
 
-        // execute trade: 2. store
+        // execute trade: 2. store (执行交易第二步：将物品放入目标玩家背包)
         moveItems(myItems, hisItems);
 
-        // logging money
+        // logging money (记录 GM 金币交易审计日志)
         if (sWorld.getConfig(CONFIG_BOOL_GM_LOG_TRADE))
         {
             if (_player->GetSession()->GetSecurity() > SEC_PLAYER && my_trade->GetMoney() > 0)
@@ -496,7 +507,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
             }
         }
 
-        // update money
+        // update money (扣除与增加双方交易金币)
         _player->ModifyMoney(-int32(my_trade->GetMoney()));
         _player->ModifyMoney(his_trade->GetMoney());
         trader->ModifyMoney(-int32(his_trade->GetMoney()));
@@ -508,14 +519,14 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
         if (his_spell)
             his_spell->SpellStart(&his_targets);
 
-        // cleanup
+        // cleanup (清理双方交易上下文对象)
         clearAcceptTradeMode(my_trade, his_trade);
         delete _player->m_trade;
         _player->m_trade = nullptr;
         delete trader->m_trade;
         trader->m_trade = nullptr;
 
-        // desynchronized with the other saves here (SaveInventoryAndGoldToDB() not have own transaction guards)
+        // desynchronized with the other saves here (SaveInventoryAndGoldToDB() not have own transaction guards) (使用数据库事务保证双方背包与金币同步落盘，避免复制漏洞)
         CharacterDatabase.BeginTransaction();
         _player->SaveInventoryAndGoldToDB();
         trader->SaveInventoryAndGoldToDB();
@@ -532,6 +543,7 @@ void WorldSession::HandleAcceptTradeOpcode(WorldPacket& recvPacket)
     }
 }
 
+// 处理取消“接受交易”状态请求（CMSG_UNACCEPT_TRADE）
 void WorldSession::HandleUnacceptTradeOpcode(WorldPacket& /*recvPacket*/)
 {
     TradeData* my_trade = _player->m_trade;
@@ -541,10 +553,12 @@ void WorldSession::HandleUnacceptTradeOpcode(WorldPacket& /*recvPacket*/)
     my_trade->SetAccepted(false, true);
 }
 
+// 处理打开交易窗口请求（CMSG_BEGIN_TRADE）
 void WorldSession::HandleBeginTradeOpcode(WorldPacket& /*recvPacket*/)
 {
     TradeData* my_trade = _player->m_trade;
     // opening an already open trade window makes the client close it and clear its offer, which leaves the offered items locked
+    // 重复打开已开启的交易窗口会导致客户端关闭窗口并清空报价，从而使物品一直处于锁定状态
     if (!my_trade || my_trade->IsWindowOpen())
         return;
 
@@ -557,6 +571,7 @@ void WorldSession::HandleBeginTradeOpcode(WorldPacket& /*recvPacket*/)
     SendTradeStatus(info);
 }
 
+// 发送取消交易通知
 void WorldSession::SendCancelTrade(TradeStatus status) const
 {
     if (m_playerRecentlyLogout)
@@ -567,13 +582,15 @@ void WorldSession::SendCancelTrade(TradeStatus status) const
     SendTradeStatus(info);
 }
 
+// 处理取消交易请求（CMSG_CANCEL_TRADE）
 void WorldSession::HandleCancelTradeOpcode(WorldPacket& /*recvPacket*/)
 {
-    // sent also after LOGOUT COMPLETE
-    if (_player)                                            // needed because STATUS_LOGGEDIN_OR_RECENTLY_LOGGOUT
+    // sent also after LOGOUT COMPLETE (登出完成后客户端也可能会发送该报文)
+    if (_player)                                            // needed because STATUS_LOGGEDIN_OR_RECENTLY_LOGGOUT (因状态允许近期登出，需判空)
         _player->TradeCancel(true);
 }
 
+// 处理发起交易请求（CMSG_INITIATE_TRADE）：检查双方状态、距离与阵营关系后创建交易数据
 void WorldSession::HandleInitiateTradeOpcode(WorldPacket& recvPacket)
 {
     ObjectGuid otherGuid;
@@ -656,6 +673,7 @@ void WorldSession::HandleInitiateTradeOpcode(WorldPacket& recvPacket)
     }
 
     // [XFACTION]: Reserve possibility to trade with each other for crossfaction group members (when no charms involved)
+    // [跨阵营]: 当未受魅惑且处于同一队伍时，保留跨阵营队员之间的交易能力
     if (!_player->CanCooperate(pOther) && (pOther->HasCharmer() || _player->HasCharmer() || !pOther->IsInGroup(_player)))
     {
         info.Status = TRADE_STATUS_WRONG_FACTION;
@@ -670,7 +688,7 @@ void WorldSession::HandleInitiateTradeOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // OK start trade
+    // OK start trade (校验通过，建立双方交易数据并通知对方开启交易)
     _player->m_trade = new TradeData(_player, pOther);
     pOther->m_trade = new TradeData(pOther, _player);
 
@@ -679,6 +697,7 @@ void WorldSession::HandleInitiateTradeOpcode(WorldPacket& recvPacket)
     pOther->GetSession()->SendTradeStatus(info);
 }
 
+// 处理设置交易金币数额请求（CMSG_SET_TRADE_GOLD）
 void WorldSession::HandleSetTradeGoldOpcode(WorldPacket& recvPacket)
 {
     uint32 gold;
@@ -691,13 +710,14 @@ void WorldSession::HandleSetTradeGoldOpcode(WorldPacket& recvPacket)
 
     my_trade->UpdateClientStateIndex();
 
-    // gold can be incorrect, but this is checked at trade finished.
+    // gold can be incorrect, but this is checked at trade finished. (此处金币数额可能无效，正式扣款前会在接受交易时统一校验)
     my_trade->SetMoney(gold);
 }
 
+// 处理向交易栏放入物品请求（CMSG_SET_TRADE_ITEM）
 void WorldSession::HandleSetTradeItemOpcode(WorldPacket& recvPacket)
 {
-    // send update
+    // send update (解析交易栏位与背包位置并校验合法性)
     uint8 tradeSlot;
     uint8 bag;
     uint8 slot;
@@ -713,7 +733,7 @@ void WorldSession::HandleSetTradeItemOpcode(WorldPacket& recvPacket)
     my_trade->UpdateClientStateIndex();
 
     TradeStatusInfo info;
-    // invalid slot number
+    // invalid slot number (栏位编号越界)
     if (tradeSlot >= TRADE_SLOT_COUNT)
     {
         info.Status = TRADE_STATUS_TRADE_CANCELED;
@@ -721,7 +741,7 @@ void WorldSession::HandleSetTradeItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // check cheating, can't fail with correct client operations
+    // check cheating, can't fail with correct client operations (防作弊检查：确认物品存在且可交易，除非放入不可交易附魔栏位)
     Item* item = _player->GetItemByPos(bag, slot);
     if (!item || (tradeSlot != TRADE_SLOT_NONTRADED && !item->CanBeTraded()))
     {
@@ -730,10 +750,10 @@ void WorldSession::HandleSetTradeItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // prevent place single item into many trade slots using cheating and client bugs
+    // prevent place single item into many trade slots using cheating and client bugs (防止利用客户端漏洞将同一件物品重复放入多个交易栏位)
     if (my_trade->HasItem(item->GetObjectGuid()))
     {
-        // cheating attempt
+        // cheating attempt (检测到重复放入，取消交易)
         info.Status = TRADE_STATUS_TRADE_CANCELED;
         SendTradeStatus(info);
         return;
@@ -742,6 +762,7 @@ void WorldSession::HandleSetTradeItemOpcode(WorldPacket& recvPacket)
     my_trade->SetItem(TradeSlots(tradeSlot), item);
 }
 
+// 处理清空指定交易栏位物品请求（CMSG_CLEAR_TRADE_ITEM）
 void WorldSession::HandleClearTradeItemOpcode(WorldPacket& recvPacket)
 {
     uint8 tradeSlot;
@@ -753,7 +774,7 @@ void WorldSession::HandleClearTradeItemOpcode(WorldPacket& recvPacket)
 
     my_trade->UpdateClientStateIndex();
 
-    // invalid slot number
+    // invalid slot number (栏位编号越界)
     if (tradeSlot >= TRADE_SLOT_COUNT)
         return;
 

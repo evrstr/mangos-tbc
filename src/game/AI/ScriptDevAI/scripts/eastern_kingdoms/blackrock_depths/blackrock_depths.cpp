@@ -21,6 +21,8 @@ SDComment: Quest support: 4134, 4201, 4322, 7604, 9015.
 SDCategory: Blackrock Depths
 EndScriptData */
 
+// 黑石深渊（Blackrock Depths）竞技场、黑铁酒吧与雷霆行动护送脚本
+
 /* ContentData
 go_bar_beer_keg
 go_shadowforge_brazier
@@ -54,7 +56,7 @@ bool GOUse_go_bar_beer_keg(Player* /*pPlayer*/, GameObject* pGo)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData())
     {
-        if (pInstance->GetData(TYPE_HURLEY) == IN_PROGRESS || pInstance->GetData(TYPE_HURLEY) == DONE) // GOs despawning on use, this check should never be true but this is proper to have it there
+        if (pInstance->GetData(TYPE_HURLEY) == IN_PROGRESS || pInstance->GetData(TYPE_HURLEY) == DONE) // GOs despawning on use, this check should never be true but this is proper to have it there (使用后消失的对象安全检查)
             return false;
             // Every time we set the event to SPECIAL, the instance script increments the number of broken kegs, capping at 3
         pInstance->SetData(TYPE_HURLEY, SPECIAL);
@@ -100,13 +102,14 @@ bool GOUse_go_relic_coffer_door(Player* /*pPlayer*/, GameObject* pGo)
 
 static const float aGuardSpawnPositions[2][4] =
 {
-    {642.3660f, -274.5155f, -43.10918f, 0.4712389f},                // First guard spawn position
-    {740.1137f, -283.3448f, -42.75082f, 2.8623400f}                 // Second guard spawn position
+    {642.3660f, -274.5155f, -43.10918f, 0.4712389f},                // First guard spawn position (First卫士生成position)
+    {740.1137f, -283.3448f, -42.75082f, 2.8623400f}                 // Second guard spawn position (Second卫士生成position)
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_GUARD_AGGRO                    = -1230043
+    SAY_GUARD_AGGRO                    = -1230043           // 卫士开战 台词广播 ID
 };
 
 // Two NPCs spawn when AT-1786 is triggered
@@ -149,45 +152,47 @@ bool AreaTrigger_at_shadowforge_bridge(Player* pPlayer, AreaTriggerEntry const* 
  * Quest-Event: This needs to be clearified - there is some suggestion, that Theldren&Adds also might come as first wave.
  */
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START_1                     = -1230004,
-    SAY_START_2                     = -1230005,
-    SAY_OPEN_EAST_GATE              = -1230006,
-    SAY_SUMMON_BOSS_1               = -1230007,
-    SAY_SUMMON_BOSS_2               = -1230008,
-    SAY_OPEN_NORTH_GATE             = -1230009,
+    SAY_START_1                     = -1230004,             // 开始1 台词广播 ID
+    SAY_START_2                     = -1230005,             // 开始2 台词广播 ID
+    SAY_OPEN_EAST_GATE              = -1230006,             // openeast门禁 台词广播 ID
+    SAY_SUMMON_BOSS_1               = -1230007,             // 召唤boss1 台词广播 ID
+    SAY_SUMMON_BOSS_2               = -1230008,             // 召唤boss2 台词广播 ID
+    SAY_OPEN_NORTH_GATE             = -1230009,             // opennorth门禁 台词广播 ID
 
-    NPC_GRIMSTONE                   = 10096,
-    DATA_BANNER_BEFORE_EVENT        = 5,
+    NPC_GRIMSTONE                   = 10096,                // grimstone Entry ID
+    DATA_BANNER_BEFORE_EVENT        = 5,                    // bannerbefore事件 遭遇战进度数据标识 ID
 
-    MAX_THELDREN_ADDS               = 4,
-    MAX_POSSIBLE_THELDREN_ADDS      = 8,
+    MAX_THELDREN_ADDS               = 4,                    // theldrenadds 标识 ID
+    MAX_POSSIBLE_THELDREN_ADDS      = 8,                    // possibletheldrenadds 标识 ID
 
-    SPELL_SUMMON_THELRIN_DND        = 27517,
+    SPELL_SUMMON_THELRIN_DND        = 27517,                // 召唤thelrindnd 法术 ID
     // Other spells used by Grimstone
-    SPELL_ASHCROMBES_TELEPORT_A     = 15742,
-    SPELL_ASHCROMBES_TELEPORT_B     = 6422,
-    SPELL_ARENA_FLASH_A             = 15737,
-    SPELL_ARENA_FLASH_B             = 15739,
-    SPELL_ARENA_FLASH_C             = 15740,
-    SPELL_ARENA_FLASH_D             = 15741,
+    SPELL_ASHCROMBES_TELEPORT_A     = 15742,                // ashcrombes传送a 法术 ID
+    SPELL_ASHCROMBES_TELEPORT_B     = 6422,                 // ashcrombes传送b 法术 ID
+    SPELL_ARENA_FLASH_A             = 15737,                // arenaflasha 法术 ID
+    SPELL_ARENA_FLASH_B             = 15739,                // arenaflashb 法术 ID
+    SPELL_ARENA_FLASH_C             = 15740,                // arenaflashc 法术 ID
+    SPELL_ARENA_FLASH_D             = 15741,                // arenaflashd 法术 ID
 
-    QUEST_THE_CHALLENGE             = 9015,
-    NPC_THELDREN_QUEST_CREDIT       = 16166,
+    QUEST_THE_CHALLENGE             = 9015,                 // thechallenge 任务 ID
+    NPC_THELDREN_QUEST_CREDIT       = 16166,                // theldren任务credit Entry ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SpawnPosition
 {
-    POS_EAST                        = 0,
-    POS_NORTH                       = 1,
-    POS_GRIMSTONE                   = 2,
+    POS_EAST                        = 0,                    // east 标识 ID
+    POS_NORTH                       = 1,                    // north 标识 ID
+    POS_GRIMSTONE                   = 2,                    // grimstone 标识 ID
 };
 
 static const float aSpawnPositions[3][4] =
 {
-    {608.960f, -235.322f, -53.907f, 1.857f},                // Ring mob spawn position
-    {644.300f, -175.989f, -53.739f, 3.418f},                // Ring boss spawn position
+    {608.960f, -235.322f, -53.907f, 1.857f},                // Ring mob spawn position (竞技场mob生成position)
+    {644.300f, -175.989f, -53.739f, 3.418f},                // Ring boss spawn position (竞技场boss生成position)
     {625.559f, -205.618f, -52.735f, 2.609f}                 // Grimstone spawn position
 };
 
@@ -199,11 +204,12 @@ static const uint32 aRingMob[2][6] =
 };
 static const uint32 aRingBoss[] = {NPC_GOROSH, NPC_GRIZZLE, NPC_EVISCERATOR, NPC_OKTHOR, NPC_ANUBSHIAH, NPC_HEDRUM};
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum RingOfLawPhases
 {
-    PHASE_MOBS                      = 0,
-    PHASE_BOSS                      = 2,
-    PHASE_GLADIATORS                = 3,
+    PHASE_MOBS                      = 0,                    // mobs 阶段 ID
+    PHASE_BOSS                      = 2,                    // boss 阶段 ID
+    PHASE_GLADIATORS                = 3,                    // gladiators 阶段 ID
 };
 
 bool AreaTrigger_at_ring_of_law(Player* pPlayer, AreaTriggerEntry const* pAt)
@@ -230,6 +236,7 @@ bool AreaTrigger_at_ring_of_law(Player* pPlayer, AreaTriggerEntry const* pAt)
 ## npc_grimstone
 ######*/
 
+// 随从/NPC AI：标识 ID（grimstone）
 struct npc_grimstoneAI : public npc_escortAI
 {
     npc_grimstoneAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -254,7 +261,7 @@ struct npc_grimstoneAI : public npc_escortAI
     instance_blackrock_depths* m_pInstance;
 
     uint8 m_uiEventPhase;
-    uint32 m_uiEventTimer;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
 
     uint8 m_uiMobSpawnId;
     uint8 m_uiAliveSummonedMob;
@@ -264,8 +271,9 @@ struct npc_grimstoneAI : public npc_escortAI
     uint32 m_uiGladiatorId[MAX_THELDREN_ADDS];
 
     GuidList m_lSummonedGUIDList;
-    GuidSet m_lArenaCrowd;
+    GuidSet m_lArenaCrowd;                                  // lArenaCrowd GUID 集合
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
@@ -277,6 +285,7 @@ struct npc_grimstoneAI : public npc_escortAI
         m_uiPhase = PHASE_MOBS;
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (!m_pInstance)
@@ -379,7 +388,7 @@ struct npc_grimstoneAI : public npc_escortAI
 
         if (m_pInstance->GetData(TYPE_RING_OF_LAW) == FAIL)
         {
-            // Reset Doors
+            // Reset Doors (重置Doors)
             if (m_uiEventPhase >= 10)                       // North Gate is opened
             {
                 m_pInstance->DoUseDoorOrButton(GO_ARENA_2);
@@ -399,7 +408,7 @@ struct npc_grimstoneAI : public npc_escortAI
             }
             m_lSummonedGUIDList.clear();
 
-            // Despawn NPC
+            // Despawn NPC (消除NPC)
             m_creature->ForcedDespawn();
             return;
         }
@@ -446,19 +455,19 @@ struct npc_grimstoneAI : public npc_escortAI
                         m_uiEventTimer = 3000;
                         break;
                     case 4:
-                        // timer for teleport out spell which has 2000 ms cast time
+                        // timer for teleport out spell which has 2000 ms cast time (传送撤离法术计时器（施法时间 2000毫秒）)
                         DoCastSpellIfCan(m_creature, SPELL_ASHCROMBES_TELEPORT_B, CAST_TRIGGERED);
                         m_uiEventTimer = 2500;
                         break;
                     case 5:
                         m_creature->SetVisibility(VISIBILITY_OFF);
                         SetEscortPaused(false);
-                        // Summon Ring Mob(s)
+                        // Summon Ring Mob(s) (召唤竞技场怪物)
                         SummonRingMob(aRingMob[0][m_uiMobSpawnId], aRingMob[1][m_uiMobSpawnId], POS_EAST);
                         m_uiEventTimer = 16000;
                         break;
                     case 7:
-                        // Summon Ring Mob(s)
+                        // Summon Ring Mob(s) (召唤竞技场怪物)
                         SummonRingMob(aRingMob[0][m_uiMobSpawnId], aRingMob[1][m_uiMobSpawnId], POS_EAST);
                         m_uiEventTimer = 0;
                         break;
@@ -479,12 +488,12 @@ struct npc_grimstoneAI : public npc_escortAI
                         m_uiEventTimer = 5000;
                         break;
                     case 10:
-                        // timer for teleport out spell which has 2000 ms cast time
+                        // timer for teleport out spell which has 2000 ms cast time (传送撤离法术计时器（施法时间 2000毫秒）)
                         DoCastSpellIfCan(m_creature, SPELL_ASHCROMBES_TELEPORT_B, CAST_TRIGGERED);
                         m_uiEventTimer = 2500;
                         break;
                     case 11:
-                        // Summon Boss
+                        // Summon Boss (召唤 Boss)
                         m_creature->SetVisibility(VISIBILITY_OFF);
                         // If banner summoned after start, then summon Thelden after the creatures are dead
                         if (m_pInstance->GetData(TYPE_RING_OF_LAW) == SPECIAL && m_uiPhase == PHASE_MOBS)
@@ -519,12 +528,13 @@ struct npc_grimstoneAI : public npc_escortAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_grimstone
 UnitAI* GetAI_npc_grimstone(Creature* pCreature)
 {
     return new npc_grimstoneAI(pCreature);
 }
 
-// 27517 - Summon Thelrin DND
+// 27517 - Summon Thelrin DND (27517 - 召唤 Thelrin DND)
 struct SummonThelrinDnd : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -543,15 +553,17 @@ struct SummonThelrinDnd : public SpellScript
 +## npc_phalanx
 +######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    YELL_PHALANX_AGGRO    = -1230040,
+    YELL_PHALANX_AGGRO    = -1230040,                       // phalanx开战 大喊台词广播 ID
 
-    SPELL_THUNDERCLAP     = 15588,
-    SPELL_MIGHTY_BLOW     = 14099,
-    SPELL_FIREBALL_VOLLEY = 15285,
+    SPELL_THUNDERCLAP     = 15588,                          // thunderclap 法术 ID
+    SPELL_MIGHTY_BLOW     = 14099,                          // mightyblow 法术 ID
+    SPELL_FIREBALL_VOLLEY = 15285,                          // fireball箭雨 法术 ID
 };
 
+// 随从/NPC AI：标识 ID（phalanx）
 struct npc_phalanxAI : public npc_escortAI
 {
     npc_phalanxAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -568,6 +580,7 @@ struct npc_phalanxAI : public npc_escortAI
     uint32 uiFireballVolleyTimer;
     uint32 uiCallPatrolTimer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         // If reset after an fight, it means Phalanx has already started moving (if not already reached door)
@@ -642,7 +655,7 @@ struct npc_phalanxAI : public npc_escortAI
                 uiCallPatrolTimer -= uiDiff;
         }
 
-        // Combat check
+        // Combat check (战斗状态检查)
         if (m_creature->SelectHostileTarget() && m_creature->GetVictim())
         {
             if (uiThunderclapTimer < uiDiff)
@@ -672,11 +685,12 @@ struct npc_phalanxAI : public npc_escortAI
                     uiFireballVolleyTimer -= uiDiff;
             }
 
-            DoMeleeAttackIfReady();
+            DoMeleeAttackIfReady();                         // 近战普通攻击判定
         }
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_phalanx
 UnitAI* GetAI_npc_phalanx(Creature* pCreature)
 {
     return new npc_phalanxAI(pCreature);
@@ -686,22 +700,24 @@ UnitAI* GetAI_npc_phalanx(Creature* pCreature)
 ## npc_mistress_nagmara
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    GOSSIP_ITEM_NAGMARA         = -3230003,
-    GOSSIP_ID_NAGMARA           = 2727,
-    GOSSIP_ID_NAGMARA_2         = 2729,
-    SPELL_POTION_LOVE           = 14928,
-    SPELL_NAGMARA_ROCKNOT       = 15064,
+    GOSSIP_ITEM_NAGMARA         = -3230003,                 // 物品nagmara 对话菜单选项 ID
+    GOSSIP_ID_NAGMARA           = 2727,                     // IDnagmara 对话菜单选项 ID
+    GOSSIP_ID_NAGMARA_2         = 2729,                     // IDnagmara2 对话菜单选项 ID
+    SPELL_POTION_LOVE           = 14928,                    // potionlove 法术 ID
+    SPELL_NAGMARA_ROCKNOT       = 15064,                    // nagmararocknot 法术 ID
 
-    SAY_NAGMARA_1               = -1230066,
-    SAY_NAGMARA_2               = -1230067,
-    TEXTEMOTE_NAGMARA           = -1230068,
-    TEXTEMOTE_ROCKNOT           = -1230069,
+    SAY_NAGMARA_1               = -1230066,                 // nagmara1 台词广播 ID
+    SAY_NAGMARA_2               = -1230067,                 // nagmara2 台词广播 ID
+    TEXTEMOTE_NAGMARA           = -1230068,                 // nagmara 标识 ID
+    TEXTEMOTE_ROCKNOT           = -1230069,                 // rocknot 标识 ID
 
-    QUEST_POTION_LOVE           = 4201
+    QUEST_POTION_LOVE           = 4201                      // potionlove 任务 ID
 };
 
+// 随从/NPC AI：nagmara（mistress_nagmara）
 struct npc_mistress_nagmaraAI : public ScriptedAI
 {
     npc_mistress_nagmaraAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -714,8 +730,9 @@ struct npc_mistress_nagmaraAI : public ScriptedAI
     Creature* pRocknot;
 
     uint8 m_uiPhase;
-    uint32 m_uiPhaseTimer;
+    uint32 m_uiPhaseTimer;                                  // Phase 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiPhase = 0;
@@ -740,6 +757,7 @@ struct npc_mistress_nagmaraAI : public ScriptedAI
         m_uiPhase = 1;
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiPhaseTimer)
@@ -758,9 +776,9 @@ struct npc_mistress_nagmaraAI : public ScriptedAI
 
         switch (m_uiPhase)
         {
-            case 0:     // Phase 0 : Nagmara patrols in the bar to serve patrons or is following Rocknot passively
+            case 0:     // Phase 0 : Nagmara patrols in the bar to serve patrons or is following Rocknot passively (第 0 阶段)
                 break;
-            case 1:     // Phase 1 : Nagmara is moving towards Rocknot
+            case 1:     // Phase 1 : Nagmara is moving towards Rocknot (第 1 阶段)
                 if (m_creature->IsWithinDist2d(pRocknot->GetPositionX(), pRocknot->GetPositionY(), 5.0f))
                 {
                     m_creature->GetMotionMaster()->MoveIdle();
@@ -773,26 +791,26 @@ struct npc_mistress_nagmaraAI : public ScriptedAI
                 else
                     m_creature->GetMotionMaster()->MoveChase(pRocknot, 2.0f, 0);
                 break;
-            case 2:     // Phase 2 : Nagmara is "seducing" Rocknot
+            case 2:     // Phase 2 : Nagmara is "seducing" Rocknot (第 2 阶段)
                 DoScriptText(SAY_NAGMARA_2, m_creature);
                 m_uiPhaseTimer = 4000;
                 m_uiPhase++;
                 break;
-            case 3:     // Phase 3: Nagmara give potion to Rocknot and Rocknot escort AI will handle the next part of the event
+            case 3:     // Phase 3: Nagmara give potion to Rocknot and Rocknot escort AI will handle the next part of the event (第 3 阶段)
                 if (DoCastSpellIfCan(m_creature, SPELL_POTION_LOVE) == CAST_OK)
                 {
                     m_uiPhase = 0;
                     m_pInstance->SetData(TYPE_NAGMARA, SPECIAL);
                 }
                 break;
-            case 4:     // Phase 4 : make the lovers face each other
+            case 4:     // Phase 4 : make the lovers face each other (第 4 阶段)
                 m_creature->SetFacingToObject(pRocknot);
                 pRocknot->SetFacingToObject(m_creature);
                 m_uiPhaseTimer = 4000;
                 m_uiPhase++;
                 m_pInstance->SetData(TYPE_NAGMARA, DONE);
                 break;
-            case 5:     // Phase 5 : Nagmara and Rocknot are under the stair kissing (this phase repeats endlessly)
+            case 5:     // Phase 5 : Nagmara and Rocknot are under the stair kissing (this phase repeats endlessly) (第 5 阶段)
                 DoScriptText(TEXTEMOTE_NAGMARA, m_creature);
                 DoScriptText(TEXTEMOTE_ROCKNOT, pRocknot);
                 DoCastSpellIfCan(m_creature, SPELL_NAGMARA_ROCKNOT);
@@ -803,6 +821,7 @@ struct npc_mistress_nagmaraAI : public ScriptedAI
     }
 };
 
+// NPC 对话交互入口函数：npc_mistress_nagmara
 bool GossipHello_npc_mistress_nagmara(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
@@ -848,6 +867,7 @@ bool QuestRewarded_npc_mistress_nagmara(Player* /*pPlayer*/, Creature* pCreature
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_mistress_nagmara
 UnitAI* GetAI_npc_mistress_nagmara(Creature* pCreature)
 {
     return new npc_mistress_nagmaraAI(pCreature);
@@ -857,21 +877,23 @@ UnitAI* GetAI_npc_mistress_nagmara(Creature* pCreature)
 ## npc_rocknot
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_GOT_BEER       = -1230000,
-    SAY_MORE_BEER      = -1230036,
-    SAY_BARREL_1       = -1230044,
-    SAY_BARREL_2       = -1230045,
-    SAY_BARREL_3       = -1230046,
+    SAY_GOT_BEER       = -1230000,                          // gotbeer 台词广播 ID
+    SAY_MORE_BEER      = -1230036,                          // morebeer 台词广播 ID
+    SAY_BARREL_1       = -1230044,                          // barrel1 台词广播 ID
+    SAY_BARREL_2       = -1230045,                          // barrel2 台词广播 ID
+    SAY_BARREL_3       = -1230046,                          // barrel3 台词广播 ID
 
-    SPELL_DRUNKEN_RAGE = 14872,
+    SPELL_DRUNKEN_RAGE = 14872,                             // drunkenrage 法术 ID
 
-    QUEST_ALE          = 4295
+    QUEST_ALE          = 4295                               // ale 任务 ID
 };
 
 static const float aPosNagmaraRocknot[3] = {878.1779f, -222.0662f, -49.96714f};
 
+// 随从/NPC AI：标识 ID（rocknot）
 struct npc_rocknotAI : public npc_escortAI
 {
     npc_rocknotAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -883,14 +905,15 @@ struct npc_rocknotAI : public npc_escortAI
     instance_blackrock_depths* m_pInstance;
     Creature* pNagmara;
 
-    uint32 m_uiBreakKegTimer;
-    uint32 m_uiBreakDoorTimer;
-    uint32 m_uiEmoteTimer;
-    uint32 m_uiBarReactTimer;
+    uint32 m_uiBreakKegTimer;                               // BreakKeg 技能计时器
+    uint32 m_uiBreakDoorTimer;                              // BreakDoor 技能计时器
+    uint32 m_uiEmoteTimer;                                  // Emote 技能计时器
+    uint32 m_uiBarReactTimer;                               // BarReact 技能计时器
 
-    bool m_bIsDoorOpen;
+    bool m_bIsDoorOpen;                                     // IsDoorOpen 状态标记
     float m_fInitialOrientation;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         pNagmara                = m_pInstance->GetSingleCreatureFromStorage(NPC_MISTRESS_NAGMARA);
@@ -957,7 +980,7 @@ struct npc_rocknotAI : public npc_escortAI
                     pNagmara->GetMotionMaster()->MoveChase(m_creature, 2.0f, 0);
                 break;
             case 17:
-                // Open the bar back door if relevant
+                // Open the bar back door if relevant (打开酒吧后门)
                 m_pInstance->GetBarDoorIsOpen(m_bIsDoorOpen);
                 if (!m_bIsDoorOpen)
                 {
@@ -1014,7 +1037,7 @@ struct npc_rocknotAI : public npc_escortAI
         {
             if (m_uiBreakDoorTimer <= uiDiff)
             {
-                // Open the bar back door if relevant
+                // Open the bar back door if relevant (打开酒吧后门)
                 m_pInstance->GetBarDoorIsOpen(m_bIsDoorOpen);
                 if (!m_bIsDoorOpen)
                     DoGo(GO_BAR_DOOR, GO_STATE_ACTIVE_ALTERNATIVE);
@@ -1071,6 +1094,7 @@ struct npc_rocknotAI : public npc_escortAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_rocknot
 UnitAI* GetAI_npc_rocknot(Creature* pCreature)
 {
     return new npc_rocknotAI(pCreature);
@@ -1109,48 +1133,50 @@ bool QuestRewarded_npc_rocknot(Player* pPlayer, Creature* pCreature, Quest const
 ## npc_marshal_windsor
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // Windsor texts
-    SAY_WINDSOR_AGGRO1          = -1230011,
-    SAY_WINDSOR_AGGRO2          = -1230012,
-    SAY_WINDSOR_AGGRO3          = -1230013,
-    SAY_WINDSOR_START           = -1230014,
-    SAY_WINDSOR_CELL_DUGHAL_1   = -1230015,
-    SAY_WINDSOR_CELL_DUGHAL_3   = -1230016,
-    SAY_WINDSOR_EQUIPMENT_1     = -1230017,
-    SAY_WINDSOR_EQUIPMENT_2     = -1230018,
-    SAY_WINDSOR_EQUIPMENT_3     = -1230019,
-    SAY_WINDSOR_EQUIPMENT_4     = -1230020,
-    SAY_WINDSOR_CELL_JAZ_1      = -1230021,
-    SAY_WINDSOR_CELL_JAZ_2      = -1230022,
-    SAY_WINDSOR_CELL_SHILL_1    = -1230023,
-    SAY_WINDSOR_CELL_SHILL_2    = -1230024,
-    SAY_WINDSOR_CELL_SHILL_3    = -1230025,
-    SAY_WINDSOR_CELL_CREST_1    = -1230026,
-    SAY_WINDSOR_CELL_CREST_2    = -1230027,
-    SAY_WINDSOR_CELL_TOBIAS_1   = -1230028,
-    SAY_WINDSOR_CELL_TOBIAS_2   = -1230029,
-    SAY_WINDSOR_FREE_1          = -1230030,
-    SAY_WINDSOR_FREE_2          = -1230031,
+    // Windsor texts (温德索尔texts)
+    SAY_WINDSOR_AGGRO1          = -1230011,                 // 温德索尔aggro1 台词广播 ID
+    SAY_WINDSOR_AGGRO2          = -1230012,                 // 温德索尔aggro2 台词广播 ID
+    SAY_WINDSOR_AGGRO3          = -1230013,                 // 温德索尔aggro3 台词广播 ID
+    SAY_WINDSOR_START           = -1230014,                 // 温德索尔开始 台词广播 ID
+    SAY_WINDSOR_CELL_DUGHAL_1   = -1230015,                 // 温德索尔celldughal1 台词广播 ID
+    SAY_WINDSOR_CELL_DUGHAL_3   = -1230016,                 // 温德索尔celldughal3 台词广播 ID
+    SAY_WINDSOR_EQUIPMENT_1     = -1230017,                 // 温德索尔equipment1 台词广播 ID
+    SAY_WINDSOR_EQUIPMENT_2     = -1230018,                 // 温德索尔equipment2 台词广播 ID
+    SAY_WINDSOR_EQUIPMENT_3     = -1230019,                 // 温德索尔equipment3 台词广播 ID
+    SAY_WINDSOR_EQUIPMENT_4     = -1230020,                 // 温德索尔equipment4 台词广播 ID
+    SAY_WINDSOR_CELL_JAZ_1      = -1230021,                 // 温德索尔celljaz1 台词广播 ID
+    SAY_WINDSOR_CELL_JAZ_2      = -1230022,                 // 温德索尔celljaz2 台词广播 ID
+    SAY_WINDSOR_CELL_SHILL_1    = -1230023,                 // 温德索尔cellshill1 台词广播 ID
+    SAY_WINDSOR_CELL_SHILL_2    = -1230024,                 // 温德索尔cellshill2 台词广播 ID
+    SAY_WINDSOR_CELL_SHILL_3    = -1230025,                 // 温德索尔cellshill3 台词广播 ID
+    SAY_WINDSOR_CELL_CREST_1    = -1230026,                 // 温德索尔cellcrest1 台词广播 ID
+    SAY_WINDSOR_CELL_CREST_2    = -1230027,                 // 温德索尔cellcrest2 台词广播 ID
+    SAY_WINDSOR_CELL_TOBIAS_1   = -1230028,                 // 温德索尔celltobias1 台词广播 ID
+    SAY_WINDSOR_CELL_TOBIAS_2   = -1230029,                 // 温德索尔celltobias2 台词广播 ID
+    SAY_WINDSOR_FREE_1          = -1230030,                 // 温德索尔释放1 台词广播 ID
+    SAY_WINDSOR_FREE_2          = -1230031,                 // 温德索尔释放2 台词广播 ID
 
     // Additional gossips
-    SAY_DUGHAL_FREE             = -1230010,
-    GOSSIP_ID_DUGHAL            = -3230000,
-    GOSSIP_TEXT_ID_DUGHAL       = 2846,
+    SAY_DUGHAL_FREE             = -1230010,                 // dughal释放 台词广播 ID
+    GOSSIP_ID_DUGHAL            = -3230000,                 // IDdughal 对话菜单选项 ID
+    GOSSIP_TEXT_ID_DUGHAL       = 2846,                     // textIDdughal 对话菜单选项 ID
 
-    SAY_TOBIAS_FREE_1           = -1230032,
-    SAY_TOBIAS_FREE_2           = -1230033,
-    GOSSIP_ID_TOBIAS            = -3230001,
-    GOSSIP_TEXT_ID_TOBIAS       = 2847,
+    SAY_TOBIAS_FREE_1           = -1230032,                 // tobias释放1 台词广播 ID
+    SAY_TOBIAS_FREE_2           = -1230033,                 // tobias释放2 台词广播 ID
+    GOSSIP_ID_TOBIAS            = -3230001,                 // IDtobias 对话菜单选项 ID
+    GOSSIP_TEXT_ID_TOBIAS       = 2847,                     // textIDtobias 对话菜单选项 ID
 
-    NPC_REGINALD_WINDSOR        = 9682,
+    NPC_REGINALD_WINDSOR        = 9682,                     // reginald温德索尔 Entry ID
 
-    QUEST_JAIL_BREAK            = 4322,
+    QUEST_JAIL_BREAK            = 4322,                     // 监狱越狱 任务 ID
 
-    SPELL_WINDSORS_FRENZY       = 15167,
+    SPELL_WINDSORS_FRENZY       = 15167,                    // windsors狂乱 法术 ID
 };
 
+// 随从/NPC AI：温德索尔（marshal_windsor）
 struct npc_marshal_windsorAI : public npc_escortAI
 {
     npc_marshal_windsorAI(Creature* m_creature) : npc_escortAI(m_creature)
@@ -1163,12 +1189,14 @@ struct npc_marshal_windsorAI : public npc_escortAI
 
     uint8 m_uiEventPhase;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
             m_uiEventPhase = 0;
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* pWho) override
     {
         switch (urand(0, 2))
@@ -1212,7 +1240,7 @@ struct npc_marshal_windsorAI : public npc_escortAI
                     DoScriptText(SAY_WINDSOR_EQUIPMENT_1, m_creature, pPlayer);
                 break;
             case 15:
-                // ToDo: fix this emote!
+                // ToDo: fix this emote! (待办：修复此表情动作)
                 // m_creature->HandleEmoteCommand(EMOTE_ONESHOT_USESTANDING);
                 break;
             case 16:
@@ -1223,7 +1251,7 @@ struct npc_marshal_windsorAI : public npc_escortAI
                 DoScriptText(SAY_WINDSOR_EQUIPMENT_2, m_creature);
                 break;
             case 19:
-                // ToDo: fix this emote!
+                // ToDo: fix this emote! (待办：修复此表情动作)
                 // m_creature->HandleEmoteCommand(EMOTE_ONESHOT_USESTANDING);
                 break;
             case 20:
@@ -1346,15 +1374,17 @@ struct npc_marshal_windsorAI : public npc_escortAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_marshal_windsor
 UnitAI* GetAI_npc_marshal_windsor(Creature* pCreature)
 {
     return new npc_marshal_windsorAI(pCreature);
 }
 
+// 任务接取回调函数：npc_marshal_windsor
 bool QuestAccept_npc_marshal_windsor(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_JAIL_BREAK)
@@ -1374,6 +1404,7 @@ bool QuestAccept_npc_marshal_windsor(Player* pPlayer, Creature* pCreature, const
 ## npc_dughal_stormwing
 ######*/
 
+// NPC 对话交互入口函数：npc_dughal_stormwing
 bool GossipHello_npc_dughal_stormwing(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->GetQuestStatus(QUEST_JAIL_BREAK) == QUEST_STATUS_INCOMPLETE)
@@ -1387,7 +1418,7 @@ bool GossipSelect_npc_dughal_stormwing(Player* pPlayer, Creature* pCreature, uin
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
-        // Set instance data in order to allow the quest to continue
+        // Set instance data in order to allow the quest to continue (设置副本数据以允许任务继续推进)
         if (instance_blackrock_depths* pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData())
             pInstance->SetData(TYPE_QUEST_JAIL_BREAK, SPECIAL);
 
@@ -1407,6 +1438,7 @@ bool GossipSelect_npc_dughal_stormwing(Player* pPlayer, Creature* pCreature, uin
 ## npc_tobias_seecher
 ######*/
 
+// NPC 对话交互入口函数：npc_tobias_seecher
 bool GossipHello_npc_tobias_seecher(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->GetQuestStatus(QUEST_JAIL_BREAK) == QUEST_STATUS_INCOMPLETE)
@@ -1420,7 +1452,7 @@ bool GossipSelect_npc_tobias_seecher(Player* pPlayer, Creature* pCreature, uint3
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
-        // Set instance data in order to allow the quest to continue
+        // Set instance data in order to allow the quest to continue (设置副本数据以允许任务继续推进)
         if (instance_blackrock_depths* pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData())
             pInstance->SetData(TYPE_QUEST_JAIL_BREAK, SPECIAL);
 
@@ -1440,18 +1472,20 @@ bool GossipSelect_npc_tobias_seecher(Player* pPlayer, Creature* pCreature, uint3
 ## npc_hurley_blackbreath
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    YELL_HURLEY_SPAWN      = -1230041,
-    SAY_HURLEY_AGGRO       = -1230042,
+    YELL_HURLEY_SPAWN      = -1230041,                      // hurley生成 大喊台词广播 ID
+    SAY_HURLEY_AGGRO       = -1230042,                      // hurley开战 台词广播 ID
 
     // SPELL_DRUNKEN_RAGE      = 14872,
-    SPELL_FLAME_BREATH     = 9573,
+    SPELL_FLAME_BREATH     = 9573,                          // 烈焰吐息 法术 ID
 
-    NPC_RIBBLY_SCREWSPIGOT = 9543,
-    NPC_RIBBLY_CRONY       = 10043,
+    NPC_RIBBLY_SCREWSPIGOT = 9543,                          // ribblyscrewspigot Entry ID
+    NPC_RIBBLY_CRONY       = 10043,                         // ribbly同伙 Entry ID
 };
 
+// 随从/NPC AI：blackbreath（hurley_blackbreath）
 struct npc_hurley_blackbreathAI : public npc_escortAI
 {
     npc_hurley_blackbreathAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -1460,12 +1494,13 @@ struct npc_hurley_blackbreathAI : public npc_escortAI
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_pInstance;                          // 副本数据实例指针
 
     uint32 uiFlameBreathTimer;
-    uint32 m_uiEventTimer;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
     bool   bIsEnraged;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         // If reset after an fight, we made him move to the keg room (end of the path)
@@ -1529,7 +1564,7 @@ struct npc_hurley_blackbreathAI : public npc_escortAI
         if (!m_pInstance)
             return;
 
-        // Combat check
+        // Combat check (战斗状态检查)
         if (m_creature->SelectHostileTarget() && m_creature->GetVictim())
         {
             if (uiFlameBreathTimer < uiDiff)
@@ -1546,7 +1581,7 @@ struct npc_hurley_blackbreathAI : public npc_escortAI
                     bIsEnraged = true;
             }
 
-            DoMeleeAttackIfReady();
+            DoMeleeAttackIfReady();                         // 近战普通攻击判定
         }
         else
         {
@@ -1565,6 +1600,7 @@ struct npc_hurley_blackbreathAI : public npc_escortAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_hurley_blackbreath
 UnitAI* GetAI_npc_hurley_blackbreath(Creature* pCreature)
 {
     return new npc_hurley_blackbreathAI(pCreature);
@@ -1574,13 +1610,15 @@ UnitAI* GetAI_npc_hurley_blackbreath(Creature* pCreature)
 ## boss_doomrel
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_DOOMREL_START_EVENT     = -1230003,
-    GOSSIP_ITEM_CHALLENGE       = -3230002,
-    GOSSIP_TEXT_ID_CHALLENGE    = 2601,
+    SAY_DOOMREL_START_EVENT     = -1230003,                 // 厄运者开始事件 台词广播 ID
+    GOSSIP_ITEM_CHALLENGE       = -3230002,                 // 物品challenge 对话菜单选项 ID
+    GOSSIP_TEXT_ID_CHALLENGE    = 2601,                     // textIDchallenge 对话菜单选项 ID
 };
 
+// NPC 对话交互入口函数：boss_doomrel
 bool GossipHello_boss_doomrel(Player* pPlayer, Creature* pCreature)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
@@ -1600,7 +1638,7 @@ bool GossipSelect_boss_doomrel(Player* pPlayer, Creature* pCreature, uint32 /*ui
         case GOSSIP_ACTION_INFO_DEF+1:
             pPlayer->CLOSE_GOSSIP_MENU();
             DoScriptText(SAY_DOOMREL_START_EVENT, pCreature);
-            // start event
+            // start event (开始事件)
             if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
                 pInstance->SetData(TYPE_TOMB_OF_SEVEN, IN_PROGRESS);
 
@@ -1613,33 +1651,35 @@ bool GossipSelect_boss_doomrel(Player* pPlayer, Creature* pCreature, uint32 /*ui
 ## boss_plugger_spazzring
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_OOC_1                       = -1230050,
-    SAY_OOC_2                       = -1230051,
-    SAY_OOC_3                       = -1230052,
-    SAY_OOC_4                       = -1230053,
+    SAY_OOC_1                       = -1230050,             // ooc1 台词广播 ID
+    SAY_OOC_2                       = -1230051,             // ooc2 台词广播 ID
+    SAY_OOC_3                       = -1230052,             // ooc3 台词广播 ID
+    SAY_OOC_4                       = -1230053,             // ooc4 台词广播 ID
 
-    YELL_STOLEN_1                   = -1230054,
-    YELL_STOLEN_2                   = -1230055,
-    YELL_STOLEN_3                   = -1230056,
-    YELL_AGRRO_1                    = -1230057,
-    YELL_AGRRO_2                    = -1230058,
-    YELL_PICKPOCKETED               = -1230059,
+    YELL_STOLEN_1                   = -1230054,             // stolen1 大喊台词广播 ID
+    YELL_STOLEN_2                   = -1230055,             // stolen2 大喊台词广播 ID
+    YELL_STOLEN_3                   = -1230056,             // stolen3 大喊台词广播 ID
+    YELL_AGRRO_1                    = -1230057,             // agrro1 大喊台词广播 ID
+    YELL_AGRRO_2                    = -1230058,             // agrro2 大喊台词广播 ID
+    YELL_PICKPOCKETED               = -1230059,             // pickpocketed 大喊台词广播 ID
 
-    // spells
-    SPELL_BANISH                    = 8994,
-    SPELL_CURSE_OF_TONGUES          = 13338,
-    SPELL_DEMON_ARMOR               = 13787,
-    SPELL_IMMOLATE                  = 12742,
-    SPELL_SHADOW_BOLT               = 12739,
-    SPELL_PICKPOCKET                = 921,
+    // spells (技能法术)
+    SPELL_BANISH                    = 8994,                 // banish 法术 ID
+    SPELL_CURSE_OF_TONGUES          = 13338,                // 诅咒oftongues 法术 ID
+    SPELL_DEMON_ARMOR               = 13787,                // 恶魔armor 法术 ID
+    SPELL_IMMOLATE                  = 12742,                // 献祭 法术 ID
+    SPELL_SHADOW_BOLT               = 12739,                // 暗影箭 法术 ID
+    SPELL_PICKPOCKET                = 921,                  // pickpocket 法术 ID
 };
 
 static const int aRandomSays[] = { SAY_OOC_1, SAY_OOC_2, SAY_OOC_3, SAY_OOC_4 };
 
 static const int aRandomYells[] = { YELL_STOLEN_1, YELL_STOLEN_2, YELL_STOLEN_3 };
 
+// 首领战 AI：spazzring（plugger_spazzring）
 struct boss_plugger_spazzringAI : public ScriptedAI
 {
 
@@ -1651,14 +1691,15 @@ struct boss_plugger_spazzringAI : public ScriptedAI
 
     instance_blackrock_depths* m_pInstance;
 
-    uint32 m_uiOocSayTimer;
-    uint32 m_uiDemonArmorTimer;
-    uint32 m_uiBanishTimer;
-    uint32 m_uiImmolateTimer;
-    uint32 m_uiShadowBoltTimer;
-    uint32 m_uiCurseOfTonguesTimer;
-    uint32 m_uiPickpocketTimer;
+    uint32 m_uiOocSayTimer;                                 // OocSay 技能计时器
+    uint32 m_uiDemonArmorTimer;                             // DemonArmor 技能计时器
+    uint32 m_uiBanishTimer;                                 // Banish 技能计时器
+    uint32 m_uiImmolateTimer;                               // Immolate 技能计时器
+    uint32 m_uiShadowBoltTimer;                             // ShadowBolt 技能计时器
+    uint32 m_uiCurseOfTonguesTimer;                         // CurseOfTongues 技能计时器
+    uint32 m_uiPickpocketTimer;                             // Pickpocket 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiOocSayTimer          = 10000;
@@ -1693,6 +1734,7 @@ struct boss_plugger_spazzringAI : public ScriptedAI
         m_pInstance->SetData(TYPE_PLUGGER, IN_PROGRESS); // The event is set IN_PROGRESS even if Plugger is dead because his death triggers more actions that are part of the event
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         if (pCaster->GetTypeId() == TYPEID_PLAYER)
@@ -1721,9 +1763,10 @@ struct boss_plugger_spazzringAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Combat check
+        // Combat check (战斗状态检查)
         if (m_creature->SelectHostileTarget() && m_creature->GetVictim())
         {
             if (m_uiBanishTimer < uiDiff)
@@ -1764,7 +1807,7 @@ struct boss_plugger_spazzringAI : public ScriptedAI
             else
                 m_uiCurseOfTonguesTimer -= uiDiff;
 
-            DoMeleeAttackIfReady();
+            DoMeleeAttackIfReady();                         // 近战普通攻击判定
         }
         // Out of Combat (OOC)
         else
@@ -1800,6 +1843,7 @@ struct boss_plugger_spazzringAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_plugger_spazzring
 UnitAI* GetAI_boss_plugger_spazzring(Creature* pCreature)
 {
     return new boss_plugger_spazzringAI(pCreature);
@@ -1809,11 +1853,12 @@ UnitAI* GetAI_boss_plugger_spazzring(Creature* pCreature)
 ## go_bar_ale_mug
 ######*/
 
+// 游戏对象使用交互回调：go_bar_ale_mug
 bool GOUse_go_bar_ale_mug(Player* pPlayer, GameObject* pGo)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData())
     {
-        if (pInstance->GetData(TYPE_PLUGGER) == IN_PROGRESS || pInstance->GetData(TYPE_PLUGGER) == DONE) // GOs despawning on use, this check should never be true but this is proper to have it there
+        if (pInstance->GetData(TYPE_PLUGGER) == IN_PROGRESS || pInstance->GetData(TYPE_PLUGGER) == DONE) // GOs despawning on use, this check should never be true but this is proper to have it there (使用后消失的对象安全检查)
             return false;
         if (Creature* pPlugger = pInstance->GetSingleCreatureFromStorage(NPC_PLUGGER_SPAZZRING))
         {
@@ -1837,12 +1882,14 @@ bool GOUse_go_bar_ale_mug(Player* pPlayer, GameObject* pGo)
 ## npc_ironhand_guardian
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_GOUT_OF_FLAME     = 15529,
-    SPELL_STONED_VISUAL     = 15533,
+    SPELL_GOUT_OF_FLAME     = 15529,                        // goutof烈焰 法术 ID
+    SPELL_STONED_VISUAL     = 15533,                        // stoned视觉特效 法术 ID
 };
 
+// 随从/NPC AI：guardian（ironhand_guardian）
 struct npc_ironhand_guardianAI : public ScriptedAI
 {
     npc_ironhand_guardianAI(Creature* creature) : ScriptedAI(creature)
@@ -1856,6 +1903,7 @@ struct npc_ironhand_guardianAI : public ScriptedAI
     uint32 m_goutOfFlameTimer;
     uint8 m_phase;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_goutOfFlameTimer = urand(4, 30) * IN_MILLISECONDS;
@@ -1864,6 +1912,7 @@ struct npc_ironhand_guardianAI : public ScriptedAI
         SetReactState(REACT_PASSIVE);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (!instance)
@@ -1895,6 +1944,7 @@ struct npc_ironhand_guardianAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_ironhand_guardian
 UnitAI* GetAI_npc_ironhand_guardian(Creature* creature)
 {
     return new npc_ironhand_guardianAI(creature);
@@ -1919,7 +1969,7 @@ struct FiveFatFingerExplodingHeartTechnique : public AuraScript
     {
         if (aura->GetStackAmount() < 5)
             return;
-        // 5 steps 5 yards?
+        // 5 steps 5 yards? (步长约 5码)
         if (static_cast<FatFingerStorage*>(aura->GetScriptStorage())->pos.GetDistance(aura->GetTarget()->GetPosition()) >= 5.f)
             data.spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(27676); // Exploding Heart
     }
@@ -1928,12 +1978,13 @@ struct FiveFatFingerExplodingHeartTechnique : public AuraScript
     {
         if (aura->GetStackAmount() < 5)
             return;
-        // 5 steps 5 yards?
+        // 5 steps 5 yards? (步长约 5码)
         if (static_cast<FatFingerStorage*>(aura->GetScriptStorage())->pos.GetDistance(aura->GetTarget()->GetPosition()) >= 5.f)
             aura->GetTarget()->RemoveAurasDueToSpell(aura->GetId());
     }
 };
 
+// 注册并载入脚本模块：blackrock_depths
 void AddSC_blackrock_depths()
 {
     Script* pNewScript = new Script;

@@ -21,48 +21,52 @@ SDComment: Submerge emote is not played
 SDCategory: Molten Core
 EndScriptData */
 
+// 炎魔之王拉格纳罗斯（Ragnaros）10号最终首领战 AI（萨弗拉斯之击、熔岩喷发与潜地召唤烈焰之子阶段）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_ARRIVAL5_RAG            = -1409012,
-    SAY_REINFORCEMENTS_1        = -1409013,
-    SAY_REINFORCEMENTS_2        = -1409014,
-    SAY_HAMMER                  = -1409015,
-    SAY_WRATH                   = -1409016,
-    SAY_KILL                    = 7626,
-    SAY_MAGMABURST              = -1409018,
+    SAY_ARRIVAL5_RAG            = -1409012,                 // arrival5rag 台词广播 ID
+    SAY_REINFORCEMENTS_1        = -1409013,                 // reinforcements1 台词广播 ID
+    SAY_REINFORCEMENTS_2        = -1409014,                 // reinforcements2 台词广播 ID
+    SAY_HAMMER                  = -1409015,                 // hammer 台词广播 ID
+    SAY_WRATH                   = -1409016,                 // wrath 台词广播 ID
+    SAY_KILL                    = 7626,                     // 击杀 台词广播 ID
+    SAY_MAGMABURST              = -1409018,                 // magmaburst 台词广播 ID
 
-    SPELL_WRATH_OF_RAGNAROS     = 20566,
+    SPELL_WRATH_OF_RAGNAROS     = 20566,                    // wrathof拉格纳罗斯 法术 ID
     SPELL_ELEMENTAL_FIRE        = 20563,                    // Aura, proc spell 20564 when doing melee damage
     SPELL_MAGMA_BLAST           = 20565,                    // Ranged attack if nobody is in melee range
-    SPELL_MELT_WEAPON           = 21387,
-    SPELL_RAGNA_SUBMERGE        = 21107,                    // Stealth aura
+    SPELL_MELT_WEAPON           = 21387,                    // meltweapon 法术 ID
+    SPELL_RAGNA_SUBMERGE        = 21107,                    // Stealth aura (潜行光环)
     SPELL_RAGNA_SUBMERGE_VISUAL = 20567,                    // Visual for submerging into lava
     SPELL_RAGNA_EMERGE          = 20568,                    // Emerge from lava
     SPELL_SUBMERGE_EFFECT       = 21859,                    // Make Ragnaros immune and passive while submerged
-    SPELL_ELEMENTAL_FIRE_KILL   = 19773,
-    SPELL_MIGHT_OF_RAGNAROS     = 21154,
-    SPELL_INTENSE_HEAT          = 21155,
+    SPELL_ELEMENTAL_FIRE_KILL   = 19773,                    // 元素火焰击杀 法术 ID
+    SPELL_MIGHT_OF_RAGNAROS     = 21154,                    // mightof拉格纳罗斯 法术 ID
+    SPELL_INTENSE_HEAT          = 21155,                    // intenseheat 法术 ID
     SPELL_LAVA_BURST            = 21908,                    // Randomly trigger one of spells 21886, 21900 - 21907 which summons Go 178088
     SPELL_SUMMON_SONS_FLAME     = 21108,                    // Trigger the eight spells summoning the Son of Flame adds
 
     // add spells
-    SPELL_DOUBLE_ATTACK         = 19818,
-    SPELL_LAVA_SHIELD           = 21857,
+    SPELL_DOUBLE_ATTACK         = 19818,                    // 双重攻击 法术 ID
+    SPELL_LAVA_SHIELD           = 21857,                    // lava护盾 法术 ID
 
-    NB_ADDS_IN_SUBMERGE         = 8,
-    NPC_SON_OF_FLAME            = 12143,
-    NPC_FLAME_OF_RAGNAROS       = 13148,
+    NB_ADDS_IN_SUBMERGE         = 8,                        // addsinsubmerge 标识 ID
+    NPC_SON_OF_FLAME            = 12143,                    // sonof烈焰 Entry ID
+    NPC_FLAME_OF_RAGNAROS       = 13148,                    // 烈焰of拉格纳罗斯 Entry ID
 
-    PHASE_EMERGING              = 0,
-    PHASE_EMERGED               = 1,
-    PHASE_SUBMERGING            = 2,
-    PHASE_SUBMERGED             = 3
+    PHASE_EMERGING              = 0,                        // emerging 阶段 ID
+    PHASE_EMERGED               = 1,                        // emerged 阶段 ID
+    PHASE_SUBMERGING            = 2,                        // submerging 阶段 ID
+    PHASE_SUBMERGED             = 3                         // submerged 阶段 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum RagnarosActions
 {
     RAGNAROS_PHASE_TRANSITION,
@@ -74,6 +78,7 @@ enum RagnarosActions
     RAGNAROS_ENTER_COMBAT,
 };
 
+// 首领战 AI：标识 ID（ragnaros）
 struct boss_ragnarosAI : public CombatAI
 {
     boss_ragnarosAI(Creature* creature) : CombatAI(creature, RAGNAROS_ACTION_MAX), m_instance(static_cast<instance_molten_core*>(creature->GetInstanceData()))
@@ -94,12 +99,13 @@ struct boss_ragnarosAI : public CombatAI
     uint32 m_phase;
     int32 m_rangeCheckState;
 
-    bool m_bHasAggroYelled;
-    bool m_bHasYelledMagmaBurst;
-    bool m_bHasSubmergedOnce;
+    bool m_bHasAggroYelled;                                 // HasAggroYelled 状态标记
+    bool m_bHasYelledMagmaBurst;                            // HasYelledMagmaBurst 状态标记
+    bool m_bHasSubmergedOnce;                               // HasSubmergedOnce 状态标记
 
     GuidVector m_spawns;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -128,6 +134,7 @@ struct boss_ragnarosAI : public CombatAI
             m_instance->SetData(TYPE_RAGNAROS, DONE);
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         if (who->GetTypeId() == TYPEID_UNIT && who->GetEntry() == NPC_MAJORDOMO)
@@ -137,6 +144,7 @@ struct boss_ragnarosAI : public CombatAI
             m_instance->SetData(TYPE_RAGNAROS, IN_PROGRESS);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance)
@@ -151,6 +159,7 @@ struct boss_ragnarosAI : public CombatAI
         ScriptedAI::EnterEvadeMode();
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         // If all Sons of Flame are dead, trigger emerge
@@ -164,6 +173,7 @@ struct boss_ragnarosAI : public CombatAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SON_OF_FLAME)
@@ -226,7 +236,7 @@ struct boss_ragnarosAI : public CombatAI
                 DoScriptText(!m_bHasSubmergedOnce ? SAY_REINFORCEMENTS_1 : SAY_REINFORCEMENTS_2, m_creature);
                 m_bHasSubmergedOnce = true;
 
-                // Summon 8 elementals around the boss
+                // Summon 8 elementals around the boss (召唤 elementals around the boss)
                 if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_SONS_FLAME) == CAST_OK)
                     m_uiAddCount = NB_ADDS_IN_SUBMERGE;
 
@@ -342,11 +352,13 @@ struct boss_ragnarosAI : public CombatAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_ragnaros
 UnitAI* GetAI_boss_ragnaros(Creature* creature)
 {
     return new boss_ragnarosAI(creature);
 }
 
+// 注册并载入脚本模块：boss_ragnaros
 void AddSC_boss_ragnaros()
 {
     Script* pNewScript = new Script;

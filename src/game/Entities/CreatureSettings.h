@@ -22,12 +22,14 @@
 
 class Creature;
 
+// 生物动态静态标志管理器（封装 StaticFlags1~4 的读写并在变更时同步应用到 Creature/AI）
 class CreatureSettings
 {
     public:
         CreatureSettings(Creature* owner);
+        // 使用模板默认静态标志初始化，并立即应用视野、仇恨、隐藏等状态
         void ResetStaticFlags(CreatureStaticFlags staticFlags, CreatureStaticFlags2 staticFlags2, CreatureStaticFlags3 staticFlags3, CreatureStaticFlags4 staticFlags4);
-        // always set/remove one at a time
+        // always set/remove one at a time (每次仅设置或移除单个标志位)
         void SetFlag(CreatureStaticFlags flag);
         void SetFlag(CreatureStaticFlags2 flag);
         void SetFlag(CreatureStaticFlags3 flag);
@@ -37,21 +39,23 @@ class CreatureSettings
         void RemoveFlag(CreatureStaticFlags3 flag);
         void RemoveFlag(CreatureStaticFlags4 flag);
 
+        // 查询指定静态标志是否开启
         bool HasFlag(CreatureStaticFlags flag) const;
         bool HasFlag(CreatureStaticFlags2 flag) const;
         bool HasFlag(CreatureStaticFlags3 flag) const;
         bool HasFlag(CreatureStaticFlags4 flag) const;
     private:
+        // 标志变化时触发对应运行时行为更新
         void updateFlag(CreatureStaticFlags flag, bool apply);
         void updateFlag(CreatureStaticFlags2 flag, bool apply);
         void updateFlag(CreatureStaticFlags3 flag, bool apply);
         void updateFlag(CreatureStaticFlags4 flag, bool apply);
 
-        CreatureStaticFlags m_flags;
-        CreatureStaticFlags2 m_flags2;
-        CreatureStaticFlags3 m_flags3;
-        CreatureStaticFlags4 m_flags4;
-        Creature* m_owner;
+        CreatureStaticFlags m_flags;                        // 静态标志组 1
+        CreatureStaticFlags2 m_flags2;                      // 静态标志组 2
+        CreatureStaticFlags3 m_flags3;                      // 静态标志组 3
+        CreatureStaticFlags4 m_flags4;                      // 静态标志组 4
+        Creature* m_owner;                                  // 所属生物实例指针
 };
 
 #endif

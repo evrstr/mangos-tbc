@@ -21,6 +21,8 @@ SDComment: Quest support: 5216, 5219, 5222, 5225, 5229, 5231, 5233, 5235, 5862, 
 SDCategory: Western Plaguelands
 EndScriptData */
 
+// 西瘟疫之地（Western Plaguelands）安多哈尔与四大瘟疫大锅任务脚本
+
 /* ContentData
 npc_the_scourge_cauldron
 npc_anchorite_truuen
@@ -37,10 +39,12 @@ EndContentData */
 ## npc_the_scourge_cauldron
 ######*/
 
+// 随从/NPC AI：scourgecauldron（the_scourge_cauldron）
 struct npc_the_scourge_cauldronAI : public ScriptedAI
 {
     npc_the_scourge_cauldronAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
     void DoDie()
@@ -99,6 +103,7 @@ struct npc_the_scourge_cauldronAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_the_scourge_cauldron
 UnitAI* GetAI_npc_the_scourge_cauldron(Creature* creature)
 {
     return new npc_the_scourge_cauldronAI(creature);
@@ -108,34 +113,37 @@ UnitAI* GetAI_npc_the_scourge_cauldron(Creature* creature)
 ## npc_anchorite_truuen
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_BEGIN                   = -1000910,
-    SAY_FIRST_STOP              = -1000911,
-    SAY_CONTINUE                = -1000912,
-    SAY_FIRST_ATTACK            = -1000913,
-    SAY_PURITY                  = -1000914,
-    SAY_SECOND_ATTACK           = -1000915,
-    SAY_CLEANSE                 = -1000916,
-    SAY_WELCOME                 = -1000917,
-    SAY_EPILOGUE_1              = -1000918,
-    SAY_EPILOGUE_2              = -1000919,
+    SAY_BEGIN                   = -1000910,                 // begin 台词广播 ID
+    SAY_FIRST_STOP              = -1000911,                 // firststop 台词广播 ID
+    SAY_CONTINUE                = -1000912,                 // continue 台词广播 ID
+    SAY_FIRST_ATTACK            = -1000913,                 // first攻击 台词广播 ID
+    SAY_PURITY                  = -1000914,                 // purity 台词广播 ID
+    SAY_SECOND_ATTACK           = -1000915,                 // second攻击 台词广播 ID
+    SAY_CLEANSE                 = -1000916,                 // cleanse 台词广播 ID
+    SAY_WELCOME                 = -1000917,                 // welcome 台词广播 ID
+    SAY_EPILOGUE_1              = -1000918,                 // epilogue1 台词广播 ID
+    SAY_EPILOGUE_2              = -1000919,                 // epilogue2 台词广播 ID
 
-    NPC_PRIEST_THELDANIS        = 1854,
-    NPC_HUNGERING_WRAITH        = 1802,
-    NPC_HAUNDING_VISION         = 4472,
-    NPC_BLIGHTED_ZOMBIE         = 4475,
-    NPC_GHOST_OF_UTHER          = 17233,
+    NPC_PRIEST_THELDANIS        = 1854,                     // 牧师theldanis Entry ID
+    NPC_HUNGERING_WRAITH        = 1802,                     // hungeringwraith Entry ID
+    NPC_HAUNDING_VISION         = 4472,                     // haundingvision Entry ID
+    NPC_BLIGHTED_ZOMBIE         = 4475,                     // blighted僵尸 Entry ID
+    NPC_GHOST_OF_UTHER          = 17233,                    // ghostofuther Entry ID
 
-    QUEST_ID_TOMB_LIGHTBRINGER  = 9446,
+    QUEST_ID_TOMB_LIGHTBRINGER  = 9446,                     // ID墓穴lightbringer 任务 ID
 };
 
+// 随从/NPC AI：truuen（anchorite_truuen）
 struct npc_anchorite_truuenAI: public npc_escortAI
 {
     npc_anchorite_truuenAI(Creature* pCreature): npc_escortAI(pCreature) { Reset(); }
 
-    ObjectGuid m_utherGhostGuid;
+    ObjectGuid m_utherGhostGuid;                            // utherGhost 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
@@ -205,6 +213,7 @@ struct npc_anchorite_truuenAI: public npc_escortAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() != NPC_GHOST_OF_UTHER)
@@ -214,11 +223,13 @@ struct npc_anchorite_truuenAI: public npc_escortAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_anchorite_truuen
 UnitAI* GetAI_npc_anchorite_truuen(Creature* pCreature)
 {
     return new npc_anchorite_truuenAI(pCreature);
 }
 
+// 任务接取回调函数：npc_anchorite_truuen
 bool QuestAccept_npc_anchorite_truuen(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_ID_TOMB_LIGHTBRINGER)
@@ -231,74 +242,75 @@ bool QuestAccept_npc_anchorite_truuen(Player* pPlayer, Creature* pCreature, cons
 ## npc_taelan_fordring
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // scarlet end quest texts
-    SAY_SCARLET_COMPLETE_1          = -1001076,
-    SAY_SCARLET_COMPLETE_2          = -1001077,
+    SAY_SCARLET_COMPLETE_1          = -1001076,             // scarletcomplete1 台词广播 ID
+    SAY_SCARLET_COMPLETE_2          = -1001077,             // scarletcomplete2 台词广播 ID
 
     // escort text
-    SAY_ESCORT_START                = -1001078,
-    SAY_EXIT_KEEP                   = -1001079,
-    EMOTE_MOUNT                     = -1001080,
-    SAY_REACH_TOWER                 = -1001081,
-    SAY_ISILLIEN_1                  = -1001082,
-    SAY_ISILLIEN_2                  = -1001083,
-    SAY_ISILLIEN_3                  = -1001084,
-    SAY_ISILLIEN_4                  = -1001085,
-    SAY_ISILLIEN_5                  = -1001086,
-    SAY_ISILLIEN_6                  = -1001087,
-    EMOTE_ISILLIEN_ATTACK           = -1001088,
-    SAY_ISILLIEN_ATTACK             = -1001089,
-    SAY_KILL_TAELAN_1               = -1001090,
-    EMOTE_ISILLIEN_LAUGH            = -1001091,
-    SAY_KILL_TAELAN_2               = -1001092,
-    EMOTE_ATTACK_PLAYER             = -1001093,
-    SAY_TIRION_1                    = -1001094,
-    SAY_TIRION_2                    = -1001095,
-    SAY_TIRION_3                    = -1001096,
-    SAY_TIRION_4                    = -1001097,
-    SAY_TIRION_5                    = -1001098,
-    SAY_EPILOG_1                    = -1001099,
-    EMOTE_KNEEL                     = -1001100,
-    SAY_EPILOG_2                    = -1001101,
-    EMOTE_HOLD_TAELAN               = -1001102,
-    SAY_EPILOG_3                    = -1001103,
-    SAY_EPILOG_4                    = -1001104,
-    SAY_EPILOG_5                    = -1001105,
+    SAY_ESCORT_START                = -1001078,             // escort开始 台词广播 ID
+    SAY_EXIT_KEEP                   = -1001079,             // exitkeep 台词广播 ID
+    EMOTE_MOUNT                     = -1001080,             // 坐骑 表情动作 ID
+    SAY_REACH_TOWER                 = -1001081,             // reachtower 台词广播 ID
+    SAY_ISILLIEN_1                  = -1001082,             // isillien1 台词广播 ID
+    SAY_ISILLIEN_2                  = -1001083,             // isillien2 台词广播 ID
+    SAY_ISILLIEN_3                  = -1001084,             // isillien3 台词广播 ID
+    SAY_ISILLIEN_4                  = -1001085,             // isillien4 台词广播 ID
+    SAY_ISILLIEN_5                  = -1001086,             // isillien5 台词广播 ID
+    SAY_ISILLIEN_6                  = -1001087,             // isillien6 台词广播 ID
+    EMOTE_ISILLIEN_ATTACK           = -1001088,             // isillien攻击 表情动作 ID
+    SAY_ISILLIEN_ATTACK             = -1001089,             // isillien攻击 台词广播 ID
+    SAY_KILL_TAELAN_1               = -1001090,             // 击杀泰兰1 台词广播 ID
+    EMOTE_ISILLIEN_LAUGH            = -1001091,             // isillienlaugh 表情动作 ID
+    SAY_KILL_TAELAN_2               = -1001092,             // 击杀泰兰2 台词广播 ID
+    EMOTE_ATTACK_PLAYER             = -1001093,             // 攻击player 表情动作 ID
+    SAY_TIRION_1                    = -1001094,             // tirion1 台词广播 ID
+    SAY_TIRION_2                    = -1001095,             // tirion2 台词广播 ID
+    SAY_TIRION_3                    = -1001096,             // tirion3 台词广播 ID
+    SAY_TIRION_4                    = -1001097,             // tirion4 台词广播 ID
+    SAY_TIRION_5                    = -1001098,             // tirion5 台词广播 ID
+    SAY_EPILOG_1                    = -1001099,             // epilog1 台词广播 ID
+    EMOTE_KNEEL                     = -1001100,             // kneel 表情动作 ID
+    SAY_EPILOG_2                    = -1001101,             // epilog2 台词广播 ID
+    EMOTE_HOLD_TAELAN               = -1001102,             // hold泰兰 表情动作 ID
+    SAY_EPILOG_3                    = -1001103,             // epilog3 台词广播 ID
+    SAY_EPILOG_4                    = -1001104,             // epilog4 台词广播 ID
+    SAY_EPILOG_5                    = -1001105,             // epilog5 台词广播 ID
 
-    // spells
-    SPELL_DEVOTION_AURA             = 17232,
-    SPELL_CRUSADER_STRIKE           = 14518,
-    SPELL_HOLY_STRIKE               = 17143,
-    SPELL_HOLY_CLEAVE               = 18819,
-    SPELL_HOLY_LIGHT                = 15493,
-    SPELL_LAY_ON_HANDS              = 17233,
-    SPELL_TAELAN_SUFFERING          = 18810,
+    // spells (技能法术)
+    SPELL_DEVOTION_AURA             = 17232,                // devotion光环 法术 ID
+    SPELL_CRUSADER_STRIKE           = 14518,                // crusader打击 法术 ID
+    SPELL_HOLY_STRIKE               = 17143,                // 神圣打击 法术 ID
+    SPELL_HOLY_CLEAVE               = 18819,                // 神圣顺劈斩 法术 ID
+    SPELL_HOLY_LIGHT                = 15493,                // 神圣light 法术 ID
+    SPELL_LAY_ON_HANDS              = 17233,                // layonhands 法术 ID
+    SPELL_TAELAN_SUFFERING          = 18810,                // 泰兰suffering 法术 ID
 
     // isillen spells
-    SPELL_DOMINATE_MIND             = 14515,
-    SPELL_FLASH_HEAL                = 10917,
-    SPELL_GREATER_HEAL              = 10965,
-    SPELL_MANA_BURN                 = 15800,
-    SPELL_MIND_BLAST                = 17194,
-    SPELL_MIND_FLAY                 = 17165,
-    SPELL_TAELAN_DEATH              = 18969,
+    SPELL_DOMINATE_MIND             = 14515,                // dominatemind 法术 ID
+    SPELL_FLASH_HEAL                = 10917,                // flash治疗 法术 ID
+    SPELL_GREATER_HEAL              = 10965,                // greater治疗 法术 ID
+    SPELL_MANA_BURN                 = 15800,                // 法力burn 法术 ID
+    SPELL_MIND_BLAST                = 17194,                // mind冲击 法术 ID
+    SPELL_MIND_FLAY                 = 17165,                // mind鞭笞 法术 ID
+    SPELL_TAELAN_DEATH              = 18969,                // 泰兰死亡 法术 ID
 
-    // npcs
-    NPC_TAELAN_FORDRING             = 1842,
-    NPC_SCARLET_CAVALIER            = 1836,
-    NPC_ISILLIEN                    = 1840,
-    NPC_TIRION_FORDRING             = 12126,
-    NPC_CRIMSON_ELITE               = 12128,
+    // npcs (相关 NPC)
+    NPC_TAELAN_FORDRING             = 1842,                 // 泰兰fordring Entry ID
+    NPC_SCARLET_CAVALIER            = 1836,                 // scarletcavalier Entry ID
+    NPC_ISILLIEN                    = 1840,                 // isillien Entry ID
+    NPC_TIRION_FORDRING             = 12126,                // tirionfordring Entry ID
+    NPC_CRIMSON_ELITE               = 12128,                // crimsonelite Entry ID
 
-    MODEL_TAELAN_MOUNT              = 239,
+    MODEL_TAELAN_MOUNT              = 239,                  // 泰兰坐骑 标识 ID
 
     // quests
-    QUEST_ID_SCARLET_SUBTERFUGE     = 5862,
-    QUEST_ID_IN_DREAMS              = 5944,
+    QUEST_ID_SCARLET_SUBTERFUGE     = 5862,                 // IDscarletsubterfuge 任务 ID
+    QUEST_ID_IN_DREAMS              = 5944,                 // IDindreams 任务 ID
 
-    TIRION_KNEELS_1                 = 1,
+    TIRION_KNEELS_1                 = 1,                    // kneels1 标识 ID
 };
 
 static const int32 aCavalierYells[] = { -1001072, -1001073, -1001074, -1001075 };
@@ -348,6 +360,7 @@ static const DialogueEntry aScarletDialogue[] =
     {0, 0, 0},
 };
 
+// 随从/NPC AI：fordring（taelan_fordring）
 struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
 {
     npc_taelan_fordringAI(Creature* creature): npc_escortAI(creature), DialogueHelper(aScarletDialogue)
@@ -366,8 +379,8 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
     bool m_hasMount;
     bool m_taelanDead;
 
-    ObjectGuid m_isillenGuid;
-    ObjectGuid m_tirionGuid;
+    ObjectGuid m_isillenGuid;                               // isillen 实体 GUID
+    ObjectGuid m_tirionGuid;                                // tirion 实体 GUID
     GuidList m_lCavalierGuids;
 
     uint32 m_holyCleaveTimer;
@@ -375,6 +388,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
     uint32 m_crusaderStrike;
     uint32 m_holyLightTimer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_holyCleaveTimer = urand(11000, 15000);
@@ -399,6 +413,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
         npc_escortAI::MoveInLineOfSight(who);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_taelanDead)
@@ -430,6 +445,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_scarletComplete)
@@ -477,6 +493,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -485,7 +502,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
                 SendAIEvent(AI_EVENT_START_ESCORT, m_creature, summoned);
                 m_isillenGuid = summoned->GetObjectGuid();
 
-                // summon additional crimson elites
+                // summon additional crimson elites (召唤 additional crimson elites)
                 float fX, fY, fZ;
                 summoned->GetNearPoint(summoned, fX, fY, fZ, 0, 5.0f, M_PI_F * 1.25f);
                 summoned->SummonCreature(NPC_CRIMSON_ELITE, fX, fY, fZ, summoned->GetOrientation(), TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 15 * MINUTE * IN_MILLISECONDS);
@@ -559,7 +576,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
                 DoCastSpellIfCan(m_creature, SPELL_TAELAN_SUFFERING);
                 break;
             case QUEST_ID_IN_DREAMS:
-                // force attack
+                // force attack (force攻击)
                 m_creature->SetFactionTemporary(FACTION_ESCORT_N_FRIEND_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
                 for (GuidList::const_iterator itr = m_lCavalierGuids.begin(); itr != m_lCavalierGuids.end(); ++itr)
                 {
@@ -578,7 +595,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
                 m_creature->Mount(MODEL_TAELAN_MOUNT);
                 break;
             case SAY_REACH_TOWER:
-                // start fight event
+                // start fight event (开始fight事件)
                 if (Player* player = GetPlayerForEscort())
                     m_creature->SetFacingToObject(player);
                 m_creature->SummonCreature(NPC_ISILLIEN, 2693.12f, -1943.04f, 72.04f, 2.11f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 15 * MINUTE * IN_MILLISECONDS);
@@ -613,7 +630,7 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
                     elite->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
                 }
 
-                // Isillien only attacks Taelan
+                // Isillien only attacks Taelan (Isillien仅attacks泰兰)
                 if (Creature* isillien = m_creature->GetMap()->GetCreature(m_isillenGuid))
                 {
                     isillien->AI()->AttackStart(m_creature);
@@ -624,19 +641,19 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
                 break;
             }
             case SAY_KILL_TAELAN_1:
-                // Kill Taelan and attack players
+                // Kill Taelan and attack players (击杀泰兰and攻击players)
                 if (Creature* isillien = m_creature->GetMap()->GetCreature(m_isillenGuid))
                     SendAIEvent(AI_EVENT_CUSTOM_A, m_creature, isillien);
                 break;
             case EMOTE_ATTACK_PLAYER:
-                // Attack players
+                // Attack players (攻击players)
                 if (Creature* isillien = m_creature->GetMap()->GetCreature(m_isillenGuid))
                 {
                     if (Player* player = GetPlayerForEscort())
                         isillien->AI()->AttackStart(player);
                 }
                 break;
-            // Tirion event
+            // Tirion event (Tirion事件)
             case SAY_TIRION_1:
                 if (Creature* tirion = m_creature->GetMap()->GetCreature(m_tirionGuid))
                 {
@@ -764,15 +781,17 @@ struct npc_taelan_fordringAI: public npc_escortAI, private DialogueHelper
         if (!m_fightStarted && m_creature->GetHealthPercent() < 15.0f)
             DoCastSpellIfCan(m_creature, SPELL_LAY_ON_HANDS);
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_taelan_fordring
 UnitAI* GetAI_npc_taelan_fordring(Creature* creature)
 {
     return new npc_taelan_fordringAI(creature);
 }
 
+// 任务接取回调函数：npc_taelan_fordring
 bool QuestAccept_npc_taelan_fordring(Player* player, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_ID_IN_DREAMS)
@@ -789,7 +808,7 @@ bool QuestRewarded_npc_taelan_fordring(Player* player, Creature* creature, const
     return true;
 }
 
-// 18969 - Taelan Death
+// 18969 - Taelan Death (18969 - 泰兰 死亡)
 struct TaelanDeath : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -808,6 +827,7 @@ struct TaelanDeath : public SpellScript
 ## npc_isillien
 ######*/
 
+// 随从/NPC AI：标识 ID（isillien）
 struct npc_isillienAI: public npc_escortAI
 {
     npc_isillienAI(Creature* creature): npc_escortAI(creature)
@@ -821,7 +841,7 @@ struct npc_isillienAI: public npc_escortAI
     bool m_tirionSpawned;
     bool m_taelanDead;
 
-    ObjectGuid m_taelanGuid;
+    ObjectGuid m_taelanGuid;                                // taelan 实体 GUID
 
     uint32 m_summonTirionTimer;
     uint32 m_manaBurnTimer;
@@ -832,6 +852,7 @@ struct npc_isillienAI: public npc_escortAI
     uint32 m_mindBlastTimer;
     uint32 m_mindFlayTimer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_manaBurnTimer   = urand(7000, 12000);
@@ -844,9 +865,10 @@ struct npc_isillienAI: public npc_escortAI
 
     void MoveInLineOfSight(Unit* /*who*/) override
     {
-        // attack only on request
+        // attack only on request (攻击仅onrequest)
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         // evade and keep the same posiiton
@@ -874,7 +896,7 @@ struct npc_isillienAI: public npc_escortAI
             Start(false);
         else if (eventType == AI_EVENT_CUSTOM_A)
         {
-            // kill Taelan
+            // kill Taelan (击杀泰兰)
             DoCastSpellIfCan(invoker, SPELL_TAELAN_DEATH, CAST_INTERRUPT_PREVIOUS);
             m_taelanDead = true;
             m_summonTirionTimer = 120000;      // 2 minutes wait before Tirion arrives
@@ -894,7 +916,7 @@ struct npc_isillienAI: public npc_escortAI
 
     void UpdateEscortAI(const uint32 diff) override
     {
-        // Start event epilogue
+        // Start event epilogue (开始事件epilogue)
         if (!m_tirionSpawned && ((m_summonTirionTimer != 0 && m_summonTirionTimer < diff) || m_creature->GetHealthPercent() < 20.0f))
         {
             if (Creature* taelan = m_creature->GetMap()->GetCreature(m_taelanGuid))
@@ -907,7 +929,7 @@ struct npc_isillienAI: public npc_escortAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        // Combat spells
+        // Combat spells (战斗技能法术)
         if (m_mindBlastTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MIND_BLAST) == CAST_OK)
@@ -965,10 +987,11 @@ struct npc_isillienAI: public npc_escortAI
                 m_greaterHealTimer -= diff;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_isillien
 UnitAI* GetAI_npc_isillien(Creature* creature)
 {
     return new npc_isillienAI(creature);
@@ -978,16 +1001,18 @@ UnitAI* GetAI_npc_isillien(Creature* creature)
 ## npc_tirion_fordring
 ######*/
 
+// 随从/NPC AI：fordring（tirion_fordring）
 struct npc_tirion_fordringAI: public npc_escortAI
 {
     npc_tirion_fordringAI(Creature* creature): npc_escortAI(creature) { Reset(); }
 
-    ObjectGuid m_taelanGuid;
+    ObjectGuid m_taelanGuid;                                // taelan 实体 GUID
 
     uint32 m_holyCleaveTimer;
     uint32 m_holyStrikeTimer;
     uint32 m_crusaderStrike;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_holyCleaveTimer = urand(11000, 15000);
@@ -1002,9 +1027,10 @@ struct npc_tirion_fordringAI: public npc_escortAI
 
     void MoveInLineOfSight(Unit* /*who*/) override
     {
-        // attack only on request
+        // attack only on request (攻击仅onrequest)
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         m_creature->RemoveAllAurasOnEvade();
@@ -1055,6 +1081,7 @@ struct npc_tirion_fordringAI: public npc_escortAI
         }
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 moveType, uint32 pointId) override
     {
         // custom points; ignore in escort AI
@@ -1069,7 +1096,7 @@ struct npc_tirion_fordringAI: public npc_escortAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        // combat spells
+        // combat spells (战斗spells)
         if (m_holyCleaveTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_HOLY_CLEAVE) == CAST_OK)
@@ -1094,10 +1121,11 @@ struct npc_tirion_fordringAI: public npc_escortAI
         else
             m_crusaderStrike -= diff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_tirion_fordring
 UnitAI* GetAI_npc_tirion_fordring(Creature* creature)
 {
     return new npc_tirion_fordringAI(creature);
@@ -1107,6 +1135,7 @@ UnitAI* GetAI_npc_tirion_fordring(Creature* creature)
 ## spell_placing_beacon_torch
 ######*/
 
+// 法术脚本逻辑实现：placingbeacontorch 法术 ID（spell_placing_beacon_torch）
 struct spell_placing_beacon_torch : public SpellScript
 {
     void OnRadiusCalculate(Spell* /*spell*/, SpellEffectIndex effIdx, bool /*targetB*/, float& radius) const override
@@ -1119,6 +1148,7 @@ struct spell_placing_beacon_torch : public SpellScript
 };
 
 
+// 注册并载入脚本模块：western_plaguelands
 void AddSC_western_plaguelands()
 {
     Script* pNewScript = new Script;

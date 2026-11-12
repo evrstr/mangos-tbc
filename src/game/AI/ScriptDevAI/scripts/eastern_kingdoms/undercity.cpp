@@ -21,6 +21,8 @@ SDComment: Quest support: 9180(post-event).
 SDCategory: Undercity
 EndScriptData */
 
+// 幽暗城（Undercity）部落主城 NPC 与皇家幽灵药剂师脚本
+
 /* ContentData
 npc_lady_sylvanas_windrunner
 EndContentData */
@@ -32,24 +34,25 @@ EndContentData */
 ## npc_lady_sylvanas_windrunner
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_LAMENT_START          = -1000193,
-    SAY_LAMENT_END              = -1000196,
-    EMOTE_LAMENT_END            = -1000197,
-    SAY_AMBASSADOR              = -1001277,
+    EMOTE_LAMENT_START          = -1000193,                 // lament开始 表情动作 ID
+    SAY_LAMENT_END              = -1000196,                 // lamentend 台词广播 ID
+    EMOTE_LAMENT_END            = -1000197,                 // lamentend 表情动作 ID
+    SAY_AMBASSADOR              = -1001277,                 // ambassador 台词广播 ID
 
-    SPELL_HIGHBORNE_AURA        = 37090,
-    SPELL_SYLVANAS_CAST         = 36568,
-    SPELL_RIBBON_OF_SOULS       = 37099,
+    SPELL_HIGHBORNE_AURA        = 37090,                    // highborne光环 法术 ID
+    SPELL_SYLVANAS_CAST         = 36568,                    // sylvanascast 法术 ID
+    SPELL_RIBBON_OF_SOULS       = 37099,                    // ribbonofsouls 法术 ID
 
-    NPC_AMBASSADOR              = 16287,
-    NPC_HIGHBORNE_LAMENTER      = 21628,
-    NPC_HIGHBORNE_BUNNY         = 21641,
+    NPC_AMBASSADOR              = 16287,                    // ambassador Entry ID
+    NPC_HIGHBORNE_LAMENTER      = 21628,                    // highbornelamenter Entry ID
+    NPC_HIGHBORNE_BUNNY         = 21641,                    // highbornebunny Entry ID
 
-    QUEST_ID_JOURNEY_UNDERCITY  = 9180,
+    QUEST_ID_JOURNEY_UNDERCITY  = 9180,                     // IDjourneyundercity 任务 ID
 
-    MAX_LAMENTERS               = 4,
+    MAX_LAMENTERS               = 4,                        // lamenters 标识 ID
 };
 
 static const float aHighborneLoc[MAX_LAMENTERS][5] =
@@ -60,6 +63,7 @@ static const float aHighborneLoc[MAX_LAMENTERS][5] =
     {1292.552f, 311.8947f, -61.07092f, 1.953438f, 4.0f},
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SylvanasActions
 {
     SYLV_AMBASSADOR_WHISPER,
@@ -70,6 +74,7 @@ enum SylvanasActions
     SYLV_STAND,
 };
 
+// 随从/NPC AI：sylvanaswindrunner（lady_sylvanas_windrunner）
 struct npc_lady_sylvanas_windrunnerAI : public ScriptedAI
 {
     npc_lady_sylvanas_windrunnerAI(Creature* pCreature) : ScriptedAI(pCreature) 
@@ -122,15 +127,17 @@ struct npc_lady_sylvanas_windrunnerAI : public ScriptedAI
         Reset(); 
     }
 
-    bool m_bLamentInProgress;
+    bool m_bLamentInProgress;                               // LamentInProgress 状态标记
 
     ObjectGuid m_guidCurrentPlayer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_bLamentInProgress = false;
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_HIGHBORNE_BUNNY)
@@ -156,6 +163,7 @@ struct npc_lady_sylvanas_windrunnerAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_lady_sylvanas_windrunner
 UnitAI* GetAI_npc_lady_sylvanas_windrunner(Creature* pCreature)
 {
     return new npc_lady_sylvanas_windrunnerAI(pCreature);
@@ -172,6 +180,7 @@ bool QuestRewarded_npc_lady_sylvanas_windrunner(Player* pPlayer, Creature* pCrea
     return true;
 }
 
+// 注册并载入脚本模块：undercity
 void AddSC_undercity()
 {
     Script* pNewScript = new Script;

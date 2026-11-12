@@ -22,6 +22,8 @@ Romulo's Poisoned Thrust will now be used less frequently. - Patch_2.1.0
 SDCategory: Karazhan
 EndScriptData */
 
+// 歌剧院三幕剧（Opera Event）首领战 AI（绿野仙踪/罗密欧与朱丽叶/小红帽）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
@@ -30,65 +32,66 @@ EndScriptData */
 /*** OPERA WIZARD OF OZ EVENT *****/
 /*********************************/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_DOROTHEE_DEATH          = 15068,
-    SAY_DOROTHEE_SUMMON         = 15066,
-    SAY_DOROTHEE_TITO_DEATH     = 15069,
-    SAY_DOROTHEE_AGGRO          = 15067,
+    SAY_DOROTHEE_DEATH          = 15068,                    // dorothee死亡 台词广播 ID
+    SAY_DOROTHEE_SUMMON         = 15066,                    // dorothee召唤 台词广播 ID
+    SAY_DOROTHEE_TITO_DEATH     = 15069,                    // dorotheetito死亡 台词广播 ID
+    SAY_DOROTHEE_AGGRO          = 15067,                    // dorothee开战 台词广播 ID
 
-    SAY_ROAR_AGGRO              = 19276,
-    SAY_ROAR_DEATH              = 15133,
-    SAY_ROAR_SLAY               = 15131,
+    SAY_ROAR_AGGRO              = 19276,                    // roar开战 台词广播 ID
+    SAY_ROAR_DEATH              = 15133,                    // roar死亡 台词广播 ID
+    SAY_ROAR_SLAY               = 15131,                    // roar击杀 台词广播 ID
 
-    SAY_STRAWMAN_AGGRO          = 19277,
-    SAY_STRAWMAN_DEATH          = 15135,
-    SAY_STRAWMAN_SLAY           = 15136,
+    SAY_STRAWMAN_AGGRO          = 19277,                    // strawman开战 台词广播 ID
+    SAY_STRAWMAN_DEATH          = 15135,                    // strawman死亡 台词广播 ID
+    SAY_STRAWMAN_SLAY           = 15136,                    // strawman击杀 台词广播 ID
 
-    SAY_TINHEAD_AGGRO           = 19278,
-    SAY_TINHEAD_DEATH           = 15155,
-    SAY_TINHEAD_SLAY            = 15156,
-    EMOTE_RUST                  = 14361,
+    SAY_TINHEAD_AGGRO           = 19278,                    // tinhead开战 台词广播 ID
+    SAY_TINHEAD_DEATH           = 15155,                    // tinhead死亡 台词广播 ID
+    SAY_TINHEAD_SLAY            = 15156,                    // tinhead击杀 台词广播 ID
+    EMOTE_RUST                  = 14361,                    // rust 表情动作 ID
 
-    SAY_CRONE_INTRO             = 15050,
-    SAY_CRONE_INTRO2            = 15332,
-    SAY_CRONE_DEATH             = 15052,
-    SAY_CRONE_SLAY              = 15051,
+    SAY_CRONE_INTRO             = 15050,                    // crone开场 台词广播 ID
+    SAY_CRONE_INTRO2            = 15332,                    // croneintro2 台词广播 ID
+    SAY_CRONE_DEATH             = 15052,                    // crone死亡 台词广播 ID
+    SAY_CRONE_SLAY              = 15051,                    // crone击杀 台词广播 ID
 
     /**** Spells ****/
     // Dorothee
-    SPELL_WATERBOLT             = 31012,
-    SPELL_FRIGHTENEDSCREAM      = 31013,
-    SPELL_SUMMONTITO            = 31014,
+    SPELL_WATERBOLT             = 31012,                    // waterbolt 法术 ID
+    SPELL_FRIGHTENEDSCREAM      = 31013,                    // frightenedscream 法术 ID
+    SPELL_SUMMONTITO            = 31014,                    // summontito 法术 ID
 
     // Strawman
-    SPELL_BRAIN_BASH            = 31046,
-    SPELL_BRAIN_WIPE            = 31069,
+    SPELL_BRAIN_BASH            = 31046,                    // brainbash 法术 ID
+    SPELL_BRAIN_WIPE            = 31069,                    // brainwipe 法术 ID
     SPELL_CONFLAG_PROC          = 31073,            // procs 31075 on fire damage
 
     // Tinhead
-    SPELL_CLEAVE                = 31043,
-    SPELL_RUST                  = 31086,
+    SPELL_CLEAVE                = 31043,                    // 顺劈斩 法术 ID
+    SPELL_RUST                  = 31086,                    // rust 法术 ID
 
     // Roar
-    SPELL_MANGLE                = 31041,
-    SPELL_SHRED                 = 31042,
-    SPELL_FRIGHTENED_SCREAM     = 31013,
+    SPELL_MANGLE                = 31041,                    // mangle 法术 ID
+    SPELL_SHRED                 = 31042,                    // shred 法术 ID
+    SPELL_FRIGHTENED_SCREAM     = 31013,                    // frightenedscream 法术 ID
 
     // Crone
-    SPELL_CHAIN_LIGHTNING       = 32337,
+    SPELL_CHAIN_LIGHTNING       = 32337,                    // 连环闪电 法术 ID
     SPELL_FIERY_BROOM_PROC      = 32339,            // passive spell causing periodic damage
 
     // Cyclone
-    SPELL_CYCLONE               = 32334,
-    SPELL_CYCLONE_VISUAL        = 32332,
+    SPELL_CYCLONE               = 32334,                    // cyclone 法术 ID
+    SPELL_CYCLONE_VISUAL        = 32332,                    // cyclone视觉特效 法术 ID
 
     /** Creature Entries **/
-    NPC_TITO                    = 17548,
-    NPC_CYCLONE                 = 18412,
+    NPC_TITO                    = 17548,                    // tito Entry ID
+    NPC_CYCLONE                 = 18412,                    // cyclone Entry ID
 };
 
-enum DorotheeActions // order based on priority
+enum DorotheeActions // order based on priority (按优先级顺序排序)
 {
     DOROTHEE_ACTION_MAX,
     DOROTHEE_INTRO,
@@ -96,6 +99,7 @@ enum DorotheeActions // order based on priority
     DOROTHEE_AGGRO,
 };
 
+// 首领战 AI：标识 ID（dorothee）
 struct boss_dorotheeAI : public CombatAI
 {
     boss_dorotheeAI(Creature* creature) : CombatAI(creature, DOROTHEE_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -109,6 +113,7 @@ struct boss_dorotheeAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -117,6 +122,7 @@ struct boss_dorotheeAI : public CombatAI
         SetCombatScriptStatus(false);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -130,12 +136,14 @@ struct boss_dorotheeAI : public CombatAI
         DoBroadcastText(SAY_DOROTHEE_DEATH, m_creature);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (m_creature->GetVictim())
             pSummoned->AI()->AttackStart(m_creature->GetVictim());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_TITO)
@@ -165,12 +173,14 @@ struct boss_dorotheeAI : public CombatAI
 };
 
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum StrawmanActions
 {
     STRAWMAN_ACTION_AGGRO,
     STRAWMAN_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（strawman）
 struct boss_strawmanAI : public CombatAI
 {
     boss_strawmanAI(Creature* creature) : CombatAI(creature, STRAWMAN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -188,6 +198,7 @@ struct boss_strawmanAI : public CombatAI
         DoBroadcastText(SAY_STRAWMAN_AGGRO, m_creature);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -217,12 +228,14 @@ struct boss_strawmanAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum TinheadActions
 {
     TINHEAD_ACTION_AGGRO,
     TINHEAD_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（tinhead）
 struct boss_tinheadAI : public CombatAI
 {
     boss_tinheadAI(Creature* creature) : CombatAI(creature, TINHEAD_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -239,6 +252,7 @@ struct boss_tinheadAI : public CombatAI
         DoBroadcastText(SAY_TINHEAD_AGGRO, m_creature);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -278,12 +292,14 @@ struct boss_tinheadAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum RoadActions
 {
     ROAR_ACTION_AGGRO,
     ROAR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（roar）
 struct boss_roarAI : public CombatAI
 {
     boss_roarAI(Creature* creature) : CombatAI(creature, ROAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -300,6 +316,7 @@ struct boss_roarAI : public CombatAI
         DoBroadcastText(SAY_ROAR_AGGRO, m_creature);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -333,6 +350,7 @@ static const float afCycloneSpawnLoc1[4] = { -10908.86f, -1773.627f, 90.55865f, 
 static const float afCycloneSpawnLoc2[4] = { -10910.79f, -1771.201f, 90.56122f, 0.3642556f };
 static const float afCycloneSpawnLoc3[4] = { -10907.68f, -1778.651f, 90.56018f, 2.44127f };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum CroneActions
 {
     CRONE_ACTION_INTRO,
@@ -340,6 +358,7 @@ enum CroneActions
     CRONE_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（crone）
 struct boss_croneAI : public CombatAI
 {
     boss_croneAI(Creature* creature) : CombatAI(creature, CRONE_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -353,11 +372,13 @@ struct boss_croneAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -386,6 +407,7 @@ struct boss_croneAI : public CombatAI
             m_instance->SetData(TYPE_OPERA, DONE);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->CastSpell(pSummoned, SPELL_CYCLONE, TRIGGERED_OLD_TRIGGERED);
@@ -412,39 +434,41 @@ struct boss_croneAI : public CombatAI
 /**** Opera Red Riding Hood Event ****/
 /************************************/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     /**** Yells for the Wolf ****/
-    SAY_WOLF_SPAWN                  = 14212,
-    SAY_WOLF_SLAY                   = 15153,
-    SAY_WOLF_RED_RIDING_HOOD        = 14213,
+    SAY_WOLF_SPAWN                  = 14212,                // wolf生成 台词广播 ID
+    SAY_WOLF_SLAY                   = 15153,                // wolf击杀 台词广播 ID
+    SAY_WOLF_RED_RIDING_HOOD        = 14213,                // wolfredridinghood 台词广播 ID
     SOUND_WOLF_DEATH                = 9275,                // Only sound on death, no text.
 
     /**** Spells For The Wolf ****/
     SPELL_PICK_RED_RIDING_HOOD      = 30769,               // targeting spell - triggers 30768
     SPELL_LITTLE_RED_RIDING_HOOD    = 30768,               // Little Red Riding Hood - triggers 30753
-    SPELL_RED_RIDING_HOOD           = 30756,
-    SPELL_TERRIFYING_HOWL           = 30752,
-    SPELL_WIDE_SWIPE                = 30761,
+    SPELL_RED_RIDING_HOOD           = 30756,                // redridinghood 法术 ID
+    SPELL_TERRIFYING_HOWL           = 30752,                // terrifyinghowl 法术 ID
+    SPELL_WIDE_SWIPE                = 30761,                // wideswipe 法术 ID
 
-    GOSSIP_ITEM_GRANDMA_FIRST       = -3532020,
-    GOSSIP_ITEM_GRANDMA_SECOND      = -3532021,
-    GOSSIP_ITEM_GRANDMA_THIRD       = -3532005,
+    GOSSIP_ITEM_GRANDMA_FIRST       = -3532020,             // 物品grandmafirst 对话菜单选项 ID
+    GOSSIP_ITEM_GRANDMA_SECOND      = -3532021,             // 物品grandmasecond 对话菜单选项 ID
+    GOSSIP_ITEM_GRANDMA_THIRD       = -3532005,             // 物品grandmathird 对话菜单选项 ID
 
-    TEXT_ID_GRANDMA_FIRST           = 9009,
-    TEXT_ID_GRANDMA_SECOND          = 9010,
-    TEXT_ID_GRANDMA_THIRD           = 9011,
+    TEXT_ID_GRANDMA_FIRST           = 9009,                 // IDgrandmafirst 标识 ID
+    TEXT_ID_GRANDMA_SECOND          = 9010,                 // IDgrandmasecond 标识 ID
+    TEXT_ID_GRANDMA_THIRD           = 9011,                 // IDgrandmathird 标识 ID
 
-    GOSSIP_MENU_ID_GRANDMA_FIRST    = 7441,
-    GOSSIP_MENU_ID_GRANDMA_SECOND   = 7442,
-    GOSSIP_MENU_ID_GRANDMA_THIRD    = 7443,
+    GOSSIP_MENU_ID_GRANDMA_FIRST    = 7441,                 // menuIDgrandmafirst 对话菜单选项 ID
+    GOSSIP_MENU_ID_GRANDMA_SECOND   = 7442,                 // menuIDgrandmasecond 对话菜单选项 ID
+    GOSSIP_MENU_ID_GRANDMA_THIRD    = 7443,                 // menuIDgrandmathird 对话菜单选项 ID
 
     TEXT_ID_GRANDMA                 = 8990, // Unk purpose
 
     /**** The Wolf's Entry ****/
-    NPC_BIG_BAD_WOLF                = 17521
+    NPC_BIG_BAD_WOLF                = 17521                 // bigbadwolf Entry ID
 };
 
+// NPC 对话交互入口函数：npc_grandmother
 bool GossipHello_npc_grandmother(Player* pPlayer, Creature* creature)
 {
     pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_GRANDMA_FIRST, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
@@ -477,6 +501,7 @@ bool GossipSelect_npc_grandmother(Player* pPlayer, Creature* creature, uint32 /*
     return true;
 }
 
+// 随从/NPC AI：标识 ID（grandmother）
 struct npc_grandmotherAI : public ScriptedAI
 {
     npc_grandmotherAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -486,6 +511,7 @@ struct npc_grandmotherAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
 
@@ -506,12 +532,13 @@ struct npc_grandmotherAI : public ScriptedAI
     }
 };
 
-enum BigBadWolfActions // order based on priority
+enum BigBadWolfActions // order based on priority (按优先级顺序排序)
 {
     BIG_BAD_WOLF_MAX,
     BIG_BAD_WOLF_ATTACK_DELAY
 };
 
+// 首领战 AI：标识 ID（bigbadwolf）
 struct boss_bigbadwolfAI : public CombatAI
 {
     boss_bigbadwolfAI(Creature* creature) : CombatAI(creature, BIG_BAD_WOLF_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -521,11 +548,13 @@ struct boss_bigbadwolfAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -569,32 +598,33 @@ struct boss_bigbadwolfAI : public CombatAI
 /******** Opera Romeo and Juliet Event *******/
 /********************************************/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     /**** Speech *****/
-    SAY_JULIANNE_AGGRO              = 15070,
-    SAY_JULIANNE_DEATH01            = 15072,
-    SAY_JULIANNE_DEATH02            = 15074,
-    SAY_JULIANNE_RESURRECT          = 15073,
-    SAY_JULIANNE_SLAY               = 15071,
+    SAY_JULIANNE_AGGRO              = 15070,                // julianne开战 台词广播 ID
+    SAY_JULIANNE_DEATH01            = 15072,                // juliannedeath01 台词广播 ID
+    SAY_JULIANNE_DEATH02            = 15074,                // juliannedeath02 台词广播 ID
+    SAY_JULIANNE_RESURRECT          = 15073,                // julianneresurrect 台词广播 ID
+    SAY_JULIANNE_SLAY               = 15071,                // julianne击杀 台词广播 ID
 
-    SAY_ROMULO_AGGRO                = 15075,
-    SAY_ROMULO_DEATH                = 15078,
-    SAY_ROMULO_RESURRECT            = 15077,
-    SAY_ROMULO_SLAY                 = 15076,
+    SAY_ROMULO_AGGRO                = 15075,                // romulo开战 台词广播 ID
+    SAY_ROMULO_DEATH                = 15078,                // romulo死亡 台词广播 ID
+    SAY_ROMULO_RESURRECT            = 15077,                // romuloresurrect 台词广播 ID
+    SAY_ROMULO_SLAY                 = 15076,                // romulo击杀 台词广播 ID
 
     /***** Spells For Julianne *****/
-    SPELL_BLINDING_PASSION          = 30890,
-    SPELL_DEVOTION                  = 30887,
-    SPELL_ETERNAL_AFFECTION         = 30878,
-    SPELL_POWERFUL_ATTRACTION       = 30889,
-    SPELL_DRINK_POISON              = 30907,
+    SPELL_BLINDING_PASSION          = 30890,                // blindingpassion 法术 ID
+    SPELL_DEVOTION                  = 30887,                // devotion 法术 ID
+    SPELL_ETERNAL_AFFECTION         = 30878,                // eternalaffection 法术 ID
+    SPELL_POWERFUL_ATTRACTION       = 30889,                // powerfulattraction 法术 ID
+    SPELL_DRINK_POISON              = 30907,                // drink毒药 法术 ID
 
     /***** Spells For Romulo ****/
-    SPELL_BACKWARD_LUNGE            = 30815,
-    SPELL_DARING                    = 30841,
-    SPELL_DEADLY_SWATHE             = 30817,
-    SPELL_POISON_THRUST             = 30822,
+    SPELL_BACKWARD_LUNGE            = 30815,                // backwardlunge 法术 ID
+    SPELL_DARING                    = 30841,                // daring 法术 ID
+    SPELL_DEADLY_SWATHE             = 30817,                // deadlyswathe 法术 ID
+    SPELL_POISON_THRUST             = 30822,                // 毒药thrust 法术 ID
 
     /**** Other Misc. Spells ****/
     SPELL_FULL_HEALTH               = 43979,                // res effect on Julianne
@@ -602,13 +632,15 @@ enum
     SPELL_SUICIDE_WHILE_DEAD        = 30966,                // suicide spell for Julianne and Romulo
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum OperaPhase
 {
-    PHASE_JULIANNE      = 0,
-    PHASE_ROMULO        = 1,
-    PHASE_BOTH          = 2,
+    PHASE_JULIANNE      = 0,                                // julianne 阶段 ID
+    PHASE_ROMULO        = 1,                                // romulo 阶段 ID
+    PHASE_BOTH          = 2,                                // both 阶段 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum JulianneActions
 {
     JULIANNE_ATTACK_DELAY,
@@ -619,6 +651,7 @@ enum JulianneActions
 
 static const float afRomuloSpawnLoc[4] = { -10893.62f, -1760.78f, 90.55f, 4.76f};
 
+// 首领战 AI：标识 ID（julianne）
 struct boss_julianneAI : public CombatAI
 {
     boss_julianneAI(Creature* creature) : CombatAI(creature, JULIANNE_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -633,8 +666,9 @@ struct boss_julianneAI : public CombatAI
 
     OperaPhase m_Phase;
 
-    bool m_bIsFakingDeath;
+    bool m_bIsFakingDeath;                                  // IsFakingDeath 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -650,6 +684,7 @@ struct boss_julianneAI : public CombatAI
         DoBroadcastText(SAY_JULIANNE_AGGRO, m_creature);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -695,6 +730,7 @@ struct boss_julianneAI : public CombatAI
             m_instance->SetData(TYPE_OPERA, DONE);
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* pVictim) override
     {
         if (pVictim->GetTypeId() != TYPEID_PLAYER)
@@ -703,13 +739,14 @@ struct boss_julianneAI : public CombatAI
         DoBroadcastText(SAY_JULIANNE_SLAY, m_creature);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (m_creature->GetVictim())
             pSummoned->AI()->AttackStart(m_creature->GetVictim());
     }
 
-    // Wrapper to set fake death
+    // Wrapper to set fake death (设置假死状态封装函数)
     void DoSetFakeDeath()
     {
         m_bIsFakingDeath = true;
@@ -728,7 +765,7 @@ struct boss_julianneAI : public CombatAI
         SetCombatMovement(false);
     }
 
-    // Wrapper to remove fake death
+    // Wrapper to remove fake death (移除假死状态封装函数)
     void DoRemoveFakeDeath()
     {
         m_bIsFakingDeath = false;
@@ -788,7 +825,7 @@ struct boss_julianneAI : public CombatAI
     }
 };
 
-// 30907 - Drink Poison
+// 30907 - Drink Poison (30907 - Drink 毒药)
 struct DrinkPoisonJulianne : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -802,6 +839,7 @@ struct DrinkPoisonJulianne : public SpellScript
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum RomuloActions
 {
     ROMULO_RESURECT,
@@ -809,6 +847,7 @@ enum RomuloActions
     ROMULO_MAX
 };
 
+// 首领战 AI：标识 ID（romulo）
 struct boss_romuloAI : public CombatAI
 {
     boss_romuloAI(Creature* creature) : CombatAI(creature, ROMULO_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -822,8 +861,9 @@ struct boss_romuloAI : public CombatAI
 
     OperaPhase m_Phase;
 
-    bool m_bIsFakingDeath;
+    bool m_bIsFakingDeath;                                  // IsFakingDeath 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -831,6 +871,7 @@ struct boss_romuloAI : public CombatAI
         m_bIsFakingDeath        = false;
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -877,6 +918,7 @@ struct boss_romuloAI : public CombatAI
             m_instance->SetData(TYPE_OPERA, DONE);
     }
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* pVictim) override
     {
         if (pVictim->GetTypeId() != TYPEID_PLAYER)
@@ -885,6 +927,7 @@ struct boss_romuloAI : public CombatAI
         DoBroadcastText(SAY_ROMULO_SLAY, m_creature);
     }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         // remove fake death on res
@@ -892,7 +935,7 @@ struct boss_romuloAI : public CombatAI
             DoRemoveFakeDeath();
     }
 
-    // Wrapper to set fake death
+    // Wrapper to set fake death (设置假死状态封装函数)
     void DoSetFakeDeath()
     {
         m_bIsFakingDeath = true;
@@ -911,7 +954,7 @@ struct boss_romuloAI : public CombatAI
         SetCombatMovement(false);
     }
 
-    // Wrapper to remove fake death
+    // Wrapper to remove fake death (移除假死状态封装函数)
     void DoRemoveFakeDeath()
     {
         m_bIsFakingDeath = false;
@@ -959,7 +1002,7 @@ struct boss_romuloAI : public CombatAI
     }    
 };
 
-// 30753 - Red Riding Hood 
+// 30753 - Red Riding Hood
 struct RedRidingHoodFixate : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -997,6 +1040,7 @@ struct PickRedRidingHood : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：bosses_opera
 void AddSC_bosses_opera()
 {
     // Oz

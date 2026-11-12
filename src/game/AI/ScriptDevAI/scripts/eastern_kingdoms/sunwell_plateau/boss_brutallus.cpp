@@ -21,75 +21,78 @@ SDComment: Intro may need some adjustments
 SDCategory: Sunwell Plateau
 EndScriptData */
 
+// 布鲁塔卢斯（Brutallus）2号首领战 AI（践踏减护甲、流星打击分摊与燃烧火点名狂暴战）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    YELL_INTRO                      = -1580017,
-    YELL_INTRO_BREAK_ICE            = -1580018,
-    YELL_INTRO_CHARGE               = -1580019,
-    YELL_INTRO_KILL_MADRIGOSA       = -1580020,
-    YELL_INTRO_TAUNT                = -1580021,
+    YELL_INTRO                      = -1580017,             // 开场 大喊台词广播 ID
+    YELL_INTRO_BREAK_ICE            = -1580018,             // 开场越狱ice 大喊台词广播 ID
+    YELL_INTRO_CHARGE               = -1580019,             // 开场冲锋 大喊台词广播 ID
+    YELL_INTRO_KILL_MADRIGOSA       = -1580020,             // 开场击杀madrigosa 大喊台词广播 ID
+    YELL_INTRO_TAUNT                = -1580021,             // 开场嘲讽 大喊台词广播 ID
 
-    YELL_MADR_ICE_BARRIER           = -1580031,
-    YELL_MADR_INTRO                 = -1580032,
-    YELL_MADR_ICE_BLOCK             = -1580033,
-    YELL_MADR_TRAP                  = -1580034,
-    YELL_MADR_DEATH                 = -1580035,
+    YELL_MADR_ICE_BARRIER           = -1580031,             // madricebarrier 大喊台词广播 ID
+    YELL_MADR_INTRO                 = -1580032,             // madr开场 大喊台词广播 ID
+    YELL_MADR_ICE_BLOCK             = -1580033,             // madriceblock 大喊台词广播 ID
+    YELL_MADR_TRAP                  = -1580034,             // madrtrap 大喊台词广播 ID
+    YELL_MADR_DEATH                 = -1580035,             // madr死亡 大喊台词广播 ID
 
-    YELL_AGGRO                      = -1580022,
-    YELL_KILL1                      = 25629,
-    YELL_KILL2                      = 25630,
-    YELL_KILL3                      = 25631,
-    YELL_LOVE1                      = -1580026,
-    YELL_LOVE2                      = -1580027,
-    YELL_LOVE3                      = -1580028,
-    YELL_BERSERK                    = -1580029,
-    YELL_DEATH                      = -1580030,
+    YELL_AGGRO                      = -1580022,             // 开战 大喊台词广播 ID
+    YELL_KILL1                      = 25629,                // kill1 大喊台词广播 ID
+    YELL_KILL2                      = 25630,                // kill2 大喊台词广播 ID
+    YELL_KILL3                      = 25631,                // kill3 大喊台词广播 ID
+    YELL_LOVE1                      = -1580026,             // love1 大喊台词广播 ID
+    YELL_LOVE2                      = -1580027,             // love2 大喊台词广播 ID
+    YELL_LOVE3                      = -1580028,             // love3 大喊台词广播 ID
+    YELL_BERSERK                    = -1580029,             // 狂暴 大喊台词广播 ID
+    YELL_DEATH                      = -1580030,             // 死亡 大喊台词广播 ID
 
-    SPELL_METEOR_SLASH              = 45150,
-    SPELL_BURN                      = 45141,
-    SPELL_BURN_DAMAGE               = 46394,
-    SPELL_STOMP                     = 45185,
-    SPELL_BERSERK                   = 26662,
+    SPELL_METEOR_SLASH              = 45150,                // 流星斩击 法术 ID
+    SPELL_BURN                      = 45141,                // burn 法术 ID
+    SPELL_BURN_DAMAGE               = 46394,                // burn伤害 法术 ID
+    SPELL_STOMP                     = 45185,                // stomp 法术 ID
+    SPELL_BERSERK                   = 26662,                // 狂暴 法术 ID
     SPELL_SUMMON_DEATH_CLOUD        = 45884,                // Summoned on death
 
-    SPELL_DUAL_WEILD_PASSIVE        = 42459,
-    SPELL_TAUNT_HIT_CHANCE          = 45210,
+    SPELL_DUAL_WEILD_PASSIVE        = 42459,                // dualweildpassive 法术 ID
+    SPELL_TAUNT_HIT_CHANCE          = 45210,                // 嘲讽hitchance 法术 ID
 
     // Epilogue spells
-    SPELL_BRUTALLUS_DEATH_CLOUD     = 45212,
-    SPELL_FELBLAZE_PREVIZUAL        = 44885,
-    SPELL_SUMMON_FELBLAZE           = 45069,
+    SPELL_BRUTALLUS_DEATH_CLOUD     = 45212,                // 布鲁塔卢斯死亡cloud 法术 ID
+    SPELL_FELBLAZE_PREVIZUAL        = 44885,                // felblazeprevizual 法术 ID
+    SPELL_SUMMON_FELBLAZE           = 45069,                // 召唤felblaze 法术 ID
 
-    NPC_BRUTALLUS_DEATH_CLOUD       = 25703,
+    NPC_BRUTALLUS_DEATH_CLOUD       = 25703,                // 布鲁塔卢斯死亡cloud Entry ID
 
     // spells used during the intro event
     SPELL_FROST_BLAST               = 45203,                // Madrigosa's spells
     SPELL_FREEZE                    = 46609,                // Activates the ice barrier - script effect for 46610
-    SPELL_FREEZE_USE_GO             = 46610,
-    SPELL_FROSTBOLT                 = 44843,
-    SPELL_FROST_BREATH              = 45065,
-    SPELL_ENCAPSULATE               = 44883,
-    SPELL_FEL_FIREBALL              = 44844,                // Brutallus' spells
-    SPELL_CLEAR_DEBUFFS             = 34098,
+    SPELL_FREEZE_USE_GO             = 46610,                // freezeuse游戏对象 法术 ID
+    SPELL_FROSTBOLT                 = 44843,                // frostbolt 法术 ID
+    SPELL_FROST_BREATH              = 45065,                // 冰霜吐息 法术 ID
+    SPELL_ENCAPSULATE               = 44883,                // encapsulate 法术 ID
+    SPELL_FEL_FIREBALL              = 44844,                // Brutallus' spells (布鲁塔卢斯spells)
+    SPELL_CLEAR_DEBUFFS             = 34098,                // cleardebuffs 法术 ID
     SPELL_FLAME_RING                = 44874,                // this spell should have a fire explosion when removed
-    SPELL_CHARGE                    = 44884,
+    SPELL_CHARGE                    = 44884,                // 冲锋 法术 ID
     SPELL_BREAK_ICE                 = 46637,                // Break the ice, open the door - dummy spell for 46638 and 47030
-    SPELL_ARCANE_EXPLOSION_VISUAL   = 35426,
-    SPELL_FULL_HEAL                 = 17683,
+    SPELL_ARCANE_EXPLOSION_VISUAL   = 35426,                // 奥术爆炸视觉特效 法术 ID
+    SPELL_FULL_HEAL                 = 17683,                // full治疗 法术 ID
 
-    SPELL_PERMANENT_FEIGN_DEATH     = 29266,
+    SPELL_PERMANENT_FEIGN_DEATH     = 29266,                // permanentfeign死亡 法术 ID
 
-    SPELL_SELF_STUN                 = 45066,
+    SPELL_SELF_STUN                 = 45066,                // self击晕 法术 ID
 
-    POINT_MOVE_GROUND               = 1,
-    POINT_MOVE_ICE_BLOCK            = 2,
-    POINT_MOVE_ENCAPSULATE          = 3,
-    POINT_MOVE_FEL_FIREBALL         = 4,
+    POINT_MOVE_GROUND               = 1,                    // moveground 路径点 ID
+    POINT_MOVE_ICE_BLOCK            = 2,                    // moveiceblock 路径点 ID
+    POINT_MOVE_ENCAPSULATE          = 3,                    // moveencapsulate 路径点 ID
+    POINT_MOVE_FEL_FIREBALL         = 4,                    // move魔能fireball 路径点 ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
@@ -119,6 +122,7 @@ static const DialogueEntry aIntroDialogue[] =
 ## boss_brutallus
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum BrutallusActions
 {
     BRUTALLUS_BERSERK,
@@ -131,6 +135,7 @@ enum BrutallusActions
     BRUTALLUS_MADRIGOSA_SPAWN_MOVE,
 };
 
+// 首领战 AI：标识 ID（brutallus）
 struct boss_brutallusAI : public CombatAI, private DialogueHelper
 {
     boss_brutallusAI(Creature* creature) : CombatAI(creature, BRUTALLUS_ACTION_MAX), DialogueHelper(aIntroDialogue),
@@ -152,8 +157,9 @@ struct boss_brutallusAI : public CombatAI, private DialogueHelper
 
     instance_sunwell_plateau* m_instance;
 
-    bool m_bIsIntroInProgress;
+    bool m_bIsIntroInProgress;                              // IsIntroInProgress 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -162,6 +168,7 @@ struct boss_brutallusAI : public CombatAI, private DialogueHelper
         DoCastSpellIfCan(nullptr, SPELL_TAUNT_HIT_CHANCE, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         // Don't aggro when attacking Madrigosa
@@ -183,6 +190,7 @@ struct boss_brutallusAI : public CombatAI, private DialogueHelper
             m_instance->SetData(TYPE_BRUTALLUS, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -206,6 +214,7 @@ struct boss_brutallusAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         // Error log if Madrigosa dies
@@ -220,6 +229,7 @@ struct boss_brutallusAI : public CombatAI, private DialogueHelper
             summoned->CastSpell(nullptr, SPELL_SUMMON_FELBLAZE, TRIGGERED_OLD_TRIGGERED);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_MADRIGOSA)
@@ -273,7 +283,7 @@ struct boss_brutallusAI : public CombatAI, private DialogueHelper
             target->GetMotionMaster()->MoveFall();
             target->CastSpell(nullptr, SPELL_SELF_STUN, TRIGGERED_OLD_TRIGGERED);
 
-            // Brutallus evades
+            // Brutallus evades (布鲁塔卢斯evades)
             EnterEvadeMode();
         }
     }
@@ -465,6 +475,7 @@ struct boss_brutallusAI : public CombatAI, private DialogueHelper
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         // Update only the intro related stuff
@@ -493,6 +504,7 @@ bool AreaTrigger_at_madrigosa(Player* player, AreaTriggerEntry const* /*at*/)
     return false;
 }
 
+// 法术脚本逻辑实现：标识 ID（SpellBurnBrutallus）
 struct SpellBurnBrutallus : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex eff) const override
@@ -519,6 +531,7 @@ struct SpellBurnDamageBrutallus : public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（StompBrutallus）
 struct StompBrutallus : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -560,7 +573,7 @@ struct FreezeMadrigosa : public SpellScript
     }
 };
 
-// 46637 - Break Ice
+// 46637 - Break Ice (46637 - 越狱 Ice)
 struct BreakIceBrutallus : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -572,6 +585,7 @@ struct BreakIceBrutallus : public AuraScript
     }
 };
 
+// 注册并载入脚本模块：boss_brutallus
 void AddSC_boss_brutallus()
 {
     Script* pNewScript = new Script;

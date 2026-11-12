@@ -21,6 +21,8 @@ SDComment: Placeholder
 SDCategory: Deadmines
 EndScriptData */
 
+// 死亡矿井（Deadmines）副本状态机与钢铁大门控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "deadmines.h"
 
@@ -61,21 +63,21 @@ void instance_deadmines::OnPlayerEnter(Player* pPlayer)
 
 void instance_deadmines::SpawnFirstDeadminesPatrol()
 {
-    WorldObject::SpawnCreature(GUID_PREFIX + 200, instance); // Defias Overseer
-    WorldObject::SpawnCreature(GUID_PREFIX + 201, instance); // Defias Evoker
+    WorldObject::SpawnCreature(GUID_PREFIX + 200, instance); // Defias Overseer (迪菲亚工头)
+    WorldObject::SpawnCreature(GUID_PREFIX + 201, instance); // Defias Evoker (迪菲亚唤魔者)
 }
 
 void instance_deadmines::SpawnSecondDeadminesPatrol()
 {
-    WorldObject::SpawnCreature(GUID_PREFIX + 202, instance); // Defias Evoker
-    WorldObject::SpawnCreature(GUID_PREFIX + 203, instance); // Defias Overseer
+    WorldObject::SpawnCreature(GUID_PREFIX + 202, instance); // Defias Evoker (迪菲亚唤魔者)
+    WorldObject::SpawnCreature(GUID_PREFIX + 203, instance); // Defias Overseer (迪菲亚工头)
 }
 
 void instance_deadmines::SpawnThirdDeadminesPatrol()
 {
     WorldObject::SpawnCreature(GUID_PREFIX + 204, instance); // Defias Wizard
-    WorldObject::SpawnCreature(GUID_PREFIX + 205, instance); // Defias Taskmaster
-    WorldObject::SpawnCreature(GUID_PREFIX + 206, instance); // Defias Taskmaster
+    WorldObject::SpawnCreature(GUID_PREFIX + 205, instance); // Defias Taskmaster (迪菲亚监工)
+    WorldObject::SpawnCreature(GUID_PREFIX + 206, instance); // Defias Taskmaster (迪菲亚监工)
 }
 
 void instance_deadmines::OnCreatureCreate(Creature* pCreature)
@@ -261,6 +263,7 @@ InstanceData* GetInstanceData_instance_deadmines(Map* pMap)
     return new instance_deadmines(pMap);
 }
 
+// 注册并载入脚本模块：instance_deadmines
 void AddSC_instance_deadmines()
 {
     Script* pNewScript = new Script;

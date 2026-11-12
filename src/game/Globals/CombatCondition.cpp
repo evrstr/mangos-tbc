@@ -25,11 +25,13 @@
 #include "Globals/Conditions.h"
 #include "World/WorldStateExpression.h"
 
+/// 构造战斗条件管理器，注入单位条件与世界状态表达式管理器依赖
 CombatConditionMgr::CombatConditionMgr(UnitConditionMgr& unitConditionMgr, WorldStateExpressionMgr& worldStateExpressionMgr)
     : m_unitConditionMgr(unitConditionMgr), m_worldStateExpressionMgr(worldStateExpressionMgr)
 {
 }
 
+/// 从世界数据库加载 combat_condition 表并校验关联的子条件与表达式有效性
 std::shared_ptr<std::map<int32, CombatConditionEntry>> CombatConditionMgr::Load()
 {
     auto combatConditions = std::make_shared<std::map<int32, CombatConditionEntry>>();
@@ -53,26 +55,26 @@ std::shared_ptr<std::map<int32, CombatConditionEntry>> CombatConditionMgr::Load(
 
         CombatConditionEntry conditionEntry;
         conditionEntry.Id = fields[0].GetUInt32();
-        conditionEntry.WorldStateConditionId	= fields[1].GetUInt32();
+        conditionEntry.WorldStateConditionId    = fields[1].GetUInt32();
         if (conditionEntry.WorldStateConditionId && !m_worldStateExpressionMgr.Exists(conditionEntry.WorldStateConditionId))
         {
             sLog.outErrorDb("Table combat_condition entry %d has invalid worldstate expression %u. Setting to 0.", conditionEntry.Id, conditionEntry.WorldStateConditionId);
             conditionEntry.WorldStateConditionId = 0;
         }
-        conditionEntry.SelfConditionId			= fields[2].GetUInt32();
+        conditionEntry.SelfConditionId          = fields[2].GetUInt32();
         if (conditionEntry.SelfConditionId && !m_unitConditionMgr.Exists(conditionEntry.SelfConditionId))
         {
             sLog.outErrorDb("Table combat_condition entry %d has invalid SelfConditionId %u. Setting to 0.", conditionEntry.Id, conditionEntry.SelfConditionId);
             conditionEntry.SelfConditionId = 0;
         }
-        conditionEntry.TargetConditionId		= fields[3].GetUInt32();
+        conditionEntry.TargetConditionId        = fields[3].GetUInt32();
         if (conditionEntry.TargetConditionId && !m_unitConditionMgr.Exists(conditionEntry.TargetConditionId))
         {
             sLog.outErrorDb("Table combat_condition entry %d has invalid TargetConditionId %u. Setting to 0.", conditionEntry.Id, conditionEntry.TargetConditionId);
             conditionEntry.TargetConditionId = 0;
         }
-        conditionEntry.FriendConditionLogic		= fields[4].GetUInt32();
-        conditionEntry.EnemyConditionLogic		= fields[5].GetUInt32();
+        conditionEntry.FriendConditionLogic     = fields[4].GetUInt32();
+        conditionEntry.EnemyConditionLogic      = fields[5].GetUInt32();
         for (uint32 i = 0; i < 2; ++i)
         {
             conditionEntry.FriendConditionId[i] = fields[6 + i].GetUInt32();
@@ -126,6 +128,7 @@ std::shared_ptr<std::map<int32, CombatConditionEntry>> CombatConditionMgr::Load(
     return combatConditions;
 }
 
+/// 依次评估世界状态表达式、自身条件、当前目标条件、附近友方条件与仇恨/敌对目标条件
 bool CombatConditionMgr::Meets(Unit const* self, int32 Id, float range)
 {
     auto combatConditions = self->GetMap()->GetMapDataContainer().GetCombatConditions();

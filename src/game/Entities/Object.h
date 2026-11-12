@@ -38,43 +38,48 @@
 
 #include <set>
 
+// 临时召唤物消失策略枚举
 enum TempSpawnType
 {
-    TEMPSPAWN_MANUAL_DESPAWN              = 0,             // despawns when UnSummon() is called
-    TEMPSPAWN_DEAD_DESPAWN                = 1,             // despawns when the creature disappears
-    TEMPSPAWN_CORPSE_DESPAWN              = 2,             // despawns instantly after death
-    TEMPSPAWN_CORPSE_TIMED_DESPAWN        = 3,             // despawns after a specified time after death (or when the creature disappears)
-    TEMPSPAWN_TIMED_DESPAWN               = 4,             // despawns after a specified time
-    TEMPSPAWN_TIMED_OOC_DESPAWN           = 5,             // despawns after a specified time after the creature is out of combat
-    TEMPSPAWN_TIMED_OR_DEAD_DESPAWN       = 6,             // despawns after a specified time OR when the creature disappears
-    TEMPSPAWN_TIMED_OR_CORPSE_DESPAWN     = 7,             // despawns after a specified time OR when the creature dies
-    TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN   = 8,             // despawns after a specified time (OOC) OR when the creature disappears
-    TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN = 9,             // despawns after a specified time (OOC) OR when the creature dies
+    TEMPSPAWN_MANUAL_DESPAWN              = 0,             // despawns when UnSummon() is called (仅在手动调用 UnSummon() 时消失)
+    TEMPSPAWN_DEAD_DESPAWN                = 1,             // despawns when the creature disappears (生物死亡且尸体消失时立即移除)
+    TEMPSPAWN_CORPSE_DESPAWN              = 2,             // despawns instantly after death (死亡瞬间立即消失，不留尸体)
+    TEMPSPAWN_CORPSE_TIMED_DESPAWN        = 3,             // despawns after a specified time after death (or when the creature disappears) (死亡后等待指定时间再消失)
+    TEMPSPAWN_TIMED_DESPAWN               = 4,             // despawns after a specified time (经过指定存活时间后消失)
+    TEMPSPAWN_TIMED_OOC_DESPAWN           = 5,             // despawns after a specified time after the creature is out of combat (脱离战斗后经过指定时间消失)
+    TEMPSPAWN_TIMED_OR_DEAD_DESPAWN       = 6,             // despawns after a specified time OR when the creature disappears (超时或生物消失时立即移除)
+    TEMPSPAWN_TIMED_OR_CORPSE_DESPAWN     = 7,             // despawns after a specified time OR when the creature dies (超时或死亡时立即消失)
+    TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN   = 8,             // despawns after a specified time (OOC) OR when the creature disappears (脱战超时或生物消失时移除)
+    TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN = 9,             // despawns after a specified time (OOC) OR when the creature dies (脱战超时或死亡时立即消失)
 };
 
+// 临时召唤物关联光环标志
 enum TempSpawnLinkedAura
 {
-    TEMPSPAWN_LINKED_AURA_OWNER_CHECK = 0x00000001,
-    TEMPSPAWN_LINKED_AURA_REMOVE_OWNER = 0x00000002
+    TEMPSPAWN_LINKED_AURA_OWNER_CHECK = 0x00000001,         // 检查召唤者状态
+    TEMPSPAWN_LINKED_AURA_REMOVE_OWNER = 0x00000002         // 召唤物消失时移除召唤者对应光环
 };
 
+// 音效/视觉包发送范围设置
 enum class PlayPacketSettings
 {
-    SET,
-    TARGET,
-    MAP,
-    ZONE,
-    AREA,
+    SET,                                                    // 发送给周围可见集合内的玩家
+    TARGET,                                                 // 仅发送给指定目标玩家
+    MAP,                                                    // 发送给当前地图所有玩家
+    ZONE,                                                   // 发送给指定区域 (Zone) 的玩家
+    AREA,                                                   // 发送给指定子区域 (Area) 的玩家
 };
 
+// 距离计算方式（是否扣除包围盒半径与战斗攻击距离）
 enum DistanceCalculation
 {
-    DIST_CALC_NONE,
-    DIST_CALC_BOUNDING_RADIUS,
-    DIST_CALC_COMBAT_REACH,
-    DIST_CALC_COMBAT_REACH_WITH_MELEE,
+    DIST_CALC_NONE,                                         // 纯中心点坐标距离
+    DIST_CALC_BOUNDING_RADIUS,                              // 扣除双方包围盒半径
+    DIST_CALC_COMBAT_REACH,                                 // 扣除双方战斗触及半径
+    DIST_CALC_COMBAT_REACH_WITH_MELEE,                      // 扣除近战攻击范围与战斗触及半径
 };
 
+// 声音/动画数据包发送参数封装
 struct PlayPacketParameters
 {
     PlayPacketParameters(PlayPacketSettings setting) : setting(setting) {}
@@ -115,14 +120,15 @@ struct SpellEntry;
 class Spell;
 class GenericTransport;
 
-// Spell cooldown flags sent in SMSG_SPELL_COOLDOWN
+// Spell cooldown flags sent in SMSG_SPELL_COOLDOWN (发送给客户端 SMSG_SPELL_COOLDOWN 的冷却标志位)
 enum SpellCooldownFlags
 {
     SPELL_COOLDOWN_FLAG_NONE                    = 0x0,
-    SPELL_COOLDOWN_FLAG_INCLUDE_GCD             = 0x1,  // Starts GCD in addition to normal cooldown specified in the packet
-    SPELL_COOLDOWN_FLAG_INCLUDE_EVENT_COOLDOWNS = 0x2   // Starts GCD for spells that should start their cooldown on events, requires SPELL_COOLDOWN_FLAG_INCLUDE_GCD set
+    SPELL_COOLDOWN_FLAG_INCLUDE_GCD             = 0x1,  // Starts GCD in addition to normal cooldown specified in the packet (同时触发公共冷却)
+    SPELL_COOLDOWN_FLAG_INCLUDE_EVENT_COOLDOWNS = 0x2   // Starts GCD for spells that should start their cooldown on events, requires SPELL_COOLDOWN_FLAG_INCLUDE_GCD set (为事件触发冷却的法术开启 GCD)
 };
 
+// 单个法术冷却数据记录（包含法术自身冷却、分类冷却与永久冷却标记）
 class CooldownData
 {
         friend class CooldownContainer;
@@ -197,10 +203,11 @@ class CooldownData
         uint32            m_itemId;
 };
 
-typedef std::unique_ptr<CooldownData> CooldownDataUPTR;
-typedef std::map<uint32, TimePoint> GCDMap;
-typedef std::map<SpellSchools, TimePoint> LockoutMap;
+typedef std::unique_ptr<CooldownData> CooldownDataUPTR;       // 冷却记录智能指针
+typedef std::map<uint32, TimePoint> GCDMap;                 // 公共冷却分类映射表（GCD 分类 -> 到期时间）
+typedef std::map<SpellSchools, TimePoint> LockoutMap;       // 法术系别反制封锁映射表（法术学派 -> 解锁时间）
 
+// 实体法术冷却管理容器：同时按法术 ID 与冷却分类索引冷却记录
 class CooldownContainer
 {
     public:
@@ -292,6 +299,7 @@ class CooldownContainer
         TimePoint m_globalCooldown;
 };
 
+// 三维空间坐标与朝向结构体
 struct Position
 {
     Position() : x(0.0f), y(0.0f), z(0.0f), o(0.0f) {}
@@ -304,14 +312,15 @@ struct Position
     float GetPositionO() const { return o; }
     bool IsEmpty() const { return x == 0.f && y == 0.f && z == 0.f; }
     float GetAngle(const float x, const float y) const;
-    float GetDistance(Position const& other) const; // WARNING: Returns squared distance for performance reasons
-    float GetDistance2d(Position const& other) const; // WARNING: Returns squared distance for performance reasons
+    float GetDistance(Position const& other) const; // WARNING: Returns squared distance for performance reasons (注意：出于性能考虑返回距离平方)
+    float GetDistance2d(Position const& other) const; // WARNING: Returns squared distance for performance reasons (注意：出于性能考虑返回二维距离平方)
     void RelocateOffset(Position const& offset);
     std::string to_string() const;
 };
 
 bool operator!=(const Position& left, const Position& right);
 
+// 带有地图 ID 的世界坐标结构
 struct WorldLocation
 {
     uint32 mapid;
@@ -328,8 +337,8 @@ struct WorldLocation
 };
 
 
-// use this class to measure time between world update ticks
-// essential for units updating their spells after cells become active
+// use this class to measure time between world update ticks (用于统计世界更新周期之间的经过时间)
+// essential for units updating their spells after cells become active (用于地图单元格重新激活后单位补算光环/冷却等状态)
 class WorldUpdateCounter
 {
     public:
@@ -349,11 +358,14 @@ class WorldUpdateCounter
         uint32 m_tmStart;
 };
 
+// 所有游戏对象（物品、单位、玩家、生物、游戏物体、尸体等）的根基类
+// 负责管理 GUID、UpdateFields 属性字段同步与客户端更新包构建
 class Object
 {
     public:
         virtual ~Object();
 
+        // 世界在场状态与唯一标识（GUID / Entry / 缩放）
         const bool& IsInWorld() const { return m_inWorld; }
         virtual void AddToWorld();
 
@@ -382,7 +394,7 @@ class Object
 
         virtual void BuildCreateUpdateBlockForPlayer(UpdateData& data, Player* target) const;
 
-        // must be overwrite in appropriate subclasses (WorldObject, Item currently), or will crash
+        // must be overwrite in appropriate subclasses (WorldObject, Item currently), or will crash (必须由子类如 WorldObject/Item 重写)
         virtual void AddToClientUpdateList();
         virtual void RemoveFromClientUpdateList();
         virtual void UpdateVisibility(UpdateDataMapType& update_players) = 0;
@@ -390,6 +402,7 @@ class Object
         void MarkForClientUpdate();
         void SendForcedObjectUpdate();
 
+        // 构建发往客户端的属性更新块、创建块与超出视野移除块
         void BuildValuesUpdateBlockForPlayer(UpdateData& data, Player* target) const;
         void BuildValuesUpdateBlockForPlayerWithFlags(UpdateData& data, Player* target, UpdateFieldFlags flags) const;
         void BuildValuesUpdateBlockForPlayer(UpdateData& data, UpdateMask& updateMask, Player* target) const;
@@ -398,6 +411,7 @@ class Object
 
         virtual void DestroyForPlayer(Player* target) const;
 
+        // UpdateFields 字段读取与修改接口（int32/uint32/uint64/float/byte/short/Guid/Flag）
         const int32& GetInt32Value(uint16 index) const
         {
             MANGOS_ASSERT(index < m_valuesCount || PrintIndexError(index, false));
@@ -620,34 +634,34 @@ class Object
         void BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* updateMask, Player* target) const;
         void BuildUpdateDataForPlayer(Player* pl, UpdateDataMapType& update_players) const;
 
-        uint16 m_objectType;
+        uint16 m_objectType;                                // 对象类型掩码（TypeMask）
 
-        uint8 m_objectTypeId;
-        uint8 m_updateFlag;
+        uint8 m_objectTypeId;                               // 对象类型 ID（TypeID）
+        uint8 m_updateFlag;                                 // 客户端更新包标志位（UpdateFlags）
 
-        union
+        union                                               // UpdateFields 原始值数组指针（按不同类型视图访问）
         {
             int32*  m_int32Values;
             uint32* m_uint32Values;
             float*  m_floatValues;
         };
 
-        std::vector<bool> m_changedValues;
+        std::vector<bool> m_changedValues;                  // 记录发生变更待同步的字段索引掩码
 
-        uint16 m_valuesCount;
+        uint16 m_valuesCount;                               // UpdateFields 总字段数
 
-        bool m_objectUpdated;
+        bool m_objectUpdated;                               // 是否已标记在对象更新列表中
 
     private:
-        bool m_inWorld;
-        bool m_itsNewObject;
+        bool m_inWorld;                                     // 是否已添加到游戏世界
+        bool m_itsNewObject;                                // 是否为新创建对象
 
-        PackedGuid m_PackGUID;
+        PackedGuid m_PackGUID;                              // 预打包的压缩格式 GUID
 
-        Object(const Object&);                              // prevent generation copy constructor
-        Object& operator=(Object const&);                   // prevent generation assigment operator
+        Object(const Object&);                              // prevent generation copy constructor (禁止拷贝构造)
+        Object& operator=(Object const&);                   // prevent generation assigment operator (禁止赋值操作)
 
-        uint32 m_dbGuid;
+        uint32 m_dbGuid;                                    // 数据库静态刷怪表主键 GUID（动态对象为 0）
 
         struct NoopObjectDeleter { void operator()(Object*) const { /*noop - not managed*/ } };
         MaNGOS::unique_trackable_ptr<Object> m_scriptRef;
@@ -660,6 +674,7 @@ class Object
 
 struct WorldObjectCreateAccumulator;
 
+// 临时召唤生物的创建配置参数结构体
 struct TempSpawnSettings
 {
     WorldObject* spawner = nullptr;
@@ -696,55 +711,56 @@ struct TempSpawnSettings
     {}
 };
 
+// 单位移动速度类型枚举
 enum UnitMoveType
 {
-    MOVE_WALK = 0,
-    MOVE_RUN = 1,
-    MOVE_RUN_BACK = 2,
-    MOVE_SWIM = 3,
-    MOVE_SWIM_BACK = 4,
-    MOVE_TURN_RATE = 5,
-    MOVE_FLIGHT = 6,
-    MOVE_FLIGHT_BACK = 7,
+    MOVE_WALK = 0,                                          // 行走速度
+    MOVE_RUN = 1,                                           // 奔跑速度
+    MOVE_RUN_BACK = 2,                                      // 倒退速度
+    MOVE_SWIM = 3,                                          // 游泳速度
+    MOVE_SWIM_BACK = 4,                                     // 倒游速度
+    MOVE_TURN_RATE = 5,                                     // 转身角速度
+    MOVE_FLIGHT = 6,                                        // 飞行速度
+    MOVE_FLIGHT_BACK = 7,                                   // 倒飞速度
 };
 
 #define MAX_MOVE_TYPE     8
 
-// used in most movement packets (send and received)
+// used in most movement packets (send and received) (客户端与服务端移动数据包使用的移动状态标志位)
 enum MovementFlags
 {
     MOVEFLAG_NONE               = 0x00000000,
-    MOVEFLAG_FORWARD            = 0x00000001,
-    MOVEFLAG_BACKWARD           = 0x00000002,
-    MOVEFLAG_STRAFE_LEFT        = 0x00000004,
-    MOVEFLAG_STRAFE_RIGHT       = 0x00000008,
-    MOVEFLAG_TURN_LEFT          = 0x00000010,
-    MOVEFLAG_TURN_RIGHT         = 0x00000020,
-    MOVEFLAG_PITCH_UP           = 0x00000040,
-    MOVEFLAG_PITCH_DOWN         = 0x00000080,
-    MOVEFLAG_WALK_MODE          = 0x00000100,               // Walking
-    MOVEFLAG_ONTRANSPORT        = 0x00000200,               // Used for flying on some creatures
-    MOVEFLAG_LEVITATING         = 0x00000400,
-    MOVEFLAG_ROOT               = 0x00000800,
-    MOVEFLAG_FALLING            = 0x00001000,
-    MOVEFLAG_FALLINGFAR         = 0x00002000,
-    MOVEFLAG_PENDINGSTOP        = 0x00004000,
-    MOVEFLAG_PENDINGSTRAFESTOP  = 0x00008000,
+    MOVEFLAG_FORWARD            = 0x00000001,               // 向前移动
+    MOVEFLAG_BACKWARD           = 0x00000002,               // 向后移动
+    MOVEFLAG_STRAFE_LEFT        = 0x00000004,               // 向左平移
+    MOVEFLAG_STRAFE_RIGHT       = 0x00000008,               // 向右平移
+    MOVEFLAG_TURN_LEFT          = 0x00000010,               // 左转
+    MOVEFLAG_TURN_RIGHT         = 0x00000020,               // 右转
+    MOVEFLAG_PITCH_UP           = 0x00000040,               // 仰角上抬（飞行/游泳）
+    MOVEFLAG_PITCH_DOWN         = 0x00000080,               // 俯角下压（飞行/游泳）
+    MOVEFLAG_WALK_MODE          = 0x00000100,               // Walking (步行模式)
+    MOVEFLAG_ONTRANSPORT        = 0x00000200,               // Used for flying on some creatures (处于交通工具/载具上)
+    MOVEFLAG_LEVITATING         = 0x00000400,               // 漂浮状态
+    MOVEFLAG_ROOT               = 0x00000800,               // 定身状态（无法移动）
+    MOVEFLAG_FALLING            = 0x00001000,               // 正在下落
+    MOVEFLAG_FALLINGFAR         = 0x00002000,               // 远距离坠落
+    MOVEFLAG_PENDINGSTOP        = 0x00004000,               // 待停止移动
+    MOVEFLAG_PENDINGSTRAFESTOP  = 0x00008000,               // 待停止平移
     MOVEFLAG_PENDINGFORWARD     = 0x00010000,
     MOVEFLAG_PENDINGBACKWARD    = 0x00020000,
     MOVEFLAG_PENDINGSTRAFELEFT  = 0x00040000,
     MOVEFLAG_PENDINGSTRAFERIGHT = 0x00080000,
     MOVEFLAG_PENDINGROOT        = 0x00100000,
-    MOVEFLAG_SWIMMING           = 0x00200000,               // appears with fly flag also
-    MOVEFLAG_ASCENDING          = 0x00400000,               // swim up also
-    MOVEFLAG_DESCENDING         = 0x00800000,               // swim down also
-    MOVEFLAG_CAN_FLY            = 0x01000000,
-    MOVEFLAG_FLYING             = 0x02000000,               // Actual flying mode
-    MOVEFLAG_SPLINE_ELEVATION   = 0x04000000,               // used for flight paths
-    MOVEFLAG_SPLINE_ENABLED     = 0x08000000,               // used for flight paths
-    MOVEFLAG_WATERWALKING       = 0x10000000,               // prevent unit from falling through water
-    MOVEFLAG_SAFE_FALL          = 0x20000000,               // active rogue safe fall spell (passive)
-    MOVEFLAG_HOVER              = 0x40000000,
+    MOVEFLAG_SWIMMING           = 0x00200000,               // appears with fly flag also (游泳状态)
+    MOVEFLAG_ASCENDING          = 0x00400000,               // swim up also (上升中)
+    MOVEFLAG_DESCENDING         = 0x00800000,               // swim down also (下降中)
+    MOVEFLAG_CAN_FLY            = 0x01000000,               // 允许飞行
+    MOVEFLAG_FLYING             = 0x02000000,               // Actual flying mode (实际飞行中)
+    MOVEFLAG_SPLINE_ELEVATION   = 0x04000000,               // used for flight paths (用于飞行路线高度插值)
+    MOVEFLAG_SPLINE_ENABLED     = 0x08000000,               // used for flight paths (启用样条路径移动)
+    MOVEFLAG_WATERWALKING       = 0x10000000,               // prevent unit from falling through water (水上行走)
+    MOVEFLAG_SAFE_FALL          = 0x20000000,               // active rogue safe fall spell (passive) (缓落/安全坠落)
+    MOVEFLAG_HOVER              = 0x40000000,               // 悬停状态
 
     // Can not be present with MOVEFLAG_ROOT (otherwise client freeze)
     MOVEFLAG_MASK_MOVING        =
@@ -775,6 +791,7 @@ MovementFlags const movementOrTurningFlagsMask = MovementFlags(
             movementFlagsMask | MOVEFLAG_TURN_LEFT | MOVEFLAG_TURN_RIGHT
         );
 
+// 单位移动数据包解析与序列化结构（包含坐标、朝向、交通工具偏移、跳跃与坠落信息）
 class MovementInfo
 {
     public:
@@ -878,6 +895,8 @@ inline ByteBuffer& operator>> (ByteBuffer& buf, MovementInfo& mi)
     return buf;
 }
 
+// 存在于地图空间中的世界实体基类（Creature、Player、GameObject、DynamicObject、Corpse 的公共父类）
+// 提供坐标定位、视野/视线检查、地图/位面管理、消息广播、冷却及脚本事件支持
 class WorldObject : public Object
 {
         friend struct WorldObjectCreateAccumulator;
@@ -1000,6 +1019,7 @@ class WorldObject : public Object
         // Spawner: guid of a unit, who is reponsible for starting this objects's parent script (only for script-spawned objects)
         virtual ObjectGuid const GetSpawnerGuid() const { return ObjectGuid(); }
 
+        // 空间距离、地图/位面、视线 (LoS) 与扇形朝向判定
         float GetDistance(const WorldObject* obj, bool is3D = true, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS) const;
         float GetDistance(float x, float y, float z, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS, bool transport = false) const;
         float GetDistance2d(float x, float y, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS) const;
@@ -1060,6 +1080,7 @@ class WorldObject : public Object
 
         virtual void CleanupsBeforeDelete();                // used in destructor or explicitly before mass creature delete to remove cross-references to already deleted units
 
+        // 消息广播、台词喊话、音效播放与敌友关系接口
         virtual void SendMessageToSet(WorldPacket const& data, bool self) const;
         virtual void SendMessageToSetInRange(WorldPacket const& data, float dist, bool self) const;
         void SendMessageToSetExcept(WorldPacket const& data, Player const* skipped_receiver) const;
@@ -1100,6 +1121,7 @@ class WorldObject : public Object
         // low level function for visibility change code, must be define in all main world object subclasses
         virtual bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const = 0;
 
+        // 地图、地形、临时召唤与活跃状态控制
         void SetMap(Map* map);
         Map* GetMap() const { MANGOS_ASSERT(m_currMap); return m_currMap; }
         // used to check all object's GetMap() calls when object is not in world!
@@ -1135,7 +1157,7 @@ class WorldObject : public Object
         virtual void AddToWorld() override;
         virtual void RemoveFromWorld() override;
 
-        // cooldown system
+        // cooldown system (公共冷却、法术冷却与学派反制封锁管理)
         virtual void AddGCD(SpellEntry const& spellEntry, uint32 forcedDuration = 0, bool updateClient = false);
         virtual bool HasGCD(SpellEntry const* spellEntry) const;
         TimePoint GetGCD(SpellEntry const* spellEntry) const;
@@ -1251,24 +1273,24 @@ class WorldObject : public Object
 
         ShortTimeTracker m_heartBeatTimer;
     private:
-        Map* m_currMap;                                     // current object's Map location
+        Map* m_currMap;                                     // current object's Map location (对象当前所在的地图实例指针)
 
-        uint32 m_mapId;                                     // object at map with map_id
-        uint32 m_InstanceId;                                // in map copy with instance id
-        uint32 m_phaseMask;                                 // in area phase state
+        uint32 m_mapId;                                     // object at map with map_id (所在地图 ID)
+        uint32 m_InstanceId;                                // in map copy with instance id (所在副本实例 ID)
+        uint32 m_phaseMask;                                 // in area phase state (当前位面掩码)
 
-        Position m_position;
-        ViewPoint m_viewPoint;
-        bool m_isActiveObject;
-        uint64 m_debugFlags;
+        Position m_position;                                // 当前世界坐标与朝向
+        ViewPoint m_viewPoint;                              // 视野观察点（用于鹰眼/视界绑定等）
+        bool m_isActiveObject;                              // 是否为永久活跃对象（阻止所在网格卸载）
+        uint64 m_debugFlags;                                // 调试标志掩码
 
-        GuidVector m_pendingViewers;                        // list of players that spotted me this map tick
-        GuidSet m_clientGUIDsIAmAt;
+        GuidVector m_pendingViewers;                        // list of players that spotted me this map tick (本帧新发现该对象的玩家列表)
+        GuidSet m_clientGUIDsIAmAt;                         // 当前客户端已创建该对象的玩家 GUID 集合
 
-        // Spell System compliance
-        uint32 m_castCounter;                               // count casts chain of triggered spells for prevent infinity cast crashes
+        // Spell System compliance (法术系统兼容状态)
+        uint32 m_castCounter;                               // count casts chain of triggered spells for prevent infinity cast crashes (触发链式施法计数器，防止无限递归崩溃)
 
-        std::set<uint32> m_stringIds;
+        std::set<uint32> m_stringIds;                       // 脚本分配的字符串 ID 集合
 };
 
 #endif

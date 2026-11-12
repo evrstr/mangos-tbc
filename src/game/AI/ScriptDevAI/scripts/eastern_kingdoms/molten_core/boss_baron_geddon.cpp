@@ -21,20 +21,24 @@ SDComment: Armaggedon is not working properly (core issue)
 SDCategory: Molten Core
 EndScriptData */
 
+// 迦顿男爵（Baron Geddon）5号首领战 AI（活体炸弹、点燃法力与地狱火脉冲）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_SERVICE               = -1409000,
+    EMOTE_SERVICE               = -1409000,                 // service 表情动作 ID
 
-    SPELL_INFERNO               = 19695,
-    SPELL_IGNITE_MANA           = 19659,
-    SPELL_LIVING_BOMB           = 20475,
-    SPELL_ARMAGEDDON            = 20478
+    SPELL_INFERNO               = 19695,                    // inferno 法术 ID
+    SPELL_IGNITE_MANA           = 19659,                    // ignite法力 法术 ID
+    SPELL_LIVING_BOMB           = 20475,                    // living炸弹 法术 ID
+    SPELL_ARMAGEDDON            = 20478                     // armageddon 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GeddonActions
 {
     GEDDON_ARMAGEDDON,
@@ -44,6 +48,7 @@ enum GeddonActions
     GEDDON_ACTION_MAX,
 };
 
+// 首领战 AI：迦顿男爵（baron_geddon）
 struct boss_baron_geddonAI : public CombatAI
 {
     boss_baron_geddonAI(Creature* creature) : CombatAI(creature, GEDDON_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -69,6 +74,7 @@ struct boss_baron_geddonAI : public CombatAI
             m_instance->SetData(TYPE_GEDDON, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -115,6 +121,7 @@ struct boss_baron_geddonAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_baron_geddon
 void AddSC_boss_baron_geddon()
 {
     Script* pNewScript = new Script;

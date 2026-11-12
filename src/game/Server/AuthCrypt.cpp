@@ -22,7 +22,9 @@
 #include "Log/Log.h"
 #include "Auth/BigNumber.h"
 
+/// 服务端下行包头加密长度（2 字节长度 + 2 字节操作码）
 const static size_t CRYPTED_SEND_LEN = 4;
+/// 客户端上行包头加密长度（2 字节长度 + 4 字节操作码）
 const static size_t CRYPTED_RECV_LEN = 6;
 
 AuthCrypt::AuthCrypt() : _initialized(false) {}
@@ -32,6 +34,7 @@ void AuthCrypt::DecryptRecv(uint8* data, size_t len)
     if (!_initialized) return;
     if (len < CRYPTED_RECV_LEN) return;
 
+    // 逐字节还原客户端上行包头（异或密钥并减去上一密文字节偏移）
     for (size_t t = 0; t < CRYPTED_RECV_LEN; t++)
     {
         _recv_i %= _key.size();
@@ -47,6 +50,7 @@ void AuthCrypt::EncryptSend(uint8* data, size_t len)
     if (!_initialized) return;
     if (len < CRYPTED_SEND_LEN) return;
 
+    // 逐字节加密服务端下行包头（异或密钥并累加前序密文字节）
     for (size_t t = 0; t < CRYPTED_SEND_LEN; t++)
     {
         _send_i %= _key.size();
@@ -61,7 +65,7 @@ void AuthCrypt::Init(BigNumber* K)
     uint8* key = new uint8[Sha1Hash::GetLength()];
     uint8 recvSeed[SEED_KEY_SIZE] = { 0x38, 0xA7, 0x83, 0x15, 0xF8, 0x92, 0x25, 0x30, 0x71, 0x98, 0x67, 0xB1, 0x8C, 0x4, 0xE2, 0xAA };
     HMACSHA1 recvHash(SEED_KEY_SIZE, (uint8*)recvSeed);
-    recvHash.UpdateBigNumber(K, 40);                // K is 40 bytes, with its leading zero bytes
+    recvHash.UpdateBigNumber(K, 40);                // K is 40 bytes, with its leading zero bytes | K 固定按 40 字节处理（保留前导零字节）
     recvHash.Finalize();
     memcpy(key, recvHash.GetDigest(), Sha1Hash::GetLength());
     _key.resize(Sha1Hash::GetLength());

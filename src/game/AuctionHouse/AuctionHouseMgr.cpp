@@ -48,12 +48,13 @@ AuctionHouseMgr::~AuctionHouseMgr()
         delete itr->second;
 }
 
+/// 根据拍卖行 DBC 配置获取对应的拍卖行容器（若开启双阵营互通则统一使用中立拍卖行）
 AuctionHouseObject* AuctionHouseMgr::GetAuctionsMap(AuctionHouseEntry const* house)
 {
     if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_AUCTION))
         return &mAuctions[AUCTION_HOUSE_NEUTRAL];
 
-    // team have linked auction houses
+    // team have linked auction houses (同阵营主城共享同一拍卖行)
     switch (GetAuctionHouseTeam(house))
     {
         case ALLIANCE: return &mAuctions[AUCTION_HOUSE_ALLIANCE];
@@ -62,6 +63,7 @@ AuctionHouseObject* AuctionHouseMgr::GetAuctionsMap(AuctionHouseEntry const* hou
     }
 }
 
+/// 计算物品上架保管费（押金），受拍卖时长、拍卖行税率与服务器倍率影响
 uint32 AuctionHouseMgr::GetAuctionDeposit(AuctionHouseEntry const* entry, uint32 time, Item* pItem)
 {
     float deposit = float(pItem->GetProto()->SellPrice * pItem->GetCount() * (time / MIN_AUCTION_TIME));
@@ -76,7 +78,7 @@ uint32 AuctionHouseMgr::GetAuctionDeposit(AuctionHouseEntry const* entry, uint32
     return uint32(deposit * sWorld.getConfig(CONFIG_FLOAT_RATE_AUCTION_DEPOSIT));
 }
 
-// does not clear ram
+// does not clear ram (发送拍卖中标邮件给买家，并将物品所有权转移给买家；不释放 AuctionEntry 内存)
 void AuctionHouseMgr::SendAuctionWonMail(AuctionEntry* auction)
 {
     Item* pItem = GetAItem(auction->itemGuidLow);
@@ -164,6 +166,7 @@ void AuctionHouseMgr::SendAuctionWonMail(AuctionEntry* auction)
     }
 }
 
+/// 发送“拍卖款项即将送达”预通知邮件给卖家（延迟 1 小时到账）
 void AuctionHouseMgr::SendAuctionSalePendingMail(AuctionEntry* auction)
 {
     ObjectGuid owner_guid = ObjectGuid(HIGHGUID_PLAYER, auction->owner);
@@ -193,7 +196,7 @@ void AuctionHouseMgr::SendAuctionSalePendingMail(AuctionEntry* auction)
     }
 }
 
-// call this method to send mail to auction owner, when auction is successful, it does not clear ram
+// call this method to send mail to auction owner, when auction is successful, it does not clear ram (发送拍卖成交货款邮件给卖家，不释放 AuctionEntry 内存)
 void AuctionHouseMgr::SendAuctionSuccessfulMail(AuctionEntry* auction)
 {
     ObjectGuid owner_guid = ObjectGuid(HIGHGUID_PLAYER, auction->owner);
@@ -233,7 +236,7 @@ void AuctionHouseMgr::SendAuctionSuccessfulMail(AuctionEntry* auction)
     }
 }
 
-// does not clear ram
+// does not clear ram (发送拍卖流拍退货邮件给卖家，不释放 AuctionEntry 内存)
 void AuctionHouseMgr::SendAuctionExpiredMail(AuctionEntry* auction)
 {
     // return an item in auction to its owner by mail
@@ -278,6 +281,7 @@ void AuctionHouseMgr::SendAuctionExpiredMail(AuctionEntry* auction)
     }
 }
 
+/// 从数据库加载所有处于拍卖中的物品实例到内存缓存
 void AuctionHouseMgr::LoadAuctionItems()
 {
     // data needs to be at first place for Item::LoadFromDB 0        1            2                3      4         5        6      7             8                 9           10          11        12
@@ -328,6 +332,7 @@ void AuctionHouseMgr::LoadAuctionItems()
     sLog.outString();
 }
 
+/// 从数据库加载全部拍卖挂单并校验关联物品与拍卖行配置
 void AuctionHouseMgr::LoadAuctions()
 {
     auto queryResult = CharacterDatabase.Query("SELECT COUNT(*) FROM auction");
@@ -464,6 +469,7 @@ void AuctionHouseMgr::LoadAuctions()
     sLog.outString();
 }
 
+/// 清理被删除角色名下的所有拍卖挂单与出价记录
 void AuctionHouseMgr::RemovePlayerAuctions(ObjectGuid playerGuid)
 {
     uint32 const lowGuid = playerGuid.GetCounter();
@@ -506,6 +512,7 @@ void AuctionHouseMgr::RemovePlayerAuctions(ObjectGuid playerGuid)
     }
 }
 
+/// 将寄售物品注册到全局物品缓存
 void AuctionHouseMgr::AddAItem(Item* it)
 {
     MANGOS_ASSERT(it);
@@ -513,6 +520,7 @@ void AuctionHouseMgr::AddAItem(Item* it)
     mAitems[it->GetGUIDLow()] = it;
 }
 
+/// 从全局物品缓存移除指定物品
 bool AuctionHouseMgr::RemoveAItem(uint32 id)
 {
     ItemMap::iterator i = mAitems.find(id);
@@ -524,12 +532,14 @@ bool AuctionHouseMgr::RemoveAItem(uint32 id)
     return true;
 }
 
+/// 驱动所有阵营拍卖行进行周期性过期检查
 void AuctionHouseMgr::Update()
 {
     for (auto& mAuction : mAuctions)
         mAuction.Update();
 }
 
+/// 按拍卖行 ID 判定所属阵营（1-3 联盟，4-6 部落，7 中立）
 uint32 AuctionHouseMgr::GetAuctionHouseTeam(AuctionHouseEntry const* house)
 {
     // auction houses have faction field pointing to PLAYER,* factions,
@@ -547,6 +557,7 @@ uint32 AuctionHouseMgr::GetAuctionHouseTeam(AuctionHouseEntry const* house)
     }
 }
 
+/// 根据拍卖师 NPC 阵营模板或玩家 GM 拍卖模式查找对应拍卖行条目
 AuctionHouseEntry const* AuctionHouseMgr::GetAuctionHouseEntry(Unit* unit)
 {
     uint32 houseid = 1;                                     // dwarf auction house (used for normal cut/etc percents)
@@ -608,10 +619,11 @@ AuctionHouseEntry const* AuctionHouseMgr::GetAuctionHouseEntry(Unit* unit)
     return sAuctionHouseStore.LookupEntry(houseid);
 }
 
+/// 更新拍卖行挂单状态：处理已到期条目（有人出价则成交，无人出价则流拍退货）
 void AuctionHouseObject::Update()
 {
     time_t curTime = sWorld.GetGameTime();
-    ///- Handle expired auctions
+    ///- Handle expired auctions (检查并处理到期拍卖)
     for (AuctionEntryMap::iterator itr = AuctionsMap.begin(); itr != AuctionsMap.end();)
     {
         if (curTime < itr->second->expireTime)
@@ -622,9 +634,10 @@ void AuctionHouseObject::Update()
 
         ///- perform the transaction if there was bidder.  this will alyways have the side effect of
         ///- removing the auction from the collection.  therefore we must increment the iterator here.
+        ///- 若已有出价则执行成交结算（内部会从 map 中移除当前条目，因此先递增迭代器）
         if (itr->second->bid)
             (itr++)->second->AuctionBidWinning();
-        ///- cancel the auction if there was no bidder and clear the auction
+        ///- cancel the auction if there was no bidder and clear the auction (无人出价则按流拍处理并清理记录)
         else
         {
             sAuctionMgr.SendAuctionExpiredMail(itr->second);
@@ -637,6 +650,7 @@ void AuctionHouseObject::Update()
     }
 }
 
+/// 构造玩家“正在竞拍”的分页列表数据包
 void AuctionHouseObject::BuildListBidderItems(WorldPacket& data, Player* player, uint32 listfrom, uint32& count, uint32& totalcount)
 {
     for (AuctionEntryMap::const_iterator itr = AuctionsMap.begin(); itr != AuctionsMap.end(); ++itr)
@@ -655,6 +669,7 @@ void AuctionHouseObject::BuildListBidderItems(WorldPacket& data, Player* player,
     }
 }
 
+/// 构造玩家“我的拍卖”的分页列表数据包
 void AuctionHouseObject::BuildListOwnerItems(WorldPacket& data, Player* player, uint32 listfrom, uint32& count, uint32& totalcount)
 {
     for (AuctionEntryMap::const_iterator itr = AuctionsMap.begin(); itr != AuctionsMap.end(); ++itr)
@@ -716,7 +731,7 @@ static std::wstring GetAuctionSortName(AuctionEntry const* auction, ItemPrototyp
     return wname;
 }
 
-// Order of a browse search: the server picks each page of results in this order
+// Order of a browse search: the server picks each page of results in this order (按指定列比较拍卖条目排序顺序，用于搜索分页)
 int AuctionEntry::CompareAuctionEntry(uint32 column, const AuctionEntry* auc, Player* viewPlayer) const
 {
     switch (column)
@@ -839,6 +854,7 @@ int AuctionEntry::CompareAuctionEntry(uint32 column, const AuctionEntry* auc, Pl
     return 0;
 }
 
+/// 拍卖浏览结果多列排序比较仿函数
 bool AuctionSorter::operator()(const AuctionEntry* auc1, const AuctionEntry* auc2) const
 {
     if (m_sort[0] == MAX_AUCTION_SORT)                      // not sorted
@@ -860,6 +876,7 @@ bool AuctionSorter::operator()(const AuctionEntry* auc1, const AuctionEntry* auc
     return false;                                           // "equal" by all sorts
 }
 
+/// 按搜索筛选条件过滤拍卖条目并填充当前分页数据包
 void WorldSession::BuildListAuctionItems(std::vector<AuctionEntry*> const& auctions, WorldPacket& data, std::wstring const& wsearchedname, uint32 listfrom, uint32 levelmin,
         uint32 levelmax, uint32 usable, uint32 inventoryType, uint32 itemClass, uint32 itemSubClass, uint32 quality, uint32& count, uint32& totalcount, bool isFull) const
 {
@@ -935,6 +952,7 @@ void WorldSession::BuildListAuctionItems(std::vector<AuctionEntry*> const& aucti
     }
 }
 
+/// 创建新拍卖条目，转移物品所有权并在同一事务中写入数据库
 AuctionEntry* AuctionHouseObject::AddAuction(AuctionHouseEntry const* auctionHouseEntry, Item* newItem, uint32 etime, uint32 bid, uint32 buyout, uint32 deposit, Player* pl /*= nullptr*/)
 {
     uint32 auction_time = uint32(etime * sWorld.getConfig(CONFIG_FLOAT_RATE_AUCTION_TIME));
@@ -981,7 +999,7 @@ AuctionEntry* AuctionHouseObject::AddAuction(AuctionHouseEntry const* auctionHou
     return AH;
 }
 
-// this function inserts to WorldPacket auction's data
+// this function inserts to WorldPacket auction's data (将单条拍卖详情序列化到世界数据包)
 bool AuctionEntry::BuildAuctionInfo(WorldPacket& data) const
 {
     Item* pItem = sAuctionMgr.GetAItem(itemGuidLow);
@@ -1015,12 +1033,14 @@ bool AuctionEntry::BuildAuctionInfo(WorldPacket& data) const
     return true;
 }
 
+/// 计算拍卖行抽成手续费
 uint32 AuctionEntry::GetAuctionCut() const
 {
     return uint32(auctionHouseEntry->cutPercent * bid * sWorld.getConfig(CONFIG_FLOAT_RATE_AUCTION_CUT) / 100.0f);
 }
 
 /// the minimal outbid is 0 without a bid, else 5% of the bid rounded down to a multiple of 5 below 100 and to two significant digits above, and at least 1c
+/// 计算最小加价幅度：无出价时为 0；否则为当前出价的 5%（100 铜以下向下取 5 的倍数，100 铜及以上保留两位有效数字，至少 1 铜）
 uint32 AuctionEntry::GetAuctionOutBid() const
 {
     if (!bid)
@@ -1056,6 +1076,7 @@ void AuctionEntry::SaveToDB() const
                                Id, auctionHouseEntry->houseId, itemGuidLow, itemTemplate, itemCount, itemRandomPropertyId, owner, buyout, (uint64)expireTime, bidder, bid, startbid, deposit);
 }
 
+/// 拍卖成交结算：发送待收款/成功/中标邮件并移除内存与数据库记录
 void AuctionEntry::AuctionBidWinning(Player* newbidder)
 {
     sAuctionMgr.SendAuctionSalePendingMail(this);
@@ -1074,6 +1095,7 @@ void AuctionEntry::AuctionBidWinning(Player* newbidder)
     delete this;
 }
 
+/// 处理一次竞价或一口价买断：扣除买家金币、退还前一位竞拍者出价并持久化
 bool AuctionEntry::UpdateBid(uint32 newbid, Player* newbidder /*=nullptr*/)
 {
     Player* auction_owner = owner ? sObjectMgr.GetPlayer(ObjectGuid(HIGHGUID_PLAYER, owner)) : nullptr;

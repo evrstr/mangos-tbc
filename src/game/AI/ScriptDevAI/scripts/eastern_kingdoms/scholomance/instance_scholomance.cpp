@@ -21,6 +21,8 @@ SDComment: Possible some D2 or other exotic missing
 SDCategory: Scholomance
 EndScriptData */
 
+// 通灵学院（Scholomance）副本状态机与观察室大门控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "scholomance.h"
 #include "GameEvents/GameEventMgr.h"
@@ -43,7 +45,7 @@ void instance_scholomance::Initialize()
 
 void instance_scholomance::OnPlayerEnter(Player* pPlayer)
 {
-    // Summon Gandling if can
+    // Summon Gandling if can (召唤 Gandling if can)
     DoSpawnGandlingIfCan(true);
 
     if (GetData(TYPE_RATTLEGORE) == DONE)
@@ -209,7 +211,7 @@ void instance_scholomance::SetData(uint32 uiType, uint32 uiData)
             break;
     }
 
-    // Summon Gandling
+    // Summon Gandling (召唤 Gandling)
     if (uiData == DONE)
         DoSpawnGandlingIfCan(false);
 
@@ -235,7 +237,7 @@ void instance_scholomance::DoSpawnGandlingIfCan(bool bByPlayerEnter)
     if (m_auiEncounter[TYPE_GANDLING] == DONE)
         return;
 
-    // Summon only once
+    // Summon only once (召唤 only once)
     if (GetSingleCreatureFromStorage(NPC_DARKMASTER_GANDLING))
         return;
 
@@ -337,7 +339,7 @@ void instance_scholomance::OnCreatureEnterCombat(Creature* pCreature)
         case NPC_RISEN_GUARDIAN:
             for (auto& itr : m_mGandlingData)
             {
-                // if there are no minions for a room, skip it
+                // if there are no minions for a room, skip it (若该房间没有仆从则跳过)
                 if (!itr.second.m_sAddGuids.empty())
                 {
                     // set data to fail in case of player death
@@ -370,7 +372,7 @@ void instance_scholomance::OnCreatureEvade(Creature* pCreature)
         case NPC_RISEN_GUARDIAN:
             for (auto& itr : m_mGandlingData)
             {
-                // if there are no minions for a room, skip it
+                // if there are no minions for a room, skip it (若该房间没有仆从则跳过)
                 if (!itr.second.m_sAddGuids.empty())
                 {
                     // set data to fail in case of player death
@@ -403,7 +405,7 @@ void instance_scholomance::OnCreatureDeath(Creature* pCreature)
         case NPC_RISEN_GUARDIAN:
             for (auto& itr : m_mGandlingData)
             {
-                // if there are no minions for a room, skip it
+                // if there are no minions for a room, skip it (若该房间没有仆从则跳过)
                 if (!itr.second.m_sAddGuids.empty())
                 {
                     // search for the dead minion and erase it
@@ -506,6 +508,7 @@ bool ProcessEventId_dawn_gambit(uint32 uiEventId, Object* pSource, Object* /*pTa
     return false;
 }
 
+// 注册并载入脚本模块：instance_scholomance
 void AddSC_instance_scholomance()
 {
     Script* pNewScript = new Script;

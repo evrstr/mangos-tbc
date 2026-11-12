@@ -21,6 +21,10 @@ SDComment: Quest support: 731, 945, 994, 995, 2078, 2118, 4763, 5321
 SDCategory: Darkshore
 EndScriptData */
 
+/**
+ * 黑海岸 (Darkshore) 任务与野外 NPC 脚本
+ */
+
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "Grids/GridNotifiers.h"
@@ -47,43 +51,45 @@ EndContentData */
 # npc_kerlonian
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_KER_START               = -1000434,
+    SAY_KER_START               = -1000434,                 // 剧情台词/喊话文本 ID
 
-    EMOTE_KER_SLEEP_1           = -1000435,
-    EMOTE_KER_SLEEP_2           = -1000436,
-    EMOTE_KER_SLEEP_3           = -1000437,
+    EMOTE_KER_SLEEP_1           = -1000435,                 // 剧情台词/喊话文本 ID
+    EMOTE_KER_SLEEP_2           = -1000436,                 // 剧情台词/喊话文本 ID
+    EMOTE_KER_SLEEP_3           = -1000437,                 // 剧情台词/喊话文本 ID
 
-    SAY_KER_SLEEP_1             = -1000438,
-    SAY_KER_SLEEP_2             = -1000439,
-    SAY_KER_SLEEP_3             = -1000440,
-    SAY_KER_SLEEP_4             = -1000441,
+    SAY_KER_SLEEP_1             = -1000438,                 // 剧情台词/喊话文本 ID
+    SAY_KER_SLEEP_2             = -1000439,                 // 剧情台词/喊话文本 ID
+    SAY_KER_SLEEP_3             = -1000440,                 // 剧情台词/喊话文本 ID
+    SAY_KER_SLEEP_4             = -1000441,                 // 剧情台词/喊话文本 ID
 
-    EMOTE_KER_AWAKEN            = -1000445,
+    EMOTE_KER_AWAKEN            = -1000445,                 // 剧情台词/喊话文本 ID
 
-    SAY_KER_ALERT_1             = -1000442,
-    SAY_KER_ALERT_2             = -1000443,
+    SAY_KER_ALERT_1             = -1000442,                 // 剧情台词/喊话文本 ID
+    SAY_KER_ALERT_2             = -1000443,                 // 剧情台词/喊话文本 ID
 
-    SAY_KER_END                 = -1000444,
+    SAY_KER_END                 = -1000444,                 // 剧情台词/喊话文本 ID
 
-    SPELL_BEAR_FORM             = 18309,
-    SPELL_SLEEP_VISUAL          = 25148,
-    SPELL_AWAKEN                = 17536,
+    SPELL_BEAR_FORM             = 18309,                    // 技能法术 ID
+    SPELL_SLEEP_VISUAL          = 25148,                    // 技能法术 ID
+    SPELL_AWAKEN                = 17536,                    // 技能法术 ID
 
-    QUEST_SLEEPER_AWAKENED      = 5321,
+    QUEST_SLEEPER_AWAKENED      = 5321,                     // 任务 ID
 
-    NPC_LILADRIS                = 11219                     // attackers entries unknown
+    NPC_LILADRIS                = 11219                     // attackers entries unknown (说明)
 };
 
 // TODO: make concept similar as "ringo" -escort. Find a way to run the scripted attacks, _if_ player are choosing road.
+// npc_kerlonianAI NPC 脚本 AI
 struct npc_kerlonianAI : public FollowerAI
 {
     npc_kerlonianAI(Creature* pCreature) : FollowerAI(pCreature) { Reset(); }
 
     uint32 m_uiFallAsleepTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiFallAsleepTimer = urand(10000, 45000);
 
@@ -126,7 +132,7 @@ struct npc_kerlonianAI : public FollowerAI
         }
     }
 
-    // Function to set npc to sleep mode
+    // Function to set npc to sleep mode (说明)
     void SetSleeping()
     {
         SetFollowPaused(true);
@@ -150,7 +156,7 @@ struct npc_kerlonianAI : public FollowerAI
             m_creature->SetStandState(UNIT_STAND_STATE_SLEEP);
     }
 
-    // Function to clear sleep mode
+    // Function to clear sleep mode (说明)
     void ClearSleeping()
     {
         m_creature->RemoveAurasDueToSpell(SPELL_SLEEP_VISUAL);
@@ -186,12 +192,12 @@ struct npc_kerlonianAI : public FollowerAI
     }
 };
 
-UnitAI* GetAI_npc_kerlonian(Creature* pCreature)
+UnitAI* GetAI_npc_kerlonian(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_kerlonianAI(pCreature);
 }
 
-bool QuestAccept_npc_kerlonian(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_kerlonian(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_SLEEPER_AWAKENED)
     {
@@ -208,7 +214,7 @@ bool QuestAccept_npc_kerlonian(Player* pPlayer, Creature* pCreature, const Quest
     return true;
 }
 
-// 17536 - Awaken Kerlonian
+// 17536 - Awaken Kerlonian (法术 17536 - Awaken Kerlonian)
 struct AwakenKerlonian : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -225,19 +231,21 @@ struct AwakenKerlonian : public SpellScript
 # npc_prospector_remtravel
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_ABSENT_MINDED_PT2     = 731,
+    QUEST_ABSENT_MINDED_PT2     = 731,                      // 任务 ID
     REMTRAVEL_ESCORT_PATH       = 2917,
 
-    SAY_REM_AGGRO_1             = 938,
-    SAY_REM_AGGRO_2             = 939,
-    SAY_REM_AGGRO_3             = 940,
-    SAY_REM_AGGRO_4             = 941,
-    SAY_REM_AGGRO_5             = 942,
-    SAY_REM_AGGRO_6             = 943,
+    SAY_REM_AGGRO_1             = 938,                      // 剧情台词/喊话文本 ID
+    SAY_REM_AGGRO_2             = 939,                      // 剧情台词/喊话文本 ID
+    SAY_REM_AGGRO_3             = 940,                      // 剧情台词/喊话文本 ID
+    SAY_REM_AGGRO_4             = 941,                      // 剧情台词/喊话文本 ID
+    SAY_REM_AGGRO_5             = 942,                      // 剧情台词/喊话文本 ID
+    SAY_REM_AGGRO_6             = 943,                      // 剧情台词/喊话文本 ID
 };
 
+// npc_prospector_remtravelAI NPC 脚本 AI
 struct npc_prospector_remtravelAI : public npc_escortAI
 {
     npc_prospector_remtravelAI(Creature* creature) : npc_escortAI(creature)
@@ -245,7 +253,7 @@ struct npc_prospector_remtravelAI : public npc_escortAI
         Reset();
     }
 
-    void Aggro(Unit* who) override
+    void Aggro(Unit* who) override                          // 进入战斗回调处理
     {
         switch (urand(0, 5))
         {
@@ -265,7 +273,7 @@ struct npc_prospector_remtravelAI : public npc_escortAI
                 sender->AI()->AttackStart(m_creature);        
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -282,7 +290,7 @@ struct npc_prospector_remtravelAI : public npc_escortAI
     }
 };
 
-bool QuestAccept_npc_prospector_remtravel(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_prospector_remtravel(Player* player, Creature* creature, const Quest* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_ABSENT_MINDED_PT2)
     {
@@ -299,25 +307,27 @@ bool QuestAccept_npc_prospector_remtravel(Player* player, Creature* creature, co
 # npc_threshwackonator
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    EMOTE_START             = -1000325,
-    SAY_AT_CLOSE            = -1000326,
-    QUEST_GYROMAST_REV      = 2078,
-    NPC_GELKAK              = 6667,
-    FACTION_HOSTILE         = 14,
+    EMOTE_START             = -1000325,                     // 剧情台词/喊话文本 ID
+    SAY_AT_CLOSE            = -1000326,                     // 剧情台词/喊话文本 ID
+    QUEST_GYROMAST_REV      = 2078,                         // 任务 ID
+    NPC_GELKAK              = 6667,                         // NPC 条目 ID
+    FACTION_HOSTILE         = 14,                           // 阵营 ID
 
-    TEXT_ID_THRESH_DEFAULT  = 718,
-    TEXT_ID_KEY_READY       = 758,
+    TEXT_ID_THRESH_DEFAULT  = 718,                          // 剧情台词/喊话文本 ID
+    TEXT_ID_KEY_READY       = 758,                          // 剧情台词/喊话文本 ID
 
     GOSSIP_ITEM_TURN_KEY    = -3000112,
 };
 
+// npc_threshwackonatorAI NPC 脚本 AI
 struct npc_threshwackonatorAI : public FollowerAI
 {
     npc_threshwackonatorAI(Creature* pCreature) : FollowerAI(pCreature) { Reset(); }
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void MoveInLineOfSight(Unit* pWho) override
     {
@@ -344,12 +354,12 @@ struct npc_threshwackonatorAI : public FollowerAI
     }
 };
 
-UnitAI* GetAI_npc_threshwackonator(Creature* pCreature)
+UnitAI* GetAI_npc_threshwackonator(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_threshwackonatorAI(pCreature);
 }
 
-bool GossipHello_npc_threshwackonator(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_threshwackonator(Player* pPlayer, Creature* pCreature) // 对话交互问候处理
 {
     if (pPlayer->GetQuestStatus(QUEST_GYROMAST_REV) == QUEST_STATUS_INCOMPLETE)
     {
@@ -382,27 +392,29 @@ bool GossipSelect_npc_threshwackonator(Player* pPlayer, Creature* pCreature, uin
 # npc_volcor
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_AGGRO_1                     = 1250,
-    SAY_AGGRO_2                     = 1251,
-    SAY_AGGRO_3                     = 1252,
-    SAY_AGGRO_4                     = 1253,
+    SAY_AGGRO_1                     = 1250,                 // 剧情台词/喊话文本 ID
+    SAY_AGGRO_2                     = 1251,                 // 剧情台词/喊话文本 ID
+    SAY_AGGRO_3                     = 1252,                 // 剧情台词/喊话文本 ID
+    SAY_AGGRO_4                     = 1253,                 // 剧情台词/喊话文本 ID
 
-    VOLCOR_PATH_01                  = 3692, // Escape through stealth path
-    VOLCOR_PATH_02                  = 3693, // Escape through force path
+    VOLCOR_PATH_01                  = 3692, // Escape through stealth path (说明)
+    VOLCOR_PATH_02                  = 3693, // Escape through force path (说明)
 
-    QUEST_ESCAPE_THROUGH_FORCE      = 994,
-    QUEST_ESCAPE_THROUGH_STEALTH    = 995,
+    QUEST_ESCAPE_THROUGH_FORCE      = 994,                  // 任务 ID
+    QUEST_ESCAPE_THROUGH_STEALTH    = 995,                  // 任务 ID
 };
 
+// npc_volcorAI NPC 脚本 AI
 struct npc_volcorAI : public npc_escortAI
 {
     npc_volcorAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
     uint32 m_uiQuestId;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
         {
@@ -423,7 +435,7 @@ struct npc_volcorAI : public npc_escortAI
         }
     }
 
-    // Wrapper to handle start function for both quests
+    // Wrapper to handle start function for both quests (说明)
     void StartEscort(Player* player, const Quest* quest)
     {
         m_uiQuestId = quest->GetQuestId();
@@ -436,14 +448,14 @@ struct npc_volcorAI : public npc_escortAI
             Start(false, player, quest, false, false, VOLCOR_PATH_02);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
             case 3:
                 if (m_uiQuestId == QUEST_ESCAPE_THROUGH_STEALTH)
                 {
-                    // Reward Player
+                    // Reward Player (玩家)
                     if (Player* pPlayer = GetPlayerForEscort())
                         pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_ESCAPE_THROUGH_STEALTH, m_creature);
                     m_creature->GetMotionMaster()->Clear(false, true);
@@ -462,7 +474,7 @@ struct npc_volcorAI : public npc_escortAI
     }
 };
 
-bool QuestAccept_npc_volcor(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_volcor(Player* player, Creature* creature, const Quest* quest) // 接受任务处理
 {
     if (quest->GetQuestId() == QUEST_ESCAPE_THROUGH_FORCE || quest->GetQuestId() == QUEST_ESCAPE_THROUGH_STEALTH)
     {
@@ -477,22 +489,24 @@ bool QuestAccept_npc_volcor(Player* player, Creature* creature, const Quest* que
 # npc_therylune
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_THERYLUNE_START              = -1000905,
-    SAY_THERYLUNE_FINISH             = -1000906,
+    SAY_THERYLUNE_START              = -1000905,            // 剧情台词/喊话文本 ID
+    SAY_THERYLUNE_FINISH             = -1000906,            // 剧情台词/喊话文本 ID
 
-    NPC_THERYSIL                     = 3585,
+    NPC_THERYSIL                     = 3585,                // NPC 条目 ID
 
-    QUEST_ID_THERYLUNE_ESCAPE        = 945,
+    QUEST_ID_THERYLUNE_ESCAPE        = 945,                 // 任务 ID
 };
 
+// npc_theryluneAI NPC 脚本 AI
 struct npc_theryluneAI : public npc_escortAI
 {
     npc_theryluneAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
 
-    void Reset() override {}
+    void Reset() override {}                                // 重置战斗状态与计时器
 
     void JustRespawned() override
     {
@@ -500,7 +514,7 @@ struct npc_theryluneAI : public npc_escortAI
         npc_escortAI::JustRespawned();
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
@@ -517,12 +531,12 @@ struct npc_theryluneAI : public npc_escortAI
     }
 };
 
-UnitAI* GetAI_npc_therylune(Creature* pCreature)
+UnitAI* GetAI_npc_therylune(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_theryluneAI(pCreature);
 }
 
-bool QuestAccept_npc_therylune(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_therylune(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_ID_THERYLUNE_ESCAPE)
     {
@@ -541,18 +555,20 @@ bool QuestAccept_npc_therylune(Player* pPlayer, Creature* pCreature, const Quest
 ## npc_rabid_bear
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    QUEST_PLAGUED_LANDS             = 2118,
+    QUEST_PLAGUED_LANDS             = 2118,                 // 任务 ID
 
-    NPC_CAPTURED_RABID_THISTLE_BEAR = 11836,
-    NPC_THARNARIUN_TREETENDER       = 3701,                 // Npc related to quest-outro
-    GO_NIGHT_ELVEN_BEAR_TRAP        = 111148,               // This is actually the (visual) spell-focus GO
+    NPC_CAPTURED_RABID_THISTLE_BEAR = 11836,                // NPC 条目 ID
+    NPC_THARNARIUN_TREETENDER       = 3701,                 // Npc related to quest-outro (说明)
+    GO_NIGHT_ELVEN_BEAR_TRAP        = 111148,               // This is actually the (visual) spell-focus GO (说明)
 
-    SPELL_RABIES                    = 3150,                 // Spell used in comabt
+    SPELL_RABIES                    = 3150,                 // Spell used in comabt (法术)
     SPELL_BEAR_CAPTURED             = 9439
 };
 
+// npc_rabid_bearAI NPC 脚本 AI
 struct npc_rabid_bearAI : public ScriptedAI
 {
     npc_rabid_bearAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -565,7 +581,7 @@ struct npc_rabid_bearAI : public ScriptedAI
     uint32 m_uiRabiesTimer;
     uint32 m_uiDespawnTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiRabiesTimer = urand(12000, 18000);
     }
@@ -581,7 +597,7 @@ struct npc_rabid_bearAI : public ScriptedAI
         if (!m_uiCheckTimer && pWho->GetTypeId() == TYPEID_UNIT && pWho->GetEntry() == NPC_THARNARIUN_TREETENDER &&
                 pWho->IsWithinDist(m_creature, 2 * INTERACTION_DISTANCE, false))
         {
-            // Possible related spell: 9455 9372
+            // Possible related spell: 9455 9372 (法术)
             m_creature->ForcedDespawn(1000);
             m_creature->GetMotionMaster()->MoveIdle();
 
@@ -591,7 +607,7 @@ struct npc_rabid_bearAI : public ScriptedAI
         ScriptedAI::MoveInLineOfSight(pWho);
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override    // 被法术命中回调处理
     {
         if (pCaster->GetTypeId() == TYPEID_PLAYER && pSpell->Id == SPELL_BEAR_CAPTURED)
         {
@@ -599,25 +615,25 @@ struct npc_rabid_bearAI : public ScriptedAI
             m_creature->CombatStop(true);
             m_creature->SetLootRecipient(nullptr);
             Reset();
-            // Update Entry and start following player
+            // Update Entry and start following player (开始玩家)
             m_creature->UpdateEntry(NPC_CAPTURED_RABID_THISTLE_BEAR);
-            // get player
+            // get player (玩家)
             if (((Player*)pCaster)->GetQuestStatus(QUEST_PLAGUED_LANDS) == QUEST_STATUS_INCOMPLETE)
             {
                 ((Player*)pCaster)->KilledMonsterCredit(m_creature->GetEntry(), m_creature->GetObjectGuid());
                 m_creature->GetMotionMaster()->MoveFollow(pCaster, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
             }
-            else                                // Something unexpected happened
+            else                                // Something unexpected happened (说明)
                 m_creature->ForcedDespawn(1000);
 
-            // No need to check any more
+            // No need to check any more (说明)
             m_uiCheckTimer = 0;
-            // Despawn after a while (delay guesswork)
+            // Despawn after a while (delay guesswork) (消失)
             m_uiDespawnTimer = 3 * MINUTE * IN_MILLISECONDS;
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         if (m_uiDespawnTimer && !m_creature->IsInCombat())
         {
@@ -645,7 +661,7 @@ struct npc_rabid_bearAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_npc_rabid_bear(Creature* pCreature)
+UnitAI* GetAI_npc_rabid_bear(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_rabid_bearAI(pCreature);
 }
@@ -654,37 +670,39 @@ UnitAI* GetAI_npc_rabid_bear(Creature* pCreature)
 ## npc_corrupted_furbolg
 ######*/
 
+// 常量与事件枚举
 enum {
-    NPC_BLACKWOOD_WARRIOR    = 2168,
-    NPC_BLACKWOOD_TOTEMIC    = 2169,
+    NPC_BLACKWOOD_WARRIOR    = 2168,                        // NPC 条目 ID
+    NPC_BLACKWOOD_TOTEMIC    = 2169,                        // NPC 条目 ID
 
-    GO_PURIFIED_FOOD         = 175336,
+    GO_PURIFIED_FOOD         = 175336,                      // 游戏对象条目 ID
 
-    FACTION_BLACKWOOD        = 35,
+    FACTION_BLACKWOOD        = 35,                          // 阵营 ID
 
-    EMOTE_LURED              = -1010027,
-    EMOTE_PURIFIED           = -1010028,
+    EMOTE_LURED              = -1010027,                    // 剧情台词/喊话文本 ID
+    EMOTE_PURIFIED           = -1010028,                    // 剧情台词/喊话文本 ID
     GENERIC_EMOTE_FLEE       = 1150,
 
-    SPELL_BATTLE_STANCE      = 7165,
-    SPELL_THUNDERCLAP        = 8078,
-    SPELL_HEALING_WARD       = 5605,
+    SPELL_BATTLE_STANCE      = 7165,                        // 技能法术 ID
+    SPELL_THUNDERCLAP        = 8078,                        // 技能法术 ID
+    SPELL_HEALING_WARD       = 5605,                        // 技能法术 ID
 
 
 
     EVENT_BECOME_PURIFIED    = 0,
     EVENT_FURBOLG_RESET      = 1,
     EVENT_START_PURIFICATION = 2,
-    ACTION_FLEE              = 3,
-    ACTION_THUNDERCLAP       = 4,
-    ACTION_HEALING_WARD      = 5,
-    ACTION_MAX               = 6,
+    ACTION_FLEE              = 3,                           // 战斗行为动作
+    ACTION_THUNDERCLAP       = 4,                           // 战斗行为动作
+    ACTION_HEALING_WARD      = 5,                           // 战斗行为动作
+    ACTION_MAX               = 6,                           // 战斗行为动作
 
     BOWL_DISTANCE            = 5,
 };
 
 static const std::vector<uint32> furbolgList = { NPC_BLACKWOOD_WARRIOR, NPC_BLACKWOOD_TOTEMIC };
 
+// npc_corrupted_furbolgAI NPC 脚本 AI
 struct npc_corrupted_furbolgAI : public CombatAI
 {
     npc_corrupted_furbolgAI(Creature* creature) : CombatAI(creature, ACTION_MAX)
@@ -736,7 +754,7 @@ struct npc_corrupted_furbolgAI : public CombatAI
     bool m_hasFled;
     Position m_bowlCoords;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
         
@@ -773,7 +791,7 @@ struct npc_corrupted_furbolgAI : public CombatAI
             ResetTimer(EVENT_START_PURIFICATION, urand(0, 5 * IN_MILLISECONDS));
     }
 
-    void MovementInform(uint32 moveType, uint32 pointId) override
+    void MovementInform(uint32 moveType, uint32 pointId) override    // 移动节点到达通知
     {
         if (moveType != POINT_MOTION_TYPE || !pointId)
             return;
@@ -782,7 +800,7 @@ struct npc_corrupted_furbolgAI : public CombatAI
         ResetTimer(EVENT_BECOME_PURIFIED, 5 * IN_MILLISECONDS);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -828,11 +846,11 @@ bool ProcessEventId_event_purify_food(uint32 /*eventId*/, Object* source, Object
         Player* player = (Player*)source;
         CreatureList furbolgs;
         Position bowlCoords;
-        // Get all nearby Blackwood Furbolgs
+        // Get all nearby Blackwood Furbolgs (说明)
         GetCreatureListWithEntryInGrid(furbolgs, bonfire, furbolgList, 40.f);
         player->GetFirstCollisionPosition(bowlCoords, float(BOWL_DISTANCE), player->GetOrientation());
 
-        // Spawn two extra Blackwood Warriors
+        // Spawn two extra Blackwood Warriors (刷新)
         float x, y, z;
         for (int8 i = 0; i < 2; ++i)
         {
@@ -841,7 +859,7 @@ bool ProcessEventId_event_purify_food(uint32 /*eventId*/, Object* source, Object
                 furbolgs.push_back(warrior);
         }
 
-        // Activate the purification sequence for all hostile furbolgs (prevent attracting already purified ones)
+        // Activate the purification sequence for all hostile furbolgs (prevent attracting already purified ones) (说明)
         for (auto& furbolg : furbolgs)
         {
             if (furbolg->IsInCombat() || !furbolg->IsAlive() || !furbolg->CanAttack((Unit*)source))
@@ -863,13 +881,13 @@ bool ProcessEventId_event_purify_food(uint32 /*eventId*/, Object* source, Object
 
 bool GOUse_go_furbolg_food(Player* player, GameObject* go)
 {
-    // Search for a nearby Blackwood Warrior and make it attack
+    // Search for a nearby Blackwood Warrior and make it attack (说明)
     if (Creature* warrior = GetClosestCreatureWithEntry(go, NPC_BLACKWOOD_WARRIOR, 20.0f))
     {
         if (!warrior->IsInCombat() && warrior->IsAlive() && warrior->CanAttack(player))
             warrior->AI()->AttackStart(player);
     }
-    // Else spawn a new one (and make it attack)
+    // Else spawn a new one (and make it attack) (说明)
     else
     {
         float x, y, z;
@@ -881,7 +899,7 @@ bool GOUse_go_furbolg_food(Player* player, GameObject* go)
     return true;
 }
 
-void AddSC_darkshore()
+void AddSC_darkshore() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_kerlonian";

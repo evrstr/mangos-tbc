@@ -27,6 +27,7 @@
 #include "Grids/CellImpl.h"
 #include "Maps/GridDefines.h"
 
+/// 网格卸载前的重生点迁移访问器
 class ObjectGridRespawnMover
 {
     public:
@@ -51,6 +52,8 @@ ObjectGridRespawnMover::Visit(CreatureMapType& m)
     // creature in unloading grid can have respawn point in another grid
     // if it will be unloaded then it will not respawn in original grid until unload/load original grid
     // move to respawn point to prevent this case. For player view in respawn grid this will be normal respawn.
+    // 待卸载网格中的生物可能拥有位于另一网格的重生点；若直接卸载，原网格未重新加载前该生物将无法正常重生，
+    // 因此需先将其迁回重生点所在网格
     for (CreatureMapType::iterator iter = m.begin(), next; iter != m.end(); iter = next)
     {
         next = iter; ++next;
@@ -69,12 +72,12 @@ ObjectGridRespawnMover::Visit(CreatureMapType& m)
         if (cur_cell.DiffGrid(resp_cell))
         {
             c->GetMap()->CreatureRespawnRelocation(c);
-            // false result ignored: will be unload with other creatures at grid
+            // false result ignored: will be unload with other creatures at grid | 忽略 false 返回值：未迁走则随当前网格一并卸载
         }
     }
 }
 
-// for loading world object at grid loading (Corpses)
+// for loading world object at grid loading (Corpses) | 用于在加载网格时同步加载世界对象（如玩家尸体）
 class ObjectWorldLoader
 {
     public:
@@ -149,6 +152,7 @@ void LoadHelper(CellGuidSet const& guid_set, CellPair& cell, GridRefManager<T>& 
         }
 
         // if this assert is hit we have a problem somewhere because LoadFromDb should already add to map due to AI
+        // 若触发此断言说明 LoadFromDB（及 AI 初始化）未能正确将对象加入地图
         MANGOS_ASSERT(obj->IsInWorld());
 
         if (bg)
@@ -225,6 +229,7 @@ ObjectWorldLoader::Visit(CorpseMapType& m)
     uint32 cell_id = (cell_pair.y_coord * TOTAL_NUMBER_OF_CELLS_PER_MAP) + cell_pair.x_coord;
 
     // corpses are always added to spawn mode 0 and they are spawned by their instance id
+    // 尸体总是登记在 spawn mode 0 下，并按实例 ID 进行生成与筛选
     CellObjectGuids const& cell_guids = sObjectMgr.GetCellObjectGuids(i_map->GetId(), 0, cell_id);
     GridType& grid = (*i_map->getNGrid(i_cell.GridX(), i_cell.GridY()))(i_cell.CellX(), i_cell.CellY());
     LoadHelper(cell_guids.corpses, cell_pair, m, i_corpses, i_map, grid);
@@ -289,10 +294,10 @@ void ObjectGridUnloader::Visit(GridRefManager<T>& m)
     {
         T* obj = m.getFirst()->getSource();
         obj->GetMap()->RemoveObjectFromRemoveList(obj);
-        // if option set then object already saved at this moment
+        // if option set then object already saved at this moment | 若启用了立即保存选项，则此时对象重生时间已保存
         if (!sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATELY))
             obj->SaveRespawnTime();
-        // object must be out of world before delete
+        // object must be out of world before delete | 删除前必须先将对象移出世界
         obj->GetMap()->Remove(obj, true);
     }
 }
@@ -308,6 +313,7 @@ void
 ObjectGridStoper::Visit(CreatureMapType& m)
 {
     // stop any fights at grid de-activation and remove dynobjects created at cast by creatures
+    // 在网格停用时终止所有战斗，并移除生物施法产生的动态对象
     for (auto& iter : m)
     {
         iter.getSource()->CombatStop();

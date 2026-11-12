@@ -47,6 +47,7 @@ MapManager::~MapManager()
     DeleteStateMachine();
 }
 
+// 初始化地图管理器：构建网格状态机、读取最大副本 ID、创建大陆地图并启动更新线程池
 void MapManager::Initialize()
 {
     InitStateMachine();
@@ -58,6 +59,7 @@ void MapManager::Initialize()
         m_updater.activate(num_threads);
 }
 
+// 初始化四种网格状态处理器实例
 void MapManager::InitStateMachine()
 {
     si_GridStates[GRID_STATE_INVALID] = new InvalidState;
@@ -79,6 +81,7 @@ void MapManager::UpdateGridState(grid_state_t state, Map& map, NGridType& ngrid,
     // TODO: The grid state array itself is static and therefore 100% safe, however, the data
     // the state classes in it accesses is not, since grids are shared across maps (for example
     // in instances), so some sort of locking will be necessary later.
+    // 待办：网格状态机数组本身为静态且安全，但状态类访问的共享网格数据尚缺乏跨地图锁机制
 
     si_GridStates[state]->Update(map, ngrid, ginfo, x, y, t_diff);
 }
@@ -89,20 +92,21 @@ void MapManager::InitializeVisibilityDistanceInfo()
         i_map.second->InitVisibilityDistance();
 }
 
+// 并行预创建并初始化三块大陆地图（东部王国 0、卡利姆多 1、外域 530）
 void MapManager::CreateContinents()
 {
-    std::mutex mmapMutex; // all of initialize can be in parallel but mmap creation
+    std::mutex mmapMutex; // all of initialize can be in parallel but mmap creation (除 MMap 创建外其余初始化可并行)
     std::vector<std::future<void>> futures;
     uint32 continents[] = { 0, 1, 530 };
     for (auto id : continents)
     {
         Map* m = new WorldMap(id, i_gridCleanUpDelay, 0);
-        // add map into container
+        // add map into container (将新建地图纳入容器并设置弱引用)
         MaNGOS::unique_trackable_ptr<Map>& ptr = i_maps[MapID(id)];
         ptr.reset(m);
         m->SetWeakPtr(ptr);
 
-        // non-instanceable maps always expected have saved state
+        // non-instanceable maps always expected have saved state (非副本地图始终拥有持久化状态)
         futures.push_back(std::async(std::launch::async, std::bind(&Map::Initialize, m, &mmapMutex, true)));
     }
 
@@ -111,6 +115,7 @@ void MapManager::CreateContinents()
 }
 
 /// @param id - MapId of the to be created map. @param obj WorldObject for which the map is to be created. Must be player for Instancable maps.
+/// 创建或获取指定地图实例；对于可实例化地图，obj 必须为玩家对象
 Map* MapManager::CreateMap(uint32 id, const WorldObject* obj)
 {
     Guard _guard(*this);
@@ -124,25 +129,25 @@ Map* MapManager::CreateMap(uint32 id, const WorldObject* obj)
     if (entry->Instanceable())
     {
         MANGOS_ASSERT(obj && obj->GetTypeId() == TYPEID_PLAYER);
-        // create DungeonMap object
+        // create DungeonMap object (创建或获取副本/战场地图实例)
         m = CreateInstance(id, (Player*)obj);
     }
     else
     {
         uint32 instanceId = 0;
-        // create regular non-instanceable map
+        // create regular non-instanceable map (获取或创建常规非副本地图)
         m = FindMap(id);
         if (m == nullptr)
         {
             std::lock_guard<std::mutex> lock(m_lock);
             m = new WorldMap(id, i_gridCleanUpDelay, instanceId);
-            // add map into container
+            // add map into container (加入地图容器)
             MaNGOS::unique_trackable_ptr<Map>& ptr = i_maps[MapID(id, instanceId)];
             ptr.reset(m);
             m->SetWeakPtr(ptr);
 
-            // non-instanceable maps always expected have saved state
-            m->Initialize(nullptr); // can be nullptr because already safeguarded by guard
+            // non-instanceable maps always expected have saved state (非副本地图始终加载持久化状态)
+            m->Initialize(nullptr); // can be nullptr because already safeguarded by guard (已有外部递归锁保护，此处可传 nullptr)
         }
     }
 
@@ -157,6 +162,7 @@ Map* MapManager::CreateBgMap(uint32 mapid, uint32 instanceId, BattleGround* bg)
     return CreateBattleGroundMap(mapid, instanceId, bg);
 }
 
+// 按 mapid 与 instanceId 查找已加载的地图实例
 Map* MapManager::FindMap(uint32 mapid, uint32 instanceId) const
 {
     Guard guard(*this);
@@ -165,7 +171,7 @@ Map* MapManager::FindMap(uint32 mapid, uint32 instanceId) const
     if (iter == i_maps.end())
         return nullptr;
 
-    // this is a small workaround for transports
+    // this is a small workaround for transports (针对运输载具查找的保护：副本地图不应以 instanceId == 0 查询)
     if (instanceId == 0 && iter->second->Instanceable())
     {
         assert(false);
@@ -175,6 +181,7 @@ Map* MapManager::FindMap(uint32 mapid, uint32 instanceId) const
     return iter->second.get();
 }
 
+// 从容器摘除并卸载指定的副本实例
 void MapManager::DeleteInstance(uint32 mapid, uint32 instanceId)
 {
     Guard _guard(*this);
@@ -191,6 +198,7 @@ void MapManager::DeleteInstance(uint32 mapid, uint32 instanceId)
     }
 }
 
+// 定时更新所有地图实例，并卸载超时的空副本
 void MapManager::Update(uint32 diff)
 {
     i_timer.Update(diff);
@@ -208,7 +216,7 @@ void MapManager::Update(uint32 diff)
     if (m_updater.activated())
         m_updater.wait();
 
-    // remove all maps which can be unloaded
+    // remove all maps which can be unloaded (移除并卸载所有达到卸载倒计时条件的地图)
     MapMapType::iterator iter = i_maps.begin();
     while (iter != i_maps.end())
     {
@@ -302,16 +310,17 @@ uint32 MapManager::GetNumPlayersInInstances()
 
 ///// returns a new or existing Instance
 ///// in case of battlegrounds it will only return an existing map, those maps are created by bg-system
+///// 为玩家返回新建或已存在的副本/战场地图；战场仅返回已由战场系统创建的地图
 Map* MapManager::CreateInstance(uint32 id, Player* player)
 {
     Map* map = nullptr;
     Map* pNewMap = nullptr;
-    uint32 NewInstanceId = 0;                               // instanceId of the resulting map
+    uint32 NewInstanceId = 0;                               // instanceId of the resulting map (目标地图实例 ID)
     const MapEntry* entry = sMapStore.LookupEntry(id);
 
     if (entry->IsBattleGroundOrArena())
     {
-        // find existing bg map for player
+        // find existing bg map for player (查找玩家当前绑定的战场地图)
         NewInstanceId = player->GetBattleGroundId();
         MANGOS_ASSERT(NewInstanceId);
         map = FindMap(id, NewInstanceId);
@@ -319,10 +328,10 @@ Map* MapManager::CreateInstance(uint32 id, Player* player)
     }
     else if (DungeonPersistentState* pSave = player->GetBoundInstanceSaveForSelfOrGroup(id))
     {
-        // solo/perm/group
+        // solo/perm/group (个人/永久/队伍已有副本存档：复用意图中的实例 ID，若地图未加载则重建)
         NewInstanceId = pSave->GetInstanceId();
         map = FindMap(id, NewInstanceId);
-        // it is possible that the save exists but the map doesn't
+        // it is possible that the save exists but the map doesn't (可能存档存在而地图尚未加载)
         if (!map)
             pNewMap = CreateDungeonMap(id, NewInstanceId, pSave->GetDifficulty(), pSave);
     }
@@ -330,13 +339,14 @@ Map* MapManager::CreateInstance(uint32 id, Player* player)
     {
         // if no instanceId via group members or instance saves is found
         // the instance will be created for the first time
+        // 队伍与个人均无绑定存档时，分配新实例 ID 并首次创建地下城地图
         NewInstanceId = GenerateInstanceId();
 
         Difficulty diff = player->GetGroup() ? player->GetGroup()->GetDifficulty() : player->GetDifficulty();
         pNewMap = CreateDungeonMap(id, NewInstanceId, diff);
     }
 
-    // add a new map object into the registry
+    // add a new map object into the registry (将新创建的地图注册到管理器映射表中)
     if (pNewMap)
     {
         MaNGOS::unique_trackable_ptr<Map>& ptr = i_maps[MapID(id, NewInstanceId)];
@@ -348,9 +358,10 @@ Map* MapManager::CreateInstance(uint32 id, Player* player)
     return map;
 }
 
+// 创建并初始化地下城/团队副本实例地图
 DungeonMap* MapManager::CreateDungeonMap(uint32 id, uint32 InstanceId, Difficulty difficulty, DungeonPersistentState* save)
 {
-    // make sure we have a valid map id
+    // make sure we have a valid map id (校验地图 ID 与副本模板有效性)
     const MapEntry* entry = sMapStore.LookupEntry(id);
     if (!entry)
     {
@@ -363,7 +374,7 @@ DungeonMap* MapManager::CreateDungeonMap(uint32 id, uint32 InstanceId, Difficult
         MANGOS_ASSERT(false);
     }
 
-    // some instances only have one difficulty
+    // some instances only have one difficulty (不支持英雄难度的副本强制回退为普通难度)
     if (entry && !entry->SupportsHeroicMode())
         difficulty = DUNGEON_DIFFICULTY_NORMAL;
 
@@ -371,13 +382,14 @@ DungeonMap* MapManager::CreateDungeonMap(uint32 id, uint32 InstanceId, Difficult
 
     DungeonMap* map = new DungeonMap(id, i_gridCleanUpDelay, InstanceId, difficulty);
 
-    // Dungeons can have saved instance data
+    // Dungeons can have saved instance data (若存在既有存档则加载副本进度数据)
     bool load_data = save != nullptr;
     map->Initialize(nullptr, load_data); // can be nullptr because already safeguarded by guard one function up
 
     return map;
 }
 
+// 创建并初始化战场/竞技场地图实例
 BattleGroundMap* MapManager::CreateBattleGroundMap(uint32 id, uint32 InstanceId, BattleGround* bg)
 {
     DEBUG_LOG("MapInstanced::CreateBattleGroundMap: instance:%d for map:%d and bgType:%d created.", InstanceId, id, bg->GetTypeId());

@@ -20,7 +20,7 @@
 
 SqlStmtParameters::SqlStmtParameters(uint32 nParams)
 {
-    // reserve memory if needed
+    // reserve memory if needed | 按需预留参数容器空间
     if (nParams > 0)
         m_params.reserve(nParams);
 }
@@ -28,7 +28,7 @@ SqlStmtParameters::SqlStmtParameters(uint32 nParams)
 void SqlStmtParameters::reset(const SqlStatement& stmt)
 {
     m_params.clear();
-    // reserve memory if needed
+    // reserve memory if needed | 清空后重新按语句参数数量预留内存
     if (stmt.arguments() > 0)
         m_params.reserve(stmt.arguments());
 }
@@ -51,10 +51,11 @@ SqlStatement& SqlStatement::operator=(const SqlStatement& index)
     return *this;
 }
 
+// 校验参数数量后将预处理语句提交异步/事务执行 | Validate parameter count and submit prepared statement for async/transactional execution
 bool SqlStatement::Execute()
 {
     SqlStmtParameters* args = detach();
-    // verify amount of bound parameters
+    // verify amount of bound parameters | 校验实际绑定参数个数是否匹配模板
     if (args->boundParams() != arguments())
     {
         sLog.outError("SQL ERROR: wrong amount of parameters (%i instead of %i)", args->boundParams(), arguments());
@@ -67,10 +68,11 @@ bool SqlStatement::Execute()
     return m_pDB->ExecuteStmt(m_index, args);
 }
 
+// 校验参数数量后立即同步执行预处理语句 | Validate parameter count and execute prepared statement synchronously
 bool SqlStatement::DirectExecute()
 {
     SqlStmtParameters* args = detach();
-    // verify amount of bound parameters
+    // verify amount of bound parameters | 校验实际绑定参数个数是否匹配模板
     if (args->boundParams() != arguments())
     {
         sLog.outError("SQL ERROR: wrong amount of parameters (%i instead of %i)", args->boundParams(), arguments());
@@ -91,16 +93,17 @@ SqlPlainPreparedStatement::SqlPlainPreparedStatement(const std::string& fmt, Sql
     m_bIsQuery = strnicmp(m_szFmt.c_str(), "select", 6) == 0;
 }
 
+// 将参数逐一格式化并替换 SQL 模板中的 '?' 占位符 | Format each parameter and replace '?' placeholders in SQL template
 void SqlPlainPreparedStatement::bind(const SqlStmtParameters& holder)
 {
-    // verify if we bound all needed input parameters
+    // verify if we bound all needed input parameters | 校验绑定参数数量是否一致
     if (m_nParams != holder.boundParams())
     {
         MANGOS_ASSERT(false);
         return;
     }
 
-    // reset resulting plain SQL request
+    // reset resulting plain SQL request | 重置目标纯文本 SQL 请求
     m_szPlainRequest = m_szFmt;
     size_t nLastPos = 0;
 
@@ -109,7 +112,7 @@ void SqlPlainPreparedStatement::bind(const SqlStmtParameters& holder)
     SqlStmtParameters::ParameterContainer::const_iterator iter_last = _args.end();
     for (SqlStmtParameters::ParameterContainer::const_iterator iter = _args.begin(); iter != iter_last; ++iter)
     {
-        // bind parameter
+        // bind parameter | 格式化并替换下一个 '?' 占位符
         const SqlStmtFieldData& data = (*iter);
 
         std::ostringstream fmt;
@@ -133,6 +136,7 @@ bool SqlPlainPreparedStatement::execute()
     return m_pConn.Execute(m_szPlainRequest.c_str());
 }
 
+// 将参数字段转为安全的 SQL 字面量文本（字符串自动转义） | Convert field data into safe SQL literal string (with escaping for strings)
 void SqlPlainPreparedStatement::DataToString(const SqlStmtFieldData& data, std::ostringstream& fmt) const
 {
     switch (data.type())

@@ -21,68 +21,72 @@ SDComment: The hatchers may need some additional behavior adjustments.
 SDCategory: Zul'Aman
 EndScriptData */
 
+// 埃加拉什（Jan'alai）龙鹰之化身首领战 AI（召唤龙鹰孵化者快速孵蛋、烈焰炸弹封路大爆炸）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulaman.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                       = -1568000,
-    SAY_FIRE_BOMBS                  = -1568001,
-    SAY_SUMMON_HATCHER              = -1568002,
-    SAY_ALL_EGGS                    = -1568003,
-    SAY_BERSERK                     = -1568004,
-    SAY_SLAY_1                      = 23585,
-    SAY_SLAY_2                      = 23586,
-    SAY_DEATH                       = -1568007,
-    SAY_EVENT_STRANGERS             = -1568008,
-    SAY_EVENT_FRIENDS               = -1568009,
+    SAY_AGGRO                       = -1568000,             // 开战 台词广播 ID
+    SAY_FIRE_BOMBS                  = -1568001,             // 火焰bombs 台词广播 ID
+    SAY_SUMMON_HATCHER              = -1568002,             // 召唤hatcher 台词广播 ID
+    SAY_ALL_EGGS                    = -1568003,             // alleggs 台词广播 ID
+    SAY_BERSERK                     = -1568004,             // 狂暴 台词广播 ID
+    SAY_SLAY_1                      = 23585,                // 击杀1 台词广播 ID
+    SAY_SLAY_2                      = 23586,                // 击杀2 台词广播 ID
+    SAY_DEATH                       = -1568007,             // 死亡 台词广播 ID
+    SAY_EVENT_STRANGERS             = -1568008,             // 事件strangers 台词广播 ID
+    SAY_EVENT_FRIENDS               = -1568009,             // 事件friends 台词广播 ID
 
-    // Jan'alai
-    SPELL_FLAME_BREATH              = 43140,
+    // Jan'alai (埃加拉什)
+    SPELL_FLAME_BREATH              = 43140,                // 烈焰吐息 法术 ID
     SPELL_HATCH_ALL_EGGS            = 43144,                // triggers 42493
-    SPELL_TELEPORT_TO_CENTER        = 43098,
+    SPELL_TELEPORT_TO_CENTER        = 43098,                // 传送tocenter 法术 ID
     SPELL_SUMMON_ALL_PLAYERS        = 43096,                // triggers 43097
-    SPELL_ENRAGE                    = 44779,
-    SPELL_BERSERK                   = 47008,
-    SPELL_SUMMON_HATCHER_1          = 43962,
-    SPELL_SUMMON_HATCHER_2          = 45340,
+    SPELL_ENRAGE                    = 44779,                // 狂暴 法术 ID
+    SPELL_BERSERK                   = 47008,                // 狂暴 法术 ID
+    SPELL_SUMMON_HATCHER_1          = 43962,                // 召唤hatcher1 法术 ID
+    SPELL_SUMMON_HATCHER_2          = 45340,                // 召唤hatcher2 法术 ID
 
     // Fire Bob Spells
-    SPELL_FIRE_BOMB_CHANNEL         = 42621,
+    SPELL_FIRE_BOMB_CHANNEL         = 42621,                // 火焰炸弹channel 法术 ID
     SPELL_FIRE_BOMB_THROW           = 42628,                // triggers 42629
     SPELL_FIRE_BOMB_EXPLODE         = 42631,                // triggers 42630
 
     // NPCs
-    NPC_FIRE_BOMB                   = 23920,
-    NPC_AMANI_HATCHER_1             = 23818,
-    NPC_AMANI_HATCHER_2             = 24504,
+    NPC_FIRE_BOMB                   = 23920,                // 火焰炸弹 Entry ID
+    NPC_AMANI_HATCHER_1             = 23818,                // amanihatcher1 Entry ID
+    NPC_AMANI_HATCHER_2             = 24504,                // amanihatcher2 Entry ID
     // NPC_HATCHLING                   = 23598,
     // NPC_DRAGONHAWK_EGG              = 23817,
     // NPC_WORLD_TRIGGER_NOT_IMMUNE_PC = 21252,                // used for fire wall
 
     // Hatcher Spells
-    SPELL_HATCH_EGG_1               = 43734,
-    SPELL_HATCH_EGG_2               = 42471,
+    SPELL_HATCH_EGG_1               = 43734,                // hatch龙蛋1 法术 ID
+    SPELL_HATCH_EGG_2               = 42471,                // hatch龙蛋2 法术 ID
 
-    // Fire Wall
-    SPELL_FIRE_WALL                 = 43113,
+    // Fire Wall (火焰Wall)
+    SPELL_FIRE_WALL                 = 43113,                // 火焰wall 法术 ID
 
     // Eggs spells
-    SPELL_SUMMON_DRAGONHAWK         = 42493,
+    SPELL_SUMMON_DRAGONHAWK         = 42493,                // 召唤dragonhawk 法术 ID
 
     MAX_EGGS_ON_SIDE                = 20,                   // there are 20 eggs spawned on each side
 
-    PATH_ID_RIGHT                   = 1,
-    PATH_ID_LEFT                    = 2,
-    PATH_ID_RIGHT_SHORT             = 3,
-    PATH_ID_LEFT_SHORT              = 4,
+    PATH_ID_RIGHT                   = 1,                    // IDright 标识 ID
+    PATH_ID_LEFT                    = 2,                    // IDleft 标识 ID
+    PATH_ID_RIGHT_SHORT             = 3,                    // IDrightshort 标识 ID
+    PATH_ID_LEFT_SHORT              = 4,                    // IDleftshort 标识 ID
 
-    RIGHT_LAST_POINT                = 3,
-    LEFT_LAST_POINT                 = 3,
-    SHORT_LAST_POINT                = 1,
+    RIGHT_LAST_POINT                = 3,                    // last路径点 标识 ID
+    LEFT_LAST_POINT                 = 3,                    // last路径点 标识 ID
+    SHORT_LAST_POINT                = 1,                    // last路径点 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum JanalaiActions
 {
     JANALAI_ACTION_BERSERK,
@@ -96,6 +100,7 @@ enum JanalaiActions
     JANALAI_EXPLODE_BOMBS,
 };
 
+// 首领战 AI：标识 ID（janalai）
 struct boss_janalaiAI : public CombatAI
 {
     boss_janalaiAI(Creature* creature) : CombatAI(creature, JANALAI_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -126,15 +131,16 @@ struct boss_janalaiAI : public CombatAI
     uint8 m_uiEggsHatchedLeft;
     uint8 m_uiEggsHatchedRight;
 
-    bool m_bIsFlameWall;
-    bool m_bHasHatchedEggs;
-    bool m_bIsEnraged;
+    bool m_bIsFlameWall;                                    // IsFlameWall 状态标记
+    bool m_bHasHatchedEggs;                                 // HasHatchedEggs 状态标记
+    bool m_bIsEnraged;                                      // IsEnraged 状态标记
 
-    ObjectGuid m_hatcherOneGuid;
-    ObjectGuid m_hatcherTwoGuid;
+    ObjectGuid m_hatcherOneGuid;                            // hatcherOne 实体 GUID
+    ObjectGuid m_hatcherTwoGuid;                            // hatcherTwo 实体 GUID
 
     GuidVector m_summons;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -149,6 +155,7 @@ struct boss_janalaiAI : public CombatAI
         DespawnGuids(m_summons);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -180,6 +187,7 @@ struct boss_janalaiAI : public CombatAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -312,6 +320,7 @@ struct boss_janalaiAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：hatcher（amanishi_hatcher）
 struct npc_amanishi_hatcherAI : public ScriptedAI
 {
     npc_amanishi_hatcherAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())), m_hatchlingCount(1)
@@ -325,10 +334,11 @@ struct npc_amanishi_hatcherAI : public ScriptedAI
     ScriptedInstance* m_instance;
 
     uint32 m_uiWaypoint;
-    uint32 m_uiHatchlingTimer;
+    uint32 m_uiHatchlingTimer;                              // Hatchling 技能计时器
     uint8 m_hatchlingCount;
-    bool m_bWaypointEnd;
+    bool m_bWaypointEnd;                                    // WaypointEnd 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiWaypoint        = 0;
@@ -338,6 +348,7 @@ struct npc_amanishi_hatcherAI : public ScriptedAI
         m_creature->SetWalk(false);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 type, uint32 pointId) override
     {
         if (type != WAYPOINT_MOTION_TYPE)
@@ -388,6 +399,7 @@ struct npc_amanishi_hatcherAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_bWaypointEnd && m_uiHatchlingTimer)
@@ -409,10 +421,11 @@ struct npc_amanishi_hatcherAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（HatchEggs）
 struct HatchEggs : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -424,6 +437,7 @@ struct HatchEggs : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_janalai
 void AddSC_boss_janalai()
 {
     Script* pNewScript = new Script;

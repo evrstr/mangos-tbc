@@ -28,6 +28,7 @@
 
 #include <cmath>
 
+// 穿戴属于套装的物品时，递增玩家套装计数并在达到阈值时激活对应套装法术效果
 void AddItemsSetItem(Player* player, Item* item)
 {
     ItemPrototype const* proto = item->GetProto();
@@ -55,7 +56,7 @@ void AddItemsSetItem(Player* player, Item* item)
     {
         if (!set->spells[x])
             continue;
-        // not enough for  spell
+        // not enough for  spell (已穿戴件数尚未达到该奖励法术要求)
         if (set->items_to_triggerspell[x] > eff->item_count)
             continue;
 
@@ -67,7 +68,7 @@ void AddItemsSetItem(Player* player, Item* item)
         if (z < 8)
             continue;
 
-        // new spell
+        // new spell (在空闲槽位中记录并应用新激活的套装奖励法术)
         for (auto& spell : eff->spells)
         {
             if (!spell)                            // free slot
@@ -80,6 +81,7 @@ void AddItemsSetItem(Player* player, Item* item)
                 }
 
                 // spell casted only if fit form requirement, in other case will casted at form change
+                // 仅在满足变形形态要求时立即施放，否则在形态切换时再触发
                 player->ApplyEquipSpell(spellInfo, nullptr, true);
                 spell = spellInfo;
                 break;
@@ -88,6 +90,7 @@ void AddItemsSetItem(Player* player, Item* item)
     }
 }
 
+// 卸下属于套装的物品时，递减套装计数并移除不再满足件数要求的套装奖励法术
 void RemoveItemsSetItem(Player* player, ItemPrototype const* proto)
 {
     uint32 setid = proto->ItemSet;
@@ -103,6 +106,7 @@ void RemoveItemsSetItem(Player* player, ItemPrototype const* proto)
     ItemSetEffect* eff = player->GetItemSetEffect(setid);
 
     // can be in case now enough skill requirement for set appling but set has been appliend when skill requirement not enough
+    // 可能穿戴时因专业技能不足未生效，故找不到对应的套装效果记录
     if (!eff)
         return;
 
@@ -113,7 +117,7 @@ void RemoveItemsSetItem(Player* player, ItemPrototype const* proto)
         if (!set->spells[x])
             continue;
 
-        // enough for spell
+        // enough for spell (剩余件数仍满足该套装法术条件则保留)
         if (set->items_to_triggerspell[x] <= eff->item_count)
             continue;
 
@@ -121,7 +125,7 @@ void RemoveItemsSetItem(Player* player, ItemPrototype const* proto)
         {
             if (spell && spell->Id == set->spells[x])
             {
-                // spell can be not active if not fit form requirement
+                // spell can be not active if not fit form requirement (即使因形态未激活也执行装备法术移除清理)
                 player->ApplyEquipSpell(spell, nullptr, false);
                 spell = nullptr;
                 break;
@@ -129,10 +133,11 @@ void RemoveItemsSetItem(Player* player, ItemPrototype const* proto)
         }
     }
 
-    if (!eff->item_count)                                   // all items of a set were removed
+    if (!eff->item_count)                                   // all items of a set were removed (套装全部件已卸下，移除条目)
         player->RemoveItemSetEffect(setid);
 }
 
+// 检查物品是否允许放入指定容器（校验普通背包及灵魂袋、草药袋、箭袋等专业容器匹配规则）
 bool ItemCanGoIntoBag(ItemPrototype const* pProto, ItemPrototype const* pBagProto)
 {
     if (!pProto || !pBagProto)
@@ -194,11 +199,12 @@ bool ItemCanGoIntoBag(ItemPrototype const* pProto, ItemPrototype const* pBagProt
     return false;
 }
 
+// 构造物品实例并初始化对象类型、更新字段数量及默认状态
 Item::Item()
 {
     m_objectType |= TYPEMASK_ITEM;
     m_objectTypeId = TYPEID_ITEM;
-    // 2.3.2 - 0x18
+    // 2.3.2 - 0x18 (2.3.2 起物品更新标志掩码)
     m_updateFlag = (UPDATEFLAG_LOWGUID | UPDATEFLAG_HIGHGUID);
 
     m_valuesCount = ITEM_END;
@@ -218,6 +224,7 @@ Item::~Item()
 
 }
 
+// 使用模板属性初始化新创建的物品实例（耐久度、充能次数、限时时长与所有者）
 bool Item::Create(uint32 guidlow, uint32 itemid, Player const* owner)
 {
     Object::_Create(guidlow, guidlow, 0, HIGHGUID_ITEM);
@@ -244,15 +251,17 @@ bool Item::Create(uint32 guidlow, uint32 itemid, Player const* owner)
     return true;
 }
 
+// 从世界移除物品前，先将其从所属玩家地图的待下发创建更新管线中撤除
 void Item::RemoveFromWorld()
 {
     if (Player* owner = GetOwner())
         if (owner->IsInWorld())
-            owner->GetMap()->RemoveUpdateCreateObject(this); // in case we are in the pipeline
+            owner->GetMap()->RemoveUpdateCreateObject(this); // in case we are in the pipeline (避免残留于下发更新管线中)
 
     Object::RemoveFromWorld();
 }
 
+// 扣减限时物品剩余存活时间，到期且未正在施法中则销毁该物品
 void Item::UpdateDuration(Player* owner, uint32 diff)
 {
     if (!GetUInt32Value(ITEM_FIELD_DURATION))
@@ -268,9 +277,10 @@ void Item::UpdateDuration(Player* owner, uint32 diff)
 
     uint32 oldDuration = GetUInt32Value(ITEM_FIELD_DURATION);
     SetUInt32Value(ITEM_FIELD_DURATION, oldDuration <= diff ? 1 : oldDuration - diff);
-    SetState(ITEM_CHANGED, owner);                          // save new time in database
+    SetState(ITEM_CHANGED, owner);                          // save new time in database (标记已修改以便存库)
 }
 
+// 根据 uState 将物品实例、附魔、充能、礼物关系及内含掉落同步至角色数据库
 void Item::SaveToDB()
 {
     static const char* UPDATE_ITEM = "UPDATE item_instance SET owner_guid = ?, itemEntry = ?, creatorGuid = ?, giftCreatorGuid = ?, count = ?, duration = ?, charges = ?, flags = ?, enchantments = ?, randomPropertyId = ?, durability = ?, itemTextId = ? WHERE guid = ?";
@@ -427,6 +437,7 @@ void Item::SaveToDB()
     SetState(ITEM_UNCHANGED);
 }
 
+// 从 item_instance 字段集合加载物品属性，并自动修正过期的时长、绑定、耐久与包装状态
 bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
 {
     // 0          1            2                3      4         5        6      7             8                 9           10
@@ -434,9 +445,10 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
 
     // create item before any checks for store correct guid
     // and allow use "FSetState(ITEM_REMOVED); SaveToDB();" for deleting item from DB
+    // 先初始化 GUID，以便后续校验失败时可通过 ITEM_REMOVED 安全从数据库删除
     Object::_Create(guidLow, guidLow, 0, HIGHGUID_ITEM);
 
-    // Set entry, MUST be before proto check
+    // Set entry, MUST be before proto check (必须先设置 Entry 再查询物品模板)
     SetEntry(fields[0].GetUInt32());
     SetObjectScale(1.0f);
 
@@ -444,18 +456,18 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
     if (!proto)
         return false;
 
-    // set owner (not if item is only loaded for gbank/auction/mail)
+    // set owner (not if item is only loaded for gbank/auction/mail) (公会银行/拍卖行/邮件加载时不覆盖所有者)
     if (ownerGuid)
         SetOwnerGuid(ownerGuid);
 
-    bool need_save = false;                                 // need explicit save data at load fixes
+    bool need_save = false;                                 // need explicit save data at load fixes (加载修复后是否需要立即回写数据库)
     SetGuidValue(ITEM_FIELD_CREATOR, ObjectGuid(HIGHGUID_PLAYER, fields[1].GetUInt32()));
     SetGuidValue(ITEM_FIELD_GIFTCREATOR, ObjectGuid(HIGHGUID_PLAYER, fields[2].GetUInt32()));
     SetCount(fields[3].GetUInt32());
 
     uint32 duration = fields[4].GetUInt32();
     SetUInt32Value(ITEM_FIELD_DURATION, duration);
-    // update duration if need, and remove if not need
+    // update duration if need, and remove if not need (模板与数据库限时状态不一致时进行修正)
     if ((proto->Duration == 0) != (duration == 0))
     {
         SetUInt32Value(ITEM_FIELD_DURATION, proto->Duration);
@@ -469,7 +481,7 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
 
     SetUInt32Value(ITEM_FIELD_FLAGS, fields[6].GetUInt32());
 
-    // Remove bind flag for items vs NO_BIND set
+    // Remove bind flag for items vs NO_BIND set (若模板改为不绑定则清除旧的绑定标志)
     if (IsSoulBound() && proto->Bonding == NO_BIND)
     {
         ApplyModFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_BINDED, false);
@@ -479,16 +491,16 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
     _LoadIntoDataField(fields[7].GetString(), ITEM_FIELD_ENCHANTMENT_1_1, MAX_ENCHANTMENT_SLOT * MAX_ENCHANTMENT_OFFSET);
      SetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID, fields[8].GetInt16());
 
-    // recalculate suffix factor
+    // recalculate suffix factor (负值为随机后缀 ID，重新计算其属性点缩放系数)
     if (GetItemRandomPropertyId() < 0)
         UpdateItemSuffixFactor();
 
     uint32 durability = fields[9].GetUInt16();
     SetUInt32Value(ITEM_FIELD_DURABILITY, durability);
-    // update max durability (and durability) if need
+    // update max durability (and durability) if need (更新最大耐久并在非包装状态下钳制当前耐久)
     SetUInt32Value(ITEM_FIELD_MAXDURABILITY, proto->MaxDurability);
 
-    // do not overwrite durability for wrapped items
+    // do not overwrite durability for wrapped items (已包装礼物的耐久字段存储的是原物品信息，不可覆盖)
     if (durability > proto->MaxDurability && !HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED))
     {
         SetUInt32Value(ITEM_FIELD_DURABILITY, proto->MaxDurability);
@@ -497,7 +509,7 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
 
     SetUInt32Value(ITEM_FIELD_ITEM_TEXT_ID, fields[10].GetUInt32());
 
-    // set correct wrapped state
+    // set correct wrapped state (校验并修复异常的礼物包装标志)
     if (HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED))
     {
         // wrapped item must be wrapper (used version that not stackable)
@@ -508,13 +520,13 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
 
             static SqlStatementID delGifts;
 
-            // also cleanup for sure gift table
+            // also cleanup for sure gift table (同步清理 character_gifts 残留记录)
             SqlStatement stmt = CharacterDatabase.CreateStatement(delGifts, "DELETE FROM character_gifts WHERE item_guid = ?");
             stmt.PExecute(GetGUIDLow());
         }
     }
 
-    if (need_save)                                          // normal item changed state set not work at loading
+    if (need_save)                                          // normal item changed state set not work at loading (加载期直接更新数据库而不走更新队列)
     {
         static SqlStatementID updItem;
 
@@ -531,6 +543,7 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
     return true;
 }
 
+// 从 item_loot 表恢复可开启物品内部尚未拾取的金币或物品
 void Item::LoadLootFromDB(Field* fields)
 {
     uint32 item_id     = fields[1].GetUInt32();
@@ -538,7 +551,7 @@ void Item::LoadLootFromDB(Field* fields)
     uint32 item_suffix = fields[3].GetUInt32();
     int32  item_propid = fields[4].GetInt32();
 
-    // money value special case
+    // money value special case (item_id == 0 代表内含金币)
     if (item_id == 0)
     {
         m_loot->SetGoldAmount(item_amount);
@@ -546,7 +559,7 @@ void Item::LoadLootFromDB(Field* fields)
         return;
     }
 
-    // normal item case
+    // normal item case (普通内含掉落物品)
     ItemPrototype const* proto = ObjectMgr::GetItemPrototype(item_id);
 
     if (!proto)
@@ -561,6 +574,7 @@ void Item::LoadLootFromDB(Field* fields)
     SetLootState(ITEM_LOOT_UNCHANGED);
 }
 
+// 从 item_instance 表删除本物品实例记录
 void Item::DeleteFromDB()
 {
     static SqlStatementID delItem ;
@@ -569,6 +583,7 @@ void Item::DeleteFromDB()
     stmt.PExecute(GetGUIDLow());
 }
 
+// 从 character_inventory 表删除本物品所在背包槽位映射
 void Item::DeleteFromInventoryDB() const
 {
     static SqlStatementID delInv ;
@@ -587,6 +602,7 @@ Player* Item::GetOwner()const
     return sObjectMgr.GetPlayer(GetOwnerGuid());
 }
 
+// 返回装备该物品所需的技能线 ID（武器技能或护甲熟练度技能）
 uint32 Item::GetSkill() const
 {
     const static uint32 item_weapon_skills[MAX_ITEM_SUBCLASS_WEAPON] =
@@ -626,6 +642,7 @@ uint32 Item::GetSkill() const
     }
 }
 
+// 返回装备该类武器或护甲所需的被动掌握法术 ID
 uint32 Item::GetSpell() const
 {
     ItemPrototype const* proto = GetProto();
@@ -666,6 +683,7 @@ uint32 Item::GetSpell() const
     return 0;
 }
 
+// 为物品随机生成随机属性 ID（正值）或随机后缀 ID（负值）
 int32 Item::GenerateItemRandomPropertyId(uint32 item_id)
 {
     ItemPrototype const* itemProto = sItemStorage.LookupEntry<ItemPrototype>(item_id);
@@ -702,6 +720,7 @@ int32 Item::GenerateItemRandomPropertyId(uint32 item_id)
     return -int32(random_id->ID);
 }
 
+// 根据 randomPropId（正数随机属性 / 负数随机后缀）写入随机附魔槽位并更新后缀系数
 void Item::SetItemRandomProperties(int32 randomPropId)
 {
     if (!randomPropId)
@@ -740,6 +759,7 @@ void Item::SetItemRandomProperties(int32 randomPropId)
     }
 }
 
+// 重新计算并刷新随机后缀属性缩放系数 (ITEM_FIELD_PROPERTY_SEED)
 void Item::UpdateItemSuffixFactor()
 {
     uint32 suffixFactor = GenerateEnchSuffixFactor(GetEntry());
@@ -750,11 +770,12 @@ void Item::UpdateItemSuffixFactor()
     return;
 }
 
+// 设置物品数据库同步状态，并维护其在玩家更新队列中的位置
 void Item::SetState(ItemUpdateState state, Player* forplayer)
 {
     if (uState == ITEM_NEW && state == ITEM_REMOVED)
     {
-        // pretend the item never existed
+        // pretend the item never existed (新建尚未入库的物品直接删除，视作从未存在)
         if (forplayer || GetOwnerGuid())
             RemoveFromUpdateQueueOf(forplayer);
         delete this;
@@ -763,7 +784,7 @@ void Item::SetState(ItemUpdateState state, Player* forplayer)
 
     if (state != ITEM_UNCHANGED)
     {
-        // new items must stay in new state until saved
+        // new items must stay in new state until saved (新建物品在真正存库前必须保持 ITEM_NEW 状态)
         if (uState != ITEM_NEW) uState = state;
 
         if (forplayer || GetOwnerGuid())
@@ -773,11 +794,13 @@ void Item::SetState(ItemUpdateState state, Player* forplayer)
     {
         // unset in queue
         // the item must be removed from the queue manually
+        // 状态清为未修改时仅重置队列下标，实际队列元素需外部手动摘除
         uQueuePos = -1;
         uState = ITEM_UNCHANGED;
     }
 }
 
+// 将物品加入所属玩家的待存库更新队列
 void Item::AddToUpdateQueueOf(Player* player)
 {
     if (IsInUpdateQueue())
@@ -808,6 +831,7 @@ void Item::AddToUpdateQueueOf(Player* player)
     uQueuePos = player->m_itemUpdateQueue.size() - 1;
 }
 
+// 从所属玩家的待存库更新队列中移除（置空槽位以免破坏其他元素下标）
 void Item::RemoveFromUpdateQueueOf(Player* player)
 {
     if (!IsInUpdateQueue())
@@ -848,6 +872,7 @@ bool Item::IsEquipped() const
     return !IsInBag() && m_slot < EQUIPMENT_SLOT_END;
 }
 
+// 检查物品当前是否允许被玩家交易（排除已绑定、非空背包、含未拾取物品及绑定附魔）
 bool Item::CanBeTraded() const
 {
     if (IsSoulBound())
@@ -872,9 +897,10 @@ bool Item::CanBeTraded() const
     return true;
 }
 
+// 检查物品上是否存在带有 ENCHANTMENT_SOULBOUND 标志的附魔/宝石
 bool Item::IsBoundByEnchant() const
 {
-    // Check all enchants for soulbound
+    // Check all enchants for soulbound (遍历所有附魔槽位判断是否触发灵魂绑定)
     for (uint32 enchant_slot = PERM_ENCHANTMENT_SLOT; enchant_slot < MAX_ENCHANTMENT_SLOT; ++enchant_slot)
     {
         uint32 enchant_id = GetEnchantmentId(EnchantmentSlot(enchant_slot));
@@ -909,16 +935,17 @@ bool Item::CanEnterArenaEnchant(EnchantmentSlot slot) const
     return false;
 }
 
+// 检查物品分类、子类及穿戴部位是否符合指定法术的装备/目标条件
 bool Item::IsFitToSpellRequirements(SpellEntry const* spellInfo) const
 {
     ItemPrototype const* proto = GetProto();
 
-    if (spellInfo->EquippedItemClass != -1)                 // -1 == any item class
+    if (spellInfo->EquippedItemClass != -1)                 // -1 == any item class (-1 表示不限物品大类)
     {
         if (spellInfo->EquippedItemClass != int32(proto->Class))
             return false;                                   //  wrong item class
 
-        if (spellInfo->EquippedItemSubClassMask != 0)       // 0 == any subclass
+        if (spellInfo->EquippedItemSubClassMask != 0)       // 0 == any subclass (0 表示不限子类)
         {
             if ((spellInfo->EquippedItemSubClassMask & (1 << proto->SubClass)) == 0)
                 return false;                               // subclass not present in mask
@@ -928,6 +955,7 @@ bool Item::IsFitToSpellRequirements(SpellEntry const* spellInfo) const
     // Only check for item enchantments (TARGET_FLAG_ITEM), all other spells are either NPC spells
     // or spells where slot requirements are already handled with AttributesEx3 fields
     // and special code (Titan's Grip, Windfury Attack). Check clearly not applicable for Lava Lash.
+    // 仅对物品目标型法术校验 InventoryTypeMask，其余技能由槽位属性或特殊逻辑控制
     if (spellInfo->EquippedItemInventoryTypeMask != 0 && (spellInfo->Targets & TARGET_FLAG_ITEM))    // 0 == any inventory type
     {
         if ((spellInfo->EquippedItemInventoryTypeMask  & (1 << proto->InventoryType)) == 0)
@@ -937,6 +965,7 @@ bool Item::IsFitToSpellRequirements(SpellEntry const* spellInfo) const
     return true;
 }
 
+// 校验使用该物品时当前选中的目标单位是否满足 item_required_target 要求
 bool Item::IsTargetValidForItemUse(Unit* pUnitTarget) const
 {
     ItemRequiredTargetMapBounds bounds = sObjectMgr.GetItemRequiredTargetMapBounds(GetProto()->ItemId);
@@ -954,9 +983,10 @@ bool Item::IsTargetValidForItemUse(Unit* pUnitTarget) const
     return false;
 }
 
+// 写入物品指定槽位的附魔 ID、持续时间与次数，并向客户端发送附魔记录日志
 void Item::SetEnchantment(EnchantmentSlot slot, uint32 id, uint32 duration, uint32 charges, ObjectGuid caster /*= ObjectGuid()*/)
 {
-    // Better lost small time at check in comparison lost time at item save to DB.
+    // Better lost small time at check in comparison lost time at item save to DB. (若数据未变化则跳过，避免无谓写库)
     if ((GetEnchantmentId(slot) == id) && (GetEnchantmentDuration(slot) == duration) && (GetEnchantmentCharges(slot) == charges))
         return;
 
@@ -994,6 +1024,7 @@ void Item::SetEnchantmentCharges(EnchantmentSlot slot, uint32 charges)
     SetState(ITEM_CHANGED);
 }
 
+// 清除指定附魔槽位的数据并下发移除日志
 void Item::ClearEnchantment(EnchantmentSlot slot)
 {
     if (!GetEnchantmentId(slot))
@@ -1009,6 +1040,7 @@ void Item::ClearEnchantment(EnchantmentSlot slot)
     SetState(ITEM_CHANGED);
 }
 
+// 检查装备上所有宝石插槽是否均已镶嵌且宝石颜色完全匹配插槽颜色（用于激活插槽奖励）
 bool Item::GemsFitSockets() const
 {
     bool fits = true;
@@ -1049,6 +1081,7 @@ bool Item::GemsFitSockets() const
     return fits;
 }
 
+// 统计本装备插槽中镶嵌指定宝石模板 ID 的数量
 uint8 Item::GetGemCountWithID(uint32 GemID) const
 {
     uint8 count = 0;
@@ -1077,6 +1110,7 @@ bool Item::IsLimitedToAnotherMapOrZone(uint32 cur_mapId, uint32 cur_zoneId) cons
 // Though the client has the information in the item's data field,
 // we have to send SMSG_ITEM_TIME_UPDATE to display the remaining
 // time.
+// 尽管更新字段已有剩余时间，仍需发送 SMSG_ITEM_TIME_UPDATE 以促使客户端提示框倒计时显示
 void Item::SendTimeUpdate(Player* owner) const
 {
     uint32 duration = GetUInt32Value(ITEM_FIELD_DURATION);
@@ -1089,10 +1123,11 @@ void Item::SendTimeUpdate(Player* owner) const
     owner->GetSession()->SendPacket(data);
 }
 
+// 静态工厂函数：创建并初始化指定数量与随机属性的 Item 或 Bag 实例
 Item* Item::CreateItem(uint32 item, uint32 count, Player const* player, uint32 randomPropertyId)
 {
     if (count < 1)
-        return nullptr;                                        // don't create item at zero count
+        return nullptr;                                        // don't create item at zero count (数量小于 1 不创建)
 
     if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(item))
     {
@@ -1115,6 +1150,7 @@ Item* Item::CreateItem(uint32 item, uint32 count, Player const* player, uint32 r
     return nullptr;
 }
 
+// 克隆物品（常用于拆分堆叠时生成新物品实例，保留制造者、随机属性、标志与剩余时间）
 Item* Item::CloneItem(uint32 count, Player const* player) const
 {
     Item* newItem = CreateItem(GetEntry(), count, player, GetItemRandomPropertyId());
@@ -1128,6 +1164,7 @@ Item* Item::CloneItem(uint32 count, Player const* player) const
     return newItem;
 }
 
+// 判断物品是否已绑定且不属于指定玩家（或包含独立拾取数据）
 bool Item::IsBindedNotWith(Player const* player) const
 {
     // own item
@@ -1174,17 +1211,18 @@ void Item::UpdateVisibility(UpdateDataMapType& /*update_players*/)
         SetItsNewObject(false);
 }
 
+// 判断物品是否允许与目标模板部分堆叠合并
 InventoryResult Item::CanBeMergedPartlyWith(ItemPrototype const* proto) const
 {
-    // check item type
+    // check item type (校验模板 ID 一致)
     if (GetEntry() != proto->ItemId)
         return EQUIP_ERR_ITEM_CANT_STACK;
 
-    // check free space (full stacks can't be target of merge
+    // check free space (full stacks can't be target of merge (已满堆叠不可作为合并目标)
     if (GetCount() >= proto->GetMaxStackSize())
         return EQUIP_ERR_ITEM_CANT_STACK;
 
-    // not allow merge looting currently items
+    // not allow merge looting currently items (禁止合并尚未拾取完毕的容器类物品)
     if (HasGeneratedLoot())
         return EQUIP_ERR_ALREADY_LOOTED;
 
@@ -1210,6 +1248,7 @@ bool ItemRequiredTarget::IsFitToRequirements(Unit* pUnitTarget) const
     }
 }
 
+// 计算物品当前磨损耐久对应的基础修理费用（铜币，严格保持客户端同步舍入规则）
 uint32 Item::GetBaseRepairCost() const
 {
     if (HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED))
@@ -1222,7 +1261,7 @@ uint32 Item::GetBaseRepairCost() const
 
     ItemPrototype const* proto = GetProto();
 
-    // only weapons, and armor up to the last armor column, have a repair cost
+    // only weapons, and armor up to the last armor column, have a repair cost (仅武器与前 7 类护甲计算修理费)
     if (!(proto->Class == ITEM_CLASS_WEAPON && proto->SubClass <= 21) && !(proto->Class == ITEM_CLASS_ARMOR && proto->SubClass <= 7))
         return 0;
 
@@ -1239,11 +1278,13 @@ uint32 Item::GetBaseRepairCost() const
     double multiplier = double(dcost->multiplier[ItemSubClassToDurabilityMultiplierId(proto->Class, proto->SubClass)]);
 
     // keep these operations, their order and this rounding (half away from zero, at least 1): the prices shown to the player depend on them
+    // 严格保持运算顺序与四舍五入方式（最少 1 铜），确保与客户端界面显示的修理价格完全一致
     double cost = float(qualityMod * multiplier * lost);
     uint32 costs = uint32(cost + 0.5);
     return costs ? costs : 1;
 }
 
+// 根据声望折扣系数计算实际耐久修理费（向偶数舍入）
 uint32 Item::CalculateDurabilityRepairCost(float discountMod) const
 {
     // the discounted price is rounded to float, then to the nearest integer, ties to even
@@ -1251,6 +1292,7 @@ uint32 Item::CalculateDurabilityRepairCost(float discountMod) const
     return uint32(std::lrintf(costs));
 }
 
+// 计算物品实际售店价格（按剩余使用次数折算并扣除耐久修理费，最低为 1 铜）
 uint32 Item::GetSellPrice() const
 {
     ItemPrototype const* proto = GetProto();
@@ -1259,6 +1301,7 @@ uint32 Item::GetSellPrice() const
         return 0;
 
     // the value of an item destroyed when its charges are consumed follows the remaining charges
+    // 耗尽充能即销毁的物品，售价按剩余充能比例折算
     uint8 index = 0;
     for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
     {
@@ -1280,6 +1323,7 @@ uint32 Item::GetSellPrice() const
     return uint32(price - repairCost);
 }
 
+// 推进物品内含掉落状态机，并在需要存库时同步标记物品本身为 ITEM_CHANGED
 void Item::SetLootState(ItemLootUpdateState state)
 {
     // ITEM_LOOT_NONE -> ITEM_LOOT_TEMPORARY -> ITEM_LOOT_NONE

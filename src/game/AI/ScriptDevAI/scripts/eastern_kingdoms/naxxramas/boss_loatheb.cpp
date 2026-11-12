@@ -21,30 +21,35 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 洛欧塞布（Loatheb）瘟疫区3号首领战 AI（死灵光环治疗封锁、剧毒光环与孢子暴击增益）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     SPELL_CORRUPTED_MIND    = 29201,            // this triggers the following spells on targets (based on class): 29185, 29194, 29196, 29198
-    SPELL_POISON_AURA       = 29865,
-    SPELL_INEVITABLE_DOOM   = 29204,
-    SPELL_SUMMON_SPORE      = 29234,
-    SPELL_REMOVE_CURSE      = 30281,
+    SPELL_POISON_AURA       = 29865,                        // 毒药光环 法术 ID
+    SPELL_INEVITABLE_DOOM   = 29204,                        // inevitabledoom 法术 ID
+    SPELL_SUMMON_SPORE      = 29234,                        // 召唤孢子 法术 ID
+    SPELL_REMOVE_CURSE      = 30281,                        // remove诅咒 法术 ID
 
-    NPC_SPORE               = 16286,
+    NPC_SPORE               = 16286,                        // 孢子 Entry ID
 
-    SPELLSET_LOATHEB        = 1601101,
-    SPELLSET_LOATHEB_P2     = 1601102,
+    SPELLSET_LOATHEB        = 1601101,                      // 洛欧塞布 标识 ID
+    SPELLSET_LOATHEB_P2     = 1601102,                      // 洛欧塞布p2 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum LoathebActions
 {
     LOATHEB_SOFT_ENRAGE,
     LOATHEB_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（loatheb）
 struct boss_loathebAI : public BossAI
 {
     boss_loathebAI(Creature* creature) : BossAI(creature, LOATHEB_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -55,12 +60,14 @@ struct boss_loathebAI : public BossAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
         m_creature->SetSpellList(SPELLSET_LOATHEB);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() != NPC_SPORE)
@@ -114,6 +121,7 @@ struct CorruptedMind : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_loatheb
 void AddSC_boss_loatheb()
 {
     Script* newScript = new Script;

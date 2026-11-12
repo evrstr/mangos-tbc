@@ -21,6 +21,11 @@ SDComment: Enrage on heroic NYI
 SDCategory: Coilfang Resevoir, The Steamvault
 EndScriptData */
 
+// 机械师斯蒂里格（蒸汽地窟二号首领）
+/* 遭遇战概述：
+ * 机械师斯蒂里格擅长机械修理，在战斗中会周期性召唤机械工修理自己。
+ */
+
 /* ContentData
 boss_mekgineer_steamrigger
 mob_steamrigger_mechanic
@@ -30,6 +35,7 @@ EndContentData */
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "steam_vault.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_MECHANICS               = 14602,
@@ -64,6 +70,7 @@ enum
 
 static const uint32 gnomeSpells[] = { SPELL_SUMMON_GNOME_1, SPELL_SUMMON_GNOME_2, SPELL_SUMMON_GNOME_3 };
 
+// MekgineerActions 相关枚举
 enum MekgineerActions
 {
     MEKGINEER_SUMMON_GNOMES,
@@ -71,6 +78,7 @@ enum MekgineerActions
     MEKGINEER_SPAWN_GNOME
 };
 
+// boss_mekgineer_steamriggerAI 逻辑实现
 struct boss_mekgineer_steamriggerAI : public CombatAI
 {
     boss_mekgineer_steamriggerAI(Creature* creature) : CombatAI(creature, MEKGINEER_ACTION_MAX),
@@ -92,6 +100,7 @@ struct boss_mekgineer_steamriggerAI : public CombatAI
 
     GuidVector m_spawns;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -101,12 +110,14 @@ struct boss_mekgineer_steamriggerAI : public CombatAI
         DespawnGuids(m_spawns);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_MEKGINEER_STEAMRIGGER, FAIL);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DEATH, m_creature);
@@ -115,6 +126,7 @@ struct boss_mekgineer_steamriggerAI : public CombatAI
             m_instance->SetData(TYPE_MEKGINEER_STEAMRIGGER, DONE);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (urand(0, 2))
@@ -128,6 +140,7 @@ struct boss_mekgineer_steamriggerAI : public CombatAI
             m_instance->SetData(TYPE_MEKGINEER_STEAMRIGGER, IN_PROGRESS);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_STEAMRIGGER_MECHANIC)
@@ -137,6 +150,7 @@ struct boss_mekgineer_steamriggerAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         if (action == MEKGINEER_SUMMON_GNOMES)
@@ -153,12 +167,14 @@ struct boss_mekgineer_steamriggerAI : public CombatAI
     }
 };
 
+// SteamriggerMechanicActions 相关枚举
 enum SteamriggerMechanicActions
 {
     STEAMRIGGER_MECHANIC_REPAIR,
     STEAMRIGGER_MECHANIC_MAX,
 };
 
+// mob_steamrigger_mechanicAI 逻辑实现
 struct mob_steamrigger_mechanicAI : public CombatAI
 {
     mob_steamrigger_mechanicAI(Creature* creature) : CombatAI(creature, STEAMRIGGER_MECHANIC_MAX),
@@ -171,6 +187,7 @@ struct mob_steamrigger_mechanicAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         if (action == STEAMRIGGER_MECHANIC_REPAIR)
@@ -182,6 +199,7 @@ struct mob_steamrigger_mechanicAI : public CombatAI
 };
 
 // 31531 - Summon Gnomes
+// SummonGnomes 光环脚本
 struct SummonGnomes : public AuraScript
 {
     void OnPeriodicTickEnd(Aura* aura) const override
@@ -194,8 +212,10 @@ struct SummonGnomes : public AuraScript
 };
 
 // 31532, 37936 - Repair
+// RepairMekgineer 光环脚本
 struct RepairMekgineer : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply && aura->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
@@ -204,6 +224,7 @@ struct RepairMekgineer : public AuraScript
     }
 };
 
+// 注册 boss_mekgineer_steamrigger 脚本
 void AddSC_boss_mekgineer_steamrigger()
 {
     Script* pNewScript = new Script;

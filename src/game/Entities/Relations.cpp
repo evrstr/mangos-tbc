@@ -28,7 +28,7 @@
 /////////////////////////////////////////////////
 /// @file       Relations.cpp
 /// @date       September, 2017
-/// @brief      Relations API for supported Entities.
+/// @brief      Relations API for supported Entities. (实体间交互关系判定接口：敌对、友好、攻击、协助、互动与组队等)
 ///
 /// Relations API controls various interactions between entities, such as friendliness or hostility.
 ///
@@ -61,7 +61,7 @@
 ##########################*/
 
 /////////////////////////////////////////////////
-/// Controlling player: get which player is the "master" of the unit gameplay-wise
+/// Controlling player: get which player is the "master" of the unit gameplay-wise (获取在玩法层面控制该单位的玩家“主人”)
 ///
 /// @note Relations API Tier 1
 ///
@@ -70,12 +70,12 @@
 /////////////////////////////////////////////////
 Player const* Unit::GetControllingPlayer(bool ignoreCharms/* = false*/) const
 {
-    // Mode selector: normal or permanent (UI point of view, ignore charms)
+    // Mode selector: normal or permanent (UI point of view, ignore charms) (选择普通控制链或忽略魅惑的永久主人模式)
     ObjectGuid const& (Unit::* getter) () const = (ignoreCharms ? &Unit::GetOwnerGuid : &Unit::GetMasterGuid);
 
     // Original logic begins
 
-    // TBC+: up to master's master
+    // TBC+: up to master's master (TBC+ 最多向上追溯两层主人)
     if (ObjectGuid const& masterGuid = (this->*getter)())
     {
         if (Unit const* master = ObjectAccessor::GetUnit(*this, masterGuid))
@@ -98,7 +98,7 @@ Player const* Unit::GetControllingPlayer(bool ignoreCharms/* = false*/) const
 }
 
 /////////////////////////////////////////////////
-/// Get faction template to faction tenplate reaction
+/// Get faction template to faction tenplate reaction (计算两个阵营模板之间的声望关系等级)
 ///
 /// @note Relations API Tier 1
 ///
@@ -150,7 +150,7 @@ static inline ReputationRank GetFactionReaction(FactionTemplateEntry const* this
 }
 
 /////////////////////////////////////////////////
-/// Get faction template to unit reaction
+/// Get faction template to unit reaction (计算指定阵营模板对目标单位的反应等级)
 ///
 /// @note Relations API Tier 1
 ///
@@ -198,7 +198,7 @@ static ReputationRank GetFactionReaction(FactionTemplateEntry const* thisTemplat
 }
 
 /////////////////////////////////////////////////
-/// Get unit to unit reaction
+/// Get unit to unit reaction (计算当前单位对目标单位的敌友反应等级)
 ///
 /// @note Relations API Tier 1
 ///
@@ -276,7 +276,7 @@ ReputationRank Unit::GetReactionTo(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Get unit to corpse reaction
+/// Get unit to corpse reaction (计算当前单位对尸体的反应等级)
 ///
 /// @note Relations API Tier 1
 ///
@@ -300,7 +300,7 @@ ReputationRank Unit::GetReactionTo(const Corpse* corpse) const
 }
 
 /////////////////////////////////////////////////
-/// Get GO to unit reaction
+/// Get GO to unit reaction (计算游戏物体对目标单位的反应等级)
 ///
 /// @note Relations API Tier 1
 ///
@@ -325,7 +325,7 @@ ReputationRank GameObject::GetReactionTo(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Reaction preset: Unit sees another unit as an enemy
+/// Reaction preset: Unit sees another unit as an enemy (判断当前单位是否视目标为敌对)
 ///
 /// @note Relations API Tier 1
 ///
@@ -337,7 +337,7 @@ bool Unit::IsEnemy(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Reaction preset: Unit sees another unit as a friend
+/// Reaction preset: Unit sees another unit as a friend (判断当前单位是否视目标为友好)
 ///
 /// @note Relations API Tier 1
 ///
@@ -349,7 +349,7 @@ bool Unit::IsFriend(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Opposition: Unit treats another unit as an enemy it can attack (generic)
+/// Opposition: Unit treats another unit as an enemy it can attack (generic) (通用攻击判定：判断是否可攻击目标单位)
 ///
 /// @note Relations API Tier 1
 ///
@@ -438,7 +438,7 @@ bool Unit::CanAttack(const Unit* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Opposition: Unit treats another unit as an enemy it can attack (immediate response)
+/// Opposition: Unit treats another unit as an enemy it can attack (immediate response) (即时攻击判定：检查双方存活/骑乘等当前状态后判断是否可立即攻击)
 ///
 /// @note Relations API Tier 1
 ///
@@ -471,7 +471,7 @@ bool Unit::CanAttackNow(const Unit* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Assistance: Unit treats another unit as an ally it can help
+/// Assistance: Unit treats another unit as an ally it can help (通用援助判定：判断是否可对目标施放增益/治疗等辅助行为)
 ///
 /// @note Relations API Tier 1
 ///
@@ -563,7 +563,7 @@ bool Unit::CanAssist(const Unit* unit, bool ignoreFlags) const
 }
 
 /////////////////////////////////////////////////
-/// Assistance: Unit treats a corpse as an ally corpse it can help
+/// Assistance: Unit treats a corpse as an ally corpse it can help (判断是否可对友好尸体施放复活等辅助行为)
 ///
 /// @note Relations API Tier 1
 ///
@@ -577,7 +577,7 @@ bool Unit::CanAssist(Corpse const* corpse) const
 }
 
 /////////////////////////////////////////////////
-/// Cooperation: Unit can cooperate with another unit
+/// Cooperation: Unit can cooperate with another unit (判断是否可与目标单位协作，如交易/组队/共享阵营组)
 ///
 /// @note Relations API Tier 1
 ///
@@ -609,7 +609,7 @@ bool Unit::CanCooperate(const Unit* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Interaction: Unit can interact with an object (generic)
+/// Interaction: Unit can interact with an object (generic) (判断是否可与游戏物体交互)
 ///
 /// @note Relations API Tier 1
 ///
@@ -629,7 +629,7 @@ bool Unit::CanInteract(const GameObject* object) const
 }
 
 /////////////////////////////////////////////////
-/// Interaction: Unit can interact with another unit (generic)
+/// Interaction: Unit can interact with another unit (generic) (通用 NPC 交互判定：检查可选中、NPC 标志、鬼魂及双边声望)
 ///
 /// @note Relations API Tier 1
 ///
@@ -660,7 +660,7 @@ bool Unit::CanInteract(const Unit* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Interaction: Unit can interact with another unit (immediate response)
+/// Interaction: Unit can interact with another unit (immediate response) (即时 NPC 交互判定：检查飞行、魅惑、变身、死亡及战斗状态)
 ///
 /// @note Relations API Tier 1
 ///
@@ -713,7 +713,7 @@ bool Unit::CanInteractNow(const Unit* unit) const
 }
 
 /////////////////////////////////////////////////
-/// Trivial: Unit does not count as a worthy target for another unit
+/// Trivial: Unit does not count as a worthy target for another unit (判断目标相对观察者是否为灰色/无经验价值目标)
 ///
 /// @note Relations API Tier 1
 ///
@@ -735,7 +735,7 @@ bool Unit::IsTrivialForTarget(Unit const* pov) const
 }
 
 /////////////////////////////////////////////////
-/// Civilian: Unit counts as a dishonorable kill for another unit
+/// Civilian: Unit counts as a dishonorable kill for another unit (判断目标对观察者而言是否为平民/非荣誉击杀目标)
 ///
 /// @note Relations API Tier 1
 ///
@@ -757,7 +757,7 @@ bool Unit::IsCivilianForTarget(Unit const* pov) const
 }
 
 /////////////////////////////////////////////////
-/// Group: Unit counts as being placed in the same group (party or raid) with another unit (for gameplay purposes)
+/// Group: Unit counts as being placed in the same group (party or raid) with another unit (for gameplay purposes) (判断两单位是否处于同一小队或团队)
 ///
 /// @note Relations API Tier 1
 ///
@@ -799,7 +799,7 @@ bool Unit::IsInGroup(Unit const* other, bool party/* = false*/, bool ignoreCharm
 ##########################*/
 
 /////////////////////////////////////////////////
-/// [Serverside] Get default WorldObject (hierarchy) reaction to a unit
+/// [Serverside] Get default WorldObject (hierarchy) reaction to a unit (服务端扩展：WorldObject 默认对单位返回中立反应)
 ///
 /// @note Relations API Tier 2
 ///
@@ -812,7 +812,7 @@ ReputationRank WorldObject::GetReactionTo(Unit const* /*unit*/) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Get default WorldObject (hierarchy) reaction to a corpse
+/// [Serverside] Get default WorldObject (hierarchy) reaction to a corpse (服务端扩展：WorldObject 默认对尸体返回中立反应)
 ///
 /// @note Relations API Tier 2
 ///
@@ -825,7 +825,7 @@ ReputationRank WorldObject::GetReactionTo(Corpse const* /*corpse*/) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Reaction preset: WorldObject (hierarchy) sees a unit as an enemy
+/// [Serverside] Reaction preset: WorldObject (hierarchy) sees a unit as an enemy (服务端扩展：WorldObject 默认不视单位为敌对)
 ///
 /// @note Relations API Tier 2
 ///
@@ -838,7 +838,7 @@ bool WorldObject::IsEnemy(Unit const* /*unit*/) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Reaction preset: WorldObject (hierarchy) sees a unit as a friend
+/// [Serverside] Reaction preset: WorldObject (hierarchy) sees a unit as a friend (服务端扩展：WorldObject 默认不视单位为友好)
 ///
 /// @note Relations API Tier 2
 ///
@@ -851,7 +851,7 @@ bool WorldObject::IsFriend(Unit const* /*unit*/) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Reaction preset: GO sees a unit as an enemy
+/// [Serverside] Reaction preset: GO sees a unit as an enemy (服务端扩展：游戏物体是否视目标单位为敌对，优先委托拥有者)
 ///
 /// @note Relations API Tier 2
 ///
@@ -875,7 +875,7 @@ bool GameObject::IsEnemy(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Reaction preset: GO sees a unit as a friend
+/// [Serverside] Reaction preset: GO sees a unit as a friend (服务端扩展：游戏物体是否视目标单位为友好，优先委托拥有者)
 ///
 /// @note Relations API Tier 2
 ///
@@ -899,7 +899,7 @@ bool GameObject::IsFriend(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Get DynamicObject reaction to a unit
+/// [Serverside] Get DynamicObject reaction to a unit (服务端扩展：动态法术物体代理其施法者判断反应等级)
 ///
 /// @note Relations API Tier 2
 ///
@@ -917,7 +917,7 @@ ReputationRank DynamicObject::GetReactionTo(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Reaction preset: DynamicObject sees a unit as an enemy
+/// [Serverside] Reaction preset: DynamicObject sees a unit as an enemy (服务端扩展：动态法术物体代理施法者判断敌对)
 ///
 /// @note Relations API Tier 2
 ///
@@ -935,7 +935,7 @@ bool DynamicObject::IsEnemy(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Reaction preset: DynamicObject sees a unit as a friend
+/// [Serverside] Reaction preset: DynamicObject sees a unit as a friend (服务端扩展：动态法术物体代理施法者判断友好)
 ///
 /// @note Relations API Tier 2
 ///
@@ -953,7 +953,7 @@ bool DynamicObject::IsFriend(Unit const* unit) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Group: Extension for creatures, player-controlled defaults to unit, creatures check based on friendliness
+/// [Serverside] Group: Extension for creatures, player-controlled defaults to unit, creatures check based on friendliness (服务端扩展：生物同组判定，非玩家控制生物按友好关系判定)
 ///
 /// @note Relations API Tier 2
 ///
@@ -971,7 +971,7 @@ bool Creature::IsInGroup(Unit const* other, bool party/* = false*/, bool ignoreC
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Group: Extension for players, ignoring charms also ignores PC flag presence for UI PoV
+/// [Serverside] Group: Extension for players, ignoring charms also ignores PC flag presence for UI PoV (服务端扩展：玩家同组判定，支持忽略魅惑按 UI 视角检测)
 ///
 /// @note Relations API Tier 2
 ///
@@ -998,7 +998,7 @@ bool Player::IsInGroup(Unit const* other, bool party/* = false*/, bool ignoreCha
 ##########################*/
 
 /////////////////////////////////////////////////
-/// [Serverside] Get player to corpse reaction
+/// [Serverside] Get player to corpse reaction (服务端扩展：玩家对尸体的反应等级，含跨阵营组队兼容逻辑)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1025,7 +1025,7 @@ ReputationRank Player::GetReactionTo(const Corpse* corpse) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: DynamicObject can target a target with a harmful spell
+/// [Serverside] Opposition: DynamicObject can target a target with a harmful spell (服务端扩展：判断动态物体是否可用有害法术命中目标)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1044,7 +1044,7 @@ bool DynamicObject::CanAttackSpell(Unit const* target, SpellEntry const* spellIn
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Assistance: DynamicObject can target a target with a helpful spell
+/// [Serverside] Assistance: DynamicObject can target a target with a helpful spell (服务端扩展：判断动态物体是否可用有益法术命中目标)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1063,7 +1063,7 @@ bool DynamicObject::CanAssistSpell(Unit const* target, SpellEntry const* spellIn
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: GameObject can target a target with a harmful spell
+/// [Serverside] Opposition: GameObject can target a target with a harmful spell (服务端扩展：判断游戏物体是否可用有害法术命中目标)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1085,7 +1085,7 @@ bool GameObject::CanAttackSpell(Unit const* target, SpellEntry const* spellInfo,
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Assistance: GameObject can target a target with a helpful spell
+/// [Serverside] Assistance: GameObject can target a target with a helpful spell (服务端扩展：判断游戏物体是否可用有益法术命中目标)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1107,7 +1107,7 @@ bool GameObject::CanAssistSpell(Unit const* target, SpellEntry const* spellInfo)
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: Unit can target a target with a harmful spell
+/// [Serverside] Opposition: Unit can target a target with a harmful spell (服务端扩展：法术敌对目标校验，含允许对死目标、忽略限制属性及 AOE PvP 过滤)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1175,7 +1175,7 @@ bool Unit::CanAttackSpell(Unit const* target, SpellEntry const* spellInfo, bool 
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Assistance: Unit can target a target with a helpful spell
+/// [Serverside] Assistance: Unit can target a target with a helpful spell (服务端扩展：法术友好目标校验)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1188,7 +1188,7 @@ bool Unit::CanAssistSpell(Unit const* target, SpellEntry const* spellInfo) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: Unit can attack a target on sight
+/// [Serverside] Opposition: Unit can attack a target on sight (服务端扩展：AI 视野索敌判定，过滤归位、假死与禁用动作的宠物)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1216,7 +1216,7 @@ bool Unit::CanAttackOnSight(Unit const* target) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: Unit can attack a target on sight
+/// [Serverside] Opposition: Unit can attack a target on sight (服务端扩展：战斗内攻击校验，允许 NPC 攻击对其开启交战状态的友好声望玩家)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1250,7 +1250,7 @@ bool Unit::CanAttackInCombat(Unit const* target, bool ignoreFlagsSource, bool ig
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: Unit can attack a target on sight
+/// [Serverside] Opposition: Unit can attack a target on sight (服务端扩展：带法术忽略标志的攻击校验，供 CanAttackSpell 调用)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1344,7 +1344,7 @@ bool Unit::CanAttackServerside(Unit const* unit, bool ignoreFlagsSource, bool ig
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Fog of War: Unit can be seen by other unit through invisibility effects
+/// [Serverside] Fog of War: Unit can be seen by other unit through invisibility effects (战争迷雾：判断单位隐身状态是否对另一单位可见)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1367,7 +1367,7 @@ bool Unit::IsFogOfWarVisibleStealth(Unit const* other) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Fog of War: Unit's health values can be seen by other unit
+/// [Serverside] Fog of War: Unit's health values can be seen by other unit (战争迷雾：判断目标生命值精确数值是否对观察者可见)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1391,7 +1391,7 @@ bool Unit::IsFogOfWarVisibleHealth(Unit const* other) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Fog of War: Unit's stat values can be seen by other unit
+/// [Serverside] Fog of War: Unit's stat values can be seen by other unit (战争迷雾：判断目标属性面板是否对观察者可见)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1415,7 +1415,7 @@ bool Unit::IsFogOfWarVisibleStats(Unit const* other) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Guild: Unit counts as being placed in the same guild with another unit (for gameplay purposes)
+/// [Serverside] Guild: Unit counts as being placed in the same guild with another unit (for gameplay purposes) (判断两单位所属玩家是否在同一公会)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1445,7 +1445,7 @@ bool Unit::IsInGuild(Unit const* other, bool ignoreCharms/* = false*/) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Team: Check if both units are in the same faction team (for gameplay purposes)
+/// [Serverside] Team: Check if both units are in the same faction team (for gameplay purposes) (判断两单位所属玩家是否属于同一阵营：联盟/部落)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1474,7 +1474,7 @@ bool Unit::IsInTeam(const Unit *other, bool ignoreCharms) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: this can assist who in attacking enemy
+/// [Serverside] Opposition: this can assist who in attacking enemy (判断当前单位是否能协助友方单位 who 共同攻击 enemy)
 ///
 /// @note Relations API Tier 3
 ///
@@ -1500,7 +1500,7 @@ bool Unit::CanAssistInCombatAgainst(Unit const* who, Unit const* enemy) const
 }
 
 /////////////////////////////////////////////////
-/// [Serverside] Opposition: this can join combat against enemy
+/// [Serverside] Opposition: this can join combat against enemy (判断当前单位当前状态是否允许主动加入对 enemy 的战斗)
 ///
 /// @note Relations API Tier 3
 ///

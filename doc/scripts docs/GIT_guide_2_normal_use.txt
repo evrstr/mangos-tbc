@@ -1,86 +1,135 @@
 [Git GUIDE] Normal use
+[Git 指南] 日常用法
 ======================
 
 This topic is for people who want to do a little work with SD2.
+本文档面向希望参与 SD2 开发或修改工作的用户。
 
 In this topic I assume that you are familar with basic use of Git and also that you are familiar with your GUI (if you use any).
+本文假设你已经了解 Git 的基本用法，并且熟悉你正在使用的图形界面工具（如果有）。
 
 If you are not, maybe you should start with the _Easy use_ guide, see:
+如果你还不熟悉，建议先阅读_简易用法_指南，参见：
 
 * link:GIT_guide_1_easy_use.html[Git GUIDE - Easy use]
+  （link:GIT_guide_1_easy_use.html[Git 指南 - 简易用法]）
 * http://www.scriptdev2.com/showthread.php?t=5637[Git GUIDE - Easy use on SD2 Forums]
+  （http://www.scriptdev2.com/showthread.php?t=5637[SD2 论坛上的 Git 简易用法指南]）
 
 In this topic I will describe the needed steps to test other people's patches, and how to create some own patches. However based on the Command-line tool.
+本文将基于命令行工具，介绍如何测试他人的补丁以及如何创建自己的补丁。
 
 For Windows users you can start the command line with right-clicking the ScriptDev2 directory and selecting "Git Bash Here".
+对于 Windows 用户，可以右键点击 ScriptDev2 目录并选择 "Git Bash Here" 来启动命令行。
 
 Basic concepts in Git
+Git 基本概念
 ---------------------
 
 Git has a working directory, these are the actual files you edit, compile and work with.
+Git 拥有一个工作目录（working directory），即你实际编辑、编译和操作的本地文件。
 
 Git has a "index" which is the history information.+
+Git 还拥有一个“暂存区/索引”（index），用于记录提交历史相关信息。+
 
 By default the working directory is clean related to the index.
+默认情况下，工作目录相对于索引是干净的（clean，无未提交改动）。
 
 For this topic I assume that your working-tree is clean.
+本文假设你当前的工作树是干净的。
 
 You can check this with `$ git status` .
+你可以使用 `$ git status` 检查当前状态。
 
 Clean results in `nothing to commit (working directory clean)` .
+干净的状态会显示 `nothing to commit (working directory clean)`。
 
 If your working directory is not clean, you can either commit your changes (if they were good) with `$ git commit -a` .
+如果工作目录不干净，你可以用 `$ git commit -a` 提交你的改动（如果改动有效），
 
 or remove your changes with `$ git reset --hard` ,
+或者用 `$ git reset --hard` 丢弃改动，
 
 or reset your working dir to default state with `$ git reset -hard origin/master` .
+或者用 `$ git reset -hard origin/master`（注：实际命令参数通常为 `--hard`）将工作目录重置为默认状态。
 
 Testing ("applying") patches from other people
+测试（“应用”）他人的补丁
 ----------------------------------------------
 
 You can apply a git patch (located in fileName.patch) with +
 `$ git apply fileName.patch` +
 or +
 `$ git am fileName.patch`
+你可以使用以下命令应用 Git 补丁（位于 fileName.patch）：+
+`$ git apply fileName.patch` +
+或 +
+`$ git am fileName.patch`
 
 The second expects a patch that includes history information, so if this fails, the first way must work (or it is no proper patch)
+第二种方式要求补丁包含提交历史信息；如果失败，第一种方式通常应当生效（否则说明补丁格式本身有问题）。
 
 Creating own patches
+创建自己的补丁
 --------------------
 
 You have spotted a bug, fixed it, and now you wonder how you can share this fix with other people.
+当你发现并修复了一个 Bug，想要把修复分享给其他人时，
 
 The recommanded way is, to commit your change locally and create a patch file from your commit
+推荐的做法是：先在本地提交你的修改，再从该提交生成补丁文件。
 
 To commit your patch locally, you simple need to +
+`$ git commit -a -m "Make Illidan more powerfull"`
+要在本地提交你的修改，只需执行：+
 `$ git commit -a -m "Make Illidan more powerfull"`
 
 Then you can create a patch with +
 `$ git format-patch HEAD^ --stdout > IllidanFix.patch` +
 which will create a patch for the top-most commit into the file IllidanFix.patch
+随后你可以用以下命令生成补丁：+
+`$ git format-patch HEAD^ --stdout > IllidanFix.patch` +
+这会把最新一次提交导出为 IllidanFix.patch 补丁文件。
 
 You can also create a patch with +
 `$ git format-patch HEAD~n --stdout > IllidanFix.patch` +
 `HEAD^ == HEAD~1` and is the previous commit, `HEAD~n` is the n-th commit before the current
+你也可以用以下方式生成多个提交的补丁：+
+`$ git format-patch HEAD~n --stdout > IllidanFix.patch` +
+其中 `HEAD^ == HEAD~1` 表示前一次提交，`HEAD~n` 表示当前提交之前的第 n 次提交。
 
 A very usefull way to create a patch is based on clean ScriptDev2, with +
 `$ git format-patch origin/master --stdout > IllidanFix.patch`
+一种非常实用的做法是基于干净的 ScriptDev2 上游分支生成补丁：+
+`$ git format-patch origin/master --stdout > IllidanFix.patch`
 
 Branching projects, and tests
+分支管理与测试
 -----------------------------
 
 This is actually the part, where Git has its power. If you don't use branches, you prevent yourself from using the best within Git!
+分支正是 Git 强大之处。如果不使用分支，你就无法发挥 Git 最核心的优势！
 
 The main idea is to test patches, to create patches always into special branches, and this way they won't interfere with the main-branch.
+核心思路是：始终在专门的分支中测试或制作补丁，这样不会干扰主分支（main-branch）。
 
 Assuming you are on clean master, you create and checkout into a new branch with +
 `$ git checkout -b IlllidanFixes` +
 (the -b is for "create", whereas the normal checkout means switching between branches) +
 so, you can edit, commit, apply patches as often as you want in your branch.
+假设你当前位于干净的 master 分支，可以用以下命令创建并切换到新分支：+
+`$ git checkout -b IlllidanFixes` +
+（其中 `-b` 表示“创建”，普通的 checkout 则是切换分支）+
+之后你就可以在自己的分支里随意编辑、提交和应用补丁。
 
 To compare what actually happend in this branch relative to ie your master branch, simply do +
 `$ git diff master` +
 and to create a patch do +
 `$ git format-patch master --stdout > IllidanFix.patch`
+要比较当前分支相对于 master 分支具体做了哪些修改，只需执行：+
+`$ git diff master` +
+若要生成补丁，则执行：+
+`$ git format-patch master --stdout > IllidanFix.patch`
 
 And the best thing: You can create as many branches as you wish - which makes separating different projects, tests and so on a piece of cake :)
+最棒的是：你可以按需创建任意数量的分支——把不同项目、测试等隔离开来变得轻而易举 :)

@@ -24,9 +24,10 @@
 #include "Maps/Map.h"
 #include "World/World.h"
 
+/// 在给定墓地候选项集合中选取同地图（其次副本入口所在地图、再次任意关联地图）距离最近的阵营匹配墓地
 WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveyardHelper(GraveYardMapBounds bounds, float x, float y, float z, uint32 mapId, Team team) const
 {
-    // Simulate std. algorithm:
+    // Simulate std. algorithm: | 模拟标准墓地选择算法：优先同地图三维距离最近，其次副本地图灵魂入口所在大地图距离最近，最后兜底任意可用关联墓地
     //   found some graveyard associated to (ghost_zone,ghost_map)
     //
     //   if mapId == graveyard.mapId (ghost in plain zone or city or battleground) and search graveyard at same map
@@ -34,17 +35,17 @@ WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveyardHelper(GraveYardM
     //   if mapId != graveyard.mapId (ghost in instance) and search any graveyard associated
     //     then check faction
 
-    // at corpse map
+    // at corpse map | 位于尸体同一地图上的最近墓地
     bool foundNear = false;
     float distNear = std::numeric_limits<float>::max();
     WorldSafeLocsEntry const* entryNear = nullptr;
 
-    // at entrance map for corpse map
+    // at entrance map for corpse map | 位于副本入口所在大地图上的最近墓地
     bool foundEntr = false;
     float distEntr = std::numeric_limits<float>::max();
     WorldSafeLocsEntry const* entryEntr = nullptr;
 
-    // some where other
+    // some where other | 其他兜底关联墓地
     WorldSafeLocsEntry const* entryFar = nullptr;
 
     MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
@@ -53,30 +54,30 @@ WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveyardHelper(GraveYardM
     {
         GraveYardData const& data = itr->second;
 
-        // Checked on load
+        // Checked on load | 加载阶段已校验其合法性
         WorldSafeLocsEntry const* entry = sWorldSafeLocsStore.LookupEntry<WorldSafeLocsEntry>(data.safeLocId);
 
-        // skip enemy faction graveyard
+        // skip enemy faction graveyard | 跳过敌对阵营专属墓地（TEAM_BOTH_ALLOWED 用于全阵营共用或 .neargrave 查询）
         // team == TEAM_BOTH_ALLOWED case can be at call from .neargrave
         // TEAM_INVALID != team for all teams
         if (data.team != TEAM_BOTH_ALLOWED && data.team != team && team != TEAM_BOTH_ALLOWED)
             continue;
 
-        // find now nearest graveyard at other (continent) map
+        // find now nearest graveyard at other (continent) map | 检查跨地图（如副本地图对应的外部大陆）墓地
         if (mapId != entry->map_id)
         {
-            // if find graveyard at different map from where entrance placed (or no entrance data), use any first
+            // if find graveyard at different map from where entrance placed (or no entrance data), use any first | 若无入口坐标数据或入口地图不一致，记录为兜底候选
             if (!mapEntry ||
                 mapEntry->ghost_entrance_map < 0 ||
                 uint32(mapEntry->ghost_entrance_map) != entry->map_id ||
                 (mapEntry->ghost_entrance_x == 0 && mapEntry->ghost_entrance_y == 0))
             {
-                // not have any coordinates for check distance anyway
+                // not have any coordinates for check distance anyway | 无入口坐标可测距，直接记录候选
                 entryFar = entry;
                 continue;
             }
 
-            // at entrance map calculate distance (2D);
+            // at entrance map calculate distance (2D); | 在入口所在地图计算二维距离平方
             float dist2 = (entry->x - mapEntry->ghost_entrance_x) * (entry->x - mapEntry->ghost_entrance_x)
                 + (entry->y - mapEntry->ghost_entrance_y) * (entry->y - mapEntry->ghost_entrance_y);
             if (foundEntr)
@@ -94,7 +95,7 @@ WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveyardHelper(GraveYardM
                 entryEntr = entry;
             }
         }
-        // find now nearest graveyard at same map
+        // find now nearest graveyard at same map | 同地图计算三维欧氏距离平方
         else
         {
             float dist2 = (entry->x - x) * (entry->x - x) + (entry->y - y) * (entry->y - y) + (entry->z - z) * (entry->z - z);
@@ -124,6 +125,7 @@ WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveyardHelper(GraveYardM
     return entryFar;
 }
 
+/// 初始化地图级墓地管理器（当前直接拷贝全局墓地映射表）
 void GraveyardManager::Init(Map* /*map*/)
 {
     // TODO: Only load relevant ones for specific map - warning: for example TK needs to have netherstorm
@@ -131,9 +133,10 @@ void GraveyardManager::Init(Map* /*map*/)
     m_graveyardMap = sWorld.GetGraveyardManager().GetGraveyardMap();
 }
 
+/// 按 Area -> Zone -> Map 优先级查找最近墓地；若数据库配置缺失则回退至联盟/部落默认安全点
 WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveYard(float x, float y, float z, uint32 mapId, Team team) const
 {
-    // Search for the closest linked graveyard by decreasing priority:
+    // Search for the closest linked graveyard by decreasing priority: | 按优先级由高到低查找：子区域 Area -> 大区域 Zone -> 地图 Map
     //  - First try linked to the current area id (if we have one)
     //  - Then try linked to the current zone id (if we have one)
     //  - Then try linked to the current map id
@@ -175,6 +178,7 @@ WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveYard(float x, float y
 /*!
  * Return the Graveyard link data for a given graveyard and location
  * combination.
+ * 根据墓地 ID 与编码后的位置键查找墓地关联配置
  *
  * \param id        The id of a graveyard. This is an index to the graveyard in
  *                  sWorldSafeLocsStore which holds data from WorldSafeLocs.dbc
@@ -196,6 +200,7 @@ GraveYardData const* GraveyardManager::FindGraveYardData(GraveYardMap const& map
 /*!
  * Turn a location id and a link kind into a location key that indexes the
  * graveyard link map.
+ * 将区域/地图 ID 与关联类型（bit 31）合成为墓地映射键
  *
  * \param locationId    The id of an area or a map.
  * \param linkKind      The kind of id, either GRAVEYARD_MAPLINK or
@@ -210,6 +215,7 @@ uint32 GraveyardManager::GraveyardLinkKey(uint32 locationId, uint32 linkKind)
 /*!
  * Adds a given graveyard link to the currently active graveyard links.
  * Optionally add it into the database too.
+ * 注册一条新的墓地与区域/地图关联（可选同时写入 game_graveyard_zone 表）
  *
  * \param id        The id of a graveyard. This is an index to the graveyard in
  *                  sWorldSafeLocsStore which holds data from WorldSafeLocs.dbc
@@ -248,6 +254,7 @@ bool GraveyardManager::AddGraveYardLink(uint32 id, uint32 locId, uint32 linkKind
     return true;
 }
 
+/// 更新指定墓地关联的阵营归属（如战场/世界 PVP 占领切换复活点）
 void GraveyardManager::SetGraveYardLinkTeam(uint32 id, uint32 locKey, Team team)
 {
     auto bounds = m_graveyardMap.equal_range(locKey);

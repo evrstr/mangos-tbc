@@ -21,6 +21,10 @@ SDComment: Some things may be still missing from here
 SDCategory: Caverns of Time, The Dark Portal
 EndScriptData */
 
+/**
+ * 开启黑暗之门：麦迪文与相关 NPC/游戏对象脚本
+ */
+
 /* ContentData
 npc_medivh_bm
 npc_time_rift
@@ -33,13 +37,15 @@ EndContentData */
 ## npc_medivh_black_morass
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SAY_DEATH               = -1269025,
+    SAY_DEATH               = -1269025,                     // 剧情台词/喊话文本 ID
 
-    SPELL_CORRUPT           = 31326, // casting handled by dbscript
+    SPELL_CORRUPT           = 31326, // casting handled by dbscript (说明)
 };
 
+// npc_medivh_black_morassAI NPC 脚本 AI
 struct npc_medivh_black_morassAI : public ScriptedAI
 {
     npc_medivh_black_morassAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -48,7 +54,7 @@ struct npc_medivh_black_morassAI : public ScriptedAI
 
     ScriptedInstance* m_instance;
 
-    void Reset() override { }
+    void Reset() override { }                               // 重置战斗状态与计时器
 
     void AttackStart(Unit* /*who*/) override { }
 
@@ -65,7 +71,7 @@ struct npc_medivh_black_morassAI : public ScriptedAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
-// 31326, 37853 - Corrupt Medivh
+// 31326, 37853 - Corrupt Medivh (说明)
 struct CorruptMedivh : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -83,40 +89,41 @@ struct CorruptMedivh : public SpellScript
 ## npc_time_rift
 ######*/
 
+// 常量与事件枚举
 enum
 {
-    SPELL_RIFT_PERIODIC     = 31320,            // should trigger 31388
+    SPELL_RIFT_PERIODIC     = 31320,            // should trigger 31388 (说明)
 
-    // Boss spawn yells
-    SAY_CHRONO_LORD_ENTER   = -1269006,
-    SAY_TEMPORUS_ENTER      = -1269000,
-    SAY_AEONUS_ENTER        = -1269012,
+    // Boss spawn yells (刷新)
+    SAY_CHRONO_LORD_ENTER   = -1269006,                     // 剧情台词/喊话文本 ID
+    SAY_TEMPORUS_ENTER      = -1269000,                     // 剧情台词/喊话文本 ID
+    SAY_AEONUS_ENTER        = -1269012,                     // 剧情台词/喊话文本 ID
 
-    SPELL_INFINITE_WHELP            = 37606,
-    SPELL_INFINITE_ASSASSIN         = 31318,
-    SPELL_INFINITE_ASSASSIN_2       = 36229,
-    SPELL_INFINITE_CHRONOMANCER     = 31421,
-    SPELL_INFINITE_CHRONOMANCER_2   = 36231,
-    SPELL_INFINITE_EXECUTIONER      = 33363,
-    SPELL_INFINITE_EXECUTIONER_2    = 36232,
-    SPELL_INFINITE_VANQUISHER       = 33364,
-    SPELL_INFINITE_VANQUISHER_2     = 36233,
-    SPELL_RIFT_LORD                 = 31321,
-    SPELL_RIFT_LORD_2               = 36234,
-    SPELL_RIFT_KEEPER               = 36235,
-    SPELL_RIFT_KEEPER_2             = 36236,
-    SPELL_CHRONO_LORD_DEJA          = 31391,
-    SPELL_INFINITE_CHRONO_LORD      = 37177,
-    SPELL_TEMPORUS                  = 31392,
-    SPELL_INFINITE_TIMEREAVER       = 37178,
-    SPELL_RIFT_END_BOSS             = 31393,
+    SPELL_INFINITE_WHELP            = 37606,                // 技能法术 ID
+    SPELL_INFINITE_ASSASSIN         = 31318,                // 技能法术 ID
+    SPELL_INFINITE_ASSASSIN_2       = 36229,                // 技能法术 ID
+    SPELL_INFINITE_CHRONOMANCER     = 31421,                // 技能法术 ID
+    SPELL_INFINITE_CHRONOMANCER_2   = 36231,                // 技能法术 ID
+    SPELL_INFINITE_EXECUTIONER      = 33363,                // 技能法术 ID
+    SPELL_INFINITE_EXECUTIONER_2    = 36232,                // 技能法术 ID
+    SPELL_INFINITE_VANQUISHER       = 33364,                // 技能法术 ID
+    SPELL_INFINITE_VANQUISHER_2     = 36233,                // 技能法术 ID
+    SPELL_RIFT_LORD                 = 31321,                // 技能法术 ID
+    SPELL_RIFT_LORD_2               = 36234,                // 技能法术 ID
+    SPELL_RIFT_KEEPER               = 36235,                // 技能法术 ID
+    SPELL_RIFT_KEEPER_2             = 36236,                // 技能法术 ID
+    SPELL_CHRONO_LORD_DEJA          = 31391,                // 技能法术 ID
+    SPELL_INFINITE_CHRONO_LORD      = 37177,                // 技能法术 ID
+    SPELL_TEMPORUS                  = 31392,                // 技能法术 ID
+    SPELL_INFINITE_TIMEREAVER       = 37178,                // 技能法术 ID
+    SPELL_RIFT_END_BOSS             = 31393,                // 技能法术 ID
 
-    SPELL_QUIET_SUICIDE_UNUSED      = 3617, // Currently unused. Should be used by Medivh on self when shield runs out, 3 sec after he says his death text
+    SPELL_QUIET_SUICIDE_UNUSED      = 3617, // Currently unused. Should be used by Medivh on self when shield runs out, 3 sec after he says his death text (说明)
 };
 
 struct RiftWaveData
 {
-    uint32 uiPortalMob[4];                      // spawns for portal waves (in order)
+    uint32 uiPortalMob[4];                      // spawns for portal waves (in order) (刷新)
 };
 
 static const RiftWaveData aPortalWaves[] =
@@ -126,6 +133,7 @@ static const RiftWaveData aPortalWaves[] =
     {{NPC_EXECUTIONER, NPC_VANQUISHER,   NPC_CHRONOMANCER, NPC_ASSASSIN}}
 };
 
+// npc_time_riftAI NPC 脚本 AI
 struct npc_time_riftAI : public ScriptedAI
 {
     npc_time_riftAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -161,7 +169,7 @@ struct npc_time_riftAI : public ScriptedAI
     uint8 m_uiRiftNumber;
     uint8 m_uiRiftWaveId;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
     }
 
@@ -175,8 +183,8 @@ struct npc_time_riftAI : public ScriptedAI
 
         if (m_bIsFirstSummon)
         {
-            // Select portal keeper / boss to summon
-            // On Heroic Mode if Chrono Lord and Temporus are already killed, we need to summon the replacement
+            // Select portal keeper / boss to summon (说明)
+            // On Heroic Mode if Chrono Lord and Temporus are already killed, we need to summon the replacement (说明)
             switch (m_uiRiftNumber)
             {
                 case 6:
@@ -199,7 +207,7 @@ struct npc_time_riftAI : public ScriptedAI
                     break;
             }
 
-            // Set the next rift delay
+            // Set the next rift delay (说明)
             if (uiSpellId != NPC_AEONUS)
                 m_pInstance->SetData(TYPE_TIME_RIFT, SPECIAL);
 
@@ -208,7 +216,7 @@ struct npc_time_riftAI : public ScriptedAI
         }
         else
         {
-            // Reset the RiftWaveCount if we reached the maximum number of the currentRiftWave is 0
+            // Reset the RiftWaveCount if we reached the maximum number of the currentRiftWave is 0 (说明)
             if ((m_uiRiftWaveCount > 2 && !m_uiRiftWaveId) || m_uiRiftWaveCount > 3)
                 m_uiRiftWaveCount = 0;
 
@@ -235,7 +243,7 @@ struct npc_time_riftAI : public ScriptedAI
 
             ++m_uiRiftWaveCount;
 
-            // For Whelps we need to summon them in packs of 3
+            // For Whelps we need to summon them in packs of 3 (说明)
             if (uiSpellId == SPELL_INFINITE_WHELP)
             {
                 for (uint8 i = 0; i < 3; ++i)
@@ -246,7 +254,7 @@ struct npc_time_riftAI : public ScriptedAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         switch (pSummoned->GetEntry())
         {
@@ -270,7 +278,7 @@ struct npc_time_riftAI : public ScriptedAI
                 DoScriptText(SAY_AEONUS_ENTER, pSummoned);
                 // Remove Time Rift aura so it won't spawn other mobs
                 m_creature->RemoveAurasDueToSpell(SPELL_RIFT_PERIODIC);
-                // Run to Medivh and cast Corrupt on him
+                // Run to Medivh and cast Corrupt on him (说明)
                 if (m_pInstance)
                 {
                     if (Creature* pMedivh = m_pInstance->GetSingleCreatureFromStorage(NPC_MEDIVH))
@@ -322,14 +330,14 @@ struct npc_time_riftAI : public ScriptedAI
             case NPC_RIFT_LORD:
             case NPC_RIFT_LORD_2:
                 m_creature->ForcedDespawn(3000);
-                // No need to set the data to DONE if there is a new portal spawned already
+                // No need to set the data to DONE if there is a new portal spawned already (说明)
                 if (m_pInstance && m_uiRiftNumber == m_pInstance->GetCurrentRiftId())
                     m_pInstance->SetData(TYPE_TIME_RIFT, DONE);
                 break;
         }
     }
 
-    void SummonedCreatureDespawn(Creature* pSummoned) override
+    void SummonedCreatureDespawn(Creature* pSummoned) override    // 召唤仆从消失回调
     {
         switch (pSummoned->GetEntry())
         {
@@ -342,7 +350,7 @@ struct npc_time_riftAI : public ScriptedAI
             case NPC_RIFT_KEEPER_2:
             case NPC_RIFT_LORD:
             case NPC_RIFT_LORD_2:
-                // Despawn in case of event reset
+                // Despawn in case of event reset (消失事件重置)
                 m_creature->ForcedDespawn();
                 break;
         }
@@ -364,12 +372,12 @@ struct npc_time_riftAI : public ScriptedAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
-UnitAI* GetAI_npc_time_rift(Creature* pCreature)
+UnitAI* GetAI_npc_time_rift(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_time_riftAI(pCreature);
 }
 
-// 31320 - Time Rift Periodic
+// 31320 - Time Rift Periodic (法术 31320 - Time Rift Periodic)
 struct TimeRiftPeriodic : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& /*data*/) const override
@@ -380,7 +388,7 @@ struct TimeRiftPeriodic : public AuraScript
     }
 };
 
-void AddSC_dark_portal()
+void AddSC_dark_portal() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_medivh_black_morass";

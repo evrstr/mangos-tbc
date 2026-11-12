@@ -22,17 +22,22 @@
 #include "Common.h"
 #include <openssl/evp.h>
 
+/// RC4 流加密封装类：基于 OpenSSL EVP_rc4，用于 WoW 客户端与服务端数据包头加解密
 class SARC4
 {
     public:
+        /// 指定密钥长度构造 RC4 上下文（需随后调用 Init 设置密钥）
         SARC4(size_t len);
+        /// 使用给定种子密钥与长度构造并初始化 RC4 上下文
         SARC4(const uint8 *seed, size_t len);
         ~SARC4();
 
+        /// 设置或重置 RC4 加密密钥
         void Init(const uint8 *seed);
+        /// 对数据缓冲区进行原地流加密/解密
         void UpdateData(uint8 *data, size_t len);
 
     private:
-        EVP_CIPHER_CTX* m_ctx;
+        EVP_CIPHER_CTX* m_ctx;  ///< OpenSSL 对称加密上下文
 };
 #endif

@@ -26,6 +26,7 @@
 #include "Entities/Object.h"
 #include "Platform/Define.h"
 
+// 地图工作线程基类，由 MapUpdater 调度执行异步更新任务
 class Worker
 {
     public:
@@ -40,6 +41,7 @@ class Worker
         MapUpdater& m_updater;
 };
 
+// 地图级更新工作单元：在工作线程中调用指定 Map::Update
 class MapUpdateWorker : public Worker
 {
     public:
@@ -58,6 +60,7 @@ class MapUpdateWorker : public Worker
         uint32 m_diff;
 };
 
+// 网格遍历工作单元：遍历一组活跃 Cell 并收集需要更新的生物和宠物等对象
 class GridCrawler : public Worker
 {
     public:
@@ -69,8 +72,8 @@ class GridCrawler : public Worker
         {
             WorldObjectUnSet objToUpdate;
             MaNGOS::ObjectUpdater obj_updater(objToUpdate, m_diff);
-            TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer  > grid_object_update(obj_updater);    // For creature
-            TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer > world_object_update(obj_updater);   // For pets
+            TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer  > grid_object_update(obj_updater);    // For creature (用于网格对象，如生物)
+            TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer > world_object_update(obj_updater);   // For pets (用于世界对象，如宠物)
 
             for (auto &cell : m_cells)
             {
@@ -88,6 +91,7 @@ class GridCrawler : public Worker
 };
 
 
+// 对象批量更新工作单元：并行执行一批 WorldObject 的 Update(diff)
 class ObjectUpdateWorker : public Worker
 {
     public:

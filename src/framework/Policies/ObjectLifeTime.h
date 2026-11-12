@@ -26,23 +26,27 @@ typedef void (* Destroyer)(void);
 
 namespace MaNGOS
 {
+    /// 注册进程退出时执行的清理函数
     void at_exit(void (*func)());
 
+    /// 对象生命周期管理策略模板
     template<class T>
     class ObjectLifeTime
     {
         public:
 
+            /// 调度在程序退出时调用的销毁函数
             static void ScheduleCall(void (*destroyer)())
             {
                 at_exit(destroyer);
             }
 
+            /// 当访问已销毁的单例（死引用）时调用
             DECLSPEC_NORETURN static void OnDeadReference() ATTR_NORETURN;
     };
 
     template <class T>
-    void ObjectLifeTime<T>::OnDeadReference()           // We don't handle Dead Reference for now
+    void ObjectLifeTime<T>::OnDeadReference()           // We don't handle Dead Reference for now | 暂不处理死引用，直接抛出异常
     {
         throw std::runtime_error("Dead Reference");
     }

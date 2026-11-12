@@ -21,64 +21,69 @@ SDComment: A few details and timers need check.
 SDCategory: Zul'Aman
 EndScriptData */
 
+// 哈尔拉兹（Halazzi）山猫之化身首领战 AI（人宠合体与人宠分离双线作战、闪电图腾与狂暴）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulaman.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                       = -1568034,
-    SAY_SPLIT                       = -1568035,
-    SAY_MERGE                       = -1568036,
-    SAY_SABERLASH1                  = -1568037,
-    SAY_SABERLASH2                  = -1568038,
-    SAY_BERSERK                     = -1568039,
-    SAY_KILL1                       = 23613,
-    SAY_KILL2                       = 23614,
-    SAY_DEATH                       = -1568042,
-    SAY_EVENT1                      = -1568043,
-    SAY_EVENT2                      = -1568044,
+    SAY_AGGRO                       = -1568034,             // 开战 台词广播 ID
+    SAY_SPLIT                       = -1568035,             // split 台词广播 ID
+    SAY_MERGE                       = -1568036,             // merge 台词广播 ID
+    SAY_SABERLASH1                  = -1568037,             // saberlash1 台词广播 ID
+    SAY_SABERLASH2                  = -1568038,             // saberlash2 台词广播 ID
+    SAY_BERSERK                     = -1568039,             // 狂暴 台词广播 ID
+    SAY_KILL1                       = 23613,                // kill1 台词广播 ID
+    SAY_KILL2                       = 23614,                // kill2 台词广播 ID
+    SAY_DEATH                       = -1568042,             // 死亡 台词广播 ID
+    SAY_EVENT1                      = -1568043,             // event1 台词广播 ID
+    SAY_EVENT2                      = -1568044,             // event2 台词广播 ID
 
-    // generic spells
-    SPELL_BERSERK                   = 45078,
-    SPELL_TRANSFORM_TO_ORIGINAL     = 43311,
+    // generic spells (通用法术)
+    SPELL_BERSERK                   = 45078,                // 狂暴 法术 ID
+    SPELL_TRANSFORM_TO_ORIGINAL     = 43311,                // 变形tooriginal 法术 ID
     // SPELL_DUAL_WIELD              = 42459,            // spell not confirmed
     // SPELL_TRANSFIGURE             = 44054,            // purpose unk
 
     // Phase single spells
-    SPELL_SABER_LASH                = 43267,
-    SPELL_FRENZY                    = 43139,
+    SPELL_SABER_LASH                = 43267,                // saberlash 法术 ID
+    SPELL_FRENZY                    = 43139,                // 狂乱 法术 ID
 
     // Phase switch spells
-    SPELL_HALAZZI_TRANSFORM_SUMMON  = 43143,            // summons 24143
+    SPELL_HALAZZI_TRANSFORM_SUMMON  = 43143,            // summons 24143 (召唤 3)
     SPELL_TRANSFIGURE_TO_TROLL      = 43142,            // triggers 43573
-    SPELL_TRANSFIGURE_TRANSFORM     = 43573,
+    SPELL_TRANSFIGURE_TRANSFORM     = 43573,                // transfigure变形 法术 ID
 
-    SPELL_TRANSFORM_TO_LYNX_75      = 43145,
-    SPELL_TRANSFORM_TO_LYNX_50      = 43271,
-    SPELL_TRANSFORM_TO_LYNX_25      = 43272,
-    SPELL_HALAZZI_TRANSFORM_DUMMY   = 43615,
+    SPELL_TRANSFORM_TO_LYNX_75      = 43145,                // 变形tolynx75 法术 ID
+    SPELL_TRANSFORM_TO_LYNX_50      = 43271,                // 变形tolynx50 法术 ID
+    SPELL_TRANSFORM_TO_LYNX_25      = 43272,                // 变形tolynx25 法术 ID
+    SPELL_HALAZZI_TRANSFORM_DUMMY   = 43615,                // 哈尔拉兹变形dummy 法术 ID
     // SPELL_HALAZZI_TRANSFORM_VISUAL= 43293,
 
     // Phase spirits spells
-    SPELL_FLAMESHOCK                = 43303,
-    SPELL_EARTHSHOCK                = 43305,
-    SPELL_LIGHTNING_TOTEM           = 43302,            // summons 24224
+    SPELL_FLAMESHOCK                = 43303,                // flameshock 法术 ID
+    SPELL_EARTHSHOCK                = 43305,                // earthshock 法术 ID
+    SPELL_LIGHTNING_TOTEM           = 43302,            // summons 24224 (召唤 4)
 
-	// Totem spell
-	SPELL_LIGHTNING					= 43301,
+	// Totem spell (图腾法术)
+	SPELL_LIGHTNING					= 43301,                               // 闪电 法术 ID
 
     NPC_HALAZZI_TROLL               = 24144,            // dummy creature - used to update stats
-    NPC_SPIRIT_LYNX                 = 24143,
+    NPC_SPIRIT_LYNX                 = 24143,                // 之魂lynx Entry ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum HalazziPhase
 {
-    PHASE_SINGLE        = 0,
-    PHASE_TOTEM         = 1,
-    PHASE_FINAL         = 2
+    PHASE_SINGLE        = 0,                                // single 阶段 ID
+    PHASE_TOTEM         = 1,                                // 图腾 阶段 ID
+    PHASE_FINAL         = 2                                 // final 阶段 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum HalazziActions
 {
     HALAZZI_ACTION_BERSERK,
@@ -90,6 +95,7 @@ enum HalazziActions
     HALAZZI_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（halazzi）
 struct boss_halazziAI : public CombatAI
 {
     boss_halazziAI(Creature* creature) : CombatAI(creature, HALAZZI_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -114,9 +120,10 @@ struct boss_halazziAI : public CombatAI
 
     uint32 m_phaseCounter;
 
-    ObjectGuid m_spiritLynxGuid;
+    ObjectGuid m_spiritLynxGuid;                            // spiritLynx 实体 GUID
     GuidVector m_spawns;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -126,6 +133,7 @@ struct boss_halazziAI : public CombatAI
         DespawnGuids(m_spawns);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         // Transform back on evade
@@ -135,6 +143,7 @@ struct boss_halazziAI : public CombatAI
         ScriptedAI::EnterEvadeMode();
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -157,6 +166,7 @@ struct boss_halazziAI : public CombatAI
             m_instance->SetData(TYPE_HALAZZI, DONE);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SPIRIT_LYNX)
@@ -291,12 +301,14 @@ struct boss_halazziAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_LYNX_FRENZY       = 43290,
-    SPELL_SHRED_ARMOR       = 43243
+    SPELL_LYNX_FRENZY       = 43290,                        // lynx狂乱 法术 ID
+    SPELL_SHRED_ARMOR       = 43243                         // shredarmor 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum LynxActions
 {
     LYNX_ACTION_UNIFICATION,
@@ -305,6 +317,7 @@ enum LynxActions
     LYNX_ACTION_MAX,
 };
 
+// 首领战 AI：lynx（spirit_lynx）
 struct boss_spirit_lynxAI : public CombatAI
 {
     boss_spirit_lynxAI(Creature* creature) : CombatAI(creature, LYNX_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -318,6 +331,7 @@ struct boss_spirit_lynxAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 击杀目标回调：播放击杀台词
     void KilledUnit(Unit* victim) override
     {
         if (!m_instance)
@@ -354,6 +368,7 @@ struct boss_spirit_lynxAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：闪电图腾（corrupted_lightning_totem）
 struct npc_corrupted_lightning_totemAI : public ScriptedAI
 {
 	npc_corrupted_lightning_totemAI(Creature* creature) : ScriptedAI(creature)
@@ -362,6 +377,7 @@ struct npc_corrupted_lightning_totemAI : public ScriptedAI
 		SetMeleeEnabled(false);
 	}
 
+	// 重置战斗状态与技能计时器
 	void Reset() override { }
 
 	void JustRespawned() override
@@ -379,6 +395,7 @@ struct npc_corrupted_lightning_totemAI : public ScriptedAI
 	}
 };
 
+// 注册并载入脚本模块：boss_halazzi
 void AddSC_boss_halazzi()
 {
     Script* pNewScript = new Script;

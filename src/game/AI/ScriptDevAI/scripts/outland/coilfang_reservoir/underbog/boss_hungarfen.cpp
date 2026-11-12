@@ -21,10 +21,16 @@ SDComment: Need confirmation if spell data are same in both modes; The Underbog 
 SDCategory: Coilfang Resevoir, Underbog
 EndScriptData */
 
+// 霍加尔芬（幽暗沼泽一号首领）
+/* 遭遇战概述：
+ * 霍加尔芬是幽暗沼泽的真菌巨人首领，战斗中会扎根并释放恶臭真菌孢子。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_FOUL_SPORES           = 31673,
@@ -39,6 +45,7 @@ enum
     SPELL_GROW                  = 31698,
 };
 
+// HungarfenActions 相关枚举
 enum HungarfenActions
 {
     HUNGARFEN_FOUL_SPORES,
@@ -47,6 +54,7 @@ enum HungarfenActions
     HUNGARFEN_ACTION_MAX,
 };
 
+// boss_hungarfenAI 逻辑实现
 struct boss_hungarfenAI : public CombatAI
 {
     boss_hungarfenAI(Creature* creature) : CombatAI(creature, HUNGARFEN_ACTION_MAX), m_bIsRegularMode(creature->GetMap()->IsRegularDifficulty())
@@ -59,11 +67,13 @@ struct boss_hungarfenAI : public CombatAI
 
     bool m_bIsRegularMode;
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoCastSpellIfCan(nullptr, SPELL_DESPAWN_MUSHROOMS, CAST_TRIGGERED);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         DoCastSpellIfCan(nullptr, SPELL_DESPAWN_MUSHROOMS, CAST_TRIGGERED);
@@ -75,6 +85,7 @@ struct boss_hungarfenAI : public CombatAI
         CombatAI::EnterEvadeMode();
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -105,6 +116,7 @@ struct boss_hungarfenAI : public CombatAI
     }
 };
 
+// mob_underbog_mushroomAI 逻辑实现
 struct mob_underbog_mushroomAI : public ScriptedAI
 {
     mob_underbog_mushroomAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
@@ -113,6 +125,7 @@ struct mob_underbog_mushroomAI : public ScriptedAI
     uint32 m_uiShrinkTimer;
     uint32 m_uiSporeTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiGrowTimer   = 1000;
@@ -173,6 +186,7 @@ struct mob_underbog_mushroomAI : public ScriptedAI
     }
 };
 
+// DespawnMushrooms 法术脚本
 struct DespawnMushrooms : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const
@@ -186,6 +200,7 @@ struct DespawnMushrooms : public SpellScript
 };
 
 // 34168 - Spore Cloud (Underbog)   
+// SporeCloud 光环脚本
 struct SporeCloud : public AuraScript
 {
     void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
@@ -195,6 +210,7 @@ struct SporeCloud : public AuraScript
     }
 };
 
+// 注册 boss_hungarfen 脚本
 void AddSC_boss_hungarfen()
 {
     Script* pNewScript = new Script;

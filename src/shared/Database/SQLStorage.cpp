@@ -44,6 +44,7 @@ void SQLStorageBase::Initialize(const char* tableName, const char* entry_field, 
     m_dstFieldCount = strlen(m_dst_format);
 }
 
+// 分配下一条记录槽位并通知子类注册索引 | Allocate next record slot and notify subclass to index it
 char* SQLStorageBase::createRecord(uint32 recordId)
 {
     char* newRecord = &m_data[m_recordCount * m_recordSize];
@@ -53,6 +54,7 @@ char* SQLStorageBase::createRecord(uint32 recordId)
     return newRecord;
 }
 
+// 预分配并清零连续记录存储块 | Allocate and zero-initialize contiguous record buffer
 void SQLStorageBase::prepareToLoad(uint32 maxEntry, uint32 recordCount, uint32 recordSize)
 {
     m_maxEntry = maxEntry;
@@ -65,7 +67,7 @@ void SQLStorageBase::prepareToLoad(uint32 maxEntry, uint32 recordCount, uint32 r
     m_recordCount = 0;
 }
 
-// Function to delete the data
+// Function to delete the data | 释放所有记录中的字符串字段及主数据缓冲区
 void SQLStorageBase::Free()
 {
     if (!m_data)
@@ -100,7 +102,7 @@ void SQLStorageBase::Free()
                 offset += sizeof(float);
                 break;
             case FT_NA_POINTER:
-                // TODO- possible (and small) memleak here possible
+                // TODO- possible (and small) memleak here possible | 待办：此处可能存在轻微内存泄漏（指针未释放）
                 offset += sizeof(char*);
                 break;
             case FT_64BITINT:
@@ -154,10 +156,10 @@ SQLStorage::SQLStorage(const char* src_fmt, const char* dst_fmt, const char* _en
 
 void SQLStorage::prepareToLoad(uint32 maxRecordId, uint32 recordCount, uint32 recordSize)
 {
-    // Clear (possible) old data and old index array
+    // Clear (possible) old data and old index array | 清理可能残留的旧数据与旧索引数组
     Free();
 
-    // Set index array
+    // Set index array | 分配并清零平坦指针索引表
     m_Index = new char* [maxRecordId];
     memset(m_Index, 0, maxRecordId * sizeof(char*));
 
@@ -179,7 +181,7 @@ void SQLHashStorage::Free()
 
 void SQLHashStorage::prepareToLoad(uint32 maxRecordId, uint32 recordCount, uint32 recordSize)
 {
-    // Clear (possible) old data and old index array
+    // Clear (possible) old data and old index array | 清理旧数据及哈希索引表
     Free();
 
     SQLStorageBase::prepareToLoad(maxRecordId, recordCount, recordSize);
@@ -187,7 +189,7 @@ void SQLHashStorage::prepareToLoad(uint32 maxRecordId, uint32 recordCount, uint3
 
 void SQLHashStorage::EraseEntry(uint32 id)
 {
-    // do not erase from m_records
+    // do not erase from m_records | 仅将索引映射置空，不从连续数据块中移除记录
     RecordMap::iterator find = m_indexMap.find(id);
     if (find != m_indexMap.end())
         find->second = nullptr;
@@ -218,7 +220,7 @@ void SQLMultiStorage::Free()
 
 void SQLMultiStorage::prepareToLoad(uint32 maxRecordId, uint32 recordCount, uint32 recordSize)
 {
-    // Clear (possible) old data and old index array
+    // Clear (possible) old data and old index array | 清理旧数据及 multimap 索引
     Free();
 
     SQLStorageBase::prepareToLoad(maxRecordId, recordCount, recordSize);

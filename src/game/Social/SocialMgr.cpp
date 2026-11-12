@@ -37,6 +37,7 @@ PlayerSocial::~PlayerSocial()
     m_playerSocialMap.clear();
 }
 
+// 统计具有指定社交标志（好友/屏蔽/静音）的联系人数量
 uint32 PlayerSocial::GetNumberOfSocialsWithFlag(SocialFlag flag)
 {
     uint32 counter = 0;
@@ -48,9 +49,10 @@ uint32 PlayerSocial::GetNumberOfSocialsWithFlag(SocialFlag flag)
     return counter;
 }
 
+// 添加目标玩家到好友或屏蔽列表，并同步写入 character_social 表
 bool PlayerSocial::AddToSocialList(ObjectGuid friend_guid, bool ignore)
 {
-    // check client limits
+    // check client limits (检查好友/屏蔽数量上限)
     if (ignore)
     {
         if (GetNumberOfSocialsWithFlag(SOCIAL_FLAG_IGNORED) >= SOCIALMGR_IGNORE_LIMIT)
@@ -82,10 +84,11 @@ bool PlayerSocial::AddToSocialList(ObjectGuid friend_guid, bool ignore)
     return true;
 }
 
+// 从好友或屏蔽列表移除目标标志；若所有标志清零则删除数据库记录
 void PlayerSocial::RemoveFromSocialList(ObjectGuid friend_guid, bool ignore)
 {
     PlayerSocialMap::iterator itr = m_playerSocialMap.find(friend_guid.GetCounter());
-    if (itr == m_playerSocialMap.end())                     // not exist
+    if (itr == m_playerSocialMap.end())                     // not exist (记录不存在)
         return;
 
     uint32 flag = SOCIAL_FLAG_FRIEND;
@@ -104,13 +107,14 @@ void PlayerSocial::RemoveFromSocialList(ObjectGuid friend_guid, bool ignore)
     }
 }
 
+// 设置好友备注文本（按 UTF-8 截断至 48 字节后持久化）
 void PlayerSocial::SetFriendNote(ObjectGuid friend_guid, std::string note)
 {
     PlayerSocialMap::const_iterator itr = m_playerSocialMap.find(friend_guid.GetCounter());
-    if (itr == m_playerSocialMap.end())                     // not exist
+    if (itr == m_playerSocialMap.end())                     // not exist (记录不存在)
         return;
 
-    utf8truncate(note, 48);                                 // DB and client size limitation
+    utf8truncate(note, 48);                                 // DB and client size limitation (受数据库字段与客户端显示长度限制截断为 48 字节)
 
     std::string safe_note = note;
     CharacterDatabase.escape_string(safe_note);
@@ -118,6 +122,7 @@ void PlayerSocial::SetFriendNote(ObjectGuid friend_guid, std::string note)
     m_playerSocialMap[friend_guid.GetCounter()].Note = note;
 }
 
+// 构建并向玩家发送完整联系人列表（SMSG_CONTACT_LIST）
 void PlayerSocial::SendSocialList()
 {
     Player* plr = sObjectMgr.GetPlayer(ObjectGuid(HIGHGUID_PLAYER, m_playerLowGuid));
@@ -128,28 +133,28 @@ void PlayerSocial::SendSocialList()
 
     SocialListFlags flags = (SocialListFlags)0;
 
-    WorldPacket data(SMSG_CONTACT_LIST, (4 + 4 + size * 25)); // just can guess size
+    WorldPacket data(SMSG_CONTACT_LIST, (4 + 4 + size * 25)); // just can guess size (预估包长)
 
     size_t flagPos = data.wpos();
     data << uint32(0);
-    data << uint32(size);                                   // friends count
+    data << uint32(size);                                   // friends count (联系人条目总数)
 
     for (auto& itr : m_playerSocialMap)
     {
         FriendInfo& friendInfo = itr.second;
         sSocialMgr.GetFriendInfo(plr, itr.first, friendInfo);
 
-        data << ObjectGuid(HIGHGUID_PLAYER, itr.first);    // player guid
-        data << uint32(friendInfo.Flags);                  // player flag (0x1-friend?, 0x2-ignored?, 0x4-muted?)
-        data << friendInfo.Note;                           // string note
-        if (friendInfo.Flags & SOCIAL_FLAG_FRIEND)         // if IsFriend()
+        data << ObjectGuid(HIGHGUID_PLAYER, itr.first);    // player guid (联系人 GUID)
+        data << uint32(friendInfo.Flags);                  // player flag (0x1-friend?, 0x2-ignored?, 0x4-muted?) (关系标志)
+        data << friendInfo.Note;                           // string note (好友备注)
+        if (friendInfo.Flags & SOCIAL_FLAG_FRIEND)         // if IsFriend() (仅好友需附加在线状态详情)
         {
-            data << uint8(friendInfo.Status);              // online/offline/etc?
-            if (friendInfo.Status)                         // if online
+            data << uint8(friendInfo.Status);              // online/offline/etc? (在线/离线/AFK/DND 状态)
+            if (friendInfo.Status)                         // if online (在线时附带地区、等级、职业)
             {
-                data << uint32(friendInfo.Area);           // player area
-                data << uint32(friendInfo.Level);          // player level
-                data << uint32(friendInfo.Class);          // player class
+                data << uint32(friendInfo.Area);           // player area (所在区域 ID)
+                data << uint32(friendInfo.Level);          // player level (等级)
+                data << uint32(friendInfo.Class);          // player class (职业)
             }
         }
 
@@ -167,6 +172,7 @@ void PlayerSocial::SendSocialList()
     DEBUG_LOG("WORLD: Sent SMSG_CONTACT_LIST");
 }
 
+// 检查指定玩家是否在好友列表中
 bool PlayerSocial::HasFriend(ObjectGuid friend_guid)
 {
     PlayerSocialMap::const_iterator itr = m_playerSocialMap.find(friend_guid.GetCounter());
@@ -175,6 +181,7 @@ bool PlayerSocial::HasFriend(ObjectGuid friend_guid)
     return false;
 }
 
+// 检查指定玩家是否在屏蔽列表中
 bool PlayerSocial::HasIgnore(ObjectGuid ignore_guid)
 {
     PlayerSocialMap::const_iterator itr = m_playerSocialMap.find(ignore_guid.GetCounter());
@@ -189,6 +196,7 @@ SocialMgr::~SocialMgr()
 {
 }
 
+// 查询目标好友当前在线状态、区域、等级与职业（遵循阵营可见性与 GM 隐藏规则）
 void SocialMgr::GetFriendInfo(Player* player, uint32 friend_lowguid, FriendInfo& friendInfo) const
 {
     if (!player)
@@ -207,6 +215,7 @@ void SocialMgr::GetFriendInfo(Player* player, uint32 friend_lowguid, FriendInfo&
 
     // PLAYER see his team only and PLAYER can't see MODERATOR, GAME MASTER, ADMINISTRATOR characters
     // MODERATOR, GAME MASTER, ADMINISTRATOR can see all
+    // 普通玩家仅能看到本阵营（或允许跨阵营列表时）且权限不高于配置阈值的在线好友；GM 可见全部
     if (pFriend && pFriend->GetName() &&
             (security > SEC_PLAYER ||
              ((pFriend->GetTeam() == team || allowTwoSideWhoList) && (pFriend->GetSession()->GetSecurity() <= gmLevelInWhoList))) &&
@@ -230,6 +239,7 @@ void SocialMgr::GetFriendInfo(Player* player, uint32 friend_lowguid, FriendInfo&
     }
 }
 
+// 构造 SMSG_FRIEND_STATUS 数据包头部
 void SocialMgr::MakeFriendStatusPacket(FriendsResult result, uint32 guid, WorldPacket& data)
 {
     data.Initialize(SMSG_FRIEND_STATUS, 5);
@@ -237,6 +247,7 @@ void SocialMgr::MakeFriendStatusPacket(FriendsResult result, uint32 guid, WorldP
     data << ObjectGuid(HIGHGUID_PLAYER, guid);
 }
 
+// 向当前玩家发送好友操作结果，或向所有将其加为好友的在线玩家广播上线/下线状态
 void SocialMgr::SendFriendStatus(Player* player, FriendsResult result, ObjectGuid friend_guid, bool broadcast)
 {
     uint32 friend_lowguid = friend_guid.GetCounter();
@@ -275,6 +286,7 @@ void SocialMgr::SendFriendStatus(Player* player, FriendsResult result, ObjectGui
         player->GetSession()->SendPacket(data);
 }
 
+// 将状态变更数据包广播给所有将 player 列为好友的在线玩家
 void SocialMgr::BroadcastToFriendListers(Player* player, WorldPacket const& packet) const
 {
     if (!player)
@@ -295,6 +307,7 @@ void SocialMgr::BroadcastToFriendListers(Player* player, WorldPacket const& pack
 
             // PLAYER see his team only and PLAYER can't see MODERATOR, GAME MASTER, ADMINISTRATOR characters
             // MODERATOR, GAME MASTER, ADMINISTRATOR can see all
+            // 普通玩家仅接收同阵营（或允许跨阵营）且低权限玩家的状态广播；GM 可接收全部
             if (pFriend && pFriend->IsInWorld() &&
                     (pFriend->GetSession()->GetSecurity() > SEC_PLAYER ||
                      ((pFriend->GetTeam() == team || allowTwoSideWhoList) && security <= gmLevelInWhoList)) &&
@@ -306,6 +319,7 @@ void SocialMgr::BroadcastToFriendListers(Player* player, WorldPacket const& pack
     }
 }
 
+// 从数据库查询结果初始化玩家的社交联系人列表并截断超出上限的条目
 PlayerSocial* SocialMgr::LoadFromDB(std::unique_ptr<QueryResult> queryResult, ObjectGuid guid)
 {
     PlayerSocial* social = &m_socialMap[guid.GetCounter()];
@@ -315,6 +329,7 @@ PlayerSocial* SocialMgr::LoadFromDB(std::unique_ptr<QueryResult> queryResult, Ob
         return social;
 
     // used to speed up check below. Using GetNumberOfSocialsWithFlag will cause unneeded iteration
+    // 使用局部计数器替代重复遍历，提升加载性能
     uint32 friendCounter = 0, ignoreCounter = 0;
 
     do

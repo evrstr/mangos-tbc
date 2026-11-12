@@ -21,37 +21,44 @@ SDComment:
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿：沙尔图拉 (Battleguard Sartura) 旋风斩与皇家卫兵首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_AGGRO                   = -1531008,
-    SAY_SLAY                    = 11443,
-    SAY_DEATH                   = -1531010,
+    SAY_AGGRO                   = -1531008,                 // 剧情台词/喊话文本 ID
+    SAY_SLAY                    = 11443,                    // 剧情台词/喊话文本 ID
+    SAY_DEATH                   = -1531010,                 // 剧情台词/喊话文本 ID
 
-    EMOTE_FRENZY                = -1000002,
-    EMOTE_BERSERK               = -1000004,
+    EMOTE_FRENZY                = -1000002,                 // 剧情台词/喊话文本 ID
+    EMOTE_BERSERK               = -1000004,                 // 剧情台词/喊话文本 ID
 
-    SPELL_ENRAGE                = 8269,
-    SPELL_SUNDERING_CLEAVE      = 25174,
-    SPELL_WHIRLWIND             = 26083,
-    SPELL_BERSERK               = 27680,
+    SPELL_ENRAGE                = 8269,                     // 技能法术：激怒/狂暴
+    SPELL_SUNDERING_CLEAVE      = 25174,                    // 技能法术：顺劈斩
+    SPELL_WHIRLWIND             = 26083,                    // 技能法术：旋风斩
+    SPELL_BERSERK               = 27680,                    // 技能法术：狂暴
 
-    SPELL_OTHER_WHIRLWIND_TRIGGER = 26686,
+    SPELL_OTHER_WHIRLWIND_TRIGGER = 26686,                  // 技能法术 ID
 };
 
+// SarturaActions 战斗行为动作枚举
 enum SarturaActions
 {
     SARTURA_ENRAGE,
     SARTURA_WHIRLWIND,
     SARTURA_SUNDERING_CLEAVE,
     SARTURA_BERSERK,
-    SARTURA_ACTION_MAX,
+    SARTURA_ACTION_MAX,                                     // 战斗行为动作
 };
 
+// boss_sarturaAI 首领战斗 AI
 struct boss_sarturaAI : public CombatAI
 {
     boss_sarturaAI(Creature* creature) : CombatAI(creature, SARTURA_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -88,7 +95,7 @@ struct boss_sarturaAI : public CombatAI
             m_instance->SetData(TYPE_SARTURA, FAIL);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -158,7 +165,7 @@ struct AQWhirlwind : public SpellScript
     }
 };
 
-void AddSC_boss_sartura()
+void AddSC_boss_sartura() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_sartura";

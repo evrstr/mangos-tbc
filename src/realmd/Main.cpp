@@ -68,14 +68,14 @@ bool StartDB();
 void UnhookSignals();
 void HookSignals();
 
-bool stopEvent = false;                                     // Setting it to true stops the server
+bool stopEvent = false;                                     // Setting it to true stops the server | 设为 true 时触发服务器优雅停机
 bool restart = false;
 
-DatabaseType LoginDatabase;                                 // Accessor to the realm server database
+DatabaseType LoginDatabase;                                 // Accessor to the realm server database | 登录认证数据库访问实例
 
 boost::asio::io_context context;
 
-// Launch the realm server
+// Launch the realm server | 启动认证服务器（realmd）主入口
 int main(int argc, char* argv[])
 {
     std::string configFile, serviceParameter;
@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-#ifdef _WIN32                                                // windows service command need execute before config read
+#ifdef _WIN32                                                // windows service command need execute before config read | Windows 服务控制指令需在读取配置前处理
     if (vm.count("s"))
     {
         switch (::tolower(serviceParameter[0]))
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-#ifndef _WIN32                                               // posix daemon commands need apply after config read
+#ifndef _WIN32                                               // posix daemon commands need apply after config read | POSIX 守护进程指令需在读取配置后处理
     if (vm.count("s"))
     {
         switch (::tolower(serviceParameter[0]))
@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
     sLog.outString("Using commit hash(%s) committed on %s", REVISION_ID, REVISION_DATE);
     sLog.outString("Using configuration file %s.", configFile.c_str());
 
-    // Check the version of the configuration file
+    // Check the version of the configuration file | 检查配置文件版本号是否匹配
     uint32 confVersion = sConfig.GetIntDefault("ConfVersion", 0);
     if (confVersion < _REALMDCONFVERSION)
     {
@@ -178,9 +178,9 @@ int main(int argc, char* argv[])
     }
 
     DETAIL_LOG("%s (Library: %s)", OPENSSL_VERSION_TEXT, OpenSSL_version(OPENSSL_VERSION));
-    // Load OpenSSL 3.0+ providers
+    // Load OpenSSL 3.0+ providers | 加载 OpenSSL 3.0+ 的 legacy 与 default 算法提供者
 #ifdef _WIN32
-    // For bundled OpenSSL library
+    // For bundled OpenSSL library | 针对随包附带的 OpenSSL 库设置搜索路径
     OSSL_PROVIDER_set_default_search_path(nullptr, boost::filesystem::current_path().string().c_str());
 #endif
     OSSL_PROVIDER* openssl_legacy = OSSL_PROVIDER_load(nullptr, "legacy");
@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
     sLog.outString();
     sLog.outString("<Ctrl-C> to stop.");
 
-    // Reserve the listening port first, so that an instance which cannot open it stops before touching the PID file and the database
+    // Reserve the listening port first, so that an instance which cannot open it stops before touching the PID file and the database | 先绑定并预占监听端口，若端口占用则在写 PID 文件与连库前提前退出
     auto const listener = MaNGOS::AsyncListener<AuthSocket>::Create(context,
             sConfig.GetStringDefault("BindIP", "0.0.0.0"),
             sConfig.GetIntDefault("RealmServerPort", DEFAULT_REALMSERVER_PORT)
@@ -211,7 +211,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // realmd PID file creation
+    // realmd PID file creation | 创建 realmd 进程 PID 文件
     std::string pidfile = sConfig.GetStringDefault("PidFile");
     if (!pidfile.empty())
     {
@@ -226,14 +226,14 @@ int main(int argc, char* argv[])
         sLog.outString("Daemon PID: %u\n", pid);
     }
 
-    // Initialize the database connection
+    // Initialize the database connection | 初始化登录数据库连接
     if (!StartDB())
     {
         Log::WaitBeforeContinueIfNeed();
         return 1;
     }
 
-    // Get the list of realms for the server
+    // Get the list of realms for the server | 初始化加载游戏服务器列表
     sRealmList.Initialize(sConfig.GetIntDefault("RealmsStateUpdateDelay", 20));
     if (sRealmList.size() == 0)
     {
@@ -242,8 +242,8 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // cleanup query
-    // set expired bans to inactive
+    // cleanup query | 启动时清理过期封禁记录
+    // set expired bans to inactive | 将已过期账号封禁设为无效并删除过期 IP 封禁
     LoginDatabase.BeginTransaction();
     LoginDatabase.Execute("UPDATE account_banned SET active = 0 WHERE expires_at<=" _UNIXTIME_ " AND expires_at<>banned_at");
     LoginDatabase.Execute("DELETE FROM ip_banned WHERE expires_at<=" _UNIXTIME_ " AND expires_at<>banned_at");
@@ -256,10 +256,10 @@ int main(int argc, char* argv[])
     for (uint32 i = 0; i < networkThreadCount; ++i)
         threads.emplace_back([&]() { context.run(); });
 
-    // Catch termination signals
+    // Catch termination signals | 注册进程终止信号处理钩子
     HookSignals();
 
-    // Handle affinity for multiple processors and process priority on Windows
+    // Handle affinity for multiple processors and process priority on Windows | 在 Windows 上配置 CPU 亲和性与进程调度优先级
 #ifdef _WIN32
     {
         HANDLE hProcess = GetCurrentProcess();
@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
 
             if (GetProcessAffinityMask(hProcess, &appAff, &sysAff))
             {
-                ULONG_PTR curAff = Aff & appAff;            // remove non accessible processors
+                ULONG_PTR curAff = Aff & appAff;            // remove non accessible processors | 过滤不可用的处理器掩码位
 
                 if (!curAff)
                 {
@@ -302,17 +302,17 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    // server has started up successfully => enable async DB requests
+    // server has started up successfully => enable async DB requests | 服务启动完成，开启数据库异步事务执行
     LoginDatabase.AllowAsyncTransactions();
 
-    // maximum counter for next ping
+    // maximum counter for next ping | 计算数据库保活 Ping 的循环计数阈值
     auto const numLoops = sConfig.GetIntDefault("MaxPingTime", 30) * MINUTE * 10;
     uint32 loopCounter = 0;
 
 #ifndef _WIN32
     detachDaemon();
 #endif
-    ///- Wait for termination signal
+    ///- Wait for termination signal | 主线程等待退出信号并定期向 MySQL 发送保活 Ping
     while (!stopEvent)
     {
         if ((++loopCounter) == numLoops)
@@ -333,18 +333,18 @@ int main(int argc, char* argv[])
     for (uint32 i = 0; i < networkThreadCount; ++i)
         threads[i].join();
 
-    // Wait for the delay thread to exit
+    // Wait for the delay thread to exit | 等待数据库延迟执行线程安全退出
     LoginDatabase.HaltDelayThread();
 
-    // Remove signal handling before leaving
+    // Remove signal handling before leaving | 退出前取消信号捕获钩子
     UnhookSignals();
 
     sLog.outString("Halting process...");
-    return restart ? 2 : 0; // unified exit codes with mangosd
+    return restart ? 2 : 0; // unified exit codes with mangosd | 与 mangosd 保持一致的退出码（2 表示重启）
 }
 
-// Handle termination signals
-/** Put the global variable stopEvent to 'true' if a termination signal is caught **/
+// Handle termination signals | 捕获并处理终止信号
+/** Put the global variable stopEvent to 'true' if a termination signal is caught | 当捕获到终止信号时设置全局 stopEvent 为 true **/
 void OnSignal(int s)
 {
     switch (s)
@@ -364,7 +364,7 @@ void OnSignal(int s)
     signal(s, OnSignal);
 }
 
-// Initialize connection to the database
+// Initialize connection to the database | 初始化并校验登录数据库连接
 bool StartDB()
 {
     std::string dbstring = sConfig.GetStringDefault("LoginDatabaseInfo");
@@ -384,7 +384,7 @@ bool StartDB()
 
     if (!LoginDatabase.CheckRequiredField("realmd_db_version", REVISION_DB_REALMD))
     {
-        // Wait for already started DB delay threads to end
+        // Wait for already started DB delay threads to end | 等待已启动的数据库异步线程结束再返回失败
         LoginDatabase.HaltDelayThread();
         return false;
     }
@@ -392,7 +392,7 @@ bool StartDB()
     return true;
 }
 
-// Define hook 'OnSignal' for all termination signals
+// Define hook 'OnSignal' for all termination signals | 为各类终止信号绑定 OnSignal 处理函数
 void HookSignals()
 {
     signal(SIGINT, OnSignal);
@@ -402,7 +402,7 @@ void HookSignals()
 #endif
 }
 
-// Unhook the signals before leaving
+// Unhook the signals before leaving | 进程退出前解绑信号处理函数
 void UnhookSignals()
 {
     signal(SIGINT, nullptr);

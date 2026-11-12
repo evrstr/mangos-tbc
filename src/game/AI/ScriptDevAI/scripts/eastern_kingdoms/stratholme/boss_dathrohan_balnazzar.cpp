@@ -21,47 +21,52 @@ SDComment: Possibly need to fix/improve summons after death
 SDCategory: Stratholme
 EndScriptData */
 
+// 达索汉与巴纳扎尔（Dathrohan & Balnazzar）首领战 AI（血色大十字军达索汉战败后恐惧魔王巴纳扎尔现出真身）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "stratholme.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                       = -1329016,
-    SAY_TRANSFORM                   = -1329017,
-    SAY_DEATH                       = -1329018,
+    SAY_AGGRO                       = -1329016,             // 开战 台词广播 ID
+    SAY_TRANSFORM                   = -1329017,             // 变形 台词广播 ID
+    SAY_DEATH                       = -1329018,             // 死亡 台词广播 ID
 
-    // Dathrohan spells
-    SPELL_CRUSADERSHAMMER           = 17286,                // AOE stun
-    SPELL_CRUSADERSTRIKE            = 17281,
+    // Dathrohan spells (达索汉spells)
+    SPELL_CRUSADERSHAMMER           = 17286,                // AOE stun (AOE击晕)
+    SPELL_CRUSADERSTRIKE            = 17281,                // crusaderstrike 法术 ID
     SPELL_HOLYSTRIKE                = 17284,                // weapon dmg +3
 
-    // Transform
+    // Transform (变形)
     SPELL_BALNAZZARTRANSFORM        = 17288,                // restore full HP/mana, trigger spell Balnazzar Transform Stun
 
-    // Balnazzar spells
-    SPELL_SHADOWSHOCK               = 17399,
-    SPELL_MINDBLAST                 = 17287,
-    SPELL_PSYCHICSCREAM             = 13704,
-    SPELL_SLEEP                     = 12098,
-    SPELL_MINDCONTROL               = 15690,
+    // Balnazzar spells (巴纳扎尔spells)
+    SPELL_SHADOWSHOCK               = 17399,                // shadowshock 法术 ID
+    SPELL_MINDBLAST                 = 17287,                // mindblast 法术 ID
+    SPELL_PSYCHICSCREAM             = 13704,                // psychicscream 法术 ID
+    SPELL_SLEEP                     = 12098,                // sleep 法术 ID
+    SPELL_MINDCONTROL               = 15690,                // mindcontrol 法术 ID
 
-    NPC_DATHROHAN                   = 10812
+    NPC_DATHROHAN                   = 10812                 // 达索汉 Entry ID
 };
 
+// 首领战 AI：巴纳扎尔（dathrohan_balnazzar）
 struct boss_dathrohan_balnazzarAI : public ScriptedAI
 {
     boss_dathrohan_balnazzarAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiCrusadersHammer_Timer;
-    uint32 m_uiCrusaderStrike_Timer;
-    uint32 m_uiMindBlast_Timer;
-    uint32 m_uiHolyStrike_Timer;
-    uint32 m_uiShadowShock_Timer;
-    uint32 m_uiPsychicScream_Timer;
-    uint32 m_uiDeepSleep_Timer;
-    uint32 m_uiMindControl_Timer;
-    bool m_bTransformed;
+    uint32 m_uiCrusadersHammer_Timer;                       // CrusadersHammer_ 技能计时器
+    uint32 m_uiCrusaderStrike_Timer;                        // CrusaderStrike_ 技能计时器
+    uint32 m_uiMindBlast_Timer;                             // MindBlast_ 技能计时器
+    uint32 m_uiHolyStrike_Timer;                            // HolyStrike_ 技能计时器
+    uint32 m_uiShadowShock_Timer;                           // ShadowShock_ 技能计时器
+    uint32 m_uiPsychicScream_Timer;                         // PsychicScream_ 技能计时器
+    uint32 m_uiDeepSleep_Timer;                             // DeepSleep_ 技能计时器
+    uint32 m_uiMindControl_Timer;                           // MindControl_ 技能计时器
+    bool m_bTransformed;                                    // Transformed 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiCrusadersHammer_Timer = 8000;
@@ -88,6 +93,7 @@ struct boss_dathrohan_balnazzarAI : public ScriptedAI
         DoScriptText(SAY_DEATH, m_creature);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -190,15 +196,17 @@ struct boss_dathrohan_balnazzarAI : public ScriptedAI
             else m_uiMindControl_Timer -= uiDiff;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_dathrohan_balnazzar
 UnitAI* GetAI_boss_dathrohan_balnazzar(Creature* pCreature)
 {
     return new boss_dathrohan_balnazzarAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_dathrohan_balnazzar
 void AddSC_boss_dathrohan_balnazzar()
 {
     Script* pNewScript = new Script;

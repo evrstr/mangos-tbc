@@ -21,6 +21,10 @@ SDComment:
 SDCategory: Razorfen Kraul
 EndScriptData */
 
+/**
+ * 剃刀沼泽 (Razorfen Kraul) 副本数据管理脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "razorfen_kraul.h"
 
@@ -117,12 +121,12 @@ uint32 instance_razorfen_kraul::GetData(uint32 uiType) const
     return 0;
 }
 
-InstanceData* GetInstanceData_instance_razorfen_kraul(Map* pMap)
+InstanceData* GetInstanceData_instance_razorfen_kraul(Map* pMap) // 创建并返回副本数据实例
 {
     return new instance_razorfen_kraul(pMap);
 }
 
-void AddSC_instance_razorfen_kraul()
+void AddSC_instance_razorfen_kraul() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_razorfen_kraul";

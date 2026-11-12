@@ -1,458 +1,640 @@
 -- --------------------------
-## Script processing
+## Script processing / 脚本处理
 -- --------------------------
 
 This file is part of the CMaNGOS Project. See AUTHORS file for Copyright information
+本文件是 CMaNGOS 项目的组成部分。版权信息请参阅 AUTHORS 文件。
 
 -- --------------------------
-## id
+## id / 脚本 ID
 -- --------------------------
 
 dbscripts_on_creature_death         Creature entry
+                                    生物模板 entry（生物死亡时触发）
 dbscripts_on_creature_movement      DB project self defined id
+                                    数据库项目自定义 ID（生物移动路径点触发）
 dbscripts_on_event                  Event id. Several sources: spell effect 61, taxi/transport nodes, gameobject_template data
+                                    事件 ID。来源包括：法术效果 61（Send Event）、飞行路径/交通工具节点、gameobject_template 数据
 dbscripts_on_go_use                 Gameobject guid
+                                    游戏对象实例 GUID（特定游戏对象使用时触发）
 dbscripts_on_go_template_use        Gameobject entry
+                                    游戏对象模板 entry（同模板所有游戏对象使用时触发）
 dbscripts_on_gossip                 DB project self defined id
+                                    数据库项目自定义 ID（对话菜单触发）
 dbscripts_on_quest_end              DB project self defined id (generally quest entry)
+                                    数据库项目自定义 ID（通常为任务 entry，任务交付时触发）
 dbscripts_on_quest_start            DB project self defined id (generally quest entry)
+                                    数据库项目自定义 ID（通常为任务 entry，任务接取时触发）
 dbscripts_on_spell                  Spell id
+                                    法术 ID（法术触发脚本）
 dbscripts_on_relay                  DB project self defined id, Id is used in dbscripts, EAI or SD2 to launch it
+                                    数据库项目自定义 ID，用于在 dbscripts、EventAI 或 SD2 中联动启动
 
 -- --------------------------
-## delay
+## delay / 延迟时间
 -- --------------------------
 
 Delay in seconds
+以秒为单位的延迟时间
 The order of which each step are executed.
+决定脚本中每一步骤的执行顺序。
 
 -- --------------------------
-## command
+## command / 脚本命令
 -- --------------------------
 
 The action to execute.
+要执行的具体动作编号。
 
 -- --------------------------
-## datalong
+## datalong / 长整型参数（datalong, datalong2, datalong3）
 -- --------------------------
 
 3 multipurpose fields, store raw data as unsigned values
+3 个多用途字段，以无符号整数（unsigned）形式存储原始数据
 
 -- --------------------------
-## buddy_entry
+## buddy_entry / 协同对象条目（buddy_entry）
 -- --------------------------
 
 1 field to store the entry of a "buddy" (depending on command can be both GameObject and Creature entry)
+用于存储“协同对象（buddy）”的 entry（根据命令不同，可以是游戏对象或生物的 entry）
 
 -- --------------------------
-## search_radius
+## search_radius / 搜索半径（search_radius）
 -- --------------------------
 
 Range in which the buddy defined in buddy_entry will be searched
+搜索 buddy_entry 所指定协同对象的范围半径
 In case of SCRIPT_FLAG_BUDDY_BY_GUID this field is the buddy's guid!
+若设置了 SCRIPT_FLAG_BUDDY_BY_GUID，则此字段表示协同对象的 GUID！
 In case of SCRIPT_FLAG_BUDDY_BY_POOL this field is the buddy's pool id!
+若设置了 SCRIPT_FLAG_BUDDY_BY_POOL，则此字段表示协同对象的刷新池 ID（pool id）！
 
 -- --------------------------
-## data_flags
+## data_flags / 数据标志位（data_flags）
 -- --------------------------
 
 Field which holds a combination of these flags:
+存储以下标志位组合的字段（按位或组合）：
 
-    SCRIPT_FLAG_BUDDY_AS_TARGET             = 0x01
-    SCRIPT_FLAG_REVERSE_DIRECTION           = 0x02
-    SCRIPT_FLAG_SOURCE_TARGETS_SELF         = 0x04
+    SCRIPT_FLAG_BUDDY_AS_TARGET             = 0x01      (将协同对象作为目标)
+    SCRIPT_FLAG_REVERSE_DIRECTION           = 0x02      (反转源与目标方向)
+    SCRIPT_FLAG_SOURCE_TARGETS_SELF         = 0x04      (源对象以自身为目标)
 
-    SCRIPT_FLAG_COMMAND_ADDITIONAL          = 0x08      (Only for some commands possible)
-    SCRIPT_FLAG_BUDDY_BY_GUID               = 0x10      (Interpret search_radius as buddy's guid)
-    SCRIPT_FLAG_BUDDY_IS_PET                = 0x20      (Do not search for an npc, but for a pet)
-    SCRIPT_FLAG_BUDDY_IS_DESPAWNED          = 0X40      (Search for a buddy that is dead or despawned)
-    SCRIPT_FLAG_BUDDY_BY_POOL               = 0x80      (buddy should be part of a pool)
-    SCRIPT_FLAG_BUDDY_BY_SPAWN_GROUP        = 0x100,    (buddy is from spawn group - NYI - TODO:)
-    SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES        = 0x200,    (multisource/multitarget - will execute for each eligible)
-    SCRIPT_FLAG_BUDDY_BY_GO                 = 0x400,    (take the buddy by GO (for commands which can target both creature and GO))
-    SCRIPT_FLAG_BUDDY_BY_STRING_ID          = 0x800,    (takes buddy from string id - creature or go)
+    SCRIPT_FLAG_COMMAND_ADDITIONAL          = 0x08      (Only for some commands possible / 仅部分命令支持的附加行为标志)
+    SCRIPT_FLAG_BUDDY_BY_GUID               = 0x10      (Interpret search_radius as buddy's guid / 将 search_radius 解释为协同对象的 GUID)
+    SCRIPT_FLAG_BUDDY_IS_PET                = 0x20      (Do not search for an npc, but for a pet / 搜索宠物而非普通 NPC)
+    SCRIPT_FLAG_BUDDY_IS_DESPAWNED          = 0X40      (Search for a buddy that is dead or despawned / 搜索已死亡或已消失的协同对象)
+    SCRIPT_FLAG_BUDDY_BY_POOL               = 0x80      (buddy should be part of a pool / 协同对象须属于指定刷新池)
+    SCRIPT_FLAG_BUDDY_BY_SPAWN_GROUP        = 0x100,    (buddy is from spawn group - NYI - TODO: / 协同对象来自刷新组 - 尚未实现)
+    SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES        = 0x200,    (multisource/multitarget - will execute for each eligible / 多源/多目标模式 —— 对所有符合条件的协同对象逐一执行)
+    SCRIPT_FLAG_BUDDY_BY_GO                 = 0x400,    (take the buddy by GO (for commands which can target both creature and GO) / 以游戏对象作为协同对象，用于同时支持生物和 GO 的命令)
+    SCRIPT_FLAG_BUDDY_BY_STRING_ID          = 0x800,    (takes buddy from string id - creature or go / 通过 string_id 获取协同对象 —— 生物或游戏对象)
 
 Detailed meaning described below!
+详细含义见下文说明！
 
 -- --------------------------
-## dataint
+## dataint / 有符号整型参数（dataint, dataint2, dataint3, dataint4）
 -- --------------------------
 
 4 multipurpose fields, store raw data as signed values
+4 个多用途字段，以有符号整数（signed）形式存储原始数据
 Note: used for text ids SCRIPT_COMMAND_TALK (0),
       for emote ids in SCRIPT_COMMAND_EMOTE (1),
       for spell ids in SCRIPT_COMMAND_CAST_SPELL (15)
       and as waittime with SCRIPT_COMMAND_TERMINATE_SCRIPT (31)
+注：常用于 SCRIPT_COMMAND_TALK (0) 的文本 ID、SCRIPT_COMMAND_EMOTE (1) 的表情 ID、
+    SCRIPT_COMMAND_CAST_SPELL (15) 的法术 ID，以及 SCRIPT_COMMAND_TERMINATE_SCRIPT (31) 的等待时间。
 
 -- --------------------------
-## x y z o
+## x y z o / 坐标与朝向
 -- --------------------------
 
 Map coordinates for commands that need it.
+供需要位置或朝向的命令使用的地图坐标（x, y, z）与朝向（o）。
 
 -- --------------------------
-## origin of script and source/target in scripts
+## origin of script and source/target in scripts / 脚本来源及脚本中的源（Source）与目标（Target）
 -- --------------------------
 
 dbscripts_on_creature_death
-                            Creature death
+                            Creature death (生物死亡)
                                 Source: creature. Target: Unit (player/creature)
+                                源：死亡生物。目标：击杀者/相关单位（玩家或生物）
 dbscripts_on_creature_movement
                             `creature_movement` `creature_movement_template`
                                 Source: creature. Target: creature
+                                源：移动生物。目标：该生物自身
 dbscripts_on_event
-                            Flight path
+                            Flight path (飞行路线)
                                 Source: player. Target: player
-                            Transport path
+                                源：玩家。目标：玩家
+                            Transport path (交通工具路径)
                                 Source: transport GO. Target: Transport GO
+                                源：交通工具 GO。目标：交通工具 GO
                             `gameobject_template`
                                 Source: User (player/creature). Target: GO
-                            Spell (effect 61)
+                                源：使用者（玩家或生物）。目标：游戏对象 GO
+                            Spell (effect 61) (法术效果 61)
                                 Source: caster. Target: Target
+                                源：施法者。目标：法术目标
 dbscripts_on_go_use
 dbscripts_on_go_template_use
-                            Gameobject use
+                            Gameobject use (游戏对象使用)
                                 Source: user: Target: GO
+                                源：使用者。目标：游戏对象 GO
 dbscripts_on_gossip
                             `gossip_menu_option`, `gossip_menu`
-                                Source: creature. Target: player (in case of NPC-Gossip)
-                                Source: player. Target: GO (in case of GO-Gossip)
+                                Source: creature. Target: player (in case of NPC-Gossip / NPC 对话场景)
+                                Source: player. Target: GO (in case of GO-Gossip / 游戏对象对话场景)
 dbscripts_on_quest_end
                             `quest_template`
                                 Source: quest taker (creature/GO). Target: player
+                                源：任务交还对象（生物/GO）。目标：玩家
 dbscripts_on_quest_start
                             `quest_template`
                                 Source: quest giver (creature/GO). Target: player
+                                源：任务发布对象（生物/GO）。目标：玩家
 dbscripts_on_spell
-                            Spell (effect 77 - SCRIPT_EFFECT)
-                            Spell (effect  3 - DUMMY)
-                            Spell (effect 64 - TRIGGER_SPELL, with non-existing triggered spell)
+                            Spell (effect 77 - SCRIPT_EFFECT) (法术效果 77 - 脚本效果)
+                            Spell (effect  3 - DUMMY) (法术效果 3 - 虚拟占位效果)
+                            Spell (effect 64 - TRIGGER_SPELL, with non-existing triggered spell) (法术效果 64 - 触发法术，且触发的法术 ID 不存在)
                                 Source: caster: Target: target of spell (Unit)
+                                源：施法者。目标：法术目标（单位）
 
 -- --------------------------
-## Buddy concept
+## Buddy concept / 协同对象（Buddy）概念
 -- --------------------------
 
 Commands except the ones requiring a player (like KILL_CREDIT) have support for the buddy concept.
 This means that if an entry for buddy_entry is provided,
 aside from source and target as listed above also a "buddy" is available.
+除必须以玩家为目标的命令（如 KILL_CREDIT）外，其余命令均支持“协同对象（buddy）”机制。
+这意味着只要提供了 buddy_entry，除了上述原始源（originalSource）和原始目标（originalTarget）之外，还可以使用第三个对象“buddy”。
 
 Which one on the three (originalSource, originalTarget, buddy) will be used in the command, depends on the data_flags
 Note that some commands (like EMOTE) use only the resulting source for an action.
+命令最终使用这三者（originalSource、originalTarget、buddy）中的哪两个作为执行方与目标，取决于 data_flags 的设置。
+注意：部分命令（如 EMOTE）在执行动作时仅使用最终的源对象（resultingSource）。
 
 Possible combinations of the flags
     SCRIPT_FLAG_BUDDY_AS_TARGET             = 0x01
     SCRIPT_FLAG_REVERSE_DIRECTION           = 0x02
     SCRIPT_FLAG_SOURCE_TARGETS_SELF         = 0x04
 are:
+上述三个方向控制标志的可能组合如下：
 0: originalSource / buddyIfProvided  ->  originalTarget
+   （原始源对象，若提供 buddy 则为 buddy  ->  原始目标对象）
 1: originalSource  ->  buddy
+   （原始源对象  ->  协同对象）
 2: originalTarget  ->  originalSource / buddyIfProvided
+   （原始目标对象  ->  原始源对象，若提供 buddy 则为 buddy）
 3: buddy  ->  originalSource
+   （协同对象  ->  原始源对象）
 4: originalSource / buddyIfProvided  ->  originalSource / buddyIfProvided
+   （原始源对象或 buddy  ->  自身）
 5: originalSource  ->  originalSource
+   （原始源对象  ->  原始源对象）
 6: originalTarget  ->  originalTarget
+   （原始目标对象  ->  原始目标对象）
 7: buddy  ->  buddy
+   （协同对象  ->  协同对象）
 Where "A  ->  B" means that the command is executed from A with B as target.
+其中 “A  ->  B” 表示命令由 A 发起，以 B 作为目标执行。
 
 Defining a buddy could be done in several way:
-    default                                         (take the buddy by entry)
-    SCRIPT_FLAG_BUDDY_BY_GUID               = 0x10  (take the buddy by guid)
-    SCRIPT_FLAG_BUDDY_IS_PET                = 0x20  (buddy is a pet)
-    SCRIPT_FLAG_BUDDY_IS_DESPAWNED          = 0x40  (buddy is dead or despawned)
-    SCRIPT_FLAG_BUDDY_BY_POOL               = 0x80  (buddy should be part of a pool)
-    SCRIPT_FLAG_BUDDY_BY_STRING_ID          = 0x800 (buddy should be part of a spawn group)
+指定协同对象可通过以下多种方式完成：
+    default                                         (take the buddy by entry / 默认：按 entry 查找协同对象)
+    SCRIPT_FLAG_BUDDY_BY_GUID               = 0x10  (take the buddy by guid / 按 GUID 查找协同对象)
+    SCRIPT_FLAG_BUDDY_IS_PET                = 0x20  (buddy is a pet / 协同对象为宠物)
+    SCRIPT_FLAG_BUDDY_IS_DESPAWNED          = 0x40  (buddy is dead or despawned / 协同对象已死亡或已消失)
+    SCRIPT_FLAG_BUDDY_BY_POOL               = 0x80  (buddy should be part of a pool / 协同对象属于指定刷新池)
+    SCRIPT_FLAG_BUDDY_BY_STRING_ID          = 0x800 (buddy should be part of a spawn group / 通过 string_id 或刷新组匹配协同对象)
 
 -- --------------------------
 ## Each command has different parameters, and are as follows:
+## 各命令的参数说明如下：
 -- --------------------------
 
  0 SCRIPT_COMMAND_TALK                      resultingSource = WorldObject, resultingTarget = Unit/none
+                                            [说话/喊话] 最终源 = WorldObject，最终目标 = Unit/无
                                             * datalong = dbscript_string_template ID - will randomize between all dbscript_strings in given template, ids from template are checked against dbscript_string table
+                                              datalong = dbscript_string_template ID —— 从指定模板的全部 dbscript_string 中随机选取一条，模板中的 ID 会对照 dbscript_string 表校验
                                             * dataint = text entry from dbscript_string -table. dataint2-dataint4 optionally, for random selection of text
+                                              dataint = dbscript_string 表中的文本条目 ID。dataint2-dataint4 可选，用于随机选取多条文本之一
 
  1 SCRIPT_COMMAND_EMOTE                     resultingSource = Unit, resultingTarget = Unit/none
-                                            * datalong = emote_id
-                                            * dataint1-dataint4 optionally, for random selection of emote
+                                            [做动作/表情] 最终源 = Unit，最终目标 = Unit/无
+                                            * datalong = emote_id (表情 ID)
+                                            * dataint1-dataint4 optionally, for random selection of emote (可选，用于随机选取表情之一)
 
  2 SCRIPT_COMMAND_FIELD_SET                 source = any
-                                            * datalong = field_id
-                                            * datalong2 = field value
+                                            [设置对象字段值] source = 任意对象
+                                            * datalong = field_id (字段索引 ID)
+                                            * datalong2 = field value (要设置的字段值)
 
  3 SCRIPT_COMMAND_MOVE_TO                   resultingSource = Creature
+                                            [移动到指定位置] 最终源 = Creature
                                             If position is very near to current position, or x=y=z=0, then only orientation is changed
+                                            若目标位置非常接近当前位置或 x=y=z=0，则仅改变朝向
                                             * datalong = dbscripts_on_relay id - executed for source and target same as this script
+                                              datalong = dbscripts_on_relay 脚本 ID —— 到达后执行，源和目标沿用当前脚本
                                             * datalong2 = 0x2 make it main movegen and persist through combat evade
-                                            * datalong3 = enum ForcedMovement
+                                              datalong2 = 0x2 使其成为主移动生成器并在脱战返回（evade）后保持
+                                            * datalong3 = enum ForcedMovement (强制移动方式枚举 ForcedMovement)
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: teleport unit to position
-                                            * x/y/z/o
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：直接将单位传送至目标位置
+                                            * x/y/z/o (目标坐标与朝向)
                                             * dataint = 1 to init move to respawn position, 2 to init creature group member each in their respawn position.
                                                         no other data is needed. So ex: command 3 ... dataint=1 and creature should head to its respawn pos
+                                              dataint = 1 时移动至自身重生点；2 时令生物组内各成员分别移动至各自的重生点（无需其他坐标数据）
 
  4 SCRIPT_COMMAND_FLAG_SET                  source = any
-                                            * datalong = field_id
-                                            * datalong2 = bitmask
+                                            [设置标志位] source = 任意对象
+                                            * datalong = field_id (字段索引 ID)
+                                            * datalong2 = bitmask (要置位的位掩码)
 
  5 SCRIPT_COMMAND_FLAG_REMOVE               source = any
-                                            * datalong = field_id
-                                            * datalong2 = bitmask
+                                            [移除标志位] source = 任意对象
+                                            * datalong = field_id (字段索引 ID)
+                                            * datalong2 = bitmask (要清除的位掩码)
 
  6 SCRIPT_COMMAND_TELEPORT_TO               source or target with Player
-                                            * datalong = map_id
-                                            * x/y/z
+                                            [传送玩家] 源或目标须包含玩家
+                                            * datalong = map_id (目标地图 ID)
+                                            * x/y/z (目标坐标)
 
  7 SCRIPT_COMMAND_QUEST_EXPLORED            one from source or target must be Player, another GO/Creature
-                                            * datalong = quest_id
-                                            * datalong2 = distance or 0
+                                            [完成任务探索目标] 源或目标之一须为玩家，另一方为 GO 或生物
+                                            * datalong = quest_id (任务 ID)
+                                            * datalong2 = distance or 0 (有效距离，0 表示不限)
 
  8 SCRIPT_COMMAND_KILL_CREDIT               source or target with Player
+                                            [给予任务击杀计数] 源或目标须包含玩家
                                             * datalong = creature entry, or 0; If 0 the entry of the creature source or target is used
-                                            * datalong2 = bool (0=personal credit, 1=group credit)
+                                              datalong = 生物 entry，若为 0 则自动使用源或目标生物的 entry
+                                            * datalong2 = bool (0=personal credit, 1=group credit / 0=仅个人获得，1=全队共享)
 
  9 SCRIPT_COMMAND_RESPAWN_GAMEOBJECT        source = any, target = any
-                                            * datalong=db_guid (can be skipped for buddy)
-                                            * datalong2 = despawn_delay
+                                            [刷新游戏对象] source = 任意，target = 任意
+                                            * datalong=db_guid (can be skipped for buddy / 数据库 GUID，使用 buddy 时可省略)
+                                            * datalong2 = despawn_delay (消失延迟时间，秒)
 
 10 SCRIPT_COMMAND_TEMP_SPAWN_CREATURE       source = any, target = any
-                                            * datalong = creature entry
-                                            * datalong2 = despawn_delay
-                                            * datalong3 = pathId - creature_movement_template
+                                            [临时召唤生物] source = 任意，target = 任意
+                                            * datalong = creature entry (生物模板 entry)
+                                            * datalong2 = despawn_delay (自动消失延迟，毫秒)
+                                            * datalong3 = pathId - creature_movement_template (移动路径 ID，对应 creature_movement_template)
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: summon as active object
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：作为活跃对象（active object）召唤
                                             * dataint = (bool) setRun; 0 = off (default), 1 = on
                                               (note, migrated from old where faction and modelid were 2 and 3 and now are in spawndatatemplate)
+                                              dataint = 是否奔跑：0 = 关闭（默认），1 = 开启（注：旧版 dataint2/3 的阵营与模型已迁至 spawndatatemplate）
                                             * dataint4 = spawndatatemplate - if > 0 uses settings from creature_spawn_data_template
+                                              dataint4 = 若 > 0，则使用 creature_spawn_data_template 表中的配置
 
 11 SCRIPT_COMMAND_OPEN_DOOR                 source = any, works on both doors and buttons
-                                            * datalong = db_guid (can be skipped for buddy)
-                                            * datalong2 = reset_delay
-                                            * datalong3 = alternate state - bool 0 or 1
+                                            [开门/激活机关] source = 任意，同时适用于门与按钮类 GO
+                                            * datalong = db_guid (can be skipped for buddy / 数据库 GUID，使用 buddy 时可省略)
+                                            * datalong2 = reset_delay (自动复位延迟时间，秒)
+                                            * datalong3 = alternate state - bool 0 or 1 (切换至备用状态：0 或 1)
 
 12 SCRIPT_COMMAND_CLOSE_DOOR                source = any, works on both doors and buttons
-                                            * datalong = db_guid (can be skipped for buddy)
-                                            * datalong2 = reset_delay
+                                            [关门/关闭机关] source = 任意，同时适用于门与按钮类 GO
+                                            * datalong = db_guid (can be skipped for buddy / 数据库 GUID，使用 buddy 时可省略)
+                                            * datalong2 = reset_delay (自动复位延迟时间，秒)
 
 13 SCRIPT_COMMAND_ACTIVATE_OBJECT           source = unit, target=GO
+                                            [激活游戏对象] source = 单位，target = GO
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: send gameobject custom anim instead of Use()
-                                            * datalong = anim Id
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：发送游戏对象自定义动画而非调用 Use()
+                                            * datalong = anim Id (自定义动画 ID)
 
 14 SCRIPT_COMMAND_REMOVE_AURA               resultingSource = Unit
-                                            * datalong = spell_id
+                                            [移除光环] 最终源 = Unit
+                                            * datalong = spell_id (法术 ID)
                                             * datalong2 = 0 - remove whole, 1 - remove charge, 2 remove stack
+                                              datalong2 = 0 移除整个光环，1 移除一层充能（charge），2 移除一层叠加（stack）
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: remove aura by caster spell from script target
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：仅移除由脚本目标所施放的该法术光环
                                             warning - if used with a channeled spell will not interrupt channel
+                                            警告：若对引导法术使用，不会中断引导过程
 
 15 SCRIPT_COMMAND_CAST_SPELL                resultingSource = Unit, cast spell at resultingTarget = Unit
-                                            * datalong = spell id
-                                            * datalong2 = TriggerCastFlags
+                                            [施放法术] 最终源 = Unit，向最终目标 = Unit 施法
+                                            * datalong = spell id (法术 ID)
+                                            * datalong2 = TriggerCastFlags (触发施法标志 TriggerCastFlags)
                                             * dataint1-dataint4 optional. If some of these are set to a spell id, a random spell out of datalong, datint1, ..,dataintX is cast.
+                                              dataint1-dataint4 可选。若设为法术 ID，则从 datalong 及 dataint1..dataintX 中随机选取一个施放
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: do not pass target to spellcast
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：施法时不传入目标（无指定目标施法）
 
 16 SCRIPT_COMMAND_PLAY_SOUND                source = any object, target=any/player
-                                            * datalong = sound_id
+                                            [播放音效/音乐] source = 任意对象，target = 任意/玩家
+                                            * datalong = sound_id (音效 ID)
                                             * datalong2 (bitmask: 0/1=target-player, 0/2=with distance dependent, 0/4=map wide, 0/8=zone wide, 0/16=area wide;
                                                                   so 1|2 = 3 is target with distance dependent), 8+16 does not work together
+                                              datalong2 位掩码：1=仅目标玩家，2=随距离衰减，4=全地图，8=全大区（zone），16=全子区域（area）；
+                                              例如 1|2 = 3 表示对目标播放且受距离影响；8 与 16 不能同时使用
                                             * datalong3 if datalong2 &8 or &16 zoneId or areaId respectively, defaults to source zone/area if not set
+                                              datalong3：配合 datalong2 的 8 或 16 分别指定 zoneId 或 areaId，未设置时默认取源对象所在区域
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: play music instead of sound
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：播放背景音乐而非普通音效
 
 17 SCRIPT_COMMAND_CREATE_ITEM               source or target must be player
-                                            * datalong = item entry
-                                            * datalong2 = amount
+                                            [创建/移除物品] 源或目标须为玩家
+                                            * datalong = item entry (物品 entry)
+                                            * datalong2 = amount (数量)
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: remove the item from player by the given amount
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：从玩家背包移除指定数量的该物品
 
 18 SCRIPT_COMMAND_DESPAWN_SELF              resultingTarget = Creature
-                                            * datalong = despawn delay
+                                            [使生物自身消失] 最终目标 = Creature
+                                            * datalong = despawn delay (消失延迟时间，毫秒)
 
 19 SCRIPT_COMMAND_PLAY_MOVIE                target can only be a player
-                                            * datalog = movie id
+                                            [播放过场动画] 目标只能是玩家
+                                            * datalog = movie id (影片 ID，注：数据库字段为 datalong)
 
 20 SCRIPT_COMMAND_MOVEMENT                  resultingSource = Creature
+                                            [设置生物移动模式] 最终源 = Creature
                                             * datalong = MovementType (0:idle, 1:random, 2:waypoint, 3:path, 4:linear, 18:fall)
+                                              datalong = 移动类型（0:待机，1:随机漫步，2:路径点，3:样条路径，4:直线路径，18:坠落）
                                             * datalong2 = wanderDistance (for random movement), pathId (for waypoint movement), relayId (for fall movement)
+                                              datalong2 = 随机漫步半径（random）、路径 ID（waypoint）、落地后触发的 relayId（fall）
                                             * datalong3 = 0x1 - timer for timed random movement or pass target to waypoint and path movegen (by default, source targets self)
-                                            *             0x2 - for waypoint, path and linear path - uses pathId from waypoint_path table
-                                            *             0x4 - for path - flying specifier
-                                            *             0x8 - for path - cyclic specifier
+                                                          0x2 - for waypoint, path and linear path - uses pathId from waypoint_path table
+                                                          0x4 - for path - flying specifier
+                                                          0x8 - for path - cyclic specifier
+                                              datalong3 标志：0x1 定时随机移动时长或向路径生成器传入目标（默认以自身为目标）；
+                                                              0x2 对 waypoint/path/linear 强制使用 waypoint_path 表的 pathId；
+                                                              0x4 路径飞行标志；0x8 路径循环标志
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: RandomMovement around current position
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：围绕当前位置进行随机移动
                                             * dataint = enum ForcedMovement for non random, for random 0 walk, 1 run
+                                              dataint = 非随机移动时为 ForcedMovement 枚举；随机移动时 0=走，1=跑
                                             * dataint2 - flags - for random: 0x1 make main movegen (will stay on evade)
-                                            * dataFloat = vertical Speed - used by special case of Path
-                                            * speed = override of speed for Path
+                                              dataint2 标志：随机移动时 0x1 设为主移动生成器（脱战返回后保持）
+                                            * dataFloat = vertical Speed - used by special case of Path (垂直速度，用于特殊路径)
+                                            * speed = override of speed for Path (覆盖路径移动速度)
                                             * Path when Vertical Speed is set - Uses exclusively waypoint_path, supports forcedMovement, pathId, speed, verticalSpeed
+                                              当设置了垂直速度时，Path 仅使用 waypoint_path，并支持 forcedMovement、pathId、speed、verticalSpeed
 
 21 SCRIPT_COMMAND_SET_ACTIVEOBJECT          resultingSource = WorldObject
-                                            * datalong=bool 0=off, 1=on
+                                            [设置活跃对象状态] 最终源 = WorldObject
+                                            * datalong=bool 0=off, 1=on (0=关闭，1=开启，使其在无玩家附近时仍保持网格激活)
 
 22 SCRIPT_COMMAND_SET_FACTION               resultingSource = Creature
+                                            [设置生物阵营] 最终源 = Creature
                                             * datalong=factionId OR 0 to restore original faction from creature_template
-                                            * datalong2=enum TemporaryFactionFlags
+                                              datalong = 阵营 ID，或填 0 恢复为 creature_template 中的原始阵营
+                                            * datalong2=enum TemporaryFactionFlags (临时阵营标志 TemporaryFactionFlags)
                                                     TEMPFACTION_NONE                    = 0x00,  // When no flag is used in temporary faction change, faction will be persistent. It will then require manual change back to default/another faction when changed once
-                                                    TEMPFACTION_RESTORE_RESPAWN         = 0x01,  // Default faction will be restored at respawn
-                                                    TEMPFACTION_RESTORE_COMBAT_STOP     = 0x02,  // ... at CombatStop() (happens at creature death, at evade or custom scripte among others)
-                                                    TEMPFACTION_RESTORE_REACH_HOME      = 0x04,  // ... at reaching home in home movement (evade), if not already done at CombatStop()
+                                                                                                 // 不使用标志时阵营变更持久生效，须手动改回默认或其他阵营
+                                                    TEMPFACTION_RESTORE_RESPAWN         = 0x01,  // Default faction will be restored at respawn / 重生时恢复默认阵营
+                                                    TEMPFACTION_RESTORE_COMBAT_STOP     = 0x02,  // ... at CombatStop() (happens at creature death, at evade or custom scripte among others) / 退出战斗时恢复（死亡、脱战等）
+                                                    TEMPFACTION_RESTORE_REACH_HOME      = 0x04,  // ... at reaching home in home movement (evade), if not already done at CombatStop() / 脱战回到重生点时恢复（若 CombatStop 未恢复）
                                                     // The next flags allow to remove unit_flags combined with a faction change (also these flags will be reapplied when the faction is changed back)
-                                                    TEMPFACTION_TOGGLE_NON_ATTACKABLE   = 0x08,  // Remove UNIT_FLAG_NON_ATTACKABLE(0x02) when faction is changed (reapply when temp-faction is removed)
-                                                    TEMPFACTION_TOGGLE_OOC_NOT_ATTACK   = 0x10,  // Remove UNIT_FLAG_OOC_NOT_ATTACKABLE(0x100) when faction is changed (reapply when temp-faction is removed)
-                                                    TEMPFACTION_TOGGLE_PASSIVE          = 0x20,  // Remove UNIT_FLAG_PASSIVE(0x200) when faction is changed (reapply when temp-faction is removed)
-                                                    TEMPFACTION_TOGGLE_PACIFIED         = 0x40,  // Remove UNIT_FLAG_PACIFIED(0x20000) when faction is changed (reapply when temp-faction is removed)
-                                                    TEMPFACTION_TOGGLE_NOT_SELECTABLE   = 0x80,  // Remove UNIT_FLAG_NOT_SELECTABLE(0x2000000) when faction is changed (reapply when temp-faction is removed)
+                                                    // 以下标志可在变更阵营的同时移除指定 unit_flags（并在恢复阵营时重新应用这些标志）
+                                                    TEMPFACTION_TOGGLE_NON_ATTACKABLE   = 0x08,  // Remove UNIT_FLAG_NON_ATTACKABLE(0x02) when faction is changed (reapply when temp-faction is removed) / 移除不可攻击标志
+                                                    TEMPFACTION_TOGGLE_OOC_NOT_ATTACK   = 0x10,  // Remove UNIT_FLAG_OOC_NOT_ATTACKABLE(0x100) when faction is changed (reapply when temp-faction is removed) / 移除脱战不可攻击标志
+                                                    TEMPFACTION_TOGGLE_PASSIVE          = 0x20,  // Remove UNIT_FLAG_PASSIVE(0x200) when faction is changed (reapply when temp-faction is removed) / 移除被动标志
+                                                    TEMPFACTION_TOGGLE_PACIFIED         = 0x40,  // Remove UNIT_FLAG_PACIFIED(0x20000) when faction is changed (reapply when temp-faction is removed) / 移除被平息标志
+                                                    TEMPFACTION_TOGGLE_NOT_SELECTABLE   = 0x80,  // Remove UNIT_FLAG_NOT_SELECTABLE(0x2000000) when faction is changed (reapply when temp-faction is removed) / 移除不可选中标志
 
 23 SCRIPT_COMMAND_MORPH_TO_ENTRY_OR_MODEL   resultingSource = Creature
+                                            [变形为指定生物或模型] 最终源 = Creature
                                             * datalong=creature entry/modelid (depend on data_flags) OR 0 to demorph
+                                              datalong = 生物 entry 或模型 ID（取决于 data_flags），填 0 则恢复原形
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: use datalong value as modelid explicit
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：直接将 datalong 作为模型 ID 使用
 
 24 SCRIPT_COMMAND_MOUNT_TO_ENTRY_OR_MODEL   resultingSource = Creature
+                                            [骑乘指定生物或模型] 最终源 = Creature
                                             * datalong=creature entry/modelid (depend on data_flags) OR 0 to dismount
+                                              datalong = 生物 entry 或模型 ID（取决于 data_flags），填 0 则下马
                                             * datalong2=bool 0=no, 1=yes, change speed to creature entry run speed in DB
+                                              datalong2 = 是否将速度同步为数据库中对应生物的奔跑速度（0=否，1=是）
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL: use datalong value as modelid explicit
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：直接将 datalong 作为模型 ID 使用
 
 25 SCRIPT_COMMAND_SET_RUN                   resultingSource = Creature
-                                            * datalong= bool 0=off, 1=on
+                                            [设置奔跑/行走模式] 最终源 = Creature
+                                            * datalong= bool 0=off, 1=on (0=行走，1=奔跑)
 
 26 SCRIPT_COMMAND_ATTACK_START              resultingSource = Creature, resultingTarget = Unit
+                                            [开始攻击] 最终源 = Creature，最终目标 = Unit
 
 27 SCRIPT_COMMAND_GO_LOCK_STATE             resultingSource = GO
+                                            [设置游戏对象锁定/交互状态] 最终源 = GO
                                             * datalong = flag_go_lock        = 0x01, flag_go_unlock   = 0x02,
                                                          flag_go_nonInteract = 0x04, flag_go_interact = 0x08
+                                              datalong = 0x01 锁定，0x02 解锁，0x04 禁止交互，0x08 允许交互
 
 28 SCRIPT_COMMAND_STAND_STATE               resultingSource = Creature
-                                            * datalong = stand state (enum UnitStandStateType)
+                                            [设置站立姿态] 最终源 = Creature
+                                            * datalong = stand state (enum UnitStandStateType / 站立姿态枚举 UnitStandStateType)
 
 29 SCRIPT_COMMAND_MODIFY_NPC_FLAGS          resultingSource = Creature
-                                            * datalong=NPCFlags
-                                            * datalong2 => 0=remove, 1=add, 2=toggle
+                                            [修改 NPC 标志] 最终源 = Creature
+                                            * datalong=NPCFlags (NPC 标志位)
+                                            * datalong2 => 0=remove, 1=add, 2=toggle (0=移除，1=添加，2=切换)
 
 30 SCRIPT_COMMAND_SEND_TAXI_PATH            resultingTarget or Source must be Player
-                                            * datalong = taxi path id
+                                            [触发飞行路线] 最终目标或源须为玩家
+                                            * datalong = taxi path id (飞行路径 ID)
 
-31 SCRIPT_COMMAND_TERMINATE_SCRIPT          * datalong = search for npc entry if provided
-                                            * datalong2= search distance
-                                            * datalong3= pool id
+31 SCRIPT_COMMAND_TERMINATE_SCRIPT          [终止脚本或调整路径点等待时间]
+                                            * datalong = search for npc entry if provided (若提供，则搜索指定生物 entry)
+                                            * datalong2= search distance (搜索距离)
+                                            * datalong3= pool id (刷新池 ID)
                                             * !(data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL): if npc not alive found, terminate script
                                                 data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL:  if npc alive found, terminate script
+                                              未设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：若未找到存活的 NPC 则终止脚本；
+                                              已设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：若找到存活的 NPC 则终止脚本
                                             * dataint  = change of waittime (MILLIESECONDS) of a current waypoint movement type (negative values will decrease time)
+                                              dataint = 修改当前路径点移动的等待时间（毫秒，负值表示缩短等待时间）
                                             * when used with guid or entry search, can also search for GO guid through SCRIPT_FLAG_BUDDY_BY_GO
+                                              按 GUID 或 entry 搜索时，也可配合 SCRIPT_FLAG_BUDDY_BY_GO 搜索游戏对象 GUID
 
 32 SCRIPT_COMMAND_PAUSE_WAYPOINTS           resultingSource must be Creature
-                                            * datalong: 0/1 unpause/pause waypoint movement
+                                            [暂停/恢复路径点移动] 最终源须为 Creature
+                                            * datalong: 0/1 unpause/pause waypoint movement (0=恢复路径点移动，1=暂停路径点移动)
 
 33 SCRIPT_COMMAND_RESERVED_1                reserved for 3.x and later. Do not use!
+                                            [保留命令] 为 3.x 及更高版本保留，请勿使用！
 
-34 SCRIPT_COMMAND_TERMINATE_COND            * datalong = condition_id, datalong2 = fail-quest (if provided this quest will be failed for a player)
+34 SCRIPT_COMMAND_TERMINATE_COND            [按条件终止脚本]
+                                            * datalong = condition_id, datalong2 = fail-quest (if provided this quest will be failed for a player)
+                                              datalong = 条件 ID（conditions 表），datalong2 = 若提供，则会使玩家的该任务失败
                                             * !(data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL): terminate when condition is true
                                                 data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL:  terminate when condition is false
+                                              未设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：条件为真时终止脚本；
+                                              已设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：条件为假时终止脚本
 
 35 SCRIPT_COMMAND_SEND_AI_EVENT             * resultingSource = Creature, resultingTarget = Unit
+                                            [发送 AI 事件] 最终源 = Creature，最终目标 = Unit
                                             * datalong = AIEventType - limited only to EventAI supported events
+                                              datalong = AIEventType（仅限 EventAI 支持的事件类型）
                                             * datalong2 = radius. If radius isn't provided and the target is a creature, then send AIEvent to target
+                                              datalong2 = 广播半径；若未提供半径且目标为生物，则直接发送给该目标
                                             * datalong3 = miscvalue - uint32 - for use in ReceiveAIEvent handler
+                                              datalong3 = 附加 uint32 参数，供 ReceiveAIEvent 处理器读取
 
 36 SCRIPT_COMMAND_SET_FACING                Turn resultingSource towards resultingTarget
+                                            [设置朝向] 使最终源面向最终目标
                                             * resultingSource = Creature, resultingTarget WorldObject
+                                              最终源 = Creature，最终目标 = WorldObject
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL also set TargetGuid of resultingSource to resultingTarget.
                                               In this case resultingTarget MUST be Creature/ Player
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL，还会将最终源的 TargetGuid 设为最终目标（此时目标须为生物或玩家）
                                             * datalong != 0 Reset TargetGuid, Reset orientation
+                                              datalong != 0 时重置 TargetGuid 与朝向
 
 37 SCRIPT_COMMAND_MOVE_DYNAMIC              Move resultingSource to a random point around resultingTarget or to resultingTarget
+                                            [动态移动] 使最终源移动到最终目标位置或其周围的随机点
                                             * resultingSource = Creature, resultingTarget Worldobject.
-                                            * datalong = 0:  Move resultingSource towards resultingTarget
+                                            * datalong = 0:  Move resultingSource towards resultingTarget (向最终目标移动)
                                             * datalong != 0: Move resultingSource to a random point between datalong2..datalong around resultingTarget.
                                               orientation != 0: Obtain a random point around resultingTarget in direction of orientation
+                                              datalong != 0：移动到最终目标周围距离在 datalong2..datalong 之间的随机点；
+                                              若 orientation != 0，则沿指定方向取点
                                             * datalong3 = Exact contact point distance, to be used when you want to stop moving as soon as you're within this distance of the target
+                                              datalong3 = 精确接触距离，进入该距离后即停止移动
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL:
                                               For datalong != 0:
                                               Obtain a point in direction of resTarget->GetOrientation + orientation
                                               for resTarget == resSource and orientation == 0 this will mean resSource moving forward
                                               For datalong = 0:
                                               Ignore bounding radius for datalong3 use
-                                            * dataint1 = enum ForcedMovement
-                                            * dataint2 = dbscripts_on_relay id
+                                              当 datalong != 0 时：沿 resTarget->GetOrientation + orientation 方向取点（当源与目标相同且 orientation 为 0 时即向前移动）；
+                                              当 datalong = 0 时：计算 datalong3 距离时忽略碰撞体半径
+                                            * dataint1 = enum ForcedMovement (强制移动方式枚举)
+                                            * dataint2 = dbscripts_on_relay id (到达后触发的 relay 脚本 ID)
                                             * dataint3 = 0x1 to make it main movegen and persist through combat evade
+                                              dataint3 = 0x1 设为主移动生成器并在脱战返回后保持
 
 38 SCRIPT_COMMAND_SEND_MAIL                 Send a mail from resSource  to resTarget
+                                            [发送邮件] 从最终源向最终目标发送邮件
                                             * resultingSource = Creature OR NULL, resTarget must be Player
-                                            * datalong = mailTemplateId
+                                              最终源 = Creature 或 NULL，最终目标须为玩家
+                                            * datalong = mailTemplateId (邮件模板 ID)
                                             * datalong2: AlternativeSenderEntry. Use as sender-Entry of the sent mail
-                                            * datalong3: Money
-                                            * dataint1: Delay (>= 0) in Seconds
+                                              datalong2 = 替代发件人生物 entry（用作邮件发件人）
+                                            * datalong3: Money (随信附带金币，单位铜币)
+                                            * dataint1: Delay (>= 0) in Seconds (发送延迟，秒，>= 0)
 
 39 SCRIPT_COMMAND_SET_FLY                   * resultingSource = Creature
-                                            * datalong = bool 0=off, 1=on
+                                            [设置飞行状态] 最终源 = Creature
+                                            * datalong = bool 0=off, 1=on (0=关闭，1=开启)
                                             * data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL set/unset byte flag UNIT_BYTE1_FLAG_FLY_ANIM
+                                              若设置 SCRIPT_FLAG_COMMAND_ADDITIONAL：同时设置/取消 UNIT_BYTE1_FLAG_FLY_ANIM 飞行动画标志
 
 40 SCRIPT_COMMAND_DESPAWN_GO                * resultingTarget = GameObject. Please note that not all gameobject types support this command.
+                                            [使游戏对象消失] 最终目标 = GameObject。注意：并非所有类型的 GO 都支持此命令。
 
 41 SCRIPT_COMMAND_RESPAWN                   * resultingSource = Creature. Requires SCRIPT_FLAG_BUDDY_IS_DESPAWNED to find dead or despawned targets
+                                            [重生生物] 最终源 = Creature。查找已死亡或已消失目标时需配合 SCRIPT_FLAG_BUDDY_IS_DESPAWNED
 
 42 SCRIPT_COMMAND_SET_EQUIPMENT_SLOTS       Change equipment slots of the resultingSource
+                                            [设置生物武器装备槽] 更改最终源的武器装备外观
                                             * resultingSource = Creature
-                                            * datalong = resetDefault: bool 0=false, 1=true
+                                            * datalong = resetDefault: bool 0=false, 1=true (是否恢复默认装备：0=否，1=是)
                                             * dataint = main hand slot; dataint2 = off hand slot; dataint3 = ranged slot
+                                              dataint = 主手槽位；dataint2 = 副手槽位；dataint3 = 远程槽位
 
 43 SCRIPT_COMMAND_RESET_GO                  * resultingTarget = GameObject. Reset doors or buttons (GO type 0 and 1)
+                                            [重置游戏对象] 最终目标 = GameObject。重置门或按钮（GO 类型 0 和 1）
 
 44 SCRIPT_COMMAND_UPDATE_TEMPLATE           Update creature entry of the resultingSource
+                                            [更新生物模板] 更改最终源的生物模板 entry
                                             * resultingSource = Creature
                                             * datalong = new creature entry. Must be different than the current one
+                                              datalong = 新的生物 entry（必须与当前不同）
                                             * datalong2 = faction for which the entry is updated. 0 = Alliance, 1 = Horde
+                                              datalong2 = 更新模板所属阵营：0 = 联盟，1 = 部落
 45 SCRIPT_COMMAND_START_RELAY_SCRIPT        Launch dbscripts_on_relay script, either static one, or randomly chosen one from dbscript_random_templates
+                                            [启动中继脚本] 启动 dbscripts_on_relay 脚本（固定 ID 或从 dbscript_random_templates 随机选取）
                                             * source and target of command define source and target of launched dbscript
-                                            * datalong = dbscripts_on_relay id
-                                            * datalong2 = dbscript_random_templates id
+                                              本命令的源和目标将作为所启动脚本的源和目标
+                                            * datalong = dbscripts_on_relay id (固定中继脚本 ID)
+                                            * datalong2 = dbscript_random_templates id (随机模板 ID)
 
 46 SCRIPT_COMMAND_CAST_CUSTOM_SPELL         resultingSource = Unit, cast spell at resultingTarget = Unit
-                                            * datalong = spell id
-                                            * datalong2 = TriggerCastFlags
+                                            [自定义参数施放法术] 最终源 = Unit，向最终目标 = Unit 施法
+                                            * datalong = spell id (法术 ID)
+                                            * datalong2 = TriggerCastFlags (触发施法标志 TriggerCastFlags)
                                             * dataint1-dataint3 define the &bp for the spell. At least one field is required.
+                                              dataint1-dataint3 定义法术的 BasePoints (&bp0..2)，至少需填写一个字段
 
 47 SCRIPT_COMMAND_INTERRUPT_SPELL           Interrupt spell in specific slot
-                                            * source must be unit
-                                            * datalong = SpellType enum CurrentSpellTypes
+                                            [打断指定槽位的施法]
+                                            * source must be unit (源须为 Unit)
+                                            * datalong = SpellType enum CurrentSpellTypes (法术槽位枚举 CurrentSpellTypes)
 
 48 SCRIPT_COMMAND_MODIFY_UNIT_FLAGS         resultingSource = Creature
-                                            * datalong = UnitFlags
-                                            * datalong2 => 0=remove, 1=add, 2=toggle
+                                            [修改单位标志] 最终源 = Creature
+                                            * datalong = UnitFlags (单位标志位)
+                                            * datalong2 => 0=remove, 1=add, 2=toggle (0=移除，1=添加，2=切换)
 
 49 SCRIPT_COMMAND_SET_DATA_64               Set instance data if it exists
-                                            * datalong - param1
-                                            * datalong2 - param2
+                                            [设置副本脚本数据] 若当前存在副本脚本则设置数据
+                                            * datalong - param1 (字段索引)
+                                            * datalong2 - param2 (数据值)
 
 50 SCRIPT_COMMAND_ZONE_PULSE                Pulses zone for combat and attacks closest enemy
+                                            [区域战斗脉冲] 触发副本战斗脉冲并攻击最近的敌对玩家
 
 51 SCRIPT_COMMAND_SPAWN_GROUP               Set of commands for creature spawn group
-                                            * datalong = command
+                                            [刷新组阵型控制命令集]
+                                            * datalong = command (子命令编号)
                                                 only formation command(staring from 100) supported right now
-                                                - 100: switch formation shape.
-                                                       datalong1 should have shape value
+                                                目前仅支持阵型相关子命令（编号从 100 起）
+                                                - 100: switch formation shape. (切换阵型形状)
+                                                       datalong1 should have shape value (datalong1 为阵型值)
                                                        Random(0), Queue(1), Side bu side(2), Geese(3), Fanned out behind(4), Fanned out in front(5), Circle leader(6)
-                                                - 101: Set formation spread
-                                                       Spread is set in x field as we need a float for it
-                                                - 102: Set formation options
-                                                       Set flag 0x1 for keep compact option (after a member death)
-                                                       Set flag 0x2 for disabling pathfinding (not impemented yet)
-                                                - 150: Add formation to that group
+                                                       随机(0)、纵队(1)、横排(2)、雁行(3)、后扇形(4)、前扇形(5)、环绕领袖(6)
+                                                - 101: Set formation spread (设置阵型间距)
+                                                       Spread is set in x field as we need a float for it (由于需要浮点数，间距写在 x 字段)
+                                                - 102: Set formation options (设置阵型选项)
+                                                       Set flag 0x1 for keep compact option (after a member death) (0x1：成员死亡后保持队形紧凑)
+                                                       Set flag 0x2 for disabling pathfinding (not impemented yet) (0x2：禁用寻路，尚未实现)
+                                                - 150: Add formation to that group (为刷新组添加阵型)
                                                        You either have to provide spawngroup id in datalong1 or source/target being already in its spawngroup
+                                                       需在 datalong1 提供刷新组 ID，或使源/目标已属于该刷新组
                                                        dataint is formation type -> Random(0), Queue(1), Side bu side(2), Geese(3), Fanned out behind(4), Fanned out in front(5), Circle leader(6)
-                                                       dataint1 is formation options
-                                                       x is formation spread
+                                                       dataint 为阵型类型（同上 0..6）
+                                                       dataint1 is formation options (阵型选项)
+                                                       x is formation spread (阵型间距)
                                                 - 151: Remove formation from spawngroup (all followers will stop following the leader)
-                                                       datalong1 spawngroup id
+                                                       从刷新组移除阵型（所有跟随者将停止跟随领袖）
+                                                       datalong1 spawngroup id (刷新组 ID)
 
 52 SCRIPT_COMMAND_SET_GOSSIP_MENU           Sets a new gossip menu id for creature
-                                            * datalong = new gossip menu id
+                                            [设置生物对话菜单 ID]
+                                            * datalong = new gossip menu id (新的对话菜单 ID)
 
 53 SCRIPT_COMMAND_SET_WORLDSTATE            Sets worldstate variable to new value in current map
-                                            * dataint = worldstate variable id
-                                            * dataint2 = new value
+                                            [设置当前地图的世界状态变量]
+                                            * dataint = worldstate variable id (世界状态变量 ID)
+                                            * dataint2 = new value (新值)
 
 54 SCRIPT_COMMAND_SET_SHEATHE               Sets source unit sheathe state to new value (UNIT_FIELD_BYTES_2, offset 1)
+                                            [设置武器收拔状态] 修改 UNIT_FIELD_BYTES_2 偏移 1
                                             * datalong = new sheathe state - enum SheathState, SHEATH_STATE_UNARMED(0), SHEATH_STATE_MELEE(1), SHEATH_STATE_RANGED(2)
+                                              datalong = 0 徒手/收起武器，1 近战武器，2 远程武器
 
 55 SCRIPT_COMMAND_SET_STRING_ID             Sets or removes a string_id from a WorldObject
-                                            * datalong = string_id id
-                                            * apply = 0 remove, 1 add
+                                            [为 WorldObject 设置或移除 string_id]
+                                            * datalong = string_id id (字符串 ID 编号)
+                                            * apply = 0 remove, 1 add (0=移除，1=添加)
 
 56 57 used in wotlk
+56 与 57 用于 WLK 版本（TBC 未使用）
 
 58 SCRIPT_COMMAND_SPAWN_SPAWN_GROUP	    Spawns the spawn_group
-                                            * datalong = spawn_group.id
-                                            * datalong2 = despawn-delay - Time to despawn group
+                                            [生成指定刷新组]
+                                            * datalong = spawn_group.id (spawn_group 表 ID)
+                                            * datalong2 = despawn-delay - Time to despawn group (刷新组消失延迟时间)

@@ -21,23 +21,27 @@
 #include "Spells/SpellMgr.h"
 #include <limits>
 
+// 通用玩家 AI 内部定时动作 ID
 enum GenericPlayerAIActions
 {
-    GENERIC_ACTION_RESET = 1000,
-    GENERIC_THREAT_CHANGE = 1001,
+    GENERIC_ACTION_RESET = 1000,            // 重置施法冷却标记
+    GENERIC_THREAT_CHANGE = 1001,           // 触发周期性随机切换攻击目标
 };
 
+// 构造函数：注册施法重置与目标切换定时动作
 PlayerAI::PlayerAI(Player* player) : UnitAI(player), m_player(player), m_spellsDisabled(false)
 {
     AddCustomAction(GENERIC_ACTION_RESET, true, [&]() { m_spellsDisabled = false; });
     AddCustomAction(GENERIC_THREAT_CHANGE, true, [&]() { m_executeTargetChange = true; });
 }
 
+// 每帧执行玩家 AI 战斗逻辑
 void PlayerAI::ExecuteActions()
 {
     ExecuteSpells();
 }
 
+// 为玩家 AI 添加一个可用法术；未提供 selector 时按法术目标类型自动推导目标选择函数
 void PlayerAI::AddPlayerSpellAction(uint32 spellId, std::function<Unit*()> selector)
 {
     bool failureOnNoTarget = false;
@@ -48,19 +52,20 @@ void PlayerAI::AddPlayerSpellAction(uint32 spellId, std::function<Unit*()> selec
         {
             if (IsNextMeleeSwingSpell(spellInfo))
                 selector = [&]()->Unit* { return m_player->GetVictim(); };
-            else if (HasSpellTarget(spellInfo, TARGET_UNIT_ENEMY) || (spellInfo->Targets & TARGET_FLAG_DEST_LOCATION)) // always random
+            else if (HasSpellTarget(spellInfo, TARGET_UNIT_ENEMY) || (spellInfo->Targets & TARGET_FLAG_DEST_LOCATION)) // always random (敌对目标或地面目标法术总是随机选敌)
                 selector = [&, spellId = spellInfo->Id]()->Unit* { return m_player->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, spellId, SELECT_FLAG_IN_LOS); };
-            if (HasSpellTarget(spellInfo, TARGET_UNIT_FRIEND) || HasSpellTarget(spellInfo, TARGET_UNIT_FRIEND_CHAIN_HEAL)) // heals only target self
+            if (HasSpellTarget(spellInfo, TARGET_UNIT_FRIEND) || HasSpellTarget(spellInfo, TARGET_UNIT_FRIEND_CHAIN_HEAL)) // heals only target self (治疗/友方增益法术仅以自身为目标)
                 selector = [&]()->Unit* { return m_player; };
 
             failureOnNoTarget = (spellInfo->Targets & TARGET_FLAG_DEST_LOCATION) != 0;
         }
-        if (!selector) // fallback
+        if (!selector) // fallback (兜底返回空目标)
             selector = [&]()->Unit* { return nullptr; };
     }
     m_playerSpellActions.emplace_back(spellId, failureOnNoTarget, selector);
 }
 
+// 执行法术施放与定期随机目标切换
 void PlayerAI::ExecuteSpells()
 {
     if (m_executeTargetChange && CanExecuteCombatAction())
@@ -87,6 +92,7 @@ void PlayerAI::ExecuteSpells()
             success = true;  
     }          
 
+    // 施法成功后大概率进入 6~12 秒的施法间隔，避免被魅惑玩家无休止放技能
     if (success)
     {
         uint32 randomInterval = urand(0, 5);
@@ -98,6 +104,7 @@ void PlayerAI::ExecuteSpells()
     }
 }
 
+// 玩家刚被魅惑时回调：加入魅惑者阵型或跟随魅惑者，并立即攻击最近敌人
 void PlayerAI::JustGotCharmed(Unit* charmer)
 {
     if (charmer->GetFormationSlot())
@@ -109,6 +116,7 @@ void PlayerAI::JustGotCharmed(Unit* charmer)
     AttackClosestEnemy();
 }
 
+// 脱离战斗时停止自身及宠物攻击，并恢复跟随魅惑者
 void PlayerAI::EnterEvadeMode()
 {
     m_player->CombatStopWithPets(true);
@@ -123,6 +131,7 @@ void PlayerAI::EnterEvadeMode()
     }
 }
 
+// 搜寻并攻击最近敌人（优先选择玩家目标，其次按距离最近）
 void PlayerAI::AttackClosestEnemy()
 {
     float distance = std::numeric_limits<float>::max();
@@ -137,6 +146,7 @@ void PlayerAI::AttackClosestEnemy()
     });
 }
 
+// 命令玩家移动跟随指定单位
 void PlayerAI::RequestFollow(Unit* followee)
 {
     m_unit->GetMotionMaster()->MoveFollow(followee, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE, false, !m_unit->IsPlayerControlled());

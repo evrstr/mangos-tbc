@@ -61,16 +61,16 @@
 ///    - 2.0 = Full Moon
 ///    - 3.0 = Last Quarter
 /// </p>
-///@brief Calculate the phase of the moon.
+///@brief Calculate the phase of the moon. (月相与儒略日计算工具类，用于春节等农历节日时间推算)
 ///
 /////////////////////////////////////////////////////////////////////////
 class Moon {
-    /// Radians to degree convertion
+    /// Radians to degree convertion (角度转弧度系数)
     static const double RAD;
     /// We will call this the Gregorian Interval.
-    /// The Gregorian Calendar was adopted in October 15, 1582.
+    /// The Gregorian Calendar was adopted in October 15, 1582. (格里高利历启用基准日期常量：1582年10月15日)
     static const long IGREG;
-    // The mean lunar cycle
+    // The mean lunar cycle (平均朔望月周期：约 29.53058868 天)
     static const double MEAN_LUNAR_CYCLE;
 
 public:
@@ -79,7 +79,7 @@ public:
     ~Moon() {};
 
     /////////////////////////////////////////////////////////////////////////
-    /// phase() calculates the phase of the moon at
+    /// phase() calculates the phase of the moon at (计算指定公历日期正午时刻的月相值 0..4)
     /// noon of the date given.
     ///<p> <i>See above</i> @ref lunarphase
     ///@param mon The month.

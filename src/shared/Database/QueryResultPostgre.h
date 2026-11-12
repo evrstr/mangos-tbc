@@ -25,7 +25,7 @@
 #include <postgre/libpq-fe.h>
 #include <postgre/pg_type.h>
 #else
-// Define OID's from pg_type.h in postgresql server includes.
+// Define OID's from pg_type.h in postgresql server includes. | 定义来自 PostgreSQL 服务端 pg_type.h 的内置类型 OID 常量
 #define BOOLOID 16
 #define BYTEAOID 17
 #define CHAROID 18
@@ -71,6 +71,7 @@
 #include <postgresql/libpq-fe.h>
 #endif
 
+// PostgreSQL 查询结果集封装类 | PostgreSQL query result wrapper iterating over PGresult rows
 class QueryResultPostgre : public QueryResult
 {
     public:
@@ -78,10 +79,13 @@ class QueryResultPostgre : public QueryResult
 
         ~QueryResultPostgre();
 
+        // 推进到下一行并填充字段指针 | Advance to next row and populate field pointers
         bool NextRow() override;
 
     private:
+        // 将 PostgreSQL OID 映射为内部 Field::DataTypes | Convert PostgreSQL type OID to internal Field::DataTypes
         enum Field::DataTypes ConvertNativeType(Oid pOid) const;
+        // 释放当前行与 PGresult 资源 | Free current row buffer and PGresult handle
         void EndQuery();
 
         PGresult* mResult;

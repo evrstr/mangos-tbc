@@ -61,15 +61,16 @@ INSTANTIATE_SINGLETON_1(CreatureLinkingMgr);
  *
  * ***************************************************** */
 
+// 从世界数据库加载按模板（creature_linking_template）和按 GUID（creature_linking）配置的生物联动规则
 void CreatureLinkingMgr::LoadFromDB()
 {
-    // Clear maps
+    // Clear maps (重载前清空所有缓存映射)
     m_creatureLinkingMap.clear();
     m_creatureLinkingGuidMap.clear();
     m_eventTriggers.clear();                              // master
     m_eventGuidTriggers.clear();
 
-    // Load `creature_linking_template`
+    // Load `creature_linking_template` (加载基于生物模板 Entry 的联动配置)
     sLog.outString("> Loading table `creature_linking_template`");
     uint32 count = 0;
     auto queryResult = WorldDatabase.Query("SELECT entry, map, master_entry, flag, search_range FROM creature_linking_template");
@@ -95,17 +96,17 @@ void CreatureLinkingMgr::LoadFromDB()
             tmp.masterId            = fields[2].GetUInt32();
             tmp.linkingFlag         = fields[3].GetUInt16();
             tmp.searchRange         = fields[4].GetUInt16();
-            tmp.masterDBGuid        = 0;                        // Will be initialized for unique mobs in IsLinkingEntryValid (only for spawning dependend)
+            tmp.masterDBGuid        = 0;                        // Will be initialized for unique mobs in IsLinkingEntryValid (only for spawning dependend) (唯一主怪的 DBGuid 将在 IsLinkingEntryValid 中初始化)
 
             if (!IsLinkingEntryValid(entry, &tmp, true))
                 continue;
 
             ++count;
 
-            // Add it to the map
+            // Add it to the map (写入按 Entry 索引的联动映射表)
             m_creatureLinkingMap.insert(CreatureLinkingMap::value_type(entry, tmp));
 
-            // Store master_entry
+            // Store master_entry (记录为主控事件触发者)
             m_eventTriggers.insert(tmp.masterId);
         }
         while (queryResult->NextRow());
@@ -114,7 +115,7 @@ void CreatureLinkingMgr::LoadFromDB()
         sLog.outString();
     }
 
-    // Load `creature_linking`
+    // Load `creature_linking` (加载基于具体生物 DBGuid 的联动配置)
     sLog.outString("> Loading table `creature_linking`");
     count = 0;
     queryResult = WorldDatabase.Query("SELECT guid, master_guid, flag FROM creature_linking");
@@ -138,7 +139,7 @@ void CreatureLinkingMgr::LoadFromDB()
         CreatureLinkingInfo tmp;
 
         uint32 guid             = fields[0].GetUInt32();
-        tmp.mapId               = INVALID_MAP_ID;           // some invalid value, this marks the guid-linking
+        tmp.mapId               = INVALID_MAP_ID;           // some invalid value, this marks the guid-linking (使用无效地图 ID 标识此条目为按 GUID 联动)
         tmp.masterId            = fields[1].GetUInt32();
         tmp.linkingFlag         = fields[2].GetUInt16();
         tmp.masterDBGuid        = tmp.masterId;
@@ -149,10 +150,10 @@ void CreatureLinkingMgr::LoadFromDB()
 
         ++count;
 
-        // Add it to the map
+        // Add it to the map (写入按 GUID 索引的联动映射表)
         m_creatureLinkingGuidMap.insert(CreatureLinkingMap::value_type(guid, tmp));
 
-        // Store master_guid
+        // Store master_guid (记录主怪 DBGuid)
         m_eventGuidTriggers.insert(tmp.masterId);
     }
     while (queryResult->NextRow());
@@ -168,6 +169,7 @@ void CreatureLinkingMgr::LoadFromDB()
  *  @param pTmp: Information about the CreatureLinking of the npc. Note that this information may be changed in some cases
  *
  *  In case of checking by entry and in case of linked spawning and searchRange == 0, pTmp will be changed to keep information about the (unique!) master's db-guid
+ *  校验数据库联动配置条目的有效性；对于全图范围的跟随或条件刷新配置，还会校验主怪唯一性并填充其 masterDBGuid
  */
 bool CreatureLinkingMgr::IsLinkingEntryValid(uint32 slaveEntry, CreatureLinkingInfo* pTmp, bool byEntry)
 {
@@ -254,7 +256,7 @@ bool CreatureLinkingMgr::IsLinkingEntryValid(uint32 slaveEntry, CreatureLinkingI
     return true;
 }
 
-// Linked actions and corresponding flags
+// Linked actions and corresponding flags (各事件类型对应的联动标志掩码)
 enum EventMask
 {
     EVENT_MASK_ON_AGGRO     = FLAG_AGGRO_ON_AGGRO,
@@ -265,18 +267,19 @@ enum EventMask
     EVENT_MASK_ON_DESPAWN   = FLAG_DESPAWN_ON_DESPAWN,
 };
 
-// This functions checks if the NPC has linked NPCs for dynamic action
+// This functions checks if the NPC has linked NPCs for dynamic action (判断生物是否作为主控或反向触发者参与动态联动)
 bool CreatureLinkingMgr::IsLinkedEventTrigger(Creature* pCreature) const
 {
-    // Entry case
+    // Entry case (按模板 Entry 匹配主控怪)
     if (m_eventTriggers.find(pCreature->GetEntry()) != m_eventTriggers.end())
         return true;
 
-    // Guid case
+    // Guid case (按数据库 GUID 匹配主控怪)
     if (m_eventGuidTriggers.find(pCreature->GetDbGuid()) != m_eventGuidTriggers.end())
         return true;
 
     // Also return true for npcs that trigger reverse actions, or for followers(needed in respawn)
+    // 若该生物存在反向触发标志或需要重生跟随，同样视为事件触发者
     if (CreatureLinkingInfo const* pInfo = GetLinkedTriggerInformation(pCreature))
         return (pInfo->linkingFlag & EVENT_MASK_TRIGGER_TO) != 0;
 
@@ -285,12 +288,13 @@ bool CreatureLinkingMgr::IsLinkedEventTrigger(Creature* pCreature) const
 
 // This function check if the NPC is a master to other NPCs
 // return true only for masters stored by entry - this prevents adding them to master-holder maps
+// 检查该生物是否属于按 Entry 记录的主控怪（按 GUID 记录的主控怪无需加入 m_masterGuid）
 bool CreatureLinkingMgr::IsLinkedMaster(Creature* pCreature) const
 {
     return m_eventTriggers.find(pCreature->GetEntry()) != m_eventTriggers.end();
 }
 
-// This function checks if the spawning of this NPC is dependend on other NPCs
+// This function checks if the spawning of this NPC is dependend on other NPCs (判断生物刷新是否受其他 NPC 存活状态限制)
 bool CreatureLinkingMgr::IsSpawnedByLinkedMob(Creature* pCreature) const
 {
     return IsSpawnedByLinkedMob(GetLinkedTriggerInformation(pCreature));
@@ -301,19 +305,19 @@ bool CreatureLinkingMgr::IsSpawnedByLinkedMob(CreatureLinkingInfo const* pInfo) 
 }
 
 // This gives the information of a linked NPC (describes action when its ActionTrigger triggers)
-// Depends of the map
+// Depends of the map (优先按 DBGuid，其次按 Entry + MapId 获取生物的联动配置)
 CreatureLinkingInfo const* CreatureLinkingMgr::GetLinkedTriggerInformation(Creature* pCreature) const
 {
     return GetLinkedTriggerInformation(pCreature->GetEntry(), pCreature->GetDbGuid(), pCreature->GetMapId());
 }
 CreatureLinkingInfo const* CreatureLinkingMgr::GetLinkedTriggerInformation(uint32 entry, uint32 dbGuid, uint32 mapId) const
 {
-    // guid case
+    // guid case (按 DBGuid 精确匹配)
     CreatureLinkingMapBounds bounds = m_creatureLinkingGuidMap.equal_range(dbGuid);
     for (CreatureLinkingMap::const_iterator iter = bounds.first; iter != bounds.second; ++iter)
         return &(iter->second);
 
-    // entry case
+    // entry case (按模板 Entry + 地图 ID 匹配)
     bounds = m_creatureLinkingMap.equal_range(entry);
     for (CreatureLinkingMap::const_iterator iter = bounds.first; iter != bounds.second; ++iter)
     {
@@ -324,14 +328,14 @@ CreatureLinkingInfo const* CreatureLinkingMgr::GetLinkedTriggerInformation(uint3
     return nullptr;
 }
 
-// Function to add slave-NPCs to the holder
+// Function to add slave-NPCs to the holder (将从怪注册到地图联动持有器中对应的主控分组)
 void CreatureLinkingHolder::AddSlaveToHolder(Creature* pCreature)
 {
     CreatureLinkingInfo const* pInfo = sCreatureLinkingMgr.GetLinkedTriggerInformation(pCreature);
     if (!pInfo)
         return;
 
-    if (pInfo->mapId == INVALID_MAP_ID)                     // Guid case, store master->slaves for fast access
+    if (pInfo->mapId == INVALID_MAP_ID)                     // Guid case, store master->slaves for fast access (按 GUID 联动模式)
     {
         HolderMapBounds bounds = m_holderGuidMap.equal_range(pInfo->masterId);
         for (HolderMap::iterator itr = bounds.first; itr != bounds.second; ++itr)
@@ -344,7 +348,7 @@ void CreatureLinkingHolder::AddSlaveToHolder(Creature* pCreature)
             }
         }
 
-        // If this is a new flag, insert new entry
+        // If this is a new flag, insert new entry (新建分组条目)
         if (pCreature)
         {
             InfoAndGuids tmp;
@@ -356,7 +360,7 @@ void CreatureLinkingHolder::AddSlaveToHolder(Creature* pCreature)
         return;
     }
 
-    // First try to find holder with same flag
+    // First try to find holder with same flag (按 Entry 联动模式：查找相同 flag 与搜索半径的现有分组)
     HolderMapBounds bounds = m_holderMap.equal_range(pInfo->masterId);
     for (HolderMap::iterator itr = bounds.first; itr != bounds.second; ++itr)
     {
@@ -368,7 +372,7 @@ void CreatureLinkingHolder::AddSlaveToHolder(Creature* pCreature)
         }
     }
 
-    // If this is a new flag, insert new entry
+    // If this is a new flag, insert new entry (未找到相同分组则新建条目)
     if (pCreature)
     {
         InfoAndGuids tmp;
@@ -379,17 +383,17 @@ void CreatureLinkingHolder::AddSlaveToHolder(Creature* pCreature)
     }
 }
 
-// Function to add master-NPCs to the holder
+// Function to add master-NPCs to the holder (将主控怪的运行时 GUID 记录到 m_masterGuid)
 void CreatureLinkingHolder::AddMasterToHolder(Creature* pCreature)
 {
     if (pCreature->IsPet())
         return;
 
-    // Only add master NPCs (by entry)
+    // Only add master NPCs (by entry) (仅登记按模板 Entry 索引的主控怪)
     if (!sCreatureLinkingMgr.IsLinkedMaster(pCreature))
         return;
 
-    // Check, if already stored
+    // Check, if already stored (避免重复登记)
     BossGuidMapBounds bounds = m_masterGuid.equal_range(pCreature->GetEntry());
     for (BossGuidMap::const_iterator itr = bounds.first; itr != bounds.second; ++itr)
         if (itr->second == pCreature->GetObjectGuid())
@@ -398,14 +402,14 @@ void CreatureLinkingHolder::AddMasterToHolder(Creature* pCreature)
     m_masterGuid.insert(BossGuidMap::value_type(pCreature->GetEntry(), pCreature->GetObjectGuid()));
 }
 
-// Function to process actions for linked NPCs
+// Function to process actions for linked NPCs (触发并分发一次生物联动事件到从怪及反向主怪)
 void CreatureLinkingHolder::DoCreatureLinkingEvent(CreatureLinkingEvent eventType, Creature* pSource, Unit* pEnemy /* = nullptr*/)
 {
-    // This check will be needed in reload case
+    // This check will be needed in reload case (支持运行时重载后的兜底检查)
     if (!sCreatureLinkingMgr.IsLinkedEventTrigger(pSource))
         return;
 
-    // Ignore atypic behaviour
+    // Ignore atypic behaviour (忽略被玩家控制的单位)
     if (pSource->IsControlledByPlayer())
         return;
 
@@ -424,7 +428,7 @@ void CreatureLinkingHolder::DoCreatureLinkingEvent(CreatureLinkingEvent eventTyp
         case LINKING_EVENT_DESPAWN: eventFlagFilter = EVENT_MASK_ON_DESPAWN; reverseEventFlagFilter = 0;                        break;
     }
 
-    // Process Slaves (by entry)
+    // Process Slaves (by entry) (正向处理按模板 Entry 关联的所有从怪)
     HolderMapBounds bounds = m_holderMap.equal_range(pSource->GetEntry());
     for (HolderMap::iterator itr = bounds.first; itr != bounds.second; ++itr)
     {
@@ -436,7 +440,7 @@ void CreatureLinkingHolder::DoCreatureLinkingEvent(CreatureLinkingEvent eventTyp
         }
     }
 
-    // Process Slaves (by guid)
+    // Process Slaves (by guid) (正向处理按数据库 GUID 关联的所有从怪)
     bounds = m_holderGuidMap.equal_range(pSource->GetDbGuid());
     for (HolderMap::iterator itr = bounds.first; itr != bounds.second; ++itr)
     {
@@ -448,7 +452,7 @@ void CreatureLinkingHolder::DoCreatureLinkingEvent(CreatureLinkingEvent eventTyp
         }
     }
 
-    // Process Master
+    // Process Master (反向处理：从怪入战/脱战/重生时通知对应主怪)
     if (CreatureLinkingInfo const* pInfo = sCreatureLinkingMgr.GetLinkedTriggerInformation(pSource))
     {
         if (pInfo->linkingFlag & reverseEventFlagFilter)
@@ -509,7 +513,7 @@ void CreatureLinkingHolder::DoCreatureLinkingEvent(CreatureLinkingEvent eventTyp
     }
 }
 
-// Helper function, to process a slave list
+// Helper function, to process a slave list (遍历从怪 GUID 列表，清理失效引用并对范围内从怪执行联动响应)
 void CreatureLinkingHolder::ProcessSlaveGuidList(CreatureLinkingEvent eventType, Creature* pSource, uint32 flag, uint16 searchRange, std::list<std::pair<uint32, ObjectGuid>>& slaveGuidList, Unit* pEnemy)
 {
     if (!flag)
@@ -530,28 +534,28 @@ void CreatureLinkingHolder::ProcessSlaveGuidList(CreatureLinkingEvent eventType,
             pSlave = pSource->GetMap()->GetCreature((*slave_itr).first);
         else
             pSlave = pSource->GetMap()->GetCreature((*slave_itr).second);
-        if ((!pSlave || pSlave->IsCorpse()) && preprocessFlag) // dynguid respawning
+        if ((!pSlave || pSlave->IsCorpse()) && preprocessFlag) // dynguid respawning (新版刷新系统下通过 SpawnManager 复活尸体/未生成从怪)
             pSource->GetMap()->GetSpawnManager().RespawnCreature((*slave_itr).first);
         if (!pSlave)
         {
-            // Remove old guid first
+            // Remove old guid first (从怪已从地图销毁，移除失效 GUID)
             slave_itr = slaveGuidList.erase(slave_itr);
             continue;
         }
 
         ++slave_itr;
 
-        // Ignore Pets
+        // Ignore Pets (忽略宠物)
         if (pSlave->IsPet())
             continue;
 
-        // Handle single slave
+        // Handle single slave (距离校验通过后触发单个从怪处理)
         if (IsSlaveInRangeOfMaster(pSlave, pSource, searchRange))
             ProcessSlave(eventType, pSource, postprocessFlag, pSlave, pEnemy);
     }
 }
 
-// Helper function, to process a single slave
+// Helper function, to process a single slave (对单个从怪执行具体的入战、脱战、死亡、重生或消失操作)
 void CreatureLinkingHolder::ProcessSlave(CreatureLinkingEvent eventType, Creature* pSource, uint32 flag, Creature* pSlave, Unit* pEnemy)
 {
     switch (eventType)
@@ -593,6 +597,7 @@ void CreatureLinkingHolder::ProcessSlave(CreatureLinkingEvent eventType, Creatur
             if (flag & FLAG_RESPAWN_ON_RESPAWN)
             {
                 // Additional check to prevent endless loops (in case whole group respawns on first respawn)
+                // 附加判断防止整组重生时互相触发导致无限循环
                 if (!pSlave->IsAlive() && (!pSlave->GetRespawnDelay() || pSlave->GetRespawnTime() > time(nullptr)))
                     pSlave->Respawn();
             }
@@ -611,7 +616,7 @@ void CreatureLinkingHolder::ProcessSlave(CreatureLinkingEvent eventType, Creatur
     }
 }
 
-// Helper function to set following
+// Helper function to set following (根据双方出生点相对位置计算跟随距离与角度并启动 MoveFollow)
 void CreatureLinkingHolder::SetFollowing(Creature* pWho, Creature* pWhom) const
 {
     // Do some calculations
@@ -626,18 +631,19 @@ void CreatureLinkingHolder::SetFollowing(Creature* pWho, Creature* pWhom) const
     float dist = sqrt(dx * dx + dy * dy + dz * dz);
     // REMARK: This code needs the same distance calculation that is used for following
     // Atm this means we have to subtract the bounding radiuses
+    // MoveFollow 内部按模型边缘计算距离，此处需减去双方包围盒半径
     dist = dist - pWho->GetObjectBoundingRadius() - pWhom->GetObjectBoundingRadius();
     if (dist < 0.0f)
         dist = 0.0f;
 
-    // Need to pass the relative angle to following
+    // Need to pass the relative angle to following (计算相对于主怪朝向的跟随夹角)
     float angle = atan2(dy, dx) - mO;
     angle = (angle >= 0) ? angle : 2 * M_PI_F + angle;
 
     pWho->GetMotionMaster()->MoveFollow(pWhom, dist, angle);
 }
 
-// Function to check if a slave belongs to a boss by range-issue
+// Function to check if a slave belongs to a boss by range-issue (检查从怪出生点是否在主怪指定搜索范围内)
 bool CreatureLinkingHolder::IsSlaveInRangeOfMaster(Creature const* pSlave, Creature const* pBoss, uint16 searchRange) const
 {
     float sX, sY, sZ;
@@ -659,7 +665,7 @@ bool CreatureLinkingHolder::IsSlaveInRangeOfMaster(Creature const* pBoss, float 
     return dx * dx + dy * dy < searchRange * searchRange;
 }
 
-// helper function to check if a lowguid can respawn
+// helper function to check if a lowguid can respawn (检查主怪 DBGuid 是否已到重生时间且满足生物池及递归联动条件)
 bool CreatureLinkingHolder::IsRespawnReady(uint32 dbGuid, Map* _map) const
 {
     time_t respawnTime = _map->GetPersistentState()->GetCreatureRespawnTime(dbGuid);
@@ -674,7 +680,7 @@ bool CreatureLinkingHolder::IsRespawnReady(uint32 dbGuid, Map* _map) const
     return false;
 }
 
-// Function to check if a passive spawning condition is met
+// Function to check if a passive spawning condition is met (检查生物是否满足被动联动刷新条件)
 bool CreatureLinkingHolder::CanSpawn(Creature* pCreature) const
 {
     CreatureLinkingInfo const*  pInfo = sCreatureLinkingMgr.GetLinkedTriggerInformation(pCreature);
@@ -695,10 +701,11 @@ bool CreatureLinkingHolder::CanSpawn(Creature* pCreature) const
  *  @param _map Map on which things are checked
  *  @param pInfo (only shipped in case of initial use) -- used as marker of first use, also in first use filled directly
  *  @param sx, sy (spawn position of the checked npc with initial use)
+ *  校验指定生物在当前地图上的联动刷新前提条件（支持跨层递归检查主怪是否存活/已击杀）
  */
 bool CreatureLinkingHolder::CanSpawn(uint32 dbGuid, Map* _map, CreatureLinkingInfo const*  pInfo, float sx, float sy) const
 {
-    if (!pInfo)                                             // Prepare data for recursive use
+    if (!pInfo)                                             // Prepare data for recursive use (递归调用时根据 dbGuid 查询静态数据与联动配置)
     {
         CreatureData const* data = sObjectMgr.GetCreatureData(dbGuid);
         if (!data)
@@ -716,7 +723,7 @@ bool CreatureLinkingHolder::CanSpawn(uint32 dbGuid, Map* _map, CreatureLinkingIn
         sy = data->posY;
     }
 
-    if (pInfo->searchRange == 0)                            // Map wide case
+    if (pInfo->searchRange == 0)                            // Map wide case (全图唯一主怪模式)
     {
         if (!pInfo->masterDBGuid)
             return false;                                   // This should never happen
@@ -734,7 +741,7 @@ bool CreatureLinkingHolder::CanSpawn(uint32 dbGuid, Map* _map, CreatureLinkingIn
         return true;
     }
 
-    // Search for nearby master
+    // Search for nearby master (按搜索半径查找附近对应主怪的存活状态)
     BossGuidMapBounds finds = m_masterGuid.equal_range(pInfo->masterId);
     for (BossGuidMap::const_iterator itr = finds.first; itr != finds.second; ++itr)
     {
@@ -749,10 +756,10 @@ bool CreatureLinkingHolder::CanSpawn(uint32 dbGuid, Map* _map, CreatureLinkingIn
         }
     }
 
-    return true;                                            // local boss does not exist - spawn
+    return true;                                            // local boss does not exist - spawn (附近未找到主怪则允许刷新)
 }
 
-// This function lets a slave refollow his master
+// This function lets a slave refollow his master (使带有 FLAG_FOLLOW 的从怪重新跟随存活中的主怪)
 bool CreatureLinkingHolder::TryFollowMaster(Creature* pCreature)
 {
     CreatureLinkingInfo const*  pInfo = sCreatureLinkingMgr.GetLinkedTriggerInformation(pCreature);

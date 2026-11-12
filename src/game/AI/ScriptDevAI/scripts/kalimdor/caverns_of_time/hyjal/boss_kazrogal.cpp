@@ -14,36 +14,43 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+/**
+ * 海加尔峰战役：卡兹洛加 (Kaz'rogal) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "hyjal.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 常量与事件枚举
 enum
 {
-    SAY_ENTER = -1534060,
-    SAY_MARK1 = -1534061,
-    SAY_MARK2 = -1534062,
-    SAY_KILL1 = 18243,
-    SAY_KILL2 = 18244,
-    SAY_KILL3 = 18245,
-    SOUND_DEATH = 11018,
+    SAY_ENTER = -1534060,                                   // 剧情台词/喊话文本 ID
+    SAY_MARK1 = -1534061,                                   // 剧情台词/喊话文本 ID
+    SAY_MARK2 = -1534062,                                   // 剧情台词/喊话文本 ID
+    SAY_KILL1 = 18243,                                      // 剧情台词/喊话文本 ID
+    SAY_KILL2 = 18244,                                      // 剧情台词/喊话文本 ID
+    SAY_KILL3 = 18245,                                      // 剧情台词/喊话文本 ID
+    SOUND_DEATH = 11018,                                    // 音效 ID
 
-    // abilities
-    SPELL_MALEVOLENT_CLEAVE = 31436,
-    SPELL_WAR_STOMP         = 31480,
-    SPELL_CRIPPLE           = 31477,
-    SPELL_MARK_OF_KAZROGAL  = 31447,
+    // abilities (首领技能列表)
+    SPELL_MALEVOLENT_CLEAVE = 31436,                        // 技能法术：顺劈斩
+    SPELL_WAR_STOMP         = 31480,                        // 技能法术：战争践踏
+    SPELL_CRIPPLE           = 31477,                        // 技能法术 ID
+    SPELL_MARK_OF_KAZROGAL  = 31447,                        // 技能法术 ID
 };
 
+// KazrogalActions 战斗行为动作枚举
 enum KazrogalActions
 {
-    KAZROGAL_ACTION_MALEVOLENT_CLEAVE,
-    KAZROGAL_ACTION_WAR_STOMP,
-    KAZROGAL_ACTION_MARK_OF_KAZROGAL,
-    KAZROGAL_ACTION_CRIPPLE,
-    KAZROGAL_ACTION_MAX,
+    KAZROGAL_ACTION_MALEVOLENT_CLEAVE,                      // 战斗行为动作
+    KAZROGAL_ACTION_WAR_STOMP,                              // 战斗行为动作
+    KAZROGAL_ACTION_MARK_OF_KAZROGAL,                       // 战斗行为动作
+    KAZROGAL_ACTION_CRIPPLE,                                // 战斗行为动作
+    KAZROGAL_ACTION_MAX,                                    // 战斗行为动作
 };
 
+// boss_kazrogalAI 首领战斗 AI
 struct boss_kazrogalAI : public CombatAI
 {
     boss_kazrogalAI(Creature* creature) : CombatAI(creature, KAZROGAL_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -59,7 +66,7 @@ struct boss_kazrogalAI : public CombatAI
     ScriptedInstance* m_instance;
     uint32 m_markOfKazrogalCounter;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         CombatAI::Reset();
 
@@ -74,7 +81,7 @@ struct boss_kazrogalAI : public CombatAI
             case KAZROGAL_ACTION_WAR_STOMP: return urand(12000, 18000);
             case KAZROGAL_ACTION_CRIPPLE: return 15000;
             case KAZROGAL_ACTION_MARK_OF_KAZROGAL: return 45000;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅为满足编译器要求，实际不会发生)
         }
     }
 
@@ -86,8 +93,8 @@ struct boss_kazrogalAI : public CombatAI
             case KAZROGAL_ACTION_WAR_STOMP: return urand(15000, 30000);
             case KAZROGAL_ACTION_CRIPPLE: return urand(12000, 20000);
             case KAZROGAL_ACTION_MARK_OF_KAZROGAL: 
-                return 45000 - std::min(m_markOfKazrogalCounter, uint32(7)) * 5000; // reduce each use by 5000 until 10000
-            default: return 0; // never occurs but for compiler
+                return 45000 - std::min(m_markOfKazrogalCounter, uint32(7)) * 5000; // reduce each use by 5000 until 10000 (说明)
+            default: return 0; // never occurs but for compiler (仅为满足编译器要求，实际不会发生)
         }
     }
 
@@ -104,7 +111,7 @@ struct boss_kazrogalAI : public CombatAI
             m_instance->SetData(TYPE_KAZROGAL, DONE);
     }
 
-    void ExecuteAction(uint32 action) override
+    void ExecuteAction(uint32 action) override              // 执行战斗行为轮换
     {
         switch (action)
         {
@@ -162,7 +169,7 @@ struct MarkOfKazrogal : public SpellScript, public AuraScript
     }
 };
 
-void AddSC_boss_kazrogal()
+void AddSC_boss_kazrogal() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_kazrogal";

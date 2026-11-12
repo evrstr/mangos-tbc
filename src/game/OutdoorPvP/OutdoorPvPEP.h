@@ -25,6 +25,7 @@
 
 #include "World/WorldStateDefines.h"
 
+// 东瘟疫之地野外 PvP 哨塔、法术、NPC、游戏对象与事件常量定义
 enum
 {
     TOWER_ID_NORTHPASS                              = 0,
@@ -33,7 +34,7 @@ enum
     TOWER_ID_PLAGUEWOOD                             = 3,
     MAX_EP_TOWERS                                   = 4,
 
-    // spells
+    // spells (洛丹伦的回响阵营增益法术，按控制哨塔数量 1..4 递增)
     SPELL_ECHOES_OF_LORDAERON_ALLIANCE_1            = 11413,
     SPELL_ECHOES_OF_LORDAERON_ALLIANCE_2            = 11414,
     SPELL_ECHOES_OF_LORDAERON_ALLIANCE_3            = 11415,
@@ -44,55 +45,55 @@ enum
     SPELL_ECHOES_OF_LORDAERON_HORDE_3               = 30682,
     SPELL_ECHOES_OF_LORDAERON_HORDE_4               = 29520,
 
-    // graveyards
+    // graveyards (皇冠哨塔控制的墓地 ID)
     GRAVEYARD_ZONE_EASTERN_PLAGUE                   = 139,
     GRAVEYARD_ID_EASTERN_PLAGUE                     = 927,
 
-    // misc
+    // misc (杂项：占领奖励荣誉点数)
     HONOR_REWARD_PLAGUELANDS                        = 18,
 
-    // npcs
+    // npcs (病木林哨塔奖励：幽灵飞行管理员)
     NPC_SPECTRAL_FLIGHT_MASTER                      = 17209,
 
-    // flight master factions
+    // flight master factions (飞行管理员所属阵营及粒子视觉法术)
     FACTION_FLIGHT_MASTER_ALLIANCE                  = 774,
     FACTION_FLIGHT_MASTER_HORDE                     = 775,
 
     SPELL_SPIRIT_PARTICLES_BLUE                     = 17327,
     SPELL_SPIRIT_PARTICLES_RED                      = 31309,
 
-    // quest
+    // quest (占领任务触发用虚拟生物)
     NPC_CROWNGUARD_TOWER_QUEST_DOODAD               = 17689,
     NPC_EASTWALL_TOWER_QUEST_DOODAD                 = 17690,
     NPC_NORTHPASS_TOWER_QUEST_DOODAD                = 17696,
     NPC_PLAGUEWOOD_TOWER_QUEST_DOODAD               = 17698,
 
-    // alliance
+    // alliance (东墙哨塔联盟守卫)
     NPC_LORDAERON_COMMANDER                         = 17635,
     NPC_LORDAERON_SOLDIER                           = 17647,
 
-    // horde
+    // horde (东墙哨塔部落守卫)
     NPC_LORDAERON_VETERAN                           = 17995,
     NPC_LORDAERON_FIGHTER                           = 17996,
 
-    // gameobjects
+    // gameobjects (北地哨塔神龛及周围塔旗)
     GO_LORDAERON_SHRINE_ALLIANCE                    = 181682,
     GO_LORDAERON_SHRINE_HORDE                       = 181955,
     GO_TOWER_FLAG                                   = 182106,
 
-    // possible shrine auras - not used
+    // possible shrine auras - not used (未使用的神龛光环对象)
     //GO_ALLIANCE_BANNER_AURA                       = 180100,
     //GO_HORDE_BANNER_AURA                          = 180101,
 
-    // capture points
+    // capture points (四座哨塔占领点游戏对象)
     GO_TOWER_BANNER_NORTHPASS                       = 181899,
     GO_TOWER_BANNER_CROWNGUARD                      = 182096,
     GO_TOWER_BANNER_EASTWALL                        = 182097,
     GO_TOWER_BANNER_PLAGUEWOOD                      = 182098,
 
-    GO_TOWER_BANNER                                 = 182106,   // tower banners around
+    GO_TOWER_BANNER                                 = 182106,   // tower banners around (哨塔周围装饰旗帜)
 
-    // events
+    // events (各哨塔占领/中立化事件 ID)
     //EVENT_NORTHPASS_WIN_ALLIANCE                  = 10568,
     //EVENT_NORTHPASS_WIN_HORDE                     = 10556,
     //EVENT_NORTHPASS_CONTEST_ALLIANCE              = 10697,
@@ -137,10 +138,11 @@ enum
     BROADCAST_TEXT_OPVP_EP_CAPTURE_EWT_A            = 13631,
     BROADCAST_TEXT_OPVP_EP_CAPTURE_PWT_H            = 13634,
     BROADCAST_TEXT_OPVP_EP_CAPTURE_PWT_A            = 13629,
-    BROADCAST_TEXT_OPVP_EP_ALL_TOWERS_H             = 13637, // NYI
-    BROADCAST_TEXT_OPVP_EP_ALL_TOWERS_A             = 13638, // NYI
+    BROADCAST_TEXT_OPVP_EP_ALL_TOWERS_H             = 13637, // NYI (全塔占领公告，尚未实现)
+    BROADCAST_TEXT_OPVP_EP_ALL_TOWERS_A             = 13638, // NYI (全塔占领公告，尚未实现)
 };
 
+// 哨塔增益法术配置对（联盟/部落）
 struct PlaguelandsTowerBuff
 {
     uint32 spellIdAlliance, spellIdHorde;
@@ -154,15 +156,16 @@ static const PlaguelandsTowerBuff plaguelandsTowerBuffs[MAX_EP_TOWERS] =
     {SPELL_ECHOES_OF_LORDAERON_ALLIANCE_4, SPELL_ECHOES_OF_LORDAERON_HORDE_4}
 };
 
-// capture points coordinates to sort the banners
+// capture points coordinates to sort the banners (各哨塔占领点二维坐标，用于就近匹配周围装饰旗帜)
 static const float plaguelandsTowerLocations[MAX_EP_TOWERS][2] =
 {
-    {3181.08f, -4379.36f},       // Northpass
-    {1860.85f, -3731.23f},       // Crownguard
-    {2574.51f, -4794.89f},       // Eastwall
-    {2962.71f, -3042.31f}        // Plaguewood
+    {3181.08f, -4379.36f},       // Northpass (北地哨塔)
+    {1860.85f, -3731.23f},       // Crownguard (皇冠哨塔)
+    {2574.51f, -4794.89f},       // Eastwall (东墙哨塔)
+    {2962.71f, -3042.31f}        // Plaguewood (病木林哨塔)
 };
 
+// 东瘟疫之地哨塔占领事件描述结构
 struct PlaguelandsTowerEvent
 {
     uint32  eventEntry;
@@ -201,6 +204,7 @@ static const PlaguelandsTowerEvent plaguelandsTowerEvents[MAX_EP_TOWERS][4] =
 
 static const uint32 plaguelandsBanners[MAX_EP_TOWERS] = {GO_TOWER_BANNER_NORTHPASS, GO_TOWER_BANNER_CROWNGUARD, GO_TOWER_BANNER_EASTWALL, GO_TOWER_BANNER_PLAGUEWOOD};
 
+// 东瘟疫之地野外 PvP 控制器：管理四座哨塔占领状态、区域增益及各塔专属奖励（神龛、墓地、守卫、飞行管理员）
 class OutdoorPvPEP : public OutdoorPvP
 {
     public:
@@ -219,14 +223,14 @@ class OutdoorPvPEP : public OutdoorPvP
         bool HandleGameObjectUse(Player* player, GameObject* go) override;
 
     private:
-        // process capture events
+        // process capture events (处理哨塔占领状态变更及奖励解锁/撤销)
         bool ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team, uint32 newWorldState);
 
-        void InitBanner(GameObject* go, uint32 towerId);
+        void InitBanner(GameObject* go, uint32 towerId); // 初始化指定哨塔的装饰旗帜视觉外观
 
-        // Plaguewood bonus - flight master
+        // Plaguewood bonus - flight master (病木林哨塔奖励：解召唤幽灵飞行管理员)
         void UnsummonFlightMaster(const WorldObject* objRef);
-        // Eastwall bonus - soldiers
+        // Eastwall bonus - soldiers (东墙哨塔奖励：解召唤巡逻/驻防士兵)
         void UnsummonSoldiers(const WorldObject* objRef);
 
         Team m_towerOwner[MAX_EP_TOWERS];

@@ -20,7 +20,7 @@
 #include "Spells/SpellAuras.h"
 #include "Spells/SpellMgr.h"
 
-// 21082 - Seal of the Crusader
+// 21082 - Seal of the Crusader (十字军圣印：效果 1 提高攻速同时等比降低单次普攻伤害保持 DPS 不变；效果 2 提高十字军打击 40% 伤害)
 struct SealOfTheCrusader : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -29,6 +29,7 @@ struct SealOfTheCrusader : public AuraScript
         {
             // Seal of the Crusader damage reduction
             // SotC increases attack speed but reduces damage to maintain the same DPS
+            // 攻速提升 X% 时，主手伤害按 -100*X/(X+100)% 降低以维持秒伤平衡
             float reduction = (-100.0f * aura->GetModifier()->m_amount) / (aura->GetModifier()->m_amount + 100.0f);
             aura->GetTarget()->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, reduction, apply);
             return;
@@ -43,11 +44,11 @@ struct SealOfTheCrusader : public AuraScript
 
     void OnDamageCalculate(Aura* /*aura*/, Unit* /*attacker*/, Unit* /*victim*/, int32& /*advertisedBenefit*/, float& totalMod) const override
     {
-        totalMod *= 1.4f; // Patch 2.4.2 - Increases damage of Crusader Strike by 40%
+        totalMod *= 1.4f; // Patch 2.4.2 - Increases damage of Crusader Strike by 40% (2.4.2 补丁起使十字军打击伤害提高 40%)
     }
 };
 
-// 5373 - Judgement of Light Intermediate
+// 5373 - Judgement of Light Intermediate (光明审判中间触发：依据目标身上的审判等级施放对应治疗法术)
 struct JudgementOfLightIntermediate : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -69,7 +70,7 @@ struct JudgementOfLightIntermediate : public SpellScript
     }
 };
 
-// 1826 - Judgement of Wisdom Intermediate
+// 1826 - Judgement of Wisdom Intermediate (智慧审判中间触发：依据目标身上的审判等级施放对应回蓝法术)
 struct JudgementOfWisdomIntermediate : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -90,7 +91,7 @@ struct JudgementOfWisdomIntermediate : public SpellScript
     }
 };
 
-// 20271 - Judgement
+// 20271 - Judgement (审判主技能：消耗当前激活圣印、触发对应审判法术并处理神圣审判回蓝及 T4/T6 套装联动)
 struct spell_judgement : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -103,7 +104,7 @@ struct spell_judgement : public SpellScript
 
         uint32 spellId2 = 0;
 
-        // all seals have aura dummy
+        // all seals have aura dummy (所有圣印都在第 2 效果槽存有对应审判法术 ID)
         Unit::AuraList const& m_dummyAuras = caster->GetAurasByType(SPELL_AURA_DUMMY);
         for (auto m_dummyAura : m_dummyAuras)
         {
@@ -119,10 +120,10 @@ struct spell_judgement : public SpellScript
             if (spellId2 <= 1)
                 continue;
 
-            // found, remove seal
+            // found, remove seal (找到激活圣印后移除之)
             caster->RemoveAurasDueToSpell(m_dummyAura->GetId());
 
-            // Sanctified Judgement
+            // Sanctified Judgement (圣洁审判天赋：有几率返还所消耗圣印 80% 的法力值)
             Unit::AuraList const& m_auras = caster->GetAurasByType(SPELL_AURA_DUMMY);
             for (Unit::AuraList::const_iterator i = m_auras.begin(); i != m_auras.end(); ++i)
             {
@@ -144,16 +145,16 @@ struct spell_judgement : public SpellScript
             break;
         }
         caster->CastSpell(unitTarget, spellId2, TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CURRENT_CASTED_SPELL);
-        if (caster->HasAura(37188)) // improved judgement
+        if (caster->HasAura(37188)) // improved judgement (套装强化审判效果)
             caster->CastSpell(nullptr, 43838, TRIGGERED_OLD_TRIGGERED);
 
-        if (caster->HasAura(40470)) // PaladinTier6Trinket
+        if (caster->HasAura(40470)) // PaladinTier6Trinket (圣骑士 T6 饰品效果)
             if (roll_chance_f(50.f))
                 caster->CastSpell(unitTarget, 40472, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
-// 40470 - Paladin Tier 6 Trinket
+// 40470 - Paladin Tier 6 Trinket (圣骑士 BT 职业饰品：施放圣光闪现/圣光术时有 15% 几率触发额外治疗/回蓝)
 struct PaladinTier6Trinket : public AuraScript
 {
     SpellAuraProcResult OnProc(Aura* /*aura*/, ProcExecutionData& procData) const override
@@ -163,7 +164,7 @@ struct PaladinTier6Trinket : public AuraScript
 
         float chance = 0.f;
 
-        // Flash of light/Holy light
+        // Flash of light/Holy light (匹配圣光闪现与圣光术族掩码)
         if (procData.spellInfo->SpellFamilyFlags & uint64(0x00000000C0000000))
         {
             procData.triggeredSpellId = 40471;
@@ -178,7 +179,7 @@ struct PaladinTier6Trinket : public AuraScript
     }
 };
 
-// 31789 - Righteous Defense
+// 31789 - Righteous Defense (正义防御：从友方目标的攻击者中随机最多嘲讽 3 个目标)
 struct RighteousDefense : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -199,7 +200,7 @@ struct RighteousDefense : public SpellScript
             return;
         Unit* caster = spell->GetCaster();
 
-        // non-standard cast requirement check
+        // non-standard cast requirement check (若友方目标未处于被攻击状态则退回冷却并提示失败)
         if (unitTarget->getAttackers().empty())
         {
             caster->RemoveSpellCooldown(*spell->m_spellInfo, true);
@@ -210,7 +211,7 @@ struct RighteousDefense : public SpellScript
         // not empty (checked), copy
         Unit::AttackerSet attackers = unitTarget->getAttackers();
 
-        // selected from list 3
+        // selected from list 3 (最多随机挑选 3 个攻击者并对其施放嘲讽触发法术 31790)
         size_t size = std::min(size_t(3), attackers.size());
         for (uint32 i = 0; i < size; ++i)
         {
@@ -225,13 +226,13 @@ struct RighteousDefense : public SpellScript
 enum
 {
     SPELL_SEAL_OF_BLOOD_DAMAGE              = 31893,
-    SPELL_SEAL_OF_BLOOD_SELF_DAMAGE         = 32221,
+    SPELL_SEAL_OF_BLOOD_SELF_DAMAGE         = 32221,        // 鲜血圣印反伤自身法术
 
     SPELL_JUDGEMENT_OF_BLOOD                = 31898,
-    SPELL_JUDGEMENT_OF_BLOOD_SELF_DAMAGE    = 32220
+    SPELL_JUDGEMENT_OF_BLOOD_SELF_DAMAGE    = 32220         // 鲜血审判反伤自身法术
 };
 
-// 31893 - Seal of Blood
+// 31893 - Seal of Blood (鲜血圣印伤害反噬：对自身造成造成伤害 10% 的反伤)
 struct SealOfBloodSelfDamage : public SpellScript
 {
     void OnAfterHit(Spell* spell) const override
@@ -241,7 +242,7 @@ struct SealOfBloodSelfDamage : public SpellScript
     }
 };
 
-// 31898 - Judgement of Blood
+// 31898 - Judgement of Blood (鲜血审判反噬：对自身造成造成伤害 33% 的反伤)
 struct JudgementOfBloodSelfDamage : public SpellScript
 {
     void OnAfterHit(Spell* spell) const override
@@ -251,7 +252,7 @@ struct JudgementOfBloodSelfDamage : public SpellScript
     }
 };
 
-// 19977 - Blessing of Light
+// 19977 - Blessing of Light (光明祝福：提高圣光术与圣光闪现的治疗效果并联动圣契加成)
 struct BlessingOfLight : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -261,8 +262,9 @@ struct BlessingOfLight : public AuraScript
 
     void OnDamageCalculate(Aura* aura, Unit* attacker, Unit* /*victim*/, int32& advertisedBenefit, float& /*totalMod*/) const override
     {
-        advertisedBenefit += (aura->GetModifier()->m_amount);  // BoL is penalized since 2.3.0
+        advertisedBenefit += (aura->GetModifier()->m_amount);  // BoL is penalized since 2.3.0 (2.3.0 起直接计入 advertisedBenefit 参与法术系数惩罚)
         // Note: This forces the caster to keep libram equipped, but works regardless if the BOL is his or not
+        // 圣契效果 38320：圣光术获得全额额外加成，圣光闪现获得半额加成
         if (Aura* improved = attacker->GetAura(38320, EFFECT_INDEX_0)) // improved Blessing of light
         {
             if (aura->GetEffIndex() == EFFECT_INDEX_0)
@@ -273,7 +275,7 @@ struct BlessingOfLight : public AuraScript
     }
 };
 
-// 19752 - Divine Intervention
+// 19752 - Divine Intervention (神圣干涉：禁止对携带有战场旗帜的目标施放)
 struct DivineIntervention : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -287,7 +289,7 @@ struct DivineIntervention : public SpellScript
     }
 };
 
-// 20467, 20963, 20964, 20965, 20966, 27171 - Judgement of Command
+// 20467, 20963, 20964, 20965, 20966, 27171 - Judgement of Command (命令审判：目标未处于昏迷状态时伤害减半)
 struct JudgementOfCommand : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -297,6 +299,7 @@ struct JudgementOfCommand : public SpellScript
     }
 };
 
+// 注册圣骑士职业法术脚本
 void LoadPaladinScripts()
 {
     RegisterSpellScript<JudgementOfLightIntermediate>("spell_judgement_of_light_intermediate");

@@ -23,18 +23,21 @@
 #include <memory>
 #include <utility>
 
-/// ---------- QUERY CALLBACKS -----------
+/// ---------- QUERY CALLBACKS | 数据库异步查询回调 -----------
 
 class QueryResult;
 
 namespace MaNGOS
 {
+    /// 查询回调接口基类
     class IQueryCallback
     {
         public:
 
             virtual ~IQueryCallback() = default;
+            /// 执行回调逻辑
             virtual void Execute() = 0;
+            /// 设置异步查询返回的结果集
             virtual void SetResult(std::unique_ptr<QueryResult> queryResult) = 0;
     };
 
@@ -43,6 +46,9 @@ namespace MaNGOS
      * to function, pointer to member function, etc) that takes an std::unique_ptr<QueryResult>
      * or a pointer to QueryResult as an argument and returns void. The caller can use std::bind
      * to create such a callable object and bind any other required arguments for the actual callback.
+     *
+     * 可调用对象需接收 std::unique_ptr<QueryResult> 或 QueryResult* 参数并返回 void。
+     * 调用方可通过 lambda 或 std::bind 绑定额外上下文参数。
      */
     template <typename Callable>
     requires(std::invocable<Callable&, QueryResult*> ||

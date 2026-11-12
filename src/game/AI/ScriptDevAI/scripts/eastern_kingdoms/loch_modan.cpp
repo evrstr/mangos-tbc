@@ -21,6 +21,8 @@ SDComment: Quest support: 3181 (only to argue with pebblebitty to get to searing
 SDCategory: Loch Modan
 EndScriptData */
 
+// 洛克莫丹（Loch Modan）矮人区域任务脚本
+
 /* ContentData
 npc_miran
 EndContentData */
@@ -32,18 +34,19 @@ EndContentData */
 ## npc_miran
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    QUEST_PROTECTING_THE_SHIPMENT = 309,
+    QUEST_PROTECTING_THE_SHIPMENT = 309,                    // protectingtheshipment 任务 ID
 
-    SAY_MIRAN_1           = 510,
-    SAY_MIRAN_2           = 511,
-    SAY_MIRAN_3           = 498,
+    SAY_MIRAN_1           = 510,                            // miran1 台词广播 ID
+    SAY_MIRAN_2           = 511,                            // miran2 台词广播 ID
+    SAY_MIRAN_3           = 498,                            // miran3 台词广播 ID
 
-    SAY_DARK_IRON_RAIDER  = 512,
-    NPC_DARK_IRON_RAIDER  = 2149,
+    SAY_DARK_IRON_RAIDER  = 512,                            // dark黑铁raider 台词广播 ID
+    NPC_DARK_IRON_RAIDER  = 2149,                           // dark黑铁raider Entry ID
 
-    MIRAN_ESCORT_PATH     = 1379
+    MIRAN_ESCORT_PATH     = 1379                            // escort路径 标识 ID
 };
 
 static const Position m_afAmbushSpawn[] =
@@ -52,6 +55,7 @@ static const Position m_afAmbushSpawn[] =
     { -5696.1943f, -3736.78f, 318.58145f, 2.40855f}
 };
 
+// 随从/NPC AI：标识 ID（miran）
 struct npc_miranAI: public npc_escortAI
 {
     npc_miranAI(Creature* creature): npc_escortAI(creature)
@@ -61,6 +65,7 @@ struct npc_miranAI: public npc_escortAI
 
     uint8 m_uiDwarves;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
@@ -89,6 +94,7 @@ struct npc_miranAI: public npc_escortAI
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_DARK_IRON_RAIDER)
@@ -102,6 +108,7 @@ struct npc_miranAI: public npc_escortAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_DARK_IRON_RAIDER)
@@ -113,6 +120,7 @@ struct npc_miranAI: public npc_escortAI
     }
 };
 
+// 任务接取回调函数：npc_miran
 bool QuestAccept_npc_miran(Player* player, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_PROTECTING_THE_SHIPMENT)
@@ -123,11 +131,13 @@ bool QuestAccept_npc_miran(Player* player, Creature* creature, const Quest* ques
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_miran
 UnitAI* GetAI_npc_miran(Creature* creature)
 {
     return new npc_miranAI(creature);
 }
 
+// 注册并载入脚本模块：loch_modan
 void AddSC_loch_modan()
 {
     Script* pNewScript = new Script;

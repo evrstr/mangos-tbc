@@ -20,8 +20,11 @@
 #ifndef _WIN32_SERVICE_
 #define _WIN32_SERVICE_
 
+/// 将当前可执行程序注册为 Windows 系统服务
 bool WinServiceInstall();
+/// 从 Windows 服务管理器中卸载当前服务
 bool WinServiceUninstall();
+/// 启动 Windows 服务控制分发器并运行服务主循环
 bool WinServiceRun();
 
 #endif                                                      // _WIN32_SERVICE_

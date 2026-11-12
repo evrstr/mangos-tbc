@@ -23,13 +23,14 @@
 #include "Policies/Singleton.h"
 #include "Server/WorldPacket.h"
 
+/// 客户端插件验证处理器，负责解析客户端上传的插件列表并构建服务端响应包
 class AddonHandler
 {
     public:
-        /* Construction */
+        /* Construction (构造与析构) */
         AddonHandler();
         ~AddonHandler();
-        // built addon packet
+        // built addon packet (解析压缩插件数据包并生成 SMSG_ADDON_INFO 响应)
         bool BuildAddonPacket(WorldPacket& Source, WorldPacket& Target);
 };
 #define sAddOnHandler MaNGOS::Singleton<AddonHandler>::Instance()

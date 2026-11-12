@@ -42,43 +42,46 @@ struct SpellScript;
 struct AuraScript;
 struct SpellTargetingData;
 
+// 法术施放标志位（用于 SMSG_SPELL_START / SMSG_SPELL_GO 数据包控制客户端表现与战斗记录行为）
 enum SpellCastFlags
 {
-    CAST_FLAG_NONE              = 0x00000000,
-    CAST_FLAG_HIDDEN_COMBATLOG  = 0x00000001,               // hide in combat log?
-    CAST_FLAG_UNKNOWN2          = 0x00000002,               // Sent on SMSG_SPELL_START
+    CAST_FLAG_NONE              = 0x00000000,               // 无特殊施法标志
+    CAST_FLAG_HIDDEN_COMBATLOG  = 0x00000001,               // hide in combat log?（是否在战斗记录中隐藏）
+    CAST_FLAG_UNKNOWN2          = 0x00000002,               // Sent on SMSG_SPELL_START（随 SMSG_SPELL_START 发送）
     CAST_FLAG_UNKNOWN3          = 0x00000004,
     CAST_FLAG_UNKNOWN4          = 0x00000008,
-    CAST_FLAG_PERSISTENT_AA     = 0x00000010,               // Spell has Persistent AA effect
-    CAST_FLAG_AMMO              = 0x00000020,               // Projectiles visual
-    CAST_FLAG_UNKNOWN7          = 0x00000040,               // Item related?
+    CAST_FLAG_PERSISTENT_AA     = 0x00000010,               // Spell has Persistent AA effect（法术包含持续性区域光环效果）
+    CAST_FLAG_AMMO              = 0x00000020,               // Projectiles visual（显示弹药/投射物视觉效果）
+    CAST_FLAG_UNKNOWN7          = 0x00000040,               // Item related?（可能与物品相关）
     CAST_FLAG_UNKNOWN8          = 0x00000080,
-    CAST_FLAG_UNKNOWN9          = 0x00000100,               // Sent on SMSG_SPELL_GO
+    CAST_FLAG_UNKNOWN9          = 0x00000100,               // Sent on SMSG_SPELL_GO（随 SMSG_SPELL_GO 发送）
     CAST_FLAG_UNKNOWN10         = 0x00000200,
     CAST_FLAG_UNKNOWN11         = 0x00000400,
-    CAST_FLAG_PREDICTED_POWER   = 0x00000800,               // wotlk, trigger rune cooldown
+    CAST_FLAG_PREDICTED_POWER   = 0x00000800,               // wotlk, trigger rune cooldown（WLK 特性，触发符文冷却）
     CAST_FLAG_UNKNOWN13         = 0x00001000,
     CAST_FLAG_UNKNOWN14         = 0x00002000,
     CAST_FLAG_UNKNOWN15         = 0x00004000,
-    CAST_FLAG_UNKNOWN16         = 0x00008000,               // Something with Portal effects
+    CAST_FLAG_UNKNOWN16         = 0x00008000,               // Something with Portal effects（与传送门类效果相关）
 };
 
+// 区域法术目标搜索中心与扩散形状类型
 enum SpellNotifyPushType
 {
-    PUSH_CONE,
-    PUSH_SELF_CENTER,
-    PUSH_SRC_CENTER,
-    PUSH_DEST_CENTER,
-    PUSH_TARGET_CENTER
+    PUSH_CONE,                                              // 锥形扇面扩散（以施法者为顶点）
+    PUSH_SELF_CENTER,                                       // 以施法者自身为圆心
+    PUSH_SRC_CENTER,                                        // 以法术源坐标（Source）为圆心
+    PUSH_DEST_CENTER,                                       // 以法术目标坐标（Destination）为圆心
+    PUSH_TARGET_CENTER                                      // 以主目标单位为圆心
 };
 
+// 法术目标检查例外类型
 enum class CheckException
 {
-    EXCEPTION_NONE,
-    EXCEPTION_MAGNET,
+    EXCEPTION_NONE,                                         // 无例外
+    EXCEPTION_MAGNET,                                       // 磁力/避雷针吸收例外（如根基图腾）
 };
 
-bool IsQuestTameSpell(uint32 spellId);
+bool IsQuestTameSpell(uint32 spellId);                      // 判断法术是否为任务驯服类法术
 
 namespace MaNGOS
 {
@@ -88,6 +91,7 @@ namespace MaNGOS
 
 class SpellCastTargets;
 
+// 法术施放目标反序列化辅助器（绑定目标容器与施法者用于流读取）
 struct SpellCastTargetsReader
 {
     explicit SpellCastTargetsReader(SpellCastTargets& _targets, Unit* _caster) : targets(_targets), caster(_caster) {}
@@ -96,14 +100,15 @@ struct SpellCastTargetsReader
     Unit* caster;
 };
 
+// 法术施放目标容器：封装单位、物品、游戏对象、尸体、源/目标坐标及目标掩码
 class SpellCastTargets
 {
     public:
         SpellCastTargets();
         ~SpellCastTargets();
 
-        void read(ByteBuffer& data, Unit* caster);
-        void write(ByteBuffer& data) const;
+        void read(ByteBuffer& data, Unit* caster);          // 从客户端数据包反序列化施法目标
+        void write(ByteBuffer& data) const;                 // 将施法目标序列化写入数据包
 
         SpellCastTargetsReader ReadForCaster(Unit* caster) { return SpellCastTargetsReader(*this, caster); }
 
@@ -181,16 +186,16 @@ class SpellCastTargets
 
         uint32 m_targetMask;
 
-        uint32 m_mapId; // not to be written to packet in vanilla/tbc
+        uint32 m_mapId; // not to be written to packet in vanilla/tbc（经典旧世/TBC 数据包中不写入地图 ID）
 
     private:
-        // objects (can be used at spell creating and after Update at casting
+        // objects (can be used at spell creating and after Update at casting)（目标对象指针，在创建法术和 Update 后施法阶段使用）
         Unit* m_unitTarget;
         GameObject* m_GOTarget;
         Item* m_itemTarget;
         Corpse* m_CorpseTarget;
 
-        // object GUID/etc, can be used always
+        // object GUID/etc, can be used always（目标对象的 GUID 等持久化标识，随时可用）
         ObjectGuid m_unitTargetGUID;
         ObjectGuid m_GOTargetGUID;
         ObjectGuid m_CorpseTargetGUID;
@@ -210,29 +215,32 @@ inline ByteBuffer& operator>> (ByteBuffer& buf, SpellCastTargetsReader const& ta
     return buf;
 }
 
+// 法术实例生命周期状态枚举
 enum SpellState
 {
-    SPELL_STATE_CREATED    = 0,                             // just created
-    SPELL_STATE_TARGETING  = 1,                             // doing initial check
-    SPELL_STATE_CASTING    = 2,                             // cast time delay period, non channeled spell
-    SPELL_STATE_DELAYED    = 3,                             // spell is delayed (cast time pushed back) TODO: need to be implemented properly
-    SPELL_STATE_TRAVELING  = 4,                             // spell casted but need time to hit target(s)
-    SPELL_STATE_LANDING    = 5,                             // processing the effects
-    SPELL_STATE_CHANNELING = 6,                             // channeled time period spell casting state
-    SPELL_STATE_FINISHED   = 7,                             // cast finished to success or fail
+    SPELL_STATE_CREATED    = 0,                             // just created（刚创建）
+    SPELL_STATE_TARGETING  = 1,                             // doing initial check（正在执行初始目标与施法条件检查）
+    SPELL_STATE_CASTING    = 2,                             // cast time delay period, non channeled spell（非引导法术的读条吟唱阶段）
+    SPELL_STATE_DELAYED    = 3,                             // spell is delayed (cast time pushed back) TODO: need to be implemented properly（法术被推迟/打断退条，待完善）
+    SPELL_STATE_TRAVELING  = 4,                             // spell casted but need time to hit target(s)（法术已出手，弹道飞行中等待命中）
+    SPELL_STATE_LANDING    = 5,                             // processing the effects（正在结算命中目标与法术效果）
+    SPELL_STATE_CHANNELING = 6,                             // channeled time period spell casting state（引导类法术的持续引导阶段）
+    SPELL_STATE_FINISHED   = 7,                             // cast finished to success or fail（施放成功或失败并已结束）
 };
 
+// 区域/链式搜索的目标阵营过滤类型
 enum SpellTargets
 {
-    SPELL_TARGETS_ASSISTABLE,
-    SPELL_TARGETS_AOE_ATTACKABLE,
-    SPELL_TARGETS_CHAIN_ATTACKABLE,
-    SPELL_TARGETS_ALL
+    SPELL_TARGETS_ASSISTABLE,                               // 可协助的友方目标
+    SPELL_TARGETS_AOE_ATTACKABLE,                           // 可攻击的 AOE 敌方目标
+    SPELL_TARGETS_CHAIN_ATTACKABLE,                         // 可攻击的链式弹跳目标
+    SPELL_TARGETS_ALL                                       // 所有符合条件的目标（不限敌友）
 };
 
 typedef std::multimap<uint64, uint64> SpellTargetTimeMap;
 
 // SpellLog class to manage spells logs that have to be sent to clients
+// 法术战斗记录构建器：汇总各效果命中目标并发送 SMSG_SPELLLOGEXECUTE 到客户端
 class SpellLog
 {
     public:
@@ -245,6 +253,7 @@ class SpellLog
         void Initialize();
 
         // Variadic template to add log data (warnings, devs should respect the correct packet structure)
+        // 可变参数模板：追加单条效果日志数据（调用方需严格遵守数据包字段顺序）
         template<typename... Args>
         void AddLog(uint32 spellEffect, Args... args)
         {
@@ -253,17 +262,17 @@ class SpellLog
             ++m_spellLogDataEffectsCounter;
         }
 
-        // Send collected logs
+        // Send collected logs（发送已收集的法术效果日志给周围玩家）
         void SendToSet();
 
     private:
-        // Finalize previous log if need by setting total targets amount
+        // Finalize previous log if need by setting total targets amount（如有需要，回填上一条效果的总目标数量）
         void FinalizePrevious();
 
-        // Handle multi targets cases by adjusting targets counter if need
+        // Handle multi targets cases by adjusting targets counter if need（切换当前效果索引并维护多目标计数）
         void SetCurrentEffect(uint32 effect);
 
-        // Variadic template to method to handle multi arguments passed with different types
+        // Variadic template to method to handle multi arguments passed with different types（递归写入可变参数到数据包缓冲区）
         template<typename T>
         void AddLogData(T const& data) { m_spellLogData << data; }
 
@@ -283,6 +292,7 @@ class SpellLog
         uint32 m_currentEffect;
 };
 
+// 法术异步事件包装器：挂载到施法者的 EventProcessor，用于驱动读条完成、引导跳数及弹道延迟结算
 class SpellEvent : public BasicEvent
 {
     public:
@@ -300,6 +310,7 @@ class SpellEvent : public BasicEvent
         MaNGOS::unique_trackable_ptr<Spell> m_Spell;
 };
 
+// 法术修饰器 RAII 守卫：在施法前后安全应用、保存或回滚玩家天赋/光环提供的 SpellModifier 充能
 class SpellModRAII
 {
     public:
@@ -310,9 +321,10 @@ class SpellModRAII
         Spell* m_spell;
         Player* m_modOwner;
         bool m_success;
-        bool m_onlySave; // casting time
+        bool m_onlySave; // casting time（仅在读条开始时保存修饰器状态）
 };
 
+// 触发/脚本施法可选参数构造器（链式设置目标、脚本值、自定义基础点数、目标地点及物品目标）
 class SpellCastArgs
 {
     public:
@@ -373,12 +385,14 @@ class SpellCastArgs
         Item* m_itemTarget;
 };
 
+// 法术核心执行类：管理法术施放检查、读条/引导/飞行状态机、目标筛选、命中/抗性结算及效果分发
 class Spell
 {
         friend struct MaNGOS::SpellNotifierPlayer;
         friend struct MaNGOS::SpellNotifierCreatureAndPlayer;
         friend void Unit::SetCurrentCastedSpell(Spell* pSpell);
     public:
+        // 法术效果处理器声明（对应 SpellEffects.cpp 中的 SpellEffects 表）
         void EffectEmpty(SpellEffectIndex eff_idx);
         void EffectNULL(SpellEffectIndex eff_idx);
         void EffectUnused(SpellEffectIndex eff_idx);
@@ -489,29 +503,29 @@ class Spell
 
         SpellCastResult SpellStart(SpellCastTargets const* targets, Aura* triggeredByAura = nullptr);
 
-        void cancel();
+        void cancel();                                      // 取消当前施法并清理状态与冷却
 
-        void update(uint32 difftime);
-        SpellCastResult cast(bool skipCheck = false);
-        void finish(bool ok = true);
-        void TakePower();
-        void TakeAmmo() const;
-        void TakeReagents();
-        void TakeCastItem();
+        void update(uint32 difftime);                       // 推进法术读条、引导或状态机计时
+        SpellCastResult cast(bool skipCheck = false);       // 正式施放法术（填充目标、消耗资源并结算即时或弹道效果）
+        void finish(bool ok = true);                        // 结束法术施放并执行收尾、触发法术及清理
+        void TakePower();                                   // 扣除施法消耗的能量（法力/怒气/能量等）
+        void TakeAmmo() const;                              // 消耗远程弹药
+        void TakeReagents();                                // 消耗施法材料
+        void TakeCastItem();                                // 消耗或扣减施法物品充能
 
-        SpellCastResult CheckCast(bool strict);
+        SpellCastResult CheckCast(bool strict);             // 检查施法前置条件（目标、距离、资源、光环、冷却等）
 
-        // handlers
-        void handle_immediate();
-        uint64 handle_delayed(uint64 t_offset);
-        // handler helpers
-        void _handle_immediate_phase();
-        void _handle_finish_phase();
+        // handlers（阶段处理器）
+        void handle_immediate();                            // 立即结算目标效果阶段
+        uint64 handle_delayed(uint64 t_offset);             // 按弹道飞行时间分批结算延迟命中目标
+        // handler helpers（阶段处理辅助函数）
+        void _handle_immediate_phase();                     // 立即命中阶段内部处理
+        void _handle_finish_phase();                        // 结束阶段内部处理（包含引导终止）
 
-        SpellCastResult CheckItems();
-        SpellCastResult CheckRange(bool strict);
-        SpellCastResult CheckPower(bool strict);
-        SpellCastResult CheckCasterAuras(uint32& param1) const;
+        SpellCastResult CheckItems();                       // 检查施法所需物品、材料、装备及图腾条件
+        SpellCastResult CheckRange(bool strict);            // 检查施法者与目标之间的最小/最大距离
+        SpellCastResult CheckPower(bool strict);            // 检查施法者资源是否足够
+        SpellCastResult CheckCasterAuras(uint32& param1) const; // 检查施法者身上的控制/沉默/定身等光环限制
 
         bool CheckSpellCancelsAuraEffect(AuraType auraType, uint32& param1) const;
         bool CheckSpellCancelsCharm(uint32& param1) const;
@@ -527,11 +541,12 @@ class Spell
         static uint32 CalculatePowerCost(SpellEntry const* spellInfo, Unit* caster, Spell* spell = nullptr, Item* castItem = nullptr, bool finalUse = false);
 
         bool HaveTargetsForEffect(SpellEffectIndex effect) const;
-        void Delayed();
-        void DelayedChannel();
+        void Delayed();                                     // 非引导法术受击退条处理
+        void DelayedChannel();                              // 引导法术受击缩短剩余时间处理
         uint32 getState() const { return m_spellState; }
         void setState(uint32 state) { m_spellState = state; }
 
+        // 召唤生物位置与句柄记录结构
         struct CreaturePosition
         {
             CreaturePosition() :
@@ -563,6 +578,7 @@ class Spell
 
         bool CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, bool neutralFlagFill, CheckException exception = CheckException::EXCEPTION_NONE) const;
 
+        // 客户端施法状态与结果数据包发送接口
         static void SendCastResult(Player const* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result, bool isPetCastResult = false, uint32 param1 = 0, uint32 param2 = 0);
         void SendCastResult(SpellCastResult result) const;
         void SendSpellStart() const;
@@ -585,11 +601,11 @@ class Spell
 
         SpellEntry const* m_spellInfo;
         SpellEntry const* m_triggeredBySpellInfo;
-        int32 m_currentBasePoints[MAX_EFFECT_INDEX];        // cache SpellEntry::CalculateSimpleValue and use for set custom base points
+        int32 m_currentBasePoints[MAX_EFFECT_INDEX];        // cache SpellEntry::CalculateSimpleValue and use for set custom base points（缓存基础效果值并支持自定义覆盖）
         uint8 m_cast_count;
         SpellCastTargets m_targets;
 
-        // Trigger flag system
+        // Trigger flag system（触发标志系统，由 TriggerCastFlags 解包控制检查跳过与行为）
         bool m_IsTriggeredSpell;
         bool m_ignoreHitResult;
         bool m_ignoreCastTime;
@@ -607,10 +623,10 @@ class Spell
         bool m_hideInCombatLog;
         bool m_resetLeash;
         bool m_channelOnly;
-        // Not a trigger flag but same type of information
+        // Not a trigger flag but same type of information（非触发标志但同属施法上下文的标识：是否源自客户端主动施法）
         bool m_clientCast;
 
-        // scriptable conditionals
+        // scriptable conditionals（可由法术脚本动态修改的条件开关）
         bool m_ignoreRoot; //
 
         int32 GetCastTime() const { return m_casttime; }
@@ -650,27 +666,27 @@ class Spell
         void SetSpellStartTravelling(uint32 time) { m_travellingStart = time; }
         uint32 GetSpellStartTravelling() const { return m_travellingStart; }
 
-        bool IsNeedSendToClient() const;                    // use for hide spell cast for client in case when cast not have client side affect (animation or log entries)
-        bool IsTriggeredSpellWithRedundantCastTime() const; // use for ignore some spell data for triggered spells like cast time, some triggered spells have redundent copy data from main spell for client use purpose
+        bool IsNeedSendToClient() const;                    // use for hide spell cast for client in case when cast not have client side affect (animation or log entries)（若法术在客户端无动画或日志表现则隐藏施法通知）
+        bool IsTriggeredSpellWithRedundantCastTime() const; // use for ignore some spell data for triggered spells like cast time, some triggered spells have redundent copy data from main spell for client use purpose（忽略触发法术从主法术复制的冗余施法时间等数据）
         bool IsTriggeredByAura() const { return m_triggeredByAuraSpell != nullptr; }
         SpellEntry const* GetTriggeredByAuraSpellInfo() const { return m_triggeredByAuraSpell; }
 
         CurrentSpellTypes GetCurrentContainer() const;
 
-        // caster types:
-        // formal spell caster, in game source of spell affects cast
+        // caster types:（各类施法者对象访问器）
+        // formal spell caster, in game source of spell affects cast（表面施法者：游戏内实际发起施法动作的单位）
         Unit* GetCaster() const { return m_caster; }
-        // real source of cast affects, explicit caster, or DoT/HoT applier, or GO owner, or wild GO itself. Can be nullptr
+        // real source of cast affects, explicit caster, or DoT/HoT applier, or GO owner, or wild GO itself. Can be nullptr（实际效果归属者：显式施法者、DoT/HoT 施加者、GO 拥有者或野外 GO 本身）
         WorldObject* GetAffectiveCasterObject() const;
-        // limited version returning nullptr in cases wild gameobject caster object, need for Aura
+        // limited version returning nullptr in cases wild gameobject caster object, need for Aura（受限版本：当施法者为野外游戏对象时返回 nullptr，供光环系统使用）
         Unit* GetAffectiveCaster() const { return m_originalCasterGUID ? m_originalCaster : m_caster; }
-        // m_originalCasterGUID can store GO guid, and in this case this is visual caster
+        // m_originalCasterGUID can store GO guid, and in this case this is visual caster（视觉施法对象：m_originalCasterGUID 为游戏对象时返回该游戏对象）
         WorldObject* GetCastingObject() const;
-        // channels are generally instant - until more research provided all need to have speed 0
+        // channels are generally instant - until more research provided all need to have speed 0（获取弹道飞行速度；引导法术通常视为瞬发速度 0）
         float GetSpellSpeed() const;
         bool IsDelayedSpell() const;
 
-        void UpdatePointers();                              // must be used at call Spell code after time delay (non triggered spell cast/update spell call/etc)
+        void UpdatePointers();                              // must be used at call Spell code after time delay (non triggered spell cast/update spell call/etc)（在延迟回调或更新前刷新内部对象指针，防止悬垂指针）
 
         static bool CheckTargetCreatureType(Unit* target, SpellEntry const* spellInfo);
 
@@ -686,7 +702,7 @@ class Spell
 
         void SetForwardedCastItem(ObjectGuid guid) { m_forwardedCastItemGuid = guid; }
 
-        // spell mods
+        // spell mods（本次施法消耗过充能的光环修饰器记录）
         std::set<SpellModifierPair> m_usedAuraCharges;
 
         static void SelectMountByAreaAndSkill(Unit* target, SpellEntry const* parentSpell, uint32 spellId75, uint32 spellId150, uint32 spellId225, uint32 spellId300, uint32 spellIdSpecial);
@@ -696,32 +712,33 @@ class Spell
 
         void RegisterAuraProc(Aura* aura);
         bool IsAuraProcced(Aura* aura);
-        // setting 0 disables the trigger
+        // setting 0 disables the trigger（设置效果触发概率，设为 0 则禁用触发）
         void SetEffectChance(int32 triggerChance, SpellEffectIndex effIdx) { m_effectTriggerChance[effIdx] = triggerChance; }
 
-        // Spell Target Subsystem - public part
+        // Spell Target Subsystem - public part（法术目标子系统 - 公共数据结构）
         // Targets store structures and data
+        // 单位目标命中与结算信息条目
         struct TargetInfo
         {
             ObjectGuid targetGUID;
             uint64 timeDelay;
-            uint64 initialDelay; // Used to store reflect travel time so we can reset it on proc
+            uint64 initialDelay; // Used to store reflect travel time so we can reset it on proc（记录法术反射前的初始飞行延迟，供触发时重置）
             uint32 HitInfo;
             uint32 damage;
             uint32 healing;
             SpellMissInfo missCondition : 8;
             SpellMissInfo reflectResult : 8;
-            uint8  effectHitMask : 8; // Used for all effects which actually hit a target
-            uint8  effectMask : 8; // Used for all effects a certain target was evaluated for
-            uint8  effectMaskProcessed : 8; // Used for all effects that were already processed
+            uint8  effectHitMask : 8; // Used for all effects which actually hit a target（实际命中的效果掩码）
+            uint8  effectMask : 8; // Used for all effects a certain target was evaluated for（参与评估的全部效果掩码）
+            uint8  effectMaskProcessed : 8; // Used for all effects that were already processed（已执行结算的效果掩码）
             bool   processed : 1;
             bool   magnet : 1;
-            bool   procReflect : 1; // Used to tell hit to proc reflect only and return reflect back
+            bool   procReflect : 1; // Used to tell hit to proc reflect only and return reflect back（仅触发反射并将法术弹回原施法者）
             bool   isCrit : 1;
             bool   executionless : 1;
             uint32 heartbeatResistChance;
             uint32 effectDuration;
-            uint32 diminishDuration; // Store duration after diminishing returns are applied
+            uint32 diminishDuration; // Store duration after diminishing returns are applied（记录递减效应计算后的实际持续时间）
             DiminishingLevels diminishLevel;
             DiminishingGroup diminishGroup;
         };
@@ -778,12 +795,12 @@ class Spell
 
         SpellCastResult CheckScriptTargeting(SpellEffectIndex effIndex, uint32 chainTargets, float radius, uint32 targetMode, UnitList& tempUnitList, GameObjectList& tempGOList);
 
-        // Scripting system
+        // Scripting system（法术脚本系统接口与回调钩子）
         SpellScript* GetSpellScript() const { return m_spellScript; }
-        // Variable storage
+        // Variable storage（脚本持久化状态变量存取）
         uint64 GetScriptValue() const { return m_scriptValue; }
         void SetScriptValue(uint64 value) { m_scriptValue = value; }
-        // hooks
+        // hooks（生命周期与效果执行钩子）
         void OnInit();
         void OnSuccessfulStart();
         void OnSuccessfulFinish();
@@ -798,7 +815,7 @@ class Spell
         void OnAfterHit();
         void OnSummon(GameObject* summon);
         void OnSummon(Creature* summon);
-        // effect execution info access - only to be used in OnEffectExecute OnHit and OnAfterHit
+        // effect execution info access - only to be used in OnEffectExecute OnHit and OnAfterHit（效果执行上下文访问器，仅限上述三个钩子内调用）
         Unit* GetUnitTarget() { return unitTarget; }
         Item* GetItemTarget() { return itemTarget; }
         GameObject* GetGOTarget() { return gameObjTarget; }
@@ -806,37 +823,37 @@ class Spell
         void SetDamage(uint32 newDamage) { damage = newDamage; }
         SpellSchoolMask GetSchoolMask() { return m_spellSchoolMask; }
         void SetGuaranteedCrit() { m_guaranteedCrit = true; }
-        // OnInit use only
+        // OnInit use only（仅限 OnInit 阶段调用）
         void SetEffectSkipMask(uint32 mask) { m_effectSkipMask = mask; }
-        // OnHit use only
+        // OnHit use only（仅限 OnHit 阶段调用）
         uint32 GetTotalTargetDamage() const { return m_damage; }
         uint32 GetTotalTargetAbsorb() const { return m_absorb; }
         void SetTotalTargetValueModifier(float modifier);
         int32 GetDamageForEffect(SpellEffectIndex effIdx) const { return m_damagePerEffect[effIdx]; }
-        // script initialization hook only setters - use only if dynamic - else use appropriate helper
+        // script initialization hook only setters - use only if dynamic - else use appropriate helper（仅限脚本初始化钩子调用的动态参数设置）
         void SetMaxAffectedTargets(uint32 newValue) { m_affectedTargetCount = newValue; }
         void SetJumpRadius(float newValue) { m_jumpRadius = newValue; }
-        // warning - always set scheme for first unique target in a row
+        // warning - always set scheme for first unique target in a row（注意：同一排首个唯一目标需设置过滤策略）
         void SetFilteringScheme(SpellEffectIndex effIdx, bool targetB, SpellTargetFilterScheme scheme) { m_filteringScheme[effIdx][uint32(targetB)] = scheme; }
-        // onsuccessfulspellstart
+        // onsuccessfulspellstart（施法成功开始时读写能量消耗）
         uint32 GetPowerCost() const { return m_powerCost; }
         void SetPowerCost(uint32 powerCost) { m_powerCost = powerCost; }
-        // access to targets
+        // access to targets（访问最终命中目标列表）
         TargetList& GetTargetList() { return m_UniqueTargetInfo; }
-        // enables customizing auras after creation - use only in OnEffectExecute and with aura effects
+        // enables customizing auras after creation - use only in OnEffectExecute and with aura effects（获取当前目标刚创建的光环容器，仅限 OnEffectExecute 中光环类效果使用）
         SpellAuraHolder* GetSpellAuraHolder() { return m_spellAuraHolder; }
-        // sets event target object
+        // sets event target object（设置事件目标对象）
         void SetEventTarget(WorldObject* object) { m_eventTarget = object; }
 
-        // GO casting preparations
-        void SetFakeCaster(Unit* caster) { m_caster = caster; } // also used by dyngo caster emulation
+        // GO casting preparations（游戏对象模拟施法准备与真实施法者访问）
+        void SetFakeCaster(Unit* caster) { m_caster = caster; } // also used by dyngo caster emulation（也用于动态对象模拟施法者）
         WorldObject* GetTrueCaster() const { return m_trueCaster; }
         Unit* GetAffectiveCasterOrOwner() const;
 
-        // custom Spell Cast Results
+        // custom Spell Cast Results（自定义施法失败结果的附加参数）
         void SetParam1(uint32 param1) { m_param1 = param1; }
         void SetParam2(uint32 param2) { m_param2 = param2; }
-        // overrides
+        // overrides（运行时参数覆写接口）
         void SetOverridenSpeed(float newSpeed);
         void SetIgnoreRoot(bool state) { m_ignoreRoot = state; }
         void SetDamageDoneModifier(float mod, SpellEffectIndex effIdx);
@@ -847,13 +864,13 @@ class Spell
 
     protected:
         void SendLoot(ObjectGuid guid, LootType loottype, LockType lockType);
-        bool IgnoreItemRequirements() const;                // some item use spells have unexpected reagent data
+        bool IgnoreItemRequirements() const;                // some item use spells have unexpected reagent data（部分物品触发法术带有异常材料数据，需忽略物品前置检查）
         void UpdateOriginalCasterPointer();
 
         SpellCastResult PreCastCheck(Aura* triggeredByAura = nullptr);
         void Prepare();
 
-        // Spell_C_GetMinMaxRange client equivalent - do not change
+        // Spell_C_GetMinMaxRange client equivalent - do not change（与客户端 Spell_C_GetMinMaxRange 等价的距离计算，切勿随意改动）
         std::pair<float, float> GetMinMaxRange(bool strict);
 
         Unit* m_caster;
@@ -861,68 +878,68 @@ class Spell
         bool m_itemCastSpell;
         ObjectGuid m_forwardedCastItemGuid;
 
-        ObjectGuid m_originalCasterGUID;                    // real source of cast (aura caster/etc), used for spell targets selection
+        ObjectGuid m_originalCasterGUID;                    // real source of cast (aura caster/etc), used for spell targets selection（真实施法源 GUID，用于判定敌友与目标选择）
         // e.g. damage around area spell trigered by victim aura and da,age emeies of aura caster
-        Unit* m_originalCaster;                             // cached pointer for m_originalCaster, updated at Spell::UpdatePointers()
+        Unit* m_originalCaster;                             // cached pointer for m_originalCaster, updated at Spell::UpdatePointers()（真实施法者缓存指针，在 UpdatePointers 中刷新）
 
-        // Spell data
-        SpellSchoolMask m_spellSchoolMask;                  // Spell school (can be overwrite for some spells (wand shoot for example)
-        WeaponAttackType m_attackType;                      // For weapon based attack
-        uint32 m_powerCost;                                 // Calculated spell cost     initialized only in Spell::prepare
-        int32 m_casttime;                                   // Calculated spell cast time initialized only in Spell::prepare
+        // Spell data（法术核心计算属性）
+        SpellSchoolMask m_spellSchoolMask;                  // Spell school (can be overwrite for some spells (wand shoot for example)（法术学派掩码，魔杖射击等法术会覆写此值）
+        WeaponAttackType m_attackType;                      // For weapon based attack（武器攻击类型：主手/副手/远程）
+        uint32 m_powerCost;                                 // Calculated spell cost     initialized only in Spell::prepare（已计算的法术资源消耗，仅在 Prepare 阶段初始化）
+        int32 m_casttime;                                   // Calculated spell cast time initialized only in Spell::prepare（已计算的施法时间，仅在 Prepare 阶段初始化）
         int32 m_duration;
-        bool m_reflectable;                                  // can reflect this spell?
+        bool m_reflectable;                                  // can reflect this spell?（该法术是否可被法术反射）
         bool m_autoRepeat;
-        float m_maxRange;                                   // For channeled spell check
+        float m_maxRange;                                   // For channeled spell check（引导法术持续期间的最大距离校验值）
 
         uint8 m_delayAtDamageCount;
         int32 GetNextDelayAtDamageMsTime() { return m_delayAtDamageCount < 5 ? 1000 - (m_delayAtDamageCount++) * 200 : 200; }
 
-        // Delayed spells system
-        uint64 m_delayStart;                                // time of spell delay start, filled by event handler, zero = just started
-        uint64 m_delayMoment;                               // moment of next delay call, used internally
-        uint32 m_travellingStart;                           // moment when spell travel starts - used in checks for aura interruption
+        // Delayed spells system（延迟/弹道法术计时状态）
+        uint64 m_delayStart;                                // time of spell delay start, filled by event handler, zero = just started（弹道延迟起始时间戳，0 表示刚起飞）
+        uint64 m_delayMoment;                               // moment of next delay call, used internally（下一次延迟结算的目标时刻）
+        uint32 m_travellingStart;                           // moment when spell travel starts - used in checks for aura interruption（法术弹道开始飞行的时刻，用于光环打断校验）
 
-        // These vars are used in both delayed spell system and modified immediate spell system
-        bool m_referencedFromCurrentSpell;                  // mark as references to prevent deleted and access by dead pointers
-        bool m_executedCurrently;                           // mark as executed to prevent deleted and access by dead pointers
-        bool m_needSpellLog;                                // need to send spell log?
-        uint8 m_applyMultiplierMask;                        // by effect: damage multiplier needed?
-        float m_damageMultipliers[3];                       // by effect: damage multiplier
+        // These vars are used in both delayed spell system and modified immediate spell system（以下标志用于防止法术在执行或引用期间被提前析构）
+        bool m_referencedFromCurrentSpell;                  // mark as references to prevent deleted and access by dead pointers（被当前施法槽引用标记）
+        bool m_executedCurrently;                           // mark as executed to prevent deleted and access by dead pointers（正在执行中标记）
+        bool m_needSpellLog;                                // need to send spell log?（是否需要发送 SMSG_SPELLLOGEXECUTE）
+        uint8 m_applyMultiplierMask;                        // by effect: damage multiplier needed?（按效果位标记是否需要应用伤害递减/加成倍率）
+        float m_damageMultipliers[3];                       // by effect: damage multiplier（按效果索引存储的弹跳/AOE 伤害倍率）
         float m_damageDoneMultiplier[3];
 
-        // Current targets, to be used in SpellEffects (MUST BE USED ONLY IN SPELL EFFECTS)
+        // Current targets, to be used in SpellEffects (MUST BE USED ONLY IN SPELL EFFECTS)（当前效果执行上下文目标，仅允许在 SpellEffects 处理器内使用）
         Unit* unitTarget;
         Item* itemTarget;
         GameObject* gameObjTarget;
         Corpse* corpseTarget;
-        SpellAuraHolder* m_spellAuraHolder;                 // spell aura holder for current target, created only if spell has aura applying effect
+        SpellAuraHolder* m_spellAuraHolder;                 // spell aura holder for current target, created only if spell has aura applying effect（当前目标对应的光环容器，仅当法术含光环效果时创建）
         int32 damage;
 
         // -------------------------------------------
         WorldObject* m_eventTarget;
 
-        // Damage and healing in effects need just calculate
-        int32 m_damage;                                     // Damage in effects count here
-        int32 m_absorb;                                     // Absorbed amount for scripts to hook into
-        int32 damagePerEffect[MAX_EFFECT_INDEX];            // Workaround for multiple weapon damage effects
+        // Damage and healing in effects need just calculate（效果结算期间累计的伤害、吸收、治疗与吸血数值）
+        int32 m_damage;                                     // Damage in effects count here（累计对当前目标造成的总伤害）
+        int32 m_absorb;                                     // Absorbed amount for scripts to hook into（累计被吸收的伤害，供脚本钩子读取）
+        int32 damagePerEffect[MAX_EFFECT_INDEX];            // Workaround for multiple weapon damage effects（多武器伤害效果的中间值记录）
         int32 m_damagePerEffect[MAX_EFFECT_INDEX];
-        int32 m_healing;                                    // Healing in effects count here
+        int32 m_healing;                                    // Healing in effects count here（累计对当前目标造成的总治疗量）
         int32 m_healingPerEffect[MAX_EFFECT_INDEX];
-        int32 m_healthLeech;                                // Health leech in effects for all targets count here
-        bool m_guaranteedCrit;                              // Used in effect handlers to guarantee crit
+        int32 m_healthLeech;                                // Health leech in effects for all targets count here（跨所有目标累计的生命吸取总量）
+        bool m_guaranteedCrit;                              // Used in effect handlers to guarantee crit（在效果处理器中强制本次效果暴击）
         bool m_usableWhileStunned;
 
         //******************************************
-        // Spell trigger system
+        // Spell trigger system（法术触发系统）
         //******************************************
-        bool   m_canTrigger;                                // Can start trigger (m_IsTriggeredSpell can`t use for this)
-        uint8  m_negativeEffectMask;                        // Use for avoid sent negative spell procs for additional positive effects only targets
+        bool   m_canTrigger;                                // Can start trigger (m_IsTriggeredSpell can`t use for this)（是否允许触发额外事件/Proc）
+        uint8  m_negativeEffectMask;                        // Use for avoid sent negative spell procs for additional positive effects only targets（负面效果掩码，避免对纯友方效果目标触发负面 Proc）
         void prepareDataForTriggerSystem();
         void PrepareMasksForProcSystem(uint8 effectMask, uint32& procAttacker, uint32& procVictim, WorldObject* caster, WorldObject* target);
 
         //*****************************************
-        // Spell target filling
+        // Spell target filling（法术目标填充与筛选）
         //*****************************************
         void FillTargetMap();
         void SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targetB, TempTargetingData& targetingData);
@@ -935,13 +952,13 @@ class Spell
         void FillAreaTargets(UnitList& targetUnitMap, float radius, float cone, SpellNotifyPushType pushType, SpellTargets spellTargets, WorldObject* originalCaster = nullptr);
         void FillRaidOrPartyTargets(UnitList& targetUnitMap, Unit* member, float radius, bool raid, bool withPets, bool withcaster) const;
 
-        // Returns a target that was filled by SPELL_SCRIPT_TARGET (or selected victim) Can return nullptr
+        // Returns a target that was filled by SPELL_SCRIPT_TARGET (or selected victim) Can return nullptr（返回由 SPELL_SCRIPT_TARGET 或当前目标填充的单位，可能为空）
         Unit* GetPrefilledUnitTargetOrUnitTarget(SpellEffectIndex effIndex) const;
         void GetSpellRangeAndRadius(SpellEffectIndex effIndex, float& radius, bool targetB, uint32& EffectChainTarget);
         float GetCone();
 
         //*****************************************
-        // Spell target subsystem
+        // Spell target subsystem（法术目标结算子系统）
         //*****************************************
         TargetList     m_UniqueTargetInfo;
         GOTargetList   m_UniqueGOTargetInfo;
@@ -972,19 +989,19 @@ class Spell
         bool CanExecuteTriggersOnHit(uint8 effMask, SpellEntry const* triggeredByAura, bool auraTarget) const;
         // -------------------------------------------
 
-        // Diminishing returns
+        // Diminishing returns（控制技能递减判断）
         bool CanSpellDiminish() const;
 
-        // List For Triggered Spells
+        // List For Triggered Spells（待联动的预施放法术与收尾触发法术列表）
         typedef std::list<SpellEntry const*> SpellInfoList;
-        SpellInfoList m_TriggerSpells;                      // casted by caster to same targets settings in m_targets at success finish of current spell
-        SpellInfoList m_preCastSpells;                      // casted by caster to each target at spell hit before spell effects apply
+        SpellInfoList m_TriggerSpells;                      // casted by caster to same targets settings in m_targets at success finish of current spell（当前法术成功结束时对同一批目标施放）
+        SpellInfoList m_preCastSpells;                      // casted by caster to each target at spell hit before spell effects apply（法术命中各目标但在效果生效前先行施放）
 
-        // Scripting System
-        uint64 m_scriptValue; // persistent value for spell script state
+        // Scripting System（脚本状态与每效果触发概率配置）
+        uint64 m_scriptValue; // persistent value for spell script state（法术脚本持久化状态值）
         SpellScript* m_spellScript;
-        AuraScript* m_auraScript; // needed for some checks for value calculation
-        int32 m_effectTriggerChance[MAX_EFFECT_INDEX]; // used by effects to roll if they should go off
+        AuraScript* m_auraScript; // needed for some checks for value calculation（部分数值计算所需的关联光环脚本）
+        int32 m_effectTriggerChance[MAX_EFFECT_INDEX]; // used by effects to roll if they should go off（各效果独立触发概率）
         uint32 m_effectSkipMask;
 
         uint32 m_spellState;
@@ -1038,16 +1055,18 @@ class Spell
         float m_helpfulThreatCoeff;
 };
 
+// 能量/生命补充类型（用于法术日志上报）
 enum ReplenishType
 {
     REPLENISH_UNDEFINED = 0,
-    REPLENISH_HEALTH    = 20,
-    REPLENISH_MANA      = 21,
-    REPLENISH_RAGE      = 22
+    REPLENISH_HEALTH    = 20,                               // 恢复生命值
+    REPLENISH_MANA      = 21,                               // 恢复法力值
+    REPLENISH_RAGE      = 22                                // 恢复怒气值
 };
 
 namespace MaNGOS
 {
+    // 网格玩家目标通知器（当前未使用）
     struct SpellNotifierPlayer              // Currently unused. When put to use this one requires handling for source-location (smilar to below)
     {
         UnitList& i_data;
@@ -1083,6 +1102,7 @@ namespace MaNGOS
         template<class SKIP> void Visit(GridRefManager<SKIP>&) {}
     };
 
+    // 网格生物与玩家目标搜索器：按圆形半径或锥形扇面收集满足敌友与免疫条件的单位
     struct SpellNotifierCreatureAndPlayer
     {
         UnitList& i_data;

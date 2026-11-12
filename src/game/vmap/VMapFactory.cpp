@@ -23,6 +23,7 @@ using namespace G3D;
 
 namespace VMAP
 {
+    // 去除字符串首尾空白符、回车换行与引号
     void VMapFactory::chompAndTrim(std::string& str)
     {
         while (str.length() > 0)
@@ -51,10 +52,10 @@ namespace VMAP
         }
     }
 
-    IVMapManager* gVMapManager = nullptr;
+    IVMapManager* gVMapManager = nullptr;                       // 全局 VMapManager 单例指针
 
     //===============================================
-    // result false, if no more id are found
+    // result false, if no more id are found (从逗号分隔字符串解析下一个整数 ID，无更多 ID 时返回 false)
 
     bool VMapFactory::getNextId(const std::string& pString, unsigned int& pStartPos, unsigned int& pId)
     {
@@ -79,7 +80,7 @@ namespace VMAP
     }
 
     //===============================================
-    // just return the instance
+    // just return the instance (惰性创建并返回全局唯一 VMapManager2 实例)
     IVMapManager* VMapFactory::createOrGetVMapManager()
     {
         if (!gVMapManager) // called once on load
@@ -88,7 +89,7 @@ namespace VMAP
     }
 
     //===============================================
-    // delete all internal data structures
+    // delete all internal data structures (释放全局 VMapManager 实例及其缓存的所有地图/模型资源)
     void VMapFactory::clear()
     {
         delete gVMapManager; // called once on world destruction where single threaded is guaranteed

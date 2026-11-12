@@ -45,6 +45,7 @@
 #include "Spells/SpellMgr.h"
 #include "MotionGenerators/PathFinder.h"
 
+// 构造函数：初始化对象基础类型掩码、空属性数组及弱引用跟踪指针
 Object::Object(): m_updateFlag(0), m_itsNewObject(false), m_dbGuid(0), m_scriptRef(this, NoopObjectDeleter())
 {
     m_objectTypeId      = TYPEID_OBJECT;
@@ -58,6 +59,7 @@ Object::Object(): m_updateFlag(0), m_itsNewObject(false), m_dbGuid(0), m_scriptR
     m_loot              = nullptr;
 }
 
+// 析构函数：校验对象已离开世界且未残留更新状态，随后释放属性数组与掉落对象
 Object::~Object()
 {
     if (IsInWorld())
@@ -78,6 +80,7 @@ Object::~Object()
     delete m_loot;
 }
 
+// 将对象标记为在世界内，清空旧更新掩码并确保脚本安全弱引用有效
 void Object::AddToWorld()
 {
     if (m_inWorld)
@@ -94,6 +97,7 @@ void Object::AddToWorld()
         m_scriptRef.reset(this, NoopObjectDeleter());
 }
 
+// 将对象移出世界：清理更新队列与变化掩码并失效脚本弱引用
 void Object::RemoveFromWorld()
 {
     // if we remove from world then sending changes not required
@@ -102,6 +106,7 @@ void Object::RemoveFromWorld()
     m_scriptRef = nullptr;
 }
 
+// 分配并清零 UpdateFields 数值数组与脏位掩码
 void Object::_InitValues()
 {
     m_uint32Values = new uint32[ m_valuesCount ];
@@ -112,6 +117,7 @@ void Object::_InitValues()
     m_objectUpdated = false;
 }
 
+// 初始化对象字段数组、GUID、数据库 GUID 及打包 GUID
 void Object::_Create(uint32 dbGuid, uint32 guidlow, uint32 entry, HighGuid guidhigh)
 {
     if (!m_uint32Values)
@@ -130,6 +136,7 @@ void Object::SetObjectScale(float newScale)
     SetFloatValue(OBJECT_FIELD_SCALE_X, newScale);
 }
 
+// 立即构建并向所有观察者玩家发送一次强制对象属性更新包
 void Object::SendForcedObjectUpdate()
 {
     if (!m_inWorld || !m_objectUpdated)
@@ -147,6 +154,7 @@ void Object::SendForcedObjectUpdate()
     }
 }
 
+// 为目标玩家构建对象创建更新块（包含移动数据与初始 UpdateFields）
 void Object::BuildCreateUpdateBlockForPlayer(UpdateData& data, Player* target) const
 {
     if (!target)
@@ -198,6 +206,7 @@ void Object::BuildCreateUpdateBlockForPlayer(UpdateData& data, Player* target) c
     data.AddUpdateBlock(buf, GetObjectGuid().IsTransport() || GetObjectGuid().IsMOTransport());
 }
 
+// 根据发生变更的字段为目标玩家构建增量 VALUES 更新块
 void Object::BuildValuesUpdateBlockForPlayer(UpdateData& data, Player* target) const
 {
     UpdateMask updateMask;
@@ -259,6 +268,7 @@ void Object::DestroyForPlayer(Player* target) const
     target->GetSession()->SendPacket(data);
 }
 
+// 写入创建/更新数据包中的移动状态、多段移动速度、样条轨迹、坐标及交通工具时间戳
 void Object::BuildMovementUpdate(ByteBuffer* data, uint8 updateFlags, Player const* target) const
 {
     *data << uint8(updateFlags);                            // update flags
@@ -382,6 +392,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint8 updateFlags, Player con
     }
 }
 
+// 按目标玩家权限与视距状态裁剪并序列化 UpdateFields 属性字段（含训练师过滤、战争迷雾血量百分比、拾取/开怪归属与跨阵营兼容）
 void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* updateMask, Player* target) const
 {
     if (!target)
@@ -782,6 +793,7 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
     }
 }
 
+// 重置所有字段变更脏标记并按需移出客户端待更新列表
 void Object::ClearUpdateMask(bool remove)
 {
     if (m_uint32Values)
@@ -798,6 +810,7 @@ void Object::ClearUpdateMask(bool remove)
     }
 }
 
+// 计算目标玩家对该对象各 UpdateFields 字段的可见权限掩码（PUBLIC/PRIVATE/OWNER/GROUP/SPECIAL_INFO）
 uint16 Object::GetUpdateFieldFlagsForTarget(Player const* target, uint16 const*& flags) const
 {
     flags = UpdateFields::GetUpdateFieldFlagsArray(GetTypeId());
@@ -876,6 +889,7 @@ void Object::MarkUpdateFieldsWithFlagForUpdate(UpdateMask& updateMask, uint16 fl
     }
 }
 
+// 按目标玩家权限掩码收集本次发生变更的可同步字段位
 void Object::_SetUpdateBits(UpdateMask& updateMask, Player* target) const
 {
     uint16 const* flags = nullptr;
@@ -887,6 +901,7 @@ void Object::_SetUpdateBits(UpdateMask& updateMask, Player* target) const
             updateMask.SetBit(index);
 }
 
+// 按目标玩家权限掩码收集创建对象时所有非零可同步字段位
 void Object::_SetCreateBits(UpdateMask& updateMask, Player* target) const
 {
     uint16 const* flags = nullptr;
@@ -898,6 +913,7 @@ void Object::_SetCreateBits(UpdateMask& updateMask, Player* target) const
             updateMask.SetBit(index);
 }
 
+// 属性字段写入与位标志修改辅助接口（变更时自动标记脏位并加入客户端更新队列）
 void Object::SetInt32Value(uint16 index, int32 value)
 {
     MANGOS_ASSERT(index < m_valuesCount || PrintIndexError(index, true));
@@ -1152,6 +1168,7 @@ void Object::BuildUpdateDataForPlayer(Player* pl, UpdateDataMapType& update_play
     BuildValuesUpdateBlockForPlayer(iter->second, iter->first);
 }
 
+// 为单个玩家构建创建包（对 Unit 额外附带其当前光环包）
 void Object::BuildCreateDataForPlayer(Player* player, UpdateDataMapType& update_players, bool auras) const
 {
     UpdateDataMapType::iterator iter = update_players.find(player);
@@ -1235,6 +1252,7 @@ void Object::ForceValuesUpdateForFlag(uint16 flag)
     }
 }
 
+// 绑定或解绑 WorldObject 的脚本字符串 ID，并在世界内同步地图索引
 void WorldObject::SetStringId(uint32 stringId, bool apply)
 {
     if (apply)
@@ -1275,6 +1293,7 @@ bool WorldObject::HasStringId(uint32 stringId) const
     return m_stringIds.find(stringId) != m_stringIds.end();
 }
 
+// WorldObject 构造函数：初始化地图位置、位面、视野数据及更新节流参数
 WorldObject::WorldObject() :
     m_inRemoveList(false), m_transport(nullptr), m_transportInfo(nullptr), m_isOnEventNotified(false),
     m_visibilityData(this), m_nextUpdateTime(0), m_accumulatedUpdateDiff(0), m_currMap(nullptr),
@@ -1294,6 +1313,7 @@ WorldObject::~WorldObject()
     MANGOS_ASSERT(!m_inRemoveList);
 }
 
+// WorldObject 每帧更新：驱动周期性心跳触发器
 void WorldObject::Update(const uint32 diff)
 {
     m_heartBeatTimer.Update(diff);
@@ -1310,6 +1330,7 @@ void WorldObject::_Create(uint32 guidlow, HighGuid guidhigh, uint32 phaseMask)
     m_phaseMask = phaseMask;
 }
 
+// 更新对象三维坐标与朝向（Unit 同步更新 MovementInfo）
 void WorldObject::Relocate(float x, float y, float z, float orientation)
 {
     m_position.x = x;
@@ -1364,6 +1385,7 @@ InstanceData* WorldObject::GetInstanceData() const
     return GetMap()->GetInstanceData();
 }
 
+// 计算到另一世界实体的三维或二维距离（支持按包围盒半径或战斗触及半径扣减，默认返回距离平方）
 float WorldObject::GetDistance(const WorldObject* obj, bool is3D, DistanceCalculation distcalc) const
 {
     float dx = GetPositionX() - obj->GetPositionX();
@@ -1499,6 +1521,7 @@ bool WorldObject::IsWithinLOSInMap(const WorldObject* obj, bool ignoreM2Model) c
     return IsWithinLOS(x, y, z + obj->GetCollisionHeight(), ignoreM2Model);
 }
 
+// 检测从自身到目标坐标是否存在地形/建筑物视线阻挡 (LoS)
 bool WorldObject::IsWithinLOS(float ox, float oy, float oz, bool ignoreM2Model) const
 {
     float x, y, z;
@@ -1622,6 +1645,7 @@ float WorldObject::GetAngle(const WorldObject* obj) const
     return GetAngleAt(GetPositionX(), GetPositionY(), obj->GetPositionX(), obj->GetPositionY());
 }
 
+// 判断目标是否位于指定坐标和朝向的扇形张角范围内
 bool WorldObject::HasInArcAt(float x, float y, float o, const WorldObject* target, float arc/* = M_PI_F*/) const
 {
     // always have self in arc
@@ -1763,6 +1787,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float& z, Map* atMap 
         z = ground_z;
 }
 
+// 沿指定方向投射点位，结合寻路与碰撞检测推进到首个碰撞障碍前（击退/闪现等常用）
 void WorldObject::MovePositionToFirstCollision(Position& pos, float dist, float angle)
 {
     float destX = pos.x + dist * cos(angle);
@@ -1952,6 +1977,7 @@ void _DoLocalizedTextAround(WorldObject const* source, std::vector<std::string> 
     Cell::VisitWorldObjects(source, say_worker, range);
 }
 
+// /// Function that sends a text associated to a MangosString or BroadcastText -> 兼容本地化向周围/区域/小队/密语发送怪物或首领台词
 /// Function that sends a text associated to a MangosString or BroadcastText
 void WorldObject::MonsterText(std::vector<std::string> content, uint32 type, Language lang, Unit const* target) const
 {
@@ -2082,6 +2108,7 @@ void WorldObject::SendGameObjectCustomAnim(ObjectGuid guid, uint32 animId /*= 0*
     SendMessageToSet(data, true);
 }
 
+// 绑定实体所属地图及副本实例 ID
 void WorldObject::SetMap(Map* map)
 {
     MANGOS_ASSERT(map);
@@ -2145,6 +2172,7 @@ void WorldObject::GetPosition(float& x, float& y, float& z, GenericTransport* tr
         transport->CalculatePassengerOffset(x, y, z);
 }
 
+// 根据配置参数临时召唤生物（支持交通工具坐标转换、生成模板覆写及联动脚本触发）
 Creature* WorldObject::SummonCreature(TempSpawnSettings settings, Map* map)
 {
     CreatureInfo const* cinfo = ObjectMgr::GetCreatureTemplate(settings.entry);
@@ -2421,6 +2449,7 @@ void WorldObject::GetNearPoint2dAt(const float posX, const float posY, float& x,
     MaNGOS::NormalizeMapCoord(y);
 }
 
+// 在指定坐标周边寻找一个非冲突且满足视线 (LoS) 的邻近落脚点
 void WorldObject::GetNearPointAt(const float posX, const float posY, const float posZ, WorldObject const* searcher, float& x, float& y, float& z, float searcher_bounding_radius, float distance2d, float absAngle, bool isInWater) const
 {
     GetNearPoint2dAt(posX, posY, x, y, distance2d, absAngle);
@@ -2566,6 +2595,7 @@ void WorldObject::PlaySpellVisual(uint32 artKitId, PlayPacketParameters paramete
     HandlePlayPacketSettings(data, parameters);
 }
 
+// 根据 PlayPacketParameters 设置向可见集合、目标、全图、区域或子区域推送音效/视觉包
 void WorldObject::HandlePlayPacketSettings(WorldPacket& msg, PlayPacketParameters& parameters) const
 {
     switch (parameters.setting)
@@ -2666,6 +2696,7 @@ void WorldObject::BuildUpdateData(UpdateDataMapType& update_players)
         SetItsNewObject(false);
 }
 
+// 刷新对象在周围玩家客户端中的视野可见性（移出不可见客户端并向新进入视野客户端发送创建包）
 void WorldObject::UpdateVisibility(UpdateDataMapType& update_players)
 {
     if (ItsNewObject())
@@ -2699,6 +2730,7 @@ void WorldObject::UpdateVisibility(UpdateDataMapType& update_players)
     ClearUpdateMask(false);
 }
 
+// 判断世界实体当前是否受玩家控制（依据类型检查拥有者/施法者或玩家控制标志）
 bool WorldObject::IsControlledByPlayer() const
 {
     switch (GetTypeId())
@@ -2723,6 +2755,7 @@ bool WorldObject::PrintCoordinatesError(float x, float y, float z, char const* d
     return false;                                           // always false for continue assert fail
 }
 
+// 设置永久活跃对象状态（加入或移出地图活跃列表以控制所在网格是否允许休眠卸载）
 void WorldObject::SetActiveObjectState(bool active)
 {
     if (m_isActiveObject == active || (isType(TYPEMASK_PLAYER) && !active))  // player shouldn't became inactive, never
@@ -2795,6 +2828,7 @@ void WorldObject::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const*
         m_cooldownMap.AddCooldown(GetMap()->GetCurrentClockTime(), spellEntry.Id, recTimeDuration, spellEntry.Category, catTimeDuration);
 }
 
+// 推进并清理已到期的公共冷却、法术冷却、分类冷却与学派反制封锁
 void WorldObject::UpdateCooldowns(TimePoint const& now)
 {
     // handle GCD
@@ -2859,6 +2893,7 @@ bool WorldObject::GetExpireTime(SpellEntry const& spellEntry, TimePoint& expireT
     return false;
 }
 
+// 综合判断法术当前是否就绪（检查全局冷却、法术冷却、物品分类冷却及学派沉默封锁）
 bool WorldObject::IsSpellReady(SpellEntry const& spellEntry, ItemPrototype const* itemProto /*= nullptr*/) const
 {
     uint32 spellCategory = spellEntry.Category;
@@ -3132,6 +3167,7 @@ void WorldObject::PrintCooldownList(ChatHandler& chat) const
     chat.PSendSysMessage("Found %u permanent cooldown%s.", permCDCount, (permCDCount > 1) ? "s" : "");
 }
 
+// 计算法术指定效果的最终数值（基础点数、等级成长、随机骰点、连击点、法术修正及生物等级缩放）
 int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints, bool maximum, bool finalUse) const
 {
     Unit const* unitCaster = dynamic_cast<Unit const*>(this);
@@ -3263,6 +3299,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
     return value;
 }
 
+// 累加更新间隔并判断是否达到该对象的下一次预定更新周期
 uint32 WorldObject::ShouldPerformObjectUpdate(uint32 const diff)
 {
     // For objects that don't have next update time return diff immediately
@@ -3364,6 +3401,7 @@ bool WorldObject::CheckAndIncreaseCastCounter()
     return true;
 }
 
+// 向冷却容器添加法术冷却，区分全局冷却、分类冷却（保留原所有者以同步客户端）与永久待触发冷却
 bool CooldownContainer::AddCooldown(TimePoint clockNow, uint32 spellId, uint32 duration, uint32 spellCategory, uint32 categoryDuration, uint32 itemId, bool onHold)
 {
     RemoveBySpellId(spellId);

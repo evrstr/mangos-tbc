@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Hellfire Citadel, Blood Furnace
 EndScriptData */
 
+// 击碎者克里丹（鲜血熔炉最终首领）
+/* 遭遇战概述：
+ * 击碎者克里丹是鲜血熔炉主管术士，初始被暗影信徒导魔保护，信徒死后亲自迎战并周期性引导毁灭性的暗影新星爆炸。
+ */
+
 /* ContentData
 boss_kelidan_the_breaker
 mob_shadowmoon_channeler
@@ -30,6 +35,7 @@ EndContentData */
 #include "blood_furnace.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     MAX_ADDS                    = 5,
@@ -58,6 +64,7 @@ enum
     SPELL_CHANNELING            = 39123,
 };
 
+// KelidanActions 相关枚举
 enum KelidanActions
 {
     KELIDAN_FIRE_NOVA,
@@ -68,6 +75,7 @@ enum KelidanActions
     KELIDAN_SETUP_ADDS,
 };
 
+// boss_kelidan_the_breakerAI 逻辑实现
 struct boss_kelidan_the_breakerAI : public CombatAI
 {
     boss_kelidan_the_breakerAI(Creature* creature) : CombatAI(creature, KELIDAN_ACTION_MAX), m_instance(static_cast<instance_blood_furnace*>(creature->GetInstanceData())),
@@ -94,6 +102,7 @@ struct boss_kelidan_the_breakerAI : public CombatAI
 
     GuidVector m_vAddGuids;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -106,11 +115,13 @@ struct boss_kelidan_the_breakerAI : public CombatAI
         CombatAI::JustRespawned();
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_WAKE, m_creature);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DIE, m_creature);
@@ -119,6 +130,7 @@ struct boss_kelidan_the_breakerAI : public CombatAI
             m_instance->SetData(TYPE_KELIDAN_EVENT, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -211,6 +223,7 @@ struct boss_kelidan_the_breakerAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -247,6 +260,7 @@ struct boss_kelidan_the_breakerAI : public CombatAI
 ## mob_shadowmoon_channeler
 ######*/
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_SHADOW_BOLT       = 12739,
@@ -255,6 +269,7 @@ enum
     SPELL_MARK_OF_SHADOW    = 30937,
 };
 
+// ChannelerActions 相关枚举
 enum ChannelerActions
 {
     CHANNELER_MARK_OF_SHADOW,
@@ -263,6 +278,7 @@ enum ChannelerActions
     CHANNELER_SETUP_TIMER,
 };
 
+// mob_shadowmoon_channelerAI 逻辑实现
 struct mob_shadowmoon_channelerAI : public CombatAI
 {
     mob_shadowmoon_channelerAI(Creature* creature) : CombatAI(creature, CHANNELER_ACTION_MAX), m_instance(static_cast<instance_blood_furnace*>(creature->GetInstanceData())),
@@ -282,6 +298,7 @@ struct mob_shadowmoon_channelerAI : public CombatAI
 
     ObjectGuid m_target;
 
+    // 进入战斗回调
     void Aggro(Unit* who) override
     {
         m_creature->InterruptNonMeleeSpells(false);
@@ -307,6 +324,7 @@ struct mob_shadowmoon_channelerAI : public CombatAI
                 pKelidanAI->AddJustAggroed(who);
     }
 
+    // 死亡回调
     void JustDied(Unit* killer) override
     {
         if (!m_instance)
@@ -317,6 +335,7 @@ struct mob_shadowmoon_channelerAI : public CombatAI
                 pKelidanAI->AddJustDied(killer);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (!m_instance)
@@ -348,6 +367,7 @@ struct mob_shadowmoon_channelerAI : public CombatAI
             m_creature->CastSpell(target, SPELL_CHANNELING, TRIGGERED_NONE);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -366,6 +386,7 @@ struct mob_shadowmoon_channelerAI : public CombatAI
     }
 };
 
+// 注册 boss_kelidan_the_breaker 脚本
 void AddSC_boss_kelidan_the_breaker()
 {
     Script* pNewScript = new Script;

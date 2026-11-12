@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Hellfire Citadel, Shattered Halls
 EndScriptData */
 
+// 战争使者沃姆罗格（破碎大厅二号首领）
+/* 遭遇战概述：
+ * 战争使者沃姆罗格是双头食人魔将军，左头和右头拥有不同人格会争吵并互相清仇恨、施放群体恐吓与雷霆一击。
+ */
+
 /* ContentData
 mob_omrogg_heads
 boss_warbringer_omrogg
@@ -30,6 +35,7 @@ EndContentData */
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "shattered_halls.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     YELL_DIE_L                  = 16924,
@@ -101,6 +107,7 @@ static Yell KillingDelay[] =
     { 0, NPC_LEFT_HEAD},
 };
 
+// mob_omrogg_headsAI 逻辑实现
 struct mob_omrogg_headsAI : public ScriptedAI
 {
     mob_omrogg_headsAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -108,6 +115,7 @@ struct mob_omrogg_headsAI : public ScriptedAI
     uint32 m_uiDeathTimer;
     bool m_bDeathYell;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiDeathTimer = 2000;
@@ -135,12 +143,14 @@ struct mob_omrogg_headsAI : public ScriptedAI
     }
 };
 
+// OmroggActions 相关枚举
 enum OmroggActions
 {
     OMROGG_ACTION_MAX,
     OMROGG_HEAD_TALKS
 };
 
+// boss_warbringer_omroggAI 逻辑实现
 struct boss_warbringer_omroggAI : public CombatAI
 {
     boss_warbringer_omroggAI(Creature* creature) : CombatAI(creature, OMROGG_ACTION_MAX),
@@ -164,6 +174,7 @@ struct boss_warbringer_omroggAI : public CombatAI
     bool m_threatYell2;
     bool m_killingYell;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -191,6 +202,7 @@ struct boss_warbringer_omroggAI : public CombatAI
         m_threatYell = true;
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         m_creature->SummonCreature(NPC_LEFT_HEAD, 374.3786f, 51.28566f, 30.64389f, 0.03490658f, TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -210,6 +222,7 @@ struct boss_warbringer_omroggAI : public CombatAI
             m_instance->SetData(TYPE_OMROGG, IN_PROGRESS);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_LEFT_HEAD)
@@ -218,6 +231,7 @@ struct boss_warbringer_omroggAI : public CombatAI
             m_rightHeadGuid = summoned->GetObjectGuid();
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* /*victim*/) override
     {
         Creature* leftHead  = m_creature->GetMap()->GetCreature(m_leftHeadGuid);
@@ -244,6 +258,7 @@ struct boss_warbringer_omroggAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         Creature* leftHead  = m_creature->GetMap()->GetCreature(m_leftHeadGuid);
@@ -262,6 +277,7 @@ struct boss_warbringer_omroggAI : public CombatAI
             m_instance->SetData(TYPE_OMROGG, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (Creature* leftHead = m_creature->GetMap()->GetCreature(m_leftHeadGuid))
@@ -321,6 +337,7 @@ struct boss_warbringer_omroggAI : public CombatAI
         }
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -333,13 +350,16 @@ struct boss_warbringer_omroggAI : public CombatAI
 };
 
 // 30618 - Beatdown
+// Beatdown 法术脚本
 struct Beatdown : public SpellScript
 {
+    // 触发施法回调
     void OnCast(Spell* spell) const override
     {
         spell->SetScriptValue(urand(0, spell->GetTargetList().size() - 1));
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         Unit* caster = spell->GetCaster();
@@ -357,8 +377,10 @@ struct Beatdown : public SpellScript
 };
 
 // 30620 - Burning Maul
+// BurningMaulTrigger 法术脚本
 struct BurningMaulTrigger : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* caster = spell->GetCaster();
@@ -367,6 +389,7 @@ struct BurningMaulTrigger : public SpellScript
     }
 };
 
+// 注册 boss_warbringer_omrogg 脚本
 void AddSC_boss_warbringer_omrogg()
 {
     Script* pNewScript = new Script;

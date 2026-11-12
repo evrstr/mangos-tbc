@@ -21,6 +21,10 @@ SDComment: Quest support: 4901.
 SDCategory: Winterspring
 EndScriptData */
 
+/**
+ * 冬泉谷 (Winterspring) 永望镇与霜刃豹任务脚本
+ */
+
 /* ContentData
 npc_ranshalla
 EndContentData */
@@ -32,115 +36,117 @@ EndContentData */
 # npc_ranshalla
 ####*/
 
+// 常量与事件枚举
 enum
 {
-    // Escort texts
-    SAY_QUEST_START             = -1000739,
-    SAY_ENTER_OWL_THICKET       = -1000707,
-    SAY_REACH_TORCH_1           = -1000708,
-    SAY_REACH_TORCH_2           = -1000709,
-    SAY_REACH_TORCH_3           = -1000710,
-    SAY_AFTER_TORCH_1           = -1000711,
-    SAY_AFTER_TORCH_2           = -1000712,
-    SAY_REACH_ALTAR_1           = -1000713,
-    SAY_REACH_ALTAR_2           = -1000714,
+    // Escort texts (护送)
+    SAY_QUEST_START             = -1000739,                 // 剧情台词/喊话文本 ID
+    SAY_ENTER_OWL_THICKET       = -1000707,                 // 剧情台词/喊话文本 ID
+    SAY_REACH_TORCH_1           = -1000708,                 // 剧情台词/喊话文本 ID
+    SAY_REACH_TORCH_2           = -1000709,                 // 剧情台词/喊话文本 ID
+    SAY_REACH_TORCH_3           = -1000710,                 // 剧情台词/喊话文本 ID
+    SAY_AFTER_TORCH_1           = -1000711,                 // 剧情台词/喊话文本 ID
+    SAY_AFTER_TORCH_2           = -1000712,                 // 剧情台词/喊话文本 ID
+    SAY_REACH_ALTAR_1           = -1000713,                 // 剧情台词/喊话文本 ID
+    SAY_REACH_ALTAR_2           = -1000714,                 // 剧情台词/喊话文本 ID
 
-    // After lighting the altar cinematic
-    SAY_RANSHALLA_ALTAR_1       = -1000715,
-    SAY_RANSHALLA_ALTAR_2       = -1000716,
-    SAY_PRIESTESS_ALTAR_3       = -1000717,
-    SAY_PRIESTESS_ALTAR_4       = -1000718,
-    SAY_RANSHALLA_ALTAR_5       = -1000719,
-    SAY_RANSHALLA_ALTAR_6       = -1000720,
-    SAY_PRIESTESS_ALTAR_7       = -1000721,
-    SAY_PRIESTESS_ALTAR_8       = -1000722,
-    SAY_PRIESTESS_ALTAR_9       = -1000723,
-    SAY_PRIESTESS_ALTAR_10      = -1000724,
-    SAY_PRIESTESS_ALTAR_11      = -1000725,
-    SAY_PRIESTESS_ALTAR_12      = -1000726,
-    SAY_PRIESTESS_ALTAR_13      = -1000727,
-    SAY_PRIESTESS_ALTAR_14      = -1000728,
-    SAY_VOICE_ALTAR_15          = -1000729,
-    SAY_PRIESTESS_ALTAR_16      = -1000730,
-    SAY_PRIESTESS_ALTAR_17      = -1000731,
-    SAY_PRIESTESS_ALTAR_18      = -1000732,
-    SAY_PRIESTESS_ALTAR_19      = -1000733,
-    SAY_PRIESTESS_ALTAR_20      = -1000734,
-    SAY_PRIESTESS_ALTAR_21      = -1000735,
-    SAY_QUEST_END_1             = -1000736,
-    SAY_QUEST_END_2             = -1000737,
+    // After lighting the altar cinematic (说明)
+    SAY_RANSHALLA_ALTAR_1       = -1000715,                 // 剧情台词/喊话文本 ID
+    SAY_RANSHALLA_ALTAR_2       = -1000716,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_3       = -1000717,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_4       = -1000718,                 // 剧情台词/喊话文本 ID
+    SAY_RANSHALLA_ALTAR_5       = -1000719,                 // 剧情台词/喊话文本 ID
+    SAY_RANSHALLA_ALTAR_6       = -1000720,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_7       = -1000721,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_8       = -1000722,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_9       = -1000723,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_10      = -1000724,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_11      = -1000725,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_12      = -1000726,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_13      = -1000727,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_14      = -1000728,                 // 剧情台词/喊话文本 ID
+    SAY_VOICE_ALTAR_15          = -1000729,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_16      = -1000730,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_17      = -1000731,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_18      = -1000732,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_19      = -1000733,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_20      = -1000734,                 // 剧情台词/喊话文本 ID
+    SAY_PRIESTESS_ALTAR_21      = -1000735,                 // 剧情台词/喊话文本 ID
+    SAY_QUEST_END_1             = -1000736,                 // 剧情台词/喊话文本 ID
+    SAY_QUEST_END_2             = -1000737,                 // 剧情台词/喊话文本 ID
 
-    EMOTE_CHANT_SPELL           = -1000738,
+    EMOTE_CHANT_SPELL           = -1000738,                 // 剧情台词/喊话文本 ID
 
-    SPELL_LIGHT_TORCH           = 18953,        // channeled spell by Ranshalla while waiting for the torches / altar
-    SPELL_RANSHALLA_DESPAWN     = 18954,
-    SPELL_BIND_WILDKIN          = 18994,
+    SPELL_LIGHT_TORCH           = 18953,        // channeled spell by Ranshalla while waiting for the torches / altar (说明)
+    SPELL_RANSHALLA_DESPAWN     = 18954,                    // 技能法术 ID
+    SPELL_BIND_WILDKIN          = 18994,                    // 技能法术 ID
 
-    NPC_RANSHALLA               = 10300,
-    NPC_PRIESTESS_ELUNE         = 12116,
-    NPC_VOICE_ELUNE             = 12152,
-    NPC_GUARDIAN_ELUNE          = 12140,
+    NPC_RANSHALLA               = 10300,                    // NPC 条目 ID
+    NPC_PRIESTESS_ELUNE         = 12116,                    // NPC 条目 ID
+    NPC_VOICE_ELUNE             = 12152,                    // NPC 条目 ID
+    NPC_GUARDIAN_ELUNE          = 12140,                    // NPC 条目 ID
 
-    NPC_PRIESTESS_DATA_1        = 1,            // dummy member for the first priestess (right)
-    NPC_PRIESTESS_DATA_2        = 2,            // dummy member for the second priestess (left)
-    DATA_MOVE_PRIESTESS         = 3,            // dummy member to check the priestess movement
-    DATA_EVENT_END              = 4,            // dummy member to indicate the event end
+    NPC_PRIESTESS_DATA_1        = 1,            // dummy member for the first priestess (right) (说明)
+    NPC_PRIESTESS_DATA_2        = 2,            // dummy member for the second priestess (left) (说明)
+    DATA_MOVE_PRIESTESS         = 3,            // dummy member to check the priestess movement (说明)
+    DATA_EVENT_END              = 4,            // dummy member to indicate the event end (说明)
 
-    GO_ELUNE_ALTAR              = 177404,
-    GO_ELUNE_FIRE               = 177417,
-    GO_ELUNE_GEM                = 177414,       // is respawned in script
-    GO_ELUNE_LIGHT              = 177415,       // are respawned in script
-    GO_ELUNE_AURA               = 177416,       // is respawned in script
+    GO_ELUNE_ALTAR              = 177404,                   // 游戏对象条目 ID
+    GO_ELUNE_FIRE               = 177417,                   // 游戏对象条目 ID
+    GO_ELUNE_GEM                = 177414,       // is respawned in script (说明)
+    GO_ELUNE_LIGHT              = 177415,       // are respawned in script (说明)
+    GO_ELUNE_AURA               = 177416,       // is respawned in script (说明)
 
-    QUEST_GUARDIANS_ALTAR       = 4901,
+    QUEST_GUARDIANS_ALTAR       = 4901,                     // 任务 ID
 };
 
 static const DialogueEntry aIntroDialogue[] =
 {
     {SAY_REACH_ALTAR_1,      NPC_RANSHALLA,        2000},
     {SAY_REACH_ALTAR_2,      NPC_RANSHALLA,        3000},
-    {NPC_RANSHALLA,          0,                    0},      // start the altar channeling
+    {NPC_RANSHALLA,          0,                    0},      // start the altar channeling (开始)
     {SAY_PRIESTESS_ALTAR_3,  NPC_PRIESTESS_DATA_2, 1000},
     {SAY_PRIESTESS_ALTAR_4,  NPC_PRIESTESS_DATA_1, 4000},
     {SAY_RANSHALLA_ALTAR_5,  NPC_RANSHALLA,        4000},
-    {SAY_RANSHALLA_ALTAR_6,  NPC_RANSHALLA,        4000},   // start the escort here
+    {SAY_RANSHALLA_ALTAR_6,  NPC_RANSHALLA,        4000},   // start the escort here (开始护送)
     {SAY_PRIESTESS_ALTAR_7,  NPC_PRIESTESS_DATA_2, 4000},
-    {SAY_PRIESTESS_ALTAR_8,  NPC_PRIESTESS_DATA_2, 5000},   // show the gem
+    {SAY_PRIESTESS_ALTAR_8,  NPC_PRIESTESS_DATA_2, 5000},   // show the gem (说明)
     {GO_ELUNE_GEM,           0,                    5000},
-    {SAY_PRIESTESS_ALTAR_9,  NPC_PRIESTESS_DATA_1, 4000},   // move priestess 1 near m_creature
+    {SAY_PRIESTESS_ALTAR_9,  NPC_PRIESTESS_DATA_1, 4000},   // move priestess 1 near m_creature (说明)
     {NPC_PRIESTESS_DATA_1,   0,                    3000},
     {SAY_PRIESTESS_ALTAR_10, NPC_PRIESTESS_DATA_1, 5000},
     {SAY_PRIESTESS_ALTAR_11, NPC_PRIESTESS_DATA_1, 4000},
     {SAY_PRIESTESS_ALTAR_12, NPC_PRIESTESS_DATA_1, 5000},
-    {SAY_PRIESTESS_ALTAR_13, NPC_PRIESTESS_DATA_1, 8000},   // summon voice and guard of elune
+    {SAY_PRIESTESS_ALTAR_13, NPC_PRIESTESS_DATA_1, 8000},   // summon voice and guard of elune (召唤)
     {NPC_VOICE_ELUNE,        0,                    12000},
-    {SAY_VOICE_ALTAR_15,     NPC_VOICE_ELUNE,      5000},   // move priestess 2 near m_creature
+    {SAY_VOICE_ALTAR_15,     NPC_VOICE_ELUNE,      5000},   // move priestess 2 near m_creature (说明)
     {NPC_PRIESTESS_DATA_2,   0,                    3000},
     {SAY_PRIESTESS_ALTAR_16, NPC_PRIESTESS_DATA_2, 4000},
     {SAY_PRIESTESS_ALTAR_17, NPC_PRIESTESS_DATA_2, 6000},
     {SAY_PRIESTESS_ALTAR_18, NPC_PRIESTESS_DATA_1, 5000},
-    {SAY_PRIESTESS_ALTAR_19, NPC_PRIESTESS_DATA_1, 3000},   // move the owlbeast
+    {SAY_PRIESTESS_ALTAR_19, NPC_PRIESTESS_DATA_1, 3000},   // move the owlbeast (说明)
     {NPC_GUARDIAN_ELUNE,     0,                    2000},
-    {SAY_PRIESTESS_ALTAR_20, NPC_PRIESTESS_DATA_1, 4000},   // move the first priestess up
-    {SAY_PRIESTESS_ALTAR_21, NPC_PRIESTESS_DATA_2, 10000},  // move second priestess up
-    {DATA_MOVE_PRIESTESS,    0,                    6000},   // despawn the gem
-    {DATA_EVENT_END,         0,                    2000},   // turn towards the player
+    {SAY_PRIESTESS_ALTAR_20, NPC_PRIESTESS_DATA_1, 4000},   // move the first priestess up (说明)
+    {SAY_PRIESTESS_ALTAR_21, NPC_PRIESTESS_DATA_2, 10000},  // move second priestess up (说明)
+    {DATA_MOVE_PRIESTESS,    0,                    6000},   // despawn the gem (消失)
+    {DATA_EVENT_END,         0,                    2000},   // turn towards the player (玩家)
     {SAY_QUEST_END_2,        NPC_RANSHALLA,        0},
     {0, 0, 0},
 };
 
 static Position aWingThicketLocations[] =
 {
-    {5515.98f, -4903.43f, 846.30f, 4.58f},      // 0 right priestess summon loc
-    {5501.94f, -4920.20f, 848.69f, 6.15f},      // 1 left priestess summon loc
-    {5497.35f, -4906.49f, 850.83f, 2.76f},      // 2 guard of elune summon loc
-    {5518.38f, -4913.47f, 845.57f},             // 3 right priestess move loc
-    {5510.36f, -4921.17f, 846.33f},             // 4 left priestess move loc
-    {5511.31f, -4913.82f, 847.17f},             // 5 guard of elune move loc
-    {5518.51f, -4917.56f, 845.23f},             // 6 right priestess second move loc
-    {5514.40f, -4921.16f, 845.49f}              // 7 left priestess second move loc
+    {5515.98f, -4903.43f, 846.30f, 4.58f},      // 0 right priestess summon loc (召唤)
+    {5501.94f, -4920.20f, 848.69f, 6.15f},      // 1 left priestess summon loc (召唤)
+    {5497.35f, -4906.49f, 850.83f, 2.76f},      // 2 guard of elune summon loc (召唤)
+    {5518.38f, -4913.47f, 845.57f},             // 3 right priestess move loc (说明)
+    {5510.36f, -4921.17f, 846.33f},             // 4 left priestess move loc (说明)
+    {5511.31f, -4913.82f, 847.17f},             // 5 guard of elune move loc (说明)
+    {5518.51f, -4917.56f, 845.23f},             // 6 right priestess second move loc (说明)
+    {5514.40f, -4921.16f, 845.49f}              // 7 left priestess second move loc (说明)
 };
 
+// npc_ranshallaAI NPC 脚本 AI
 struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
 {
     npc_ranshallaAI(Creature* pCreature) : npc_escortAI(pCreature),
@@ -158,13 +164,13 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
     ObjectGuid m_voiceEluneGuid;
     ObjectGuid m_altarGuid;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiDelayTimer = 0;
         m_uiCurrentWaypoint = 0;
     }
 
-    // Called when the player activates the torch / altar
+    // Called when the player activates the torch / altar (说明)
     void DoContinueEscort(bool bIsAltarWaypoint = false)
     {
         if (bIsAltarWaypoint)
@@ -183,7 +189,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
 
     void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
-        // If Ranshalla cast the torch lightening spell for too long she will trigger SPELL_RANSHALLA_DESPAWN (quest failed and despawn)
+        // If Ranshalla cast the torch lightening spell for too long she will trigger SPELL_RANSHALLA_DESPAWN (quest failed and despawn) (说明)
         if (pSpell->Id == SPELL_RANSHALLA_DESPAWN)
         {
             FailQuestForPlayerAndGroup();
@@ -191,10 +197,10 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    // Called when Ranshalla starts to channel on a torch / altar
+    // Called when Ranshalla starts to channel on a torch / altar (说明)
     void DoChannelTorchSpell(bool bIsAltarWaypoint = false)
     {
-        // Check if we are using the fire or the altar and remove the no_interact flag
+        // Check if we are using the fire or the altar and remove the no_interact flag (说明)
         if (bIsAltarWaypoint)
         {
             if (GameObject* pGo = GetClosestGameObjectWithEntry(m_creature, GO_ELUNE_ALTAR, 10.0f))
@@ -210,7 +216,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
         }
 
-        // Yell and set escort to pause
+        // Yell and set escort to pause (护送)
         switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_REACH_TORCH_1, m_creature); break;
@@ -225,7 +231,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
 
     void DoSummonPriestess()
     {
-        // Summon 2 Elune priestess and make each of them move to a different spot
+        // Summon 2 Elune priestess and make each of them move to a different spot (说明)
         if (Creature* pPriestess = m_creature->SummonCreature(NPC_PRIESTESS_ELUNE, aWingThicketLocations[0].x, aWingThicketLocations[0].y, aWingThicketLocations[0].z, aWingThicketLocations[0].o, TEMPSPAWN_CORPSE_DESPAWN, 0))
         {
             pPriestess->GetMotionMaster()->MovePoint(0, aWingThicketLocations[3].x, aWingThicketLocations[3].y, aWingThicketLocations[3].z);
@@ -233,7 +239,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
         }
         if (Creature* pPriestess = m_creature->SummonCreature(NPC_PRIESTESS_ELUNE, aWingThicketLocations[1].x, aWingThicketLocations[1].y, aWingThicketLocations[1].z, aWingThicketLocations[1].o, TEMPSPAWN_CORPSE_DESPAWN, 0))
         {
-            // Left priestess should have a distinct move point because she is the one who starts the dialogue at point reach
+            // Left priestess should have a distinct move point because she is the one who starts the dialogue at point reach (说明)
             pPriestess->GetMotionMaster()->MovePoint(1, aWingThicketLocations[4].x, aWingThicketLocations[4].y, aWingThicketLocations[4].z);
             m_secondPriestessGuid = pPriestess->GetObjectGuid();
         }
@@ -244,22 +250,22 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
         if (uiType != POINT_MOTION_TYPE || pSummoned->GetEntry() != NPC_PRIESTESS_ELUNE || uiPointId != 1)
             return;
 
-        // Start the dialogue when the priestess reach the altar (they should both reach the point in the same time)
+        // Start the dialogue when the priestess reach the altar (they should both reach the point in the same time) (说明)
         StartNextDialogueText(SAY_PRIESTESS_ALTAR_3);
     }
 
-    void WaypointReached(uint32 uiPointId) override
+    void WaypointReached(uint32 uiPointId) override         // 到达指定路径点回调
     {
         switch (uiPointId)
         {
             case 3:
                 DoScriptText(SAY_ENTER_OWL_THICKET, m_creature);
                 break;
-            case 10: // Cavern 1
-            case 15: // Cavern 2
-            case 20: // Cavern 3
-            case 25: // Cavern 4
-            case 36: // Cavern 5
+            case 10: // Cavern 1 (说明)
+            case 15: // Cavern 2 (说明)
+            case 20: // Cavern 3 (说明)
+            case 25: // Cavern 4 (说明)
+            case 36: // Cavern 5 (说明)
                 m_uiCurrentWaypoint = uiPointId;
                 DoChannelTorchSpell();
                 break;
@@ -270,7 +276,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 break;
             case 41:
             {
-                // Search for all nearest lights and respawn them
+                // Search for all nearest lights and respawn them (说明)
                 GameObjectList m_lEluneLights;
                 GetGameObjectListWithEntryInGrid(m_lEluneLights, m_creature, GO_ELUNE_LIGHT, 20.0f);
                 for (GameObjectList::const_iterator itr = m_lEluneLights.begin(); itr != m_lEluneLights.end(); ++itr)
@@ -287,13 +293,13 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 break;
             }
             case 42:
-                // Summon the 2 priestess
+                // Summon the 2 priestess (召唤)
                 SetEscortPaused(true);
                 DoSummonPriestess();
                 DoScriptText(SAY_RANSHALLA_ALTAR_2, m_creature);
                 break;
             case 44:
-                // Stop the escort and turn towards the altar
+                // Stop the escort and turn towards the altar (说明)
                 SetEscortPaused(true);
                 if (GameObject* pAltar = m_creature->GetMap()->GetGameObject(m_altarGuid))
                     m_creature->SetFacingToObject(pAltar);
@@ -306,14 +312,14 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
         switch (iEntry)
         {
             case NPC_RANSHALLA:
-                // Start the altar channeling
+                // Start the altar channeling (开始)
                 DoChannelTorchSpell(true);
                 break;
             case SAY_RANSHALLA_ALTAR_6:
                 SetEscortPaused(false);
                 break;
             case SAY_PRIESTESS_ALTAR_8:
-                // make the gem and its aura respawn
+                // make the gem and its aura respawn (说明)
                 if (GameObject* pGem = GetClosestGameObjectWithEntry(m_creature, GO_ELUNE_GEM, 10.0f))
                 {
                     if (pGem->IsSpawned())
@@ -332,18 +338,18 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 }
                 break;
             case SAY_PRIESTESS_ALTAR_9:
-                // move near the escort npc
+                // move near the escort npc (护送)
                 if (Creature* pPriestess = m_creature->GetMap()->GetCreature(m_firstPriestessGuid))
                     pPriestess->GetMotionMaster()->MovePoint(0, aWingThicketLocations[6].x, aWingThicketLocations[6].y, aWingThicketLocations[6].z);
                 break;
             case SAY_PRIESTESS_ALTAR_13:
-                // summon the Guardian of Elune
+                // summon the Guardian of Elune (召唤)
                 if (Creature* pGuard = m_creature->SummonCreature(NPC_GUARDIAN_ELUNE, aWingThicketLocations[2].x, aWingThicketLocations[2].y, aWingThicketLocations[2].z, aWingThicketLocations[2].o, TEMPSPAWN_CORPSE_DESPAWN, 0))
                 {
                     pGuard->GetMotionMaster()->MovePoint(0, aWingThicketLocations[5].x, aWingThicketLocations[5].y, aWingThicketLocations[5].z);
                     m_guardEluneGuid = pGuard->GetObjectGuid();
                 }
-                // summon the Voice of Elune
+                // summon the Voice of Elune (召唤)
                 if (GameObject* pAltar = m_creature->GetMap()->GetGameObject(m_altarGuid))
                 {
                     if (Creature* pVoice = m_creature->SummonCreature(NPC_VOICE_ELUNE, pAltar->GetPositionX(), pAltar->GetPositionY(), pAltar->GetPositionZ(), 0, TEMPSPAWN_TIMED_DESPAWN, 30000))
@@ -351,18 +357,18 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 }
                 break;
             case SAY_VOICE_ALTAR_15:
-                // move near the escort npc and continue dialogue
+                // move near the escort npc and continue dialogue (说明)
                 if (Creature* pPriestess = m_creature->GetMap()->GetCreature(m_secondPriestessGuid))
                 {
                     DoScriptText(SAY_PRIESTESS_ALTAR_14, pPriestess);
                     pPriestess->GetMotionMaster()->MovePoint(0, aWingThicketLocations[7].x, aWingThicketLocations[7].y, aWingThicketLocations[7].z);
                 }
-                // make the voice of elune cast Bind Wildkin
+                // make the voice of elune cast Bind Wildkin (说明)
                 if (Creature* pGuard = m_creature->GetMap()->GetCreature(m_guardEluneGuid))
                     pGuard->CastSpell(pGuard, SPELL_BIND_WILDKIN, TRIGGERED_NONE);
                 break;
             case SAY_PRIESTESS_ALTAR_19:
-                // make the voice of elune leave
+                // make the voice of elune leave (说明)
                 if (Creature* pGuard = m_creature->GetMap()->GetCreature(m_guardEluneGuid))
                 {
                     pGuard->GetMotionMaster()->MovePoint(0, aWingThicketLocations[2].x, aWingThicketLocations[2].y, aWingThicketLocations[2].z);
@@ -370,7 +376,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 }
                 break;
             case SAY_PRIESTESS_ALTAR_20:
-                // make the first priestess leave
+                // make the first priestess leave (说明)
                 if (Creature* pPriestess = m_creature->GetMap()->GetCreature(m_firstPriestessGuid))
                 {
                     pPriestess->GetMotionMaster()->MovePoint(0, aWingThicketLocations[0].x, aWingThicketLocations[0].y, aWingThicketLocations[0].z);
@@ -378,7 +384,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 }
                 break;
             case SAY_PRIESTESS_ALTAR_21:
-                // make the second priestess leave
+                // make the second priestess leave (说明)
                 if (Creature* pPriestess = m_creature->GetMap()->GetCreature(m_secondPriestessGuid))
                 {
                     pPriestess->GetMotionMaster()->MovePoint(0, aWingThicketLocations[1].x, aWingThicketLocations[1].y, aWingThicketLocations[1].z);
@@ -386,7 +392,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 }
                 break;
             case DATA_EVENT_END:
-                // Turn towards the player
+                // Turn towards the player (玩家)
                 if (Player* pPlayer = GetPlayerForEscort())
                 {
                     m_creature->SetFacingToObject(pPlayer);
@@ -394,7 +400,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
                 }
                 break;
             case SAY_QUEST_END_2:
-                // Turn towards the altar and kneel - quest complete
+                // Turn towards the altar and kneel - quest complete (说明)
                 if (GameObject* pAltar = m_creature->GetMap()->GetGameObject(m_altarGuid))
                     m_creature->SetFacingToObject(pAltar);
                 m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
@@ -419,7 +425,7 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff) override
+    void UpdateEscortAI(const uint32 uiDiff) override       // 护送 AI 帧更新处理
     {
         DialogueUpdate(uiDiff);
 
@@ -429,8 +435,8 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
             {
                 m_creature->InterruptNonMeleeSpells(false);
                 SetEscortPaused(false);
-                // Spell Ranshalla Waiting applies a root aura that triggers an internal timer in the waypoint movement manager
-                // We need to manually set the movement manager to the next waypoint in order to reset the timer unless the NPC will wait 3 min before moving again
+                // Spell Ranshalla Waiting applies a root aura that triggers an internal timer in the waypoint movement manager (说明)
+                // We need to manually set the movement manager to the next waypoint in order to reset the timer unless the NPC will wait 3 min before moving again (说明)
                 m_creature->GetMotionMaster()->SetNextWaypoint(m_uiCurrentWaypoint + 1);
                 m_uiDelayTimer = 0;
             }
@@ -445,12 +451,12 @@ struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
     }
 };
 
-UnitAI* GetAI_npc_ranshalla(Creature* pCreature)
+UnitAI* GetAI_npc_ranshalla(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_ranshallaAI(pCreature);
 }
 
-bool QuestAccept_npc_ranshalla(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_ranshalla(Player* pPlayer, Creature* pCreature, const Quest* pQuest) // 接受任务处理
 {
     if (pQuest->GetQuestId() == QUEST_GUARDIANS_ALTAR)
     {
@@ -468,7 +474,7 @@ bool QuestAccept_npc_ranshalla(Player* pPlayer, Creature* pCreature, const Quest
 
 bool GOUse_go_elune_fire(Player* /*pPlayer*/, GameObject* pGo)
 {
-    // Check if we are using the torches or the altar
+    // Check if we are using the torches or the altar (说明)
     bool bIsAltar = false;
 
     if (pGo->GetEntry() == GO_ELUNE_ALTAR)
@@ -483,19 +489,20 @@ bool GOUse_go_elune_fire(Player* /*pPlayer*/, GameObject* pGo)
     return false;
 }
 
+// 常量与事件枚举
 enum
 {
-    SPELL_FOOLS_PLIGHT              = 23504,
+    SPELL_FOOLS_PLIGHT              = 23504,                // 技能法术 ID
 
-    SPELL_DEMONIC_FRENZY            = 23257,
-    SPELL_DEMONIC_DOOM              = 23298,
-    SPELL_STINGING_TRAUMA           = 23299,
+    SPELL_DEMONIC_FRENZY            = 23257,                // 技能法术 ID
+    SPELL_DEMONIC_DOOM              = 23298,                // 技能法术 ID
+    SPELL_STINGING_TRAUMA           = 23299,                // 技能法术 ID
 
-    EMOTE_POISON                    = -1001251,
+    EMOTE_POISON                    = -1001251,             // 剧情台词/喊话文本 ID
 
-    NPC_ARTORIUS_THE_AMIABLE        = 14531,
-    NPC_ARTORIUS_THE_DOOMBRINGER    = 14535,
-    NPC_THE_CLEANER                 = 14503,
+    NPC_ARTORIUS_THE_AMIABLE        = 14531,                // NPC 条目 ID
+    NPC_ARTORIUS_THE_DOOMBRINGER    = 14535,                // NPC 条目 ID
+    NPC_THE_CLEANER                 = 14503,                // NPC 条目 ID
 
     QUEST_STAVE_OF_THE_ANCIENTS     = 7636
 };
@@ -510,6 +517,7 @@ enum
 ## npc_artorius_the_doombringer
 ######*/
 
+// npc_artoriusAI NPC 脚本 AI
 struct npc_artoriusAI : public ScriptedAI
 {
     npc_artoriusAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -528,7 +536,7 @@ struct npc_artoriusAI : public ScriptedAI
     uint32 m_uiDemonic_Frenzy_Timer;
     uint32 m_uiDespawn_Timer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         switch (m_creature->GetEntry())
         {
@@ -577,7 +585,7 @@ struct npc_artoriusAI : public ScriptedAI
     }
 
     /** Artorius the Doombringer */
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* pWho) override                         // 进入战斗回调处理
     {
         if (pWho->getClass() == CLASS_HUNTER && (m_hunterGuid.IsEmpty() || m_hunterGuid == pWho->GetObjectGuid()))
         {
@@ -624,14 +632,14 @@ struct npc_artoriusAI : public ScriptedAI
 
     void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
-        if (pSpell->Id == 13555 || pSpell->Id == 25295)             // Serpent Sting (Rank 8 or Rank 9)
+        if (pSpell->Id == 13555 || pSpell->Id == 25295)             // Serpent Sting (Rank 8 or Rank 9) (说明)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_STINGING_TRAUMA, CAST_TRIGGERED) == CAST_OK)
                 DoScriptText(EMOTE_POISON, m_creature);
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 uiDiff) override             // AI 核心帧更新处理
     {
         /** Artorius the Amiable */
         if (m_bTransform)
@@ -685,8 +693,8 @@ struct npc_artoriusAI : public ScriptedAI
         if (m_uiDemonic_Doom_Timer < uiDiff)
         {
             m_uiDemonic_Doom_Timer = 7500;
-            // only attempt to cast this once every 7.5 seconds to give the hunter some leeway
-            // LOWER max range for lag...
+            // only attempt to cast this once every 7.5 seconds to give the hunter some leeway (说明)
+            // LOWER max range for lag... (说明)
             if (m_creature->IsWithinDistInMap(m_creature->GetVictim(), 25))
                 DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DEMONIC_DOOM);
         }
@@ -697,7 +705,7 @@ struct npc_artoriusAI : public ScriptedAI
     }
 };
 
-bool GossipHello_npc_artorius(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_artorius(Player* pPlayer, Creature* pCreature) // 对话交互问候处理
 {
     if (pPlayer->GetQuestStatus(QUEST_STAVE_OF_THE_ANCIENTS) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(0, GOSSIP_ITEM, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
@@ -713,12 +721,12 @@ bool GossipSelect_npc_artorius(Player* pPlayer, Creature* pCreature, uint32 /*ui
     return true;
 }
 
-UnitAI* GetAI_npc_artorius(Creature* pCreature)
+UnitAI* GetAI_npc_artorius(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new npc_artoriusAI(pCreature);
 }
 
-void AddSC_winterspring()
+void AddSC_winterspring() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "npc_ranshalla";

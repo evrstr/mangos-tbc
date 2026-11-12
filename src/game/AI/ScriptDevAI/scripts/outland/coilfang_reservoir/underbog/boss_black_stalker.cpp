@@ -21,6 +21,11 @@ SDComment: Spore Strider should have Delayed Despawn on The Black Stalker Death
 SDCategory: Coilfang Resevoir, Underbog
 EndScriptData */
 
+// 黑色阔步者（幽暗沼泽最终首领）
+/* 遭遇战概述：
+ * 黑色阔步者是巨大的沼泽阔步者，战斗中会施放静电充能、悬浮并将玩家甩向高空。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
@@ -38,6 +43,7 @@ enum // order based on priority
     NPC_BLACK_STALKER           = 17882,
 };
 
+// BlackStalkerActions 相关枚举
 enum BlackStalkerActions
 {
     BLACK_STALKER_ACTION_LEVITATE,
@@ -48,6 +54,7 @@ enum BlackStalkerActions
     BLACK_STALKER_ACTION_SUSPENSION,
 };
 
+// boss_black_stalkerAI 逻辑实现
 struct boss_black_stalkerAI : public CombatAI
 {
     boss_black_stalkerAI(Creature* creature) : CombatAI(creature, BLACK_STALKER_ACTION_MAX), m_isRegularMode(creature->GetMap()->IsRegularDifficulty())
@@ -74,6 +81,7 @@ struct boss_black_stalkerAI : public CombatAI
 
     bool m_isRegularMode;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -94,6 +102,7 @@ struct boss_black_stalkerAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -129,6 +138,7 @@ struct boss_black_stalkerAI : public CombatAI
     }
 };
 
+// StalkerLevitate 法术脚本
 struct StalkerLevitate : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -144,6 +154,7 @@ struct StalkerLevitate : public SpellScript
         return true;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_1)
@@ -156,6 +167,7 @@ struct StalkerLevitate : public SpellScript
     }
 };
 
+// SomeoneGrabMe 法术脚本
 struct SomeoneGrabMe : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -163,6 +175,7 @@ struct SomeoneGrabMe : public SpellScript
         spell->SetMaxAffectedTargets(1);
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         if (Unit* unitTarget = spell->GetUnitTarget())
@@ -172,8 +185,10 @@ struct SomeoneGrabMe : public SpellScript
     }
 };
 
+// MagneticPull 法术脚本
 struct MagneticPull : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_1)
@@ -200,8 +215,10 @@ struct MagneticPull : public SpellScript
 };
 
 // 38756 - Summon Spore Strider
+// SummonSporeStrider 法术脚本
 struct SummonSporeStrider : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         for (uint32 i = 0; i < 3; ++i)
@@ -209,6 +226,7 @@ struct SummonSporeStrider : public SpellScript
     }
 };
 
+// 注册 boss_black_stalker 脚本
 void AddSC_boss_black_stalker()
 {
     Script* pNewScript = new Script;

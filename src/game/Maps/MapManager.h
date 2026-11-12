@@ -34,6 +34,7 @@ class Transport;
 class BattleGround;
 struct TransportTemplate;
 
+// 地图唯一标识键（由地图 ID 与副本实例 ID 组成）
 struct MapID
 {
     explicit MapID(uint32 id) : nMapId(id), nInstanceId(0) {}
@@ -53,6 +54,7 @@ struct MapID
     uint32 nInstanceId;
 };
 
+// 全局地图管理器单例：负责所有大陆、地下城、战场地图的创建、查找、定时更新、网格状态切换与运输载具加载
 class MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::ClassLevelLockable<MapManager, std::recursive_mutex> >
 {
         friend class MaNGOS::OperatorNew<MapManager>;
@@ -71,11 +73,11 @@ class MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::ClassLevelLockab
 
         void UpdateGridState(grid_state_t state, Map& map, NGridType& ngrid, GridInfo& ginfo, const uint32& x, const uint32& y, const uint32& t_diff);
 
-        // only const version for outer users
+        // only const version for outer users (仅对外提供安全删除副本实例接口)
         void DeleteInstance(uint32 mapid, uint32 instanceId);
 
-        void Initialize();
-        void Update(uint32);
+        void Initialize(); // 初始化网格状态机、加载传输载具并启动地图更新工作线程
+        void Update(uint32); // 推进所有活跃地图的定时更新与网格状态机
 
         void SetGridCleanUpDelay(uint32 t)
         {
@@ -120,10 +122,12 @@ class MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::ClassLevelLockab
         }
 
         // modulos a radian orientation to the range of 0..2PI
+        // 将弧度朝向归一化到 [0, 2*PI) 区间
         static float NormalizeOrientation(float o)
         {
             // fmod only supports positive numbers. Thus we have
             // to emulate negative numbers
+            // fmod 对负数取余结果为负，因此需要手动将负数转换为正角度区间
             if (o < 0)
             {
                 float mod = o * -1;
@@ -144,11 +148,11 @@ class MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::ClassLevelLockab
         uint32 GenerateInstanceId() { return ++i_MaxInstanceId; }
         void InitMaxInstanceId();
         void InitializeVisibilityDistanceInfo();
-        /* statistics */
+        /* statistics (地图与副本统计信息) */
         uint32 GetNumInstances();
         uint32 GetNumPlayersInInstances();
 
-        // get list of all maps
+        // get list of all maps (获取所有已加载地图的映射表)
         const MapMapType& Maps() const { return i_maps; }
 
         template<typename Check> inline WorldObject* SearchOnAllLoadedMap(Check& check);
@@ -157,7 +161,7 @@ class MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::ClassLevelLockab
 
     private:
 
-        // debugging code, should be deleted some day
+        // debugging code, should be deleted some day (调试用网格状态机数组与错误计数)
         GridState* si_GridStates[MAX_GRID_STATE];
         int i_GridStateErrorCount;
 

@@ -31,34 +31,39 @@
 #include <vector>
 #include <string>
 
-/// Remote Administration socket
+/// Remote Administration socket | 远程管理（RA）套接字类，负责远程控制连接的认证与命令分发
 class RASocket : public MaNGOS::AsyncSocket<RASocket>
 {
     private:
+        /// 远程管理会话的认证状态枚举
         enum AuthLevel
         {
-            None,
-            HaveUsername,
-            Authenticated
+            None,                                           ///< 未认证，等待输入用户名
+            HaveUsername,                                   ///< 已验证用户名，等待输入密码
+            Authenticated                                   ///< 已通过认证，可执行管理命令
         };
 
-        const bool m_secure;
-        bool m_restricted;
+        const bool m_secure;                                ///< 认证失败后是否立即断开连接
+        bool m_restricted;                                  ///< 是否限制远程管理员使用控制台级命令
 
-        std::string m_input;
+        std::string m_input;                                ///< 当前累积的整行输入缓冲区
 
-        AuthLevel m_authLevel;
-        AccountTypes m_accountLevel;
-        uint32 m_accountId;
+        AuthLevel m_authLevel;                              ///< 当前连接所处的认证阶段
+        AccountTypes m_accountLevel;                        ///< 已登录账号对应的权限等级
+        uint32 m_accountId;                                 ///< 已登录账号 ID
 
+        /// 异步读取并按行解析网络输入数据
         virtual bool ProcessIncomingData() override;
+        /// 根据当前认证状态处理单行用户输入
         bool HandleInput();
+        /// 异步向客户端发送响应文本
         void Send(const std::string& message);
 
     public:
         RASocket(boost::asio::io_context& context);
         virtual ~RASocket();
 
+        /// 新建连接打开时的回调：发送欢迎信息并提示输入用户名
         bool OnOpen() override;
 };
 #endif

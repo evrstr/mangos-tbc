@@ -21,20 +21,23 @@
 
 #include "Platform/Define.h"
 
+/// 控制台文本进度条显示类（用于启动加载数据库/地图时展示进度百分比）
 class BarGoLink
 {
-    public:                                                 // constructors
+    public:                                                 // constructors | 构造函数与析构函数
         explicit BarGoLink(size_t row_count);
         ~BarGoLink();
 
-    public:                                                 // modifiers
+    public:                                                 // modifiers | 进度推进与全局显示开关控制
+        /// 前进一步记录数，达到新刻度时刷新控制台进度条
         void step();
 
+        /// 全局开启或关闭进度条控制台输出
         static void SetOutputState(bool on);
     private:
         void init(size_t row_count);
 
-        static bool m_showOutput;                           // not recommended change with existed active bar
+        static bool m_showOutput;                           // not recommended change with existed active bar | 是否输出进度条（存在活跃进度条时不建议动态切换）
         static char const* const empty;
         static char const* const full;
 

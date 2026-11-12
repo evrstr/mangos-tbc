@@ -21,10 +21,17 @@ SDComment: Submerged phase visual spells NYI; they require additional research.
 SDCategory: Slave Pens
 EndScriptData */
 
+// 埃霍恩（仲夏火焰节冰霜之王首领）
+/* 遭遇战概述：
+ * 埃霍恩是仲夏火焰节期间在奴隶围栏召唤的冰霜之王元素首领；
+ * 战斗分为护盾减伤冰霜随从阶段与核心虚弱易伤爆发阶段。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Entities/TemporarySpawn.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     // general spells
@@ -79,6 +86,7 @@ enum
     PHASE_SUBMERGED             = 2,
 };
 
+// AhuneActions 相关枚举
 enum AhuneActions
 {
     AHUNE_SUBMERGE,
@@ -95,6 +103,7 @@ enum AhuneActions
 ## boss_ahune
 ######*/
 
+// boss_ahuneAI 逻辑实现
 struct boss_ahuneAI : public CombatAI
 {
     boss_ahuneAI(Creature* creature) : CombatAI(creature, AHUNE_ACTION_MAX)
@@ -116,6 +125,7 @@ struct boss_ahuneAI : public CombatAI
 
     GuidVector m_spawns;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -126,6 +136,7 @@ struct boss_ahuneAI : public CombatAI
         m_uiPhaseChangeCount = 0;
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoCastSpellIfCan(nullptr, SPELL_BIRTH);
@@ -134,6 +145,7 @@ struct boss_ahuneAI : public CombatAI
         SpawnBunnies();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoCastSpellIfCan(m_creature, SPELL_AHUNE_DIES_ACHIEV, CAST_TRIGGERED);
@@ -147,6 +159,7 @@ struct boss_ahuneAI : public CombatAI
         DespawnGuids(m_spawns);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         // Cleanup on evade is done by creature_linking
@@ -172,6 +185,7 @@ struct boss_ahuneAI : public CombatAI
         }
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -190,6 +204,7 @@ struct boss_ahuneAI : public CombatAI
         m_spawns.push_back(summoned->GetObjectGuid());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         // When the core dies, commit suicide
@@ -234,6 +249,7 @@ struct boss_ahuneAI : public CombatAI
         ++m_uiPhaseChangeCount;
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -291,12 +307,14 @@ struct boss_ahuneAI : public CombatAI
 ## npc_frozen_core
 ######*/
 
+// npc_frozen_coreAI 逻辑实现
 struct npc_frozen_coreAI : public Scripted_NoMovementAI
 {
     npc_frozen_coreAI(Creature* creature) : Scripted_NoMovementAI(creature) { Reset(); }
 
     ObjectGuid m_ahuheGuid;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         if (m_creature->IsTemporarySummon())
@@ -313,6 +331,7 @@ struct npc_frozen_coreAI : public Scripted_NoMovementAI
             DoCastSpellIfCan(pAhune, SPELL_SYNCH_HEALTH, CAST_TRIGGERED);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_ICE_SPEAR_BUNNY)
@@ -332,6 +351,7 @@ struct npc_frozen_coreAI : public Scripted_NoMovementAI
 ## npc_ice_spear_bunny
 ######*/
 
+// npc_ice_spear_bunnyAI 逻辑实现
 struct npc_ice_spear_bunnyAI : public Scripted_NoMovementAI
 {
     npc_ice_spear_bunnyAI(Creature* creature) : Scripted_NoMovementAI(creature) { Reset(); }
@@ -340,6 +360,7 @@ struct npc_ice_spear_bunnyAI : public Scripted_NoMovementAI
 
     uint8 m_uiEventCount;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiEventCount = 0;
@@ -381,6 +402,7 @@ struct npc_ice_spear_bunnyAI : public Scripted_NoMovementAI
     void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
+// SummonIceSpearKnockbackDelayer 光环脚本
 struct SummonIceSpearKnockbackDelayer : public AuraScript
 {
     void OnPeriodicDummy(Aura* aura) const override
@@ -391,6 +413,7 @@ struct SummonIceSpearKnockbackDelayer : public AuraScript
     }
 };
 
+// 注册 boss_ahune 脚本
 void AddSC_boss_ahune()
 {
     Script* pNewScript = new Script;

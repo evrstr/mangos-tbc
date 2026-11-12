@@ -24,6 +24,7 @@
 #include <concepts>
 #include <utility>
 
+/// 32 位可转位掩码枚举容器类型（常用于种族/职业等 1-based 序号转 bitmask）
 enum class FlagConvertibleEnum : uint32
 {
 
@@ -31,6 +32,7 @@ enum class FlagConvertibleEnum : uint32
 
 DEFINE_ENUM_FLAG(FlagConvertibleEnum);
 
+/// 64 位可转位掩码枚举容器类型
 enum class FlagConvertibleEnum64 : uint64
 {
 };
@@ -40,24 +42,28 @@ DEFINE_ENUM_FLAG(FlagConvertibleEnum64);
 #define DEFINE_FLAG_CONVERTIBLE_ENUM(enumType) constexpr bool IsFlagConvertibleEnum(enumType) { return std::is_enum_v<enumType>; }
 #define DEFINE_FLAG_CONVERTIBLE_ENUM_64(enumType) constexpr bool IsFlagConvertibleEnum64(enumType) { return std::is_enum_v<enumType>; }
 
+/// 将 1-based 枚举值转换为 32 位 FlagConvertibleEnum 位掩码
 template <typename T, typename = std::enable_if_t<IsFlagConvertibleEnum(T {})>>
 constexpr FlagConvertibleEnum convertEnumToFlag(T item)
 {
     return FlagConvertibleEnum(uint32(1) << static_cast<uint32>(static_cast<std::underlying_type_t<T>>(item) - 1));
 }
 
+/// 将 1-based 枚举值转换为 64 位 FlagConvertibleEnum64 位掩码
 template <typename T, typename = std::enable_if_t<IsFlagConvertibleEnum64(T {})>>
 constexpr FlagConvertibleEnum64 convertEnumToFlag(T item)
 {
     return FlagConvertibleEnum64(uint64(1) << static_cast<uint64>(static_cast<std::underlying_type_t<T>>(item) - 1));
 }
 
+/// 将单个可转换为 uint32 的 1-based 枚举值转换为 uint32 位掩码
 template <std::convertible_to<uint32> T>
 constexpr uint32 convertEnumToFlag(T item)
 {
     return 1 << (item - 1);
 }
 
+/// 可变参数折叠：将多个 1-based 枚举值组合为按位或的 uint32 位掩码
 template <std::convertible_to<uint32> T, typename... Targs>
 constexpr uint32 convertEnumToFlag(T item, Targs&&... fargs)
 {

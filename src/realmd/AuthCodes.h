@@ -25,6 +25,7 @@
 
 #include "Common.h"
 
+/// 登录认证操作码（客户端 <-> realmd）
 enum eAuthCmd : uint8
 {
     CMD_AUTH_LOGON_CHALLENGE        = 0x00,
@@ -34,13 +35,13 @@ enum eAuthCmd : uint8
     CMD_REALM_LIST                  = 0x10,
     CMD_XFER_INITIATE               = 0x30,
     CMD_XFER_DATA                   = 0x31,
-    // these opcodes no longer exist in currently supported client
+    // these opcodes no longer exist in currently supported client | 以下操作码在当前支持的客户端中已废弃
     CMD_XFER_ACCEPT                 = 0x32,
     CMD_XFER_RESUME                 = 0x33,
     CMD_XFER_CANCEL                 = 0x34
 };
 
-// not used by us currently
+// not used by us currently | 当前服务端未使用的 Grunt 内部指令枚举
 enum eAuthSrvCmd
 {
     CMD_GRUNT_AUTH_CHALLENGE        = 0x0,
@@ -56,28 +57,29 @@ enum eAuthSrvCmd
     CMD_GRUNT_SUNKEN_ONLINE         = 0x46
 };
 
+/// 登录认证结果状态码
 enum AuthLogonResult : uint8
 {
     AUTH_LOGON_SUCCESS                      = 0x00,
-    AUTH_LOGON_FAILED_UNKNOWN0              = 0x01,                 ///< ? Unable to connect
-    AUTH_LOGON_FAILED_UNKNOWN1              = 0x02,                 ///< ? Unable to connect
-    AUTH_LOGON_FAILED_BANNED                = 0x03,                 ///< This <game> account has been closed and is no longer available for use. Please go to <site>/banned.html for further information.
-    AUTH_LOGON_FAILED_UNKNOWN_ACCOUNT       = 0x04,                 ///< The information you have entered is not valid. Please check the spelling of the account name and password. If you need help in retrieving a lost or stolen password, see <site> for more information
-    AUTH_LOGON_FAILED_INCORRECT_PASSWORD    = 0x05,                 ///< The information you have entered is not valid. Please check the spelling of the account name and password. If you need help in retrieving a lost or stolen password, see <site> for more information
-    // client reject next login attempts after this error, so in code used AUTH_LOGON_FAILED_UNKNOWN_ACCOUNT for both cases
-    AUTH_LOGON_FAILED_ALREADY_ONLINE        = 0x06,                 ///< This account is already logged into <game>. Please check the spelling and try again.
-    AUTH_LOGON_FAILED_NO_TIME               = 0x07,                 ///< You have used up your prepaid time for this account. Please purchase more to continue playing
-    AUTH_LOGON_FAILED_DB_BUSY               = 0x08,                 ///< Could not log in to <game> at this time. Please try again later.
-    AUTH_LOGON_FAILED_VERSION_INVALID       = 0x09,                 ///< Unable to validate game version. This may be caused by file corruption or interference of another program. Please visit <site> for more information and possible solutions to this issue.
-    AUTH_LOGON_FAILED_VERSION_UPDATE        = 0x0A,                 ///< Downloading
-    AUTH_LOGON_FAILED_INVALID_SERVER        = 0x0B,                 ///< Unable to connect
-    AUTH_LOGON_FAILED_SUSPENDED             = 0x0C,                 ///< This <game> account has been temporarily suspended. Please go to <site>/banned.html for further information
-    AUTH_LOGON_FAILED_FAIL_NOACCESS         = 0x0D,                 ///< Unable to connect
-    AUTH_LOGON_SUCCESS_SURVEY               = 0x0E,                 ///< Connected.
-    AUTH_LOGON_FAILED_PARENTCONTROL         = 0x0F,                 ///< Access to this account has been blocked by parental controls. Your settings may be changed in your account preferences at <site>
-    AUTH_LOGON_FAILED_LOCKED_ENFORCED       = 0x10,                 ///< You have applied a lock to your account. You can change your locked status by calling your account lock phone number.
-    AUTH_LOGON_FAILED_TRIAL_ENDED           = 0x11,                 ///< Your trial subscription has expired. Please visit <site> to upgrade your account.
-    AUTH_LOGON_FAILED_USE_BNET              = 0x12,                 ///< AUTH_LOGON_FAILED_OTHER This account is now attached to a BNet account. Please login with your BNet account email address and password.
+    AUTH_LOGON_FAILED_UNKNOWN0              = 0x01,                 ///< ? Unable to connect | 无法连接（未知错误 0）
+    AUTH_LOGON_FAILED_UNKNOWN1              = 0x02,                 ///< ? Unable to connect | 无法连接（未知错误 1）
+    AUTH_LOGON_FAILED_BANNED                = 0x03,                 ///< This <game> account has been closed and is no longer available for use. Please go to <site>/banned.html for further information. | 账号已被永久封禁
+    AUTH_LOGON_FAILED_UNKNOWN_ACCOUNT       = 0x04,                 ///< The information you have entered is not valid. Please check the spelling of the account name and password. If you need help in retrieving a lost or stolen password, see <site> for more information | 账号不存在或登录信息无效
+    AUTH_LOGON_FAILED_INCORRECT_PASSWORD    = 0x05,                 ///< The information you have entered is not valid. Please check the spelling of the account name and password. If you need help in retrieving a lost or stolen password, see <site> for more information | 密码错误
+    // client reject next login attempts after this error, so in code used AUTH_LOGON_FAILED_UNKNOWN_ACCOUNT for both cases | 客户端在收到 0x05 后会拒绝后续重试，因此代码中两种情况均复用 AUTH_LOGON_FAILED_UNKNOWN_ACCOUNT
+    AUTH_LOGON_FAILED_ALREADY_ONLINE        = 0x06,                 ///< This account is already logged into <game>. Please check the spelling and try again. | 该账号已在线
+    AUTH_LOGON_FAILED_NO_TIME               = 0x07,                 ///< You have used up your prepaid time for this account. Please purchase more to continue playing | 预付游戏时间已耗尽
+    AUTH_LOGON_FAILED_DB_BUSY               = 0x08,                 ///< Could not log in to <game> at this time. Please try again later. | 数据库繁忙，暂时无法登录
+    AUTH_LOGON_FAILED_VERSION_INVALID       = 0x09,                 ///< Unable to validate game version. This may be caused by file corruption or interference of another program. Please visit <site> for more information and possible solutions to this issue. | 游戏版本校验失败
+    AUTH_LOGON_FAILED_VERSION_UPDATE        = 0x0A,                 ///< Downloading | 需要更新/正在下载补丁
+    AUTH_LOGON_FAILED_INVALID_SERVER        = 0x0B,                 ///< Unable to connect | 无效服务器
+    AUTH_LOGON_FAILED_SUSPENDED             = 0x0C,                 ///< This <game> account has been temporarily suspended. Please go to <site>/banned.html for further information | 账号已被临时冻结
+    AUTH_LOGON_FAILED_FAIL_NOACCESS         = 0x0D,                 ///< Unable to connect | 无访问权限
+    AUTH_LOGON_SUCCESS_SURVEY               = 0x0E,                 ///< Connected. | 登录成功（附带调查标记）
+    AUTH_LOGON_FAILED_PARENTCONTROL         = 0x0F,                 ///< Access to this account has been blocked by parental controls. Your settings may be changed in your account preferences at <site> | 受家长控制限制
+    AUTH_LOGON_FAILED_LOCKED_ENFORCED       = 0x10,                 ///< You have applied a lock to your account. You can change your locked status by calling your account lock phone number. | 账号已开启安全锁定
+    AUTH_LOGON_FAILED_TRIAL_ENDED           = 0x11,                 ///< Your trial subscription has expired. Please visit <site> to upgrade your account. | 试玩期已结束
+    AUTH_LOGON_FAILED_USE_BNET              = 0x12,                 ///< AUTH_LOGON_FAILED_OTHER This account is now attached to a BNet account. Please login with your BNet account email address and password. | 账号已绑定战网，需使用战网通行证登录
     // AUTH_LOGON_FAILED_OVERMIND_CONVERTED
     // AUTH_LOGON_FAILED_ANTI_INDULGENCE
     // AUTH_LOGON_FAILED_EXPIRED

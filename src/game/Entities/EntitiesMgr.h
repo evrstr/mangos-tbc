@@ -25,8 +25,10 @@
 #include "Util/Timer.h"
 
 
+// 玩家时间片更新间隔（毫秒）
 #define TIMER_UPDATE_PLAYER_TIMELAPS 1000
 
+// 世界实体前向声明
 class Map;
 class WorldObject;
 class Unit;
@@ -40,6 +42,7 @@ class UpdateData;
 struct CreatureData;
 struct GameObjectData;
 
+// 常用世界实体容器与映射类型别名
 typedef std::list<WorldObject*> WorldObjectList;
 typedef std::set<WorldObject*> WorldObjectSet;
 typedef std::unordered_set<WorldObject*> WorldObjectUnSet;
@@ -56,6 +59,7 @@ typedef std::map<uint32, GameObject*> GameObjectsMap;
 typedef std::map<uint32, DynamicObject*> DynamicObjectsMap;
 typedef std::map<uint32, Corpse*> PlayerCorpsesMap;
 
+// 玩家对象更新数据包映射表（按目标玩家索引）
 typedef std::unordered_map<Player*, UpdateData> UpdateDataMapType;
 
 #endif

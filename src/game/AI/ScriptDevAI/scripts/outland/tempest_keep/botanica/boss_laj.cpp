@@ -21,9 +21,15 @@ SDComment: Immunities are wrong, must be adjusted to use resistance from creatur
 SDCategory: Tempest Keep, The Botanica
 EndScriptData */
 
+// 拉伊（生态船四号首领）
+/* 遭遇战概述：
+ * 拉伊是变异的沼泽巨人，战斗中周期性变异转换各系免疫抗性并喷吐过敏毒素。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     EMOTE_SUMMON                = 10755,
@@ -60,12 +66,14 @@ enum
 const std::vector<uint32> summonSpellsFirstLoc = { SPELL_SUMMON_LASHER_1, SPELL_SUMMON_FLAYER_1 };
 const std::vector<uint32> summonSpellsSecondLoc = { SPELL_SUMMON_LASHER_2, SPELL_SUMMON_FLAYER_2 };
 
+// LajActions 相关枚举
 enum LajActions
 {
     LAJ_ACTION_MAX,
     LAJ_TELEPORT_SUMMON
 };
 
+// boss_lajAI 逻辑实现
 struct boss_lajAI : public CombatAI
 {
     boss_lajAI(Creature* creature) : CombatAI(creature, 0)
@@ -75,6 +83,7 @@ struct boss_lajAI : public CombatAI
 
     GuidVector m_spawns;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         SetCombatMovement(true);
@@ -91,6 +100,7 @@ struct boss_lajAI : public CombatAI
         CombatAI::EnterEvadeMode();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DespawnGuids(m_spawns);
@@ -131,6 +141,7 @@ struct boss_lajAI : public CombatAI
         DoCastSpellIfCan(nullptr, summonSpellsSecondLoc[urand(0, summonSpellsSecondLoc.size() - 1)], CAST_TRIGGERED);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->AI()->DoCastSpellIfCan(nullptr, SPELL_ROOT_SELF, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
@@ -140,6 +151,7 @@ struct boss_lajAI : public CombatAI
         m_spawns.push_back(summoned->GetObjectGuid());
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -174,6 +186,7 @@ struct boss_lajAI : public CombatAI
 };
 
 // 34700 - Allergic Reaction
+// AllergicReaction 法术脚本
 struct AllergicReaction : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -186,6 +199,7 @@ struct AllergicReaction : public SpellScript
     }
 };
 
+// 注册 boss_laj 脚本
 void AddSC_boss_laj()
 {
     Script* pNewScript = new Script;

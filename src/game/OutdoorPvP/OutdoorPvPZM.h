@@ -24,26 +24,27 @@
 #include "Tools/Language.h"
 #include "World/WorldStateDefines.h"
 
+// 赞加沼泽（Zangarmarsh）双塔废墟野外 PvP 常量定义
 enum
 {
     MAX_ZM_TOWERS                           = 2,
 
-    // npcs
+    // npcs (战旗提供者斥候 NPC，当前由条件/对话驱动)
     //NPC_ALLIANCE_FIELD_SCOUT              = 18581,
     //NPC_HORDE_FIELD_SCOUT                 = 18564,
 
-    // these 2 npcs act as an artkit
+    // these 2 npcs act as an artkit (充当塔顶与墓地光柱特效视觉的虚拟 NPC)
     NPC_PVP_BEAM_RED                        = 18757,
     NPC_PVP_BEAM_BLUE                       = 18759,
 
-    // gameobjects
+    // gameobjects (东西双塔占领点及中央墓地阵营战旗)
     GO_ZANGA_BANNER_WEST                    = 182522,
     GO_ZANGA_BANNER_EAST                    = 182523,
-    GO_ZANGA_BANNER_CENTER_ALLIANCE         = 182527,           // triggers spell 32433
-    GO_ZANGA_BANNER_CENTER_HORDE            = 182528,           // triggers spell 32433
-    GO_ZANGA_BANNER_CENTER_NEUTRAL          = 182529,           // triggers spell 32438
+    GO_ZANGA_BANNER_CENTER_ALLIANCE         = 182527,           // triggers spell 32433 (联盟占领中央墓地旗帜，触发法术 32433)
+    GO_ZANGA_BANNER_CENTER_HORDE            = 182528,           // triggers spell 32433 (部落占领中央墓地旗帜，触发法术 32433)
+    GO_ZANGA_BANNER_CENTER_NEUTRAL          = 182529,           // triggers spell 32438 (中立中央墓地旗帜，触发法术 32438)
 
-    // spells
+    // spells (双塔祝福、战旗携带法术、牌子法术及光柱特效法术)
     SPELL_TWIN_SPIRE_BLESSING               = 33779,
     SPELL_BATTLE_STANDARD_ALLIANCE          = 32430,
     SPELL_BATTLE_STANDARD_HORDE             = 32431,
@@ -54,11 +55,11 @@ enum
     SPELL_BEAM_RED                          = 32839,
     SPELL_BEAM_BLUE                         = 32840,
 
-    // misc
+    // misc (双塔墓地链接 ID)
     GRAVEYARD_ID_TWIN_SPIRE                 = 969,
     GRAVEYARD_ZONE_TWIN_SPIRE               = 3521,
 
-    // events
+    // events (东西两座信标占领/中立化事件 ID)
     //EVENT_EAST_BEACON_CONTEST_ALLIANCE    = 11816,
     //EVENT_EAST_BEACON_CONTEST_HORDE       = 11817,
     EVENT_EAST_BEACON_PROGRESS_ALLIANCE     = 11807,
@@ -75,10 +76,12 @@ enum
 
     // condition entries (hardcoded)
     // used to check the gossip options in DB for the flag provider NPC
+    // (硬编码脚本条件 ID，用于判断数据库里战场斥候 NPC 的领旗对话选项是否可用)
     OPVP_COND_ZM_ALLY_SCOUT_FLAG_READY      = 0,
     OPVP_COND_ZM_HORDE_SCOUT_FLAG_READY     = 1,
 };
 
+// 赞加沼泽信标占领事件描述结构
 struct ZangarmarshTowerEvent
 {
     uint32  eventEntry;
@@ -106,6 +109,7 @@ static const ZangarmarshTowerEvent zangarmarshTowerEvents[MAX_ZM_TOWERS][4] =
 
 static const uint32 zangarmarshTowers[MAX_ZM_TOWERS] = {GO_ZANGA_BANNER_EAST, GO_ZANGA_BANNER_WEST};
 
+// 赞加沼泽双塔废墟野外 PvP 控制器：管理东西信标占领、斥候领旗状态、中央墓地插旗与双塔祝福增益
 class OutdoorPvPZM : public OutdoorPvP
 {
     public:
@@ -128,13 +132,13 @@ class OutdoorPvPZM : public OutdoorPvP
         void HandleConditionStateChange(uint32 conditionId, bool state) override;
 
     private:
-        // process capture events
+        // process capture events (处理东西信标占领状态变更)
         bool ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team, uint32 newWorldState, uint32 newMapState);
 
-        // handles scout world states
+        // handles scout world states (更新斥候可领旗状态及地图提示世界状态)
         void UpdateScoutState(Team team, bool spawned);
 
-        // respawn npcs which act as an artkit visual
+        // respawn npcs which act as an artkit visual (切换作为光柱视觉特效的 NPC 附带光环)
         void SetBeaconArtKit(const WorldObject* objRef, ObjectGuid creatureGuid, uint32 auraId);
 
         uint32 m_towerWorldState[MAX_ZM_TOWERS];

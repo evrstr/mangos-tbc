@@ -274,6 +274,7 @@ uint32 GetFindersAmount(Creature* shard)
 Circle
 */
 
+// 召唤法阵游戏对象 AI (GoCircle)
 class GoCircle : public GameObjectAI
 {
     public:
@@ -287,6 +288,7 @@ class GoCircle : public GameObjectAI
 /*
 Necropolis
 */
+// 浮空城通灵塔游戏对象 AI (GoNecropolis)
 class GoNecropolis : public GameObjectAI
 {
     public:
@@ -300,6 +302,7 @@ class GoNecropolis : public GameObjectAI
 /*
 Mouth of Kel'Thuzad
 */
+// 克尔苏加德之口 AI (MouthAI)：全区域广播天灾入侵开启与结束公告
 struct MouthAI : public ScriptedAI
 {
     MouthAI(Creature* creature) : ScriptedAI(creature)
@@ -344,6 +347,7 @@ struct MouthAI : public ScriptedAI
 /*
 Necropolis
 */
+// 通灵塔核心 AI (NecropolisAI)：管理浮空塔信号传递与坏死水晶
 struct NecropolisAI : public ScriptedAI
 {
     NecropolisAI(Creature* creature) : ScriptedAI(creature)
@@ -376,6 +380,7 @@ struct NecropolisAI : public ScriptedAI
 /*
 Necropolis Health
 */
+// 通灵塔生命判定 AI (NecropolisHealthAI)：与坏死水晶联动，当 3 颗水晶均被摧毁后消灭通灵塔
 struct NecropolisHealthAI : public ScriptedAI
 {
     std::set<ObjectGuid> ownedCircles;
@@ -539,6 +544,7 @@ struct NecropolisHealthAI : public ScriptedAI
 /*
 Necropolis Proxy
 */
+// 通灵塔信号代理 AI (NecropolisProxyAI)
 struct NecropolisProxyAI : public ScriptedAI
 {
     NecropolisProxyAI(Creature* creature) : ScriptedAI(creature)
@@ -587,6 +593,7 @@ struct NecropolisProxyAI : public ScriptedAI
 /*
 Necropolis Relay
 */
+// 通灵塔信号中继器 AI (NecropolisRelayAI)
 struct NecropolisRelayAI : public ScriptedAI
 {
     NecropolisRelayAI(Creature* creature) : ScriptedAI(creature)
@@ -635,6 +642,7 @@ struct NecropolisRelayAI : public ScriptedAI
 /*
 Necrotic Shard
 */
+// 坏死水晶 AI (NecroticShard)：生成天灾保卫者小怪，受到攻击时扣减血量并触发防卫反击
 struct NecroticShard : public ScriptedAI
 {
     NecroticShard(Creature* creature) : ScriptedAI(creature)
@@ -896,6 +904,7 @@ struct NecroticShard : public ScriptedAI
 /*
 Minion Spawner
 */
+// 天灾仆从生成器 AI (MinionspawnerAI)
 struct MinionspawnerAI : public ScriptedAI
 {
     MinionspawnerAI(Creature* creature) : ScriptedAI(creature)
@@ -931,6 +940,7 @@ struct MinionspawnerAI : public ScriptedAI
 /*
 npc_cultist_engineer
 */
+// 诅咒教派工程师 AI (npc_cultist_engineer)：玩家可消耗 8 枚死灵符文打断其通灵仪式召唤末日之影首领
 struct npc_cultist_engineer : public ScriptedAI
 {
     npc_cultist_engineer(Creature* creature) : ScriptedAI(creature)
@@ -975,6 +985,7 @@ struct npc_cultist_engineer : public ScriptedAI
     }
 };
 
+// 召唤末日之影首领法术脚本
 struct SummonBoss : public SpellScript
 {
     void OnSummon(Spell* spell, Creature* summon) const override
@@ -992,6 +1003,7 @@ struct SummonBoss : public SpellScript
 npc_minion
 Notes: Shard Minions, Rares and Shadow of Doom.
 */
+// 天灾入侵仆从战斗 AI (ScourgeMinion)：骷髅突击兵、狂暴食尸鬼与幽灵士兵的基础战斗行为
 struct ScourgeMinion : public CombatAI
 {
     ScourgeMinion(Creature* creature) : CombatAI(creature, 999)
@@ -1127,6 +1139,7 @@ struct ScourgeMinion : public CombatAI
     }
 };
 
+// 苍白恐魔 AI (PallidHorrorAI)：天灾突袭暴风城与幽暗城世界事件首领
 struct PallidHorrorAI : public CombatAI
 {
     std::set<ObjectGuid> m_flameshockers;
@@ -1311,6 +1324,7 @@ struct CommuniqueTrigger : public SpellScript
     }
 };
 
+// 注册天灾入侵世界事件脚本
 void AddSC_scourge_invasion()
 {
     Script* newscript;

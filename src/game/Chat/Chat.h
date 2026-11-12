@@ -47,24 +47,27 @@ class Pet;
 class Player;
 class Unit;
 
+/// 聊天命令表节点定义（支持多级子命令树）
 class ChatCommand
 {
     public:
         const char*        Name;
-        uint32             SecurityLevel;                   // function pointer required correct align (use uint32)
+        uint32             SecurityLevel;                   // function pointer required correct align (use uint32) | 所需最低账号权限等级（使用 uint32 以满足函数指针成员对齐）
         bool               AllowConsole;
         bool (ChatHandler::*Handler)(char* args);
         std::string        Help;
         ChatCommand*       ChildCommands;
 };
 
+/// 聊天命令检索结果枚举
 enum ChatCommandSearchResult
 {
-    CHAT_COMMAND_OK,                                        // found accessible command by command string
-    CHAT_COMMAND_UNKNOWN,                                   // first level command not found
-    CHAT_COMMAND_UNKNOWN_SUBCOMMAND,                        // command found but some level subcommand not find in subcommand list
+    CHAT_COMMAND_OK,                                        // found accessible command by command string | 成功匹配到可执行命令
+    CHAT_COMMAND_UNKNOWN,                                   // first level command not found | 未找到顶层命令
+    CHAT_COMMAND_UNKNOWN_SUBCOMMAND,                        // command found but some level subcommand not find in subcommand list | 找到主命令但子命令不存在
 };
 
+/// 玩家聊天状态标签位掩码（AFK / DND / GM）
 enum PlayerChatTag
 {
     CHAT_TAG_NONE               = 0x00,
@@ -74,6 +77,7 @@ enum PlayerChatTag
 };
 typedef uint32 ChatTagFlags;
 
+/// 游戏内聊天命令与系统消息处理器（同时作为控制台 CliHandler 的基类）
 class ChatHandler
 {
     public:
@@ -81,9 +85,10 @@ class ChatHandler
         explicit ChatHandler(Player* player);
         virtual ~ChatHandler();
 
+        /// 从多行消息中截取当前行并将 pos 置空
         static char* LineFromMessage(char*& pos) { char* start = strtok(pos, "\n"); pos = nullptr; return start; }
 
-        // function with different implementation for chat/console
+        // function with different implementation for chat/console | 聊天会话与控制台拥有不同实现的虚函数接口
         virtual const char* GetMangosString(int32 entry) const;
         const char* GetOnOffStr(bool value) const;
 
@@ -93,10 +98,13 @@ class ChatHandler
         void PSendSysMessage(const char* format, ...) ATTR_PRINTF(2, 3);
         void PSendSysMessage(int32     entry, ...);
 
+        /// 解析并执行以 `.` 或 `!` 开头的聊天命令
         bool ParseCommands(const char* text);
         ChatCommand const* FindCommand(char const* text);
 
+        /// 检测文本中是否包含客户端转义序列（如颜色/超链接）
         static bool HasEscapeSequences(const char* message);
+        /// 严格校验聊天文本中的转义序列是否安全合法
         static bool CheckEscapeSequences(const char* message);
 
         bool HasSentErrorMessage() const { return sentErrorMessage; }
@@ -104,23 +112,23 @@ class ChatHandler
         WorldSession* GetSession() { return m_session; }
 
         /**
-        * \brief Prepare SMSG_GM_MESSAGECHAT/SMSG_MESSAGECHAT
+        * \brief Prepare SMSG_GM_MESSAGECHAT/SMSG_MESSAGECHAT | 通用构建 SMSG_GM_MESSAGECHAT/SMSG_MESSAGECHAT 聊天数据包
         *
         * Method:    BuildChatPacket build message chat packet generic way
         * FullName:  ChatHandler::BuildChatPacket
         * Access:    public static
         * Returns:   void
         *
-        * \param WorldPacket& data             : Provided packet will be filled with requested info
-        * \param ChatMsg msgtype               : Message type from ChatMsg enum from SharedDefines.h
-        * \param ChatTagFlags chatTag          : Chat tag from PlayerChatTag in Chat.h
-        * \param char const* message           : Message to send
-        * \param Language language             : Language from Language enum in SharedDefines.h
-        * \param ObjectGuid const& senderGuid  : May be null in some case but often required for ignore list
-        * \param char const* senderName        : Required for type *MONSTER* or *BNET*, but also if GM is true
-        * \param ObjectGuid const& targetGuid  : Often null, but needed for type *MONSTER* or *BNET* or *BATTLEGROUND* or *ACHIEVEMENT*
-        * \param char const* targetName        : Often null, but needed for type *MONSTER* or *BNET* or *BATTLEGROUND*
-        * \param char const* channelName       : Required only for CHAT_MSG_CHANNEL
+        * \param WorldPacket& data             : Provided packet will be filled with requested info | 待填充的目标数据包
+        * \param ChatMsg msgtype               : Message type from ChatMsg enum from SharedDefines.h | 聊天消息类型枚举
+        * \param ChatTagFlags chatTag          : Chat tag from PlayerChatTag in Chat.h | 玩家聊天标签（AFK/DND/GM）
+        * \param char const* message           : Message to send | 消息正文内容
+        * \param Language language             : Language from Language enum in SharedDefines.h | 语言类型枚举
+        * \param ObjectGuid const& senderGuid  : May be null in some case but often required for ignore list | 发送者 GUID（常用于屏蔽列表过滤）
+        * \param char const* senderName        : Required for type *MONSTER* or *BNET*, but also if GM is true | 发送者名称（NPC/战网/GM 广播必填）
+        * \param ObjectGuid const& targetGuid  : Often null, but needed for type *MONSTER* or *BNET* or *BATTLEGROUND* or *ACHIEVEMENT* | 目标 GUID
+        * \param char const* targetName        : Often null, but needed for type *MONSTER* or *BNET* or *BATTLEGROUND* | 目标名称
+        * \param char const* channelName       : Required only for CHAT_MSG_CHANNEL | 频道名称（仅频道消息需要）
         **/
         static void BuildChatPacket(
             WorldPacket& data, ChatMsg msgtype, char const* message, Language language = LANG_UNIVERSAL, ChatTagFlags chatTag = CHAT_TAG_NONE,
@@ -129,6 +137,7 @@ class ChatHandler
             char const* channelName = nullptr);
 
         // extraction different type params from args string, all functions update (char** args) to first unparsed tail symbol at return
+        // 从命令参数字符串提取各类参数；所有函数返回时均会推进 *args 指针指向下一个未解析字符
         static void  SkipWhiteSpaces(char** args);
         bool  ExtractInt32(char** args, int32& val) const;
         bool  ExtractOptInt32(char** args, int32& val, int32 defVal) const;
@@ -138,15 +147,15 @@ class ChatHandler
         static bool  ExtractFloat(char** args, float& val);
         static bool  ExtractOptFloat(char** args, float& val, float defVal);
         static char* ExtractQuotedArg(char** args, bool asis = false);
-        // string with " or [] or ' around
+        // string with " or [] or ' around | 提取被双引号、方括号或单引号包裹的字符串参数
         static char* ExtractLiteralArg(char** args, char const* lit = nullptr);
-        // literal string (until whitespace and not started from "['|), any or 'lit' if provided
+        // literal string (until whitespace and not started from "['|), any or 'lit' if provided | 提取不带引号的字面量参数（可选匹配指定字面值 lit）
         static char* ExtractQuotedOrLiteralArg(char** args, bool asis = false);
         static bool  ExtractOnOff(char** args, bool& value);
         static char* ExtractLinkArg(char** args, char const* const* linkTypes = nullptr, int* foundIdx = nullptr, char** keyPair = nullptr, char** somethingPair = nullptr);
-        // shift-link like arg (with aditional info if need)
-        static char* ExtractArg(char** args, bool asis = false);   // any name/number/quote/shift-link strings
-        static char* ExtractOptNotLastArg(char** args);            // extract name/number/quote/shift-link arg only if more data in args for parse
+        // shift-link like arg (with aditional info if need) | 提取 Shift 超链接类参数（可选附带附加字段）
+        static char* ExtractArg(char** args, bool asis = false);   // any name/number/quote/shift-link strings | 提取任意名称/数字/引号/超链接参数
+        static char* ExtractOptNotLastArg(char** args);            // extract name/number/quote/shift-link arg only if more data in args for parse | 仅当后续还有未解析数据时才提取参数
 
         char* ExtractKeyFromLink(char** text, char const* linkType, char** something1 = nullptr);
         static char* ExtractKeyFromLink(char** text, char const* const* linkTypes, int* found_idx = nullptr, char** something1 = nullptr);
@@ -165,11 +174,11 @@ class ChatHandler
         WorldSession* GetSession() const { return m_session; }
     protected:
         explicit ChatHandler() : m_session(nullptr), sentErrorMessage(false)
-        {}      // for CLI subclass
+        {}      // for CLI subclass | 供控制台子类 CliHandler 调用的无参保护构造
 
         bool hasStringAbbr(const char* name, const char* part) const;
 
-        // function with different implementation for chat/console
+        // function with different implementation for chat/console | 聊天会话与控制台子类覆写接口
         virtual uint32 GetAccountId() const;
         virtual AccountTypes GetAccessLevel() const;
         virtual bool isAvailable(ChatCommand const& cmd) const;
@@ -867,15 +876,15 @@ class ChatHandler
         std::string PrepareStringNpcOrGoSpawnInformation(uint32 guid) const;
 
         /**
-         * Stores informations about a deleted character
+         * Stores informations about a deleted character | 已删除角色摘要信息结构
          */
         struct DeletedInfo
         {
-            uint32      lowguid;                            ///< the low GUID from the character
-            std::string name;                               ///< the character name
-            uint32      accountId;                          ///< the account id
-            std::string accountName;                        ///< the account name
-            time_t      deleteDate;                         ///< the date at which the character has been deleted
+            uint32      lowguid;                            ///< the low GUID from the character | 角色低位 GUID
+            std::string name;                               ///< the character name | 角色名称
+            uint32      accountId;                          ///< the account id | 所属账号 ID
+            std::string accountName;                        ///< the account name | 所属账号名称
+            time_t      deleteDate;                         ///< the date at which the character has been deleted | 角色删除时间戳
         };
 
         typedef std::list<DeletedInfo> DeletedInfoList;
@@ -885,13 +894,14 @@ class ChatHandler
 
         void SetSentErrorMessage(bool val) { sentErrorMessage = val;};
     private:
-        WorldSession* m_session;                            // != nullptr for chat command call and nullptr for CLI command
+        WorldSession* m_session;                            // != nullptr for chat command call and nullptr for CLI command | 游戏内聊天命令时非空，控制台 CLI 命令时为 nullptr
 
-        // common global flag
+        // common global flag | 全局命令表加载标记
         static bool load_command_table;
         bool sentErrorMessage;
 };
 
+/// 服务器控制台命令行处理器（继承自 ChatHandler，无关联客户端会话）
 class CliHandler : public ChatHandler
 {
     private:
@@ -904,7 +914,7 @@ class CliHandler : public ChatHandler
         CliHandler(uint32 accountId, AccountTypes accessLevel, Print zprint)
             : m_accountId(accountId), m_loginAccessLevel(accessLevel), m_print(std::move(zprint)) {}
 
-        // overwrite functions
+        // overwrite functions | 覆写基类会话相关方法以适配控制台执行环境
         const char* GetMangosString(int32 entry) const override;
         uint32 GetAccountId() const override;
         AccountTypes GetAccessLevel() const override;

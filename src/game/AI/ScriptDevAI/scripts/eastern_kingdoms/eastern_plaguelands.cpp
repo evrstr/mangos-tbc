@@ -21,6 +21,8 @@ SDComment: Quest support: 7622.
 SDCategory: Eastern Plaguelands
 EndScriptData */
 
+// 东瘟疫之地（Eastern Plaguelands）区域任务与提里奥·弗丁系列任务脚本
+
 /* ContentData
 npc_eris_havenfire
 EndContentData */
@@ -31,33 +33,34 @@ EndContentData */
 ## npc_eris_havenfire
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_PHASE_HEAL                      = -1000815,
-    SAY_EVENT_END                       = -1000816,
-    SAY_EVENT_FAIL_1                    = -1000817,
-    SAY_EVENT_FAIL_2                    = -1000818,
-    SAY_PEASANT_APPEAR_1                = -1000819,
-    SAY_PEASANT_APPEAR_2                = -1000820,
-    SAY_PEASANT_APPEAR_3                = -1000821,
+    SAY_PHASE_HEAL                      = -1000815,         // 阶段治疗 台词广播 ID
+    SAY_EVENT_END                       = -1000816,         // 事件end 台词广播 ID
+    SAY_EVENT_FAIL_1                    = -1000817,         // 事件fail1 台词广播 ID
+    SAY_EVENT_FAIL_2                    = -1000818,         // 事件fail2 台词广播 ID
+    SAY_PEASANT_APPEAR_1                = -1000819,         // peasant登场1 台词广播 ID
+    SAY_PEASANT_APPEAR_2                = -1000820,         // peasant登场2 台词广播 ID
+    SAY_PEASANT_APPEAR_3                = -1000821,         // peasant登场3 台词广播 ID
 
     // SPELL_DEATHS_DOOR                 = 23127,           // damage spells cast on the peasants
     // SPELL_SEETHING_PLAGUE             = 23072,
-    SPELL_ENTER_THE_LIGHT_DND           = 23107,
-    SPELL_BLESSING_OF_NORDRASSIL        = 23108,
+    SPELL_ENTER_THE_LIGHT_DND           = 23107,            // enterthelightdnd 法术 ID
+    SPELL_BLESSING_OF_NORDRASSIL        = 23108,            // blessingofnordrassil 法术 ID
 
-    NPC_INJURED_PEASANT                 = 14484,
-    NPC_PLAGUED_PEASANT                 = 14485,
-    NPC_SCOURGE_ARCHER                  = 14489,
-    NPC_SCOURGE_FOOTSOLDIER             = 14486,
+    NPC_INJURED_PEASANT                 = 14484,            // injuredpeasant Entry ID
+    NPC_PLAGUED_PEASANT                 = 14485,            // 疫病peasant Entry ID
+    NPC_SCOURGE_ARCHER                  = 14489,            // scourgearcher Entry ID
+    NPC_SCOURGE_FOOTSOLDIER             = 14486,            // scourgefootsoldier Entry ID
     NPC_THE_CLEANER                     = 14503,            // can be summoned if the priest has more players in the party for help. requires further research
 
-    QUEST_BALANCE_OF_LIGHT_AND_SHADOW   = 7622,
+    QUEST_BALANCE_OF_LIGHT_AND_SHADOW   = 7622,             // balanceoflightand暗影 任务 ID
 
-    BASE_PEASANTS_PER_WAVE              = 11,
-    MAX_KILLED_PEASANT                  = 15,
-    MAX_SAVED_PEASANT                   = 50,
-    MAX_ARCHERS                         = 8,
+    BASE_PEASANTS_PER_WAVE              = 11,               // peasantsperwave 标识 ID
+    MAX_KILLED_PEASANT                  = 15,               // killedpeasant 标识 ID
+    MAX_SAVED_PEASANT                   = 50,               // savedpeasant 标识 ID
+    MAX_ARCHERS                         = 8,                // archers 标识 ID
 };
 
 static const float aArcherSpawn[8][4] =
@@ -77,22 +80,24 @@ static const float aPeasantMoveLoc[3] = {3335.0f, -2994.04f, 161.14f};
 
 static const int32 aPeasantSpawnYells[3] = {SAY_PEASANT_APPEAR_1, SAY_PEASANT_APPEAR_2, SAY_PEASANT_APPEAR_3};
 
+// 随从/NPC AI：havenfire（eris_havenfire）
 struct npc_eris_havenfireAI : public ScriptedAI
 {
     npc_eris_havenfireAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiEventTimer;
-    uint32 m_uiSadEndTimer;
-    uint32 m_uiArcherCheckTargetTimer;
+    uint32 m_uiEventTimer;                                  // Event 技能计时器
+    uint32 m_uiSadEndTimer;                                 // SadEnd 技能计时器
+    uint32 m_uiArcherCheckTargetTimer;                      // ArcherCheckTarget 技能计时器
     uint8 m_uiPhase;
     uint8 m_uiCurrentWave;
     uint8 m_uiKillCounter;
     uint8 m_uiSaveCounter;
     uint8 m_uiTotalCounter;
 
-    ObjectGuid m_playerGuid;
+    ObjectGuid m_playerGuid;                                // player 实体 GUID
     GuidList m_lSummonedGuidList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiEventTimer              = 0;
@@ -108,6 +113,7 @@ struct npc_eris_havenfireAI : public ScriptedAI
         m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         switch (pSummoned->GetEntry())
@@ -145,15 +151,16 @@ struct npc_eris_havenfireAI : public ScriptedAI
             pSummoned->CastSpell(pSummoned, SPELL_ENTER_THE_LIGHT_DND, TRIGGERED_NONE);
             pSummoned->ForcedDespawn(10000);
 
-            // Event ended
+            // Event ended (事件ended)
             if (m_uiSaveCounter >= MAX_SAVED_PEASANT)
                 DoBalanceEventEnd();
-            // Phase ended
+            // Phase ended (阶段ended)
             else if (m_uiSaveCounter + m_uiKillCounter == m_uiTotalCounter)
                 DoHandlePhaseEnd();
         }
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_INJURED_PEASANT || pSummoned->GetEntry() == NPC_PLAGUED_PEASANT)
@@ -278,6 +285,7 @@ struct npc_eris_havenfireAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiEventTimer)
@@ -335,11 +343,13 @@ struct npc_eris_havenfireAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_eris_havenfire
 UnitAI* GetAI_npc_eris_havenfire(Creature* pCreature)
 {
     return new npc_eris_havenfireAI(pCreature);
 }
 
+// 任务接取回调函数：npc_eris_havenfire
 bool QuestAccept_npc_eris_havenfire(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_BALANCE_OF_LIGHT_AND_SHADOW)
@@ -351,7 +361,7 @@ bool QuestAccept_npc_eris_havenfire(Player* pPlayer, Creature* pCreature, const 
     return true;
 }
 
-// 23209 - Terrordale Haunting Spirit #2 (Terrordale Haunting Spirit #2)
+// 23209 - Terrordale Haunting Spirit #2 (Terrordale Haunting Spirit #2) (23209 - Terrordale Haunting 之魂 #2 (Terrordale Haunting 之魂 #2))
 struct TerrordaleHauntingSpirit2 : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -360,7 +370,7 @@ struct TerrordaleHauntingSpirit2 : public SpellScript
     }
 };
 
-// 23253 - Terrordale Haunting Spirit #3 (Terrordale Haunting Spirit #3)
+// 23253 - Terrordale Haunting Spirit #3 (Terrordale Haunting Spirit #3) (23253 - Terrordale Haunting 之魂 #3 (Terrordale Haunting 之魂 #3))
 struct TerrordaleHauntingSpirit3 : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -369,6 +379,7 @@ struct TerrordaleHauntingSpirit3 : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：eastern_plaguelands
 void AddSC_eastern_plaguelands()
 {
     Script* pNewScript = new Script;

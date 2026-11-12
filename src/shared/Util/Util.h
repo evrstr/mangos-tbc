@@ -27,86 +27,97 @@
 
 typedef std::vector<std::string> Tokens;
 
+/// 按分隔符集合拆分字符串
 Tokens StrSplit(const std::string& src, const std::string& sep);
+/// 从拆分数组中读取指定下标的无符号 32 位整数
 uint32 GetUInt32ValueFromArray(Tokens const& data, uint16 index);
+/// 从拆分数组中读取指定下标的浮点数（按位解释 uint32）
 float GetFloatValueFromArray(Tokens const& data, uint16 index);
 
+/// 折叠并替换行内不可见控制字符（空白、制表符、响铃、换行）为单个空格
 void stripLineInvisibleChars(std::string& str);
 
+/// 计算指定本地小时（hour）对应的时间戳
 time_t GetLocalHourTimestamp(time_t time, uint8 hour, bool onlyAfterTime = true);
+/// 将秒数格式化为可读时间长度字符串（支持简写如 1d2h 与仅小时模式）
 std::string secsToTimeString(time_t timeInSecs, bool shortText = false, bool hoursOnly = false);
+/// 解析诸如 "1d2h30m" 格式的时间字符串为总秒数
 uint32 TimeStringToSecs(const std::string& timestring);
+/// 将时间戳格式化为 YYYY-MM-DD_HH-MM-SS 字符串
 std::string TimeToTimestampStr(time_t t);
+/// 将 DBC/DB 打包时间位域还原为 time_t
 time_t timeBitFieldsToSecs(uint32 packedDate);
 
+/// 将 time_t 打包为客户端任务/邮件等使用的 32 位时间位域格式
 inline uint32 secsToTimeBitFields(time_t secs)
 {
     tm* lt = localtime(&secs);
     return (lt->tm_year - 100) << 24 | lt->tm_mon  << 20 | (lt->tm_mday - 1) << 14 | lt->tm_wday << 11 | lt->tm_hour << 6 | lt->tm_min;
 }
 
+/// 获取当前线程局部的 Mersenne Twister 随机数引擎实例
 std::mt19937* GetRandomGenerator();
 
-/* Return a random number in the range min..max; (max-min) must be smaller than 32768. */
+/* Return a random number in the range min..max; (max-min) must be smaller than 32768. | 返回 [min, max] 范围内的随机整数；(max-min) 应小于 32768 */
 int32 irand(int32 min, int32 max);
 
 /* Return a random number in the range min..max (inclusive). For reliable results, the difference
-* between max and min should be less than RAND32_MAX. */
+* between max and min should be less than RAND32_MAX. | 返回 [min, max] 闭区间内的随机无符号整数 */
 uint32 urand(uint32 min, uint32 max);
 
-/* Return a random number in the range min..max (inclusive). */
+/* Return a random number in the range min..max (inclusive). | 返回 [min, max] 范围内的随机浮点数 */
 float frand(float min, float max);
 
-/* Return a random number in the range RAND32_MIN .. RAND32_MAX. */
+/* Return a random number in the range RAND32_MIN .. RAND32_MAX. | 返回全范围随机有符号 32 位整数 */
 int32 irand();
 
-/* Return a random number in the range 0 .. RAND32_MAX. */
+/* Return a random number in the range 0 .. RAND32_MAX. | 返回全范围随机无符号 32 位整数 */
 uint32 urand();
 
 /* Return a random double from 0.0 to 1.0 (exclusive). Floats support only 7 valid decimal digits.
  * A double supports up to 15 valid decimal digits and is used internally (RAND32_MAX has 10 digits).
- * With an FPU, there is usually no difference in performance between float and double. */
+ * With an FPU, there is usually no difference in performance between float and double. | 返回 [0.0, 1.0) 区间的双精度随机浮点数 */
 double rand_norm(void);
 
 float rand_norm_f(void);
 
 /* Return a random double from 0.0 to 99.9999999999999. Floats support only 7 valid decimal digits.
  * A double supports up to 15 valid decimal digits and is used internaly (RAND32_MAX has 10 digits).
- * With an FPU, there is usually no difference in performance between float and double. */
+ * With an FPU, there is usually no difference in performance between float and double. | 返回 [0.0, 100.0) 区间的双精度百分比随机数 */
 double rand_chance(void);
 
 float rand_chance_f(void);
 
-/* Return true if a random roll fits in the specified chance (range 0-100). */
+/* Return true if a random roll fits in the specified chance (range 0-100). | 按浮点概率（0-100）判定随机投骰是否成功 */
 inline bool roll_chance_f(float chance)
 {
     return chance > rand_chance();
 }
 
-/* Return true if a random roll fits in the specified chance (range 0-100). */
+/* Return true if a random roll fits in the specified chance (range 0-100). | 按整型概率（0-100）判定随机投骰是否成功 */
 inline bool roll_chance_i(int chance)
 {
     return chance > irand(0, 99);
 }
 
-/* Convert floating point chance to premultiplied integer chance (100.00 = 10000). */
+/* Convert floating point chance to premultiplied integer chance (100.00 = 10000). | 将浮点概率放大 100 倍转为万分比整数（100.00% -> 10000） */
 inline uint32 chance_u(float chance)
 {
-    return uint32(::roundf(std::max(0.0f, chance) * 100)); // Nearest 2 decimal places
+    return uint32(::roundf(std::max(0.0f, chance) * 100)); // Nearest 2 decimal places | 精确到小数点后两位
 }
 
-/* Perform a quick non-die combat roll with premultiplied integer chance */
+/* Perform a quick non-die combat roll with premultiplied integer chance | 使用预乘万分比概率执行快速单次战斗概率判定 */
 inline bool roll_chance_combat(float chance)
 {
     uint32 u = chance_u(chance);
     return (u && (u > urand(1, 10000)));
 }
 
-/* An abstract die for combat rolls with premultiplied integer chances */
+/* An abstract die for combat rolls with premultiplied integer chances | 用于战斗圆桌判定（Combat Roll Table）的抽象多面骰模板结构 */
 template<class Side, Side Default, uint8 Sides>
 struct Die
 {
-    // MSVC++13-friendly initialization, switch to {0} when we end support for it
+    // MSVC++13-friendly initialization, switch to {0} when we end support for it | 兼容旧版 MSVC 的数组清零初始化写法
     explicit Die() { for (uint8 i = 0; i < Sides; ++i) chance[i] = 0; }
     Side roll(uint32 random)
     {
@@ -155,18 +166,23 @@ inline void ApplyModFloatVar(float& var, float  val, bool apply)
 
 inline void ApplyPercentModFloatVar(float& var, float val, bool apply)
 {
-    if (val == -100.0f)     // prevent set var to zero
+    if (val == -100.0f)     // prevent set var to zero | 避免 -100% 导致后续逆运算除零
         val = -99.99f;
     var *= (apply ? (100.0f + val) / 100.0f : 100.0f / (100.0f + val));
 }
 
+/// 将 UTF-8 字符串转换为宽字符串（可选截断最大字符数 max_len）
 bool Utf8toWStr(const std::string& utf8str, std::wstring& wstr, size_t max_len = 0);
-// in wsize==max size of buffer, out wsize==real string size
+// in wsize==max size of buffer, out wsize==real string size | 输入 wsize 为最大长度限制，输出实际转换长度
 
+/// 将宽字符串转换为 UTF-8 字符串
 bool WStrToUtf8(const std::wstring& wstr, std::string& utf8str);
 
-size_t utf8length(std::string& utf8str);                    // returns string's length in utf8 chars, sets string to "" on invalid utf8 sequence
-size_t utf8limit(std::string& utf8str, size_t bytes);       // returns string's new size in bytes, sets string to "" on invalid utf8 sequence
+/// 返回 UTF-8 字符个数，若序列非法则将字符串清空并返回 0
+size_t utf8length(std::string& utf8str);                    // returns string's length in utf8 chars, sets string to "" on invalid utf8 sequence | 返回 UTF-8 字符数，遇非法序列置空
+/// 按最大字节数截断 UTF-8 字符串且保证不在多字节字符中间切断
+size_t utf8limit(std::string& utf8str, size_t bytes);       // returns string's new size in bytes, sets string to "" on invalid utf8 sequence | 按字节上限安全截断 UTF-8，遇非法序列置空
+/// 按最大字符数截断 UTF-8 字符串
 void utf8truncate(std::string& utf8str, size_t len);
 
 inline bool isBasicLatinCharacter(wchar_t wchar)
@@ -379,19 +395,29 @@ inline void wstrToLower(std::wstring& str)
     std::transform(str.begin(), str.end(), str.begin(), wcharToLower);
 }
 
+/// 根据俄语/西里尔语变格规则提取角色名字的词干主干部分
 std::wstring GetMainPartOfName(const std::wstring& wname, uint32 declension);
 
+/// UTF-8 转控制台本地编码（Windows OEM）
 bool utf8ToConsole(const std::string& utf8str, std::string& conStr);
+/// 控制台本地编码转 UTF-8
 bool consoleToUtf8(const std::string& conStr, std::string& utf8str);
+/// 大小写不敏感地判断 UTF-8 字符串是否包含指定宽字符串子串
 bool Utf8FitTo(const std::string& str, const std::wstring& search);
+/// 向文件流输出 UTF-8 格式化字符串（Windows 下自动转 OEM 编码）
 void utf8printf(FILE* out, const char* str, ...);
+/// va_list 版本的 UTF-8 格式化输出函数
 void vutf8printf(FILE* out, const char* str, va_list* ap);
 
+/// 校验字符串是否为合法 IPv4/IPv6 地址
 bool IsIPAddress(char const* ipaddress);
+/// 将当前进程 PID 写入指定文件
 uint32 CreatePIDFile(const std::string& filename);
 
+/// 将字节数组编码为大写十六进制字符串
 void hexEncodeByteArray(uint8* bytes, uint32 arrayLen, std::string& result);
 
+/// 将强类型枚举值安全转换为底层整型
 template<typename E>
 constexpr typename std::underlying_type<E>::type AsUnderlyingType(E enumValue)
 {

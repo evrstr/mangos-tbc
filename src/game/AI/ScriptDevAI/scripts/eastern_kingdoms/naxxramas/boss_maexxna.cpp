@@ -21,42 +21,45 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 迈克斯纳（Maexxna）蜘蛛区3号首领战 AI（蛛网裹体、结网喷毒与狂暴斩杀）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_BOSS_GENERIC_FRENZY   = 1191,
+    EMOTE_BOSS_GENERIC_FRENZY   = 1191,                     // bossgeneric狂乱 表情动作 ID
 
-    // Maexxna Spells
-    SPELL_DOUBLE_ATTACK         = 19818,
+    // Maexxna Spells (迈克斯纳Spells)
+    SPELL_DOUBLE_ATTACK         = 19818,                    // 双重攻击 法术 ID
 
-    SPELL_WEBSPRAY              = 29484,
-    SPELL_POISONSHOCK           = 28741,
-    SPELL_NECROTICPOISON        = 28776,
-    SPELL_FRENZY                = 28747,
-    SPELL_WEB_WRAP_INIT         = 28617,
+    SPELL_WEBSPRAY              = 29484,                    // webspray 法术 ID
+    SPELL_POISONSHOCK           = 28741,                    // poisonshock 法术 ID
+    SPELL_NECROTICPOISON        = 28776,                    // necroticpoison 法术 ID
+    SPELL_FRENZY                = 28747,                    // 狂乱 法术 ID
+    SPELL_WEB_WRAP_INIT         = 28617,                    // 蛛网裹体init 法术 ID
 
-    SPELL_SUMMON_SPIDERLING_1   = 29434,                    // Summons 10 spiderlings
+    SPELL_SUMMON_SPIDERLING_1   = 29434,                    // Summons 10 spiderlings (召唤 spiderlings)
 //    SPELL_SUMMON_SPIDERLING_2 = 30076,                   // Summons 3 spiderlings
 
-    // Web Wrap spells
-    SPELL_WEB_WRAP_200          = 28618,
-    SPELL_WEB_WRAP_300          = 28619,
-    SPELL_WEB_WRAP_400          = 28620,
-    SPELL_WEB_WRAP_500          = 28621,
+    // Web Wrap spells (蛛网裹体spells)
+    SPELL_WEB_WRAP_200          = 28618,                    // 蛛网裹体200 法术 ID
+    SPELL_WEB_WRAP_300          = 28619,                    // 蛛网裹体300 法术 ID
+    SPELL_WEB_WRAP_400          = 28620,                    // 蛛网裹体400 法术 ID
+    SPELL_WEB_WRAP_500          = 28621,                    // 蛛网裹体500 法术 ID
     SPELL_WEBWRAP_STUN          = 28622,                    // Triggered by spells 28618 - 28621
-    SPELL_WEB_WRAP_SUMMON       = 28627,
-    SPELL_CLEAR_WEB_WRAP_TARGET = 28628,
-    SPELL_CLEAR_WEB_WRAP_SELF   = 28629,
-    SPELL_SELF_STUN             = 29826,                    // Spell Id unsure
-    SPELL_KILL_WEBWRAP          = 29108,
+    SPELL_WEB_WRAP_SUMMON       = 28627,                    // 蛛网裹体召唤 法术 ID
+    SPELL_CLEAR_WEB_WRAP_TARGET = 28628,                    // clear蛛网裹体目标 法术 ID
+    SPELL_CLEAR_WEB_WRAP_SELF   = 28629,                    // clear蛛网裹体self 法术 ID
+    SPELL_SELF_STUN             = 29826,                    // Spell Id unsure (法术IDunsure)
+    SPELL_KILL_WEBWRAP          = 29108,                    // 击杀webwrap 法术 ID
 
-    NPC_SPIDERLING              = 17055,
+    NPC_SPIDERLING              = 17055,                    // spiderling Entry ID
     NPC_INVISIBLE_MAN           = 17286,                    // Handle the summoning of the players and Web Wrap NPCs
 
-    MAX_PLAYERS_WEB_WRAP        = 3,
+    MAX_PLAYERS_WEB_WRAP        = 3,                        // players蛛网裹体 标识 ID
 
     TIMER_40_SEC                = 40000,                    // Used by all main abilities
 };
@@ -72,6 +75,7 @@ struct npc_web_wrapAI : public ScriptedAI
 
     uint32 m_checkVictimAliveTimer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         SetCombatMovement(false);
@@ -91,6 +95,7 @@ struct npc_web_wrapAI : public ScriptedAI
         m_creature->ForcedDespawn(5000);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (Unit* spawner = m_creature->GetSpawner())
@@ -112,11 +117,13 @@ struct npc_web_wrapAI : public ScriptedAI
 #   boss_maexxna
 ###################*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MaexxnaActions
 {
     MAEXXNA_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（maexxna）
 struct boss_maexxnaAI : public BossAI
 {
     boss_maexxnaAI(Creature* creature) : BossAI(creature, MAEXXNA_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -128,12 +135,14 @@ struct boss_maexxnaAI : public BossAI
 
     CreatureList m_summoningTriggers;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
         DoCastSpellIfCan(nullptr, SPELL_DOUBLE_ATTACK, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_SPIDERLING)
@@ -160,8 +169,9 @@ struct npc_invisible_manAI : public ScriptedAI
         Reset();
     }
 
-    ObjectGuid m_victimGuid;
+    ObjectGuid m_victimGuid;                                // victim 实体 GUID
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_victimGuid.Clear();
@@ -202,7 +212,7 @@ struct npc_invisible_manAI : public ScriptedAI
     }
 };
 
-// 28673 - Web Wrap
+// 28673 - Web Wrap (28673 - 蛛网 裹体)
 struct WebWrapMaexxna : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -243,12 +253,12 @@ struct WebWrapMessage : public SpellScript
     }
 };
 
-// 28628, 28629 - Clear Web Wrap 
+// 28628, 28629 - Clear Web Wrap
 struct ClearWebWrap : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
-        // Clear Web Wrap
+        // Clear Web Wrap (Clear蛛网裹体)
         if (effIdx == EFFECT_INDEX_0)
         {
             Unit* unitTarget = spell->GetUnitTarget();
@@ -258,15 +268,15 @@ struct ClearWebWrap : public SpellScript
                 {
                     if (unitTarget && unitTarget->GetTypeId() == TYPEID_PLAYER)
                     {
-                        unitTarget->RemoveAurasDueToSpell(SPELL_WEB_WRAP_SUMMON);   // Web Wrap polymorph
-                        unitTarget->RemoveAurasDueToSpell(SPELL_WEBWRAP_STUN);      // Web Wrap stun and DoT
+                        unitTarget->RemoveAurasDueToSpell(SPELL_WEB_WRAP_SUMMON);   // Web Wrap polymorph (蛛网裹体polymorph)
+                        unitTarget->RemoveAurasDueToSpell(SPELL_WEBWRAP_STUN);      // Web Wrap stun and DoT (蛛网裹体击晕andDoT)
                     }
                     break;
                 }
                 case SPELL_CLEAR_WEB_WRAP_SELF:     // Clear Web Wrap (Maexxna: kill Web Wrap NPC)
                 {
                     if (unitTarget && unitTarget->GetTypeId() == TYPEID_UNIT)
-                        unitTarget->CastSpell(nullptr, SPELL_KILL_WEBWRAP, TRIGGERED_OLD_TRIGGERED);  // Kill Web Wrap
+                        unitTarget->CastSpell(nullptr, SPELL_KILL_WEBWRAP, TRIGGERED_OLD_TRIGGERED);  // Kill Web Wrap (击杀蛛网裹体)
                     break;
                 }
                 default:
@@ -276,6 +286,7 @@ struct ClearWebWrap : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_maexxna
 void AddSC_boss_maexxna()
 {
     Script* newScript = new Script;

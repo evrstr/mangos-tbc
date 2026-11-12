@@ -21,6 +21,8 @@ SDComment: Quest support: 836, 2742
 SDCategory: The Hinterlands
 EndScriptData */
 
+// 辛特兰（Hinterlands）蛮锤矮人与恶齿巨魔任务脚本
+
 /* ContentData
 npc_00x09hl
 npc_rinji
@@ -36,20 +38,22 @@ EndContentData */
 ## npc_00x09hl
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_OOX_START           = -1000287,
-    SAY_OOX_AGGRO1          = -1000288,
-    SAY_OOX_AGGRO2          = -1000289,
-    SAY_OOX_AMBUSH          = -1000290,
-    SAY_OOX_END             = -1000292,
+    SAY_OOX_START           = -1000287,                     // oox开始 台词广播 ID
+    SAY_OOX_AGGRO1          = -1000288,                     // ooxaggro1 台词广播 ID
+    SAY_OOX_AGGRO2          = -1000289,                     // ooxaggro2 台词广播 ID
+    SAY_OOX_AMBUSH          = -1000290,                     // ooxambush 台词广播 ID
+    SAY_OOX_END             = -1000292,                     // ooxend 台词广播 ID
 
-    QUEST_RESQUE_OOX_09     = 836,
+    QUEST_RESQUE_OOX_09     = 836,                          // resqueoox09 任务 ID
 
-    NPC_MARAUDING_OWL       = 7808,
-    NPC_VILE_AMBUSHER       = 7809
+    NPC_MARAUDING_OWL       = 7808,                         // maraudingowl Entry ID
+    NPC_VILE_AMBUSHER       = 7809                          // vileambusher Entry ID
 };
 
+// 随从/NPC AI：标识 ID（00x09hl）
 struct npc_00x09hlAI : public npc_escortAI
 {
     npc_00x09hlAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
@@ -57,6 +61,7 @@ struct npc_00x09hlAI : public npc_escortAI
     uint8 m_uiSummonCount;
     GuidList m_lSummonsList;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
@@ -117,6 +122,7 @@ struct npc_00x09hlAI : public npc_escortAI
         }
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* pWho) override
     {
         if (pWho->GetEntry() == NPC_MARAUDING_OWL || pWho->GetEntry() == NPC_VILE_AMBUSHER)
@@ -125,12 +131,14 @@ struct npc_00x09hlAI : public npc_escortAI
         DoScriptText(urand(0, 1) ? SAY_OOX_AGGRO1 : SAY_OOX_AGGRO2, m_creature);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->GetMotionMaster()->MovePoint(0, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
         m_lSummonsList.push_back(pSummoned->GetObjectGuid());
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* pKiller) override
     {
         for (GuidList::const_iterator itr = m_lSummonsList.begin(); itr != m_lSummonsList.end(); ++itr)
@@ -143,6 +151,7 @@ struct npc_00x09hlAI : public npc_escortAI
     }
 };
 
+// 任务接取回调函数：npc_00x09hl
 bool QuestAccept_npc_00x09hl(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_RESQUE_OOX_09)
@@ -158,6 +167,7 @@ bool QuestAccept_npc_00x09hl(Player* pPlayer, Creature* pCreature, const Quest* 
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_00x09hl
 UnitAI* GetAI_npc_00x09hl(Creature* pCreature)
 {
     return new npc_00x09hlAI(pCreature);
@@ -167,20 +177,21 @@ UnitAI* GetAI_npc_00x09hl(Creature* pCreature)
 ## npc_rinji
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_RIN_FREE            = -1000403,
-    SAY_RIN_BY_OUTRUNNER    = -1000404,
-    SAY_RIN_HELP_1          = -1000405,
-    SAY_RIN_HELP_2          = -1000406,
-    SAY_RIN_COMPLETE        = -1000407,
-    SAY_RIN_PROGRESS_1      = -1000408,
-    SAY_RIN_PROGRESS_2      = -1000409,
+    SAY_RIN_FREE            = -1000403,                     // rin释放 台词广播 ID
+    SAY_RIN_BY_OUTRUNNER    = -1000404,                     // rinbyoutrunner 台词广播 ID
+    SAY_RIN_HELP_1          = -1000405,                     // rinhelp1 台词广播 ID
+    SAY_RIN_HELP_2          = -1000406,                     // rinhelp2 台词广播 ID
+    SAY_RIN_COMPLETE        = -1000407,                     // rincomplete 台词广播 ID
+    SAY_RIN_PROGRESS_1      = -1000408,                     // rinprogress1 台词广播 ID
+    SAY_RIN_PROGRESS_2      = -1000409,                     // rinprogress2 台词广播 ID
 
-    QUEST_RINJI_TRAPPED     = 2742,
-    NPC_RANGER              = 2694,
-    NPC_OUTRUNNER           = 2691,
-    GO_RINJI_CAGE           = 142036
+    QUEST_RINJI_TRAPPED     = 2742,                         // rinjitrapped 任务 ID
+    NPC_RANGER              = 2694,                         // ranger Entry ID
+    NPC_OUTRUNNER           = 2691,                         // outrunner Entry ID
+    GO_RINJI_CAGE           = 142036                        // rinjicage 游戏对象 Entry ID
 };
 
 Position m_afAmbushSpawn[] =
@@ -195,6 +206,7 @@ Position m_afAmbushMoveTo[] =
     {70.886589f, -2874.335449f, 116.675f, 0.f}
 };
 
+// 随从/NPC AI：标识 ID（rinji）
 struct npc_rinjiAI : public npc_escortAI
 {
     npc_rinjiAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -204,11 +216,12 @@ struct npc_rinjiAI : public npc_escortAI
         Reset();
     }
 
-    bool m_bIsByOutrunner;
+    bool m_bIsByOutrunner;                                  // IsByOutrunner 状态标记
     uint32 m_uiPostEventCount;
-    uint32 m_uiPostEventTimer;
+    uint32 m_uiPostEventTimer;                              // PostEvent 技能计时器
     int m_iSpawnId;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiPostEventCount = 0;
@@ -223,6 +236,7 @@ struct npc_rinjiAI : public npc_escortAI
         npc_escortAI::JustRespawned();
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* pWho) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
@@ -258,6 +272,7 @@ struct npc_rinjiAI : public npc_escortAI
         }
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         m_creature->SetWalk(false);
@@ -329,10 +344,11 @@ struct npc_rinjiAI : public npc_escortAI
             return;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 任务接取回调函数：npc_rinji
 bool QuestAccept_npc_rinji(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_RINJI_TRAPPED)
@@ -348,14 +364,16 @@ bool QuestAccept_npc_rinji(Player* pPlayer, Creature* pCreature, const Quest* pQ
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_rinji
 UnitAI* GetAI_npc_rinji(Creature* pCreature)
 {
     return new npc_rinjiAI(pCreature);
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    YELL_FALSTAD_INVADERS = -27,
+    YELL_FALSTAD_INVADERS = -27,                            // falstadinvaders 大喊台词广播 ID
 };
 
 bool ProcessEventId_WildhammerMessage(uint32 /*eventId*/, Object* source, Object* /*target*/, bool /*isStart*/)
@@ -375,6 +393,7 @@ bool ProcessEventId_WildhammerMessage(uint32 /*eventId*/, Object* source, Object
 ## spell_gammerita_turtle_camera
 ######*/
 
+// 法术脚本逻辑实现：标识 ID（GammeritaTurtleCamera）
 struct GammeritaTurtleCamera : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -388,6 +407,7 @@ struct GammeritaTurtleCamera : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：hinterlands
 void AddSC_hinterlands()
 {
     Script* pNewScript = new Script;

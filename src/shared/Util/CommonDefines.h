@@ -19,6 +19,7 @@
 #ifndef COMMON_DEFINES_H
 #define COMMON_DEFINES_H
 
+/// 登录服务节点类型枚举（区分认证服 realmd 与世界服 mangosd）
 enum LoginType
 {
     LOGIN_TYPE_REALMD = 0,

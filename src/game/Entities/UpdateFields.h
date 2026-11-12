@@ -21,8 +21,9 @@
 #ifndef _UPDATEFIELDS_AUTO_H
 #define _UPDATEFIELDS_AUTO_H
 
-// Auto generated for version 2, 4, 3, 8606
+// Auto generated for version 2, 4, 3, 8606 (自动生成，对应客户端版本 2.4.3.8606)
 
+// 基础 Object 更新字段枚举（所有实体公共头部字段）
 enum EObjectFields
 {
     OBJECT_FIELD_GUID                         = 0x0000, // Size: 2, Type: LONG, Flags: PUBLIC
@@ -33,6 +34,7 @@ enum EObjectFields
     OBJECT_END                                = 0x0006,
 };
 
+// 物品（Item）更新字段枚举
 enum EItemFields
 {
     ITEM_FIELD_OWNER                          = OBJECT_END + 0x0000, // Size: 2, Type: LONG, Flags: PUBLIC
@@ -52,6 +54,7 @@ enum EItemFields
     ITEM_END                                  = OBJECT_END + 0x0036,
 };
 
+// 容器/背包（Container）更新字段枚举
 enum EContainerFields
 {
     CONTAINER_FIELD_NUM_SLOTS                 = ITEM_END + 0x0000, // Size: 1, Type: INT, Flags: PUBLIC
@@ -60,6 +63,7 @@ enum EContainerFields
     CONTAINER_END                             = ITEM_END + 0x004A,
 };
 
+// 单位（Unit）及玩家（Player）更新字段枚举
 enum EUnitFields
 {
     UNIT_FIELD_CHARM                          = OBJECT_END + 0x0000, // Size: 2, Type: LONG, Flags: PUBLIC
@@ -397,6 +401,7 @@ enum EUnitFields
     PLAYER_END                                = UNIT_END + 0x054E,
 };
 
+// 游戏对象（GameObject）更新字段枚举
 enum EGameObjectFields
 {
     OBJECT_FIELD_CREATED_BY                   = OBJECT_END + 0x0000, // Size: 2, Type: LONG, Flags: PUBLIC
@@ -418,6 +423,7 @@ enum EGameObjectFields
     GAMEOBJECT_END                            = OBJECT_END + 0x0014,
 };
 
+// 动态法术对象（DynamicObject）更新字段枚举
 enum EDynamicObjectFields
 {
     DYNAMICOBJECT_CASTER                      = OBJECT_END + 0x0000, // Size: 2, Type: LONG, Flags: PUBLIC
@@ -432,6 +438,7 @@ enum EDynamicObjectFields
     DYNAMICOBJECT_END                         = OBJECT_END + 0x000A,
 };
 
+// 玩家尸体（Corpse）更新字段枚举
 enum ECorpseFields
 {
     CORPSE_FIELD_OWNER                        = OBJECT_END + 0x0000, // Size: 2, Type: LONG, Flags: PUBLIC
@@ -451,48 +458,55 @@ enum ECorpseFields
     CORPSE_END                                = OBJECT_END + 0x0022,
 };
 
+// 更新字段数值数据类型枚举
 enum UpdateFieldValueTypes
 {
-	UF_TYPE_NONE      = 0,
-	UF_TYPE_INT       = 1,
-	UF_TYPE_TWO_SHORT = 2,
-	UF_TYPE_FLOAT     = 3,
-	UF_TYPE_GUID      = 4,
-	UF_TYPE_BYTES     = 5,
-	UF_TYPE_BYTES2    = 6
+    UF_TYPE_NONE      = 0,                                  // 无类型（占位/结束标记）
+    UF_TYPE_INT       = 1,                                  // 32 位整型
+    UF_TYPE_TWO_SHORT = 2,                                  // 两个 16 位短整型打包
+    UF_TYPE_FLOAT     = 3,                                  // 32 位浮点数
+    UF_TYPE_GUID      = 4,                                  // 64 位 GUID（占 2 个槽位）
+    UF_TYPE_BYTES     = 5,                                  // 4 个字节打包
+    UF_TYPE_BYTES2    = 6                                   // 备用字节打包类型
 };
 
+// 更新字段网络同步可见性标志位枚举
 enum UpdateFieldFlags : uint16
 {
-	UF_FLAG_NONE         = 0x000,   // not a real field
-	UF_FLAG_PUBLIC       = 0x001,   // visible to everyone
-	UF_FLAG_PRIVATE      = 0x002,   // only visible to self
-	UF_FLAG_OWNER_ONLY   = 0x004,   // only visible to owner
-	UF_FLAG_UNK1         = 0x008,   // meaning unknown, not used in vanilla
-	UF_FLAG_UNK2         = 0x010,   // meaning unknown, only seen on items together with OWNER_ONLY
-	UF_FLAG_SPECIAL_INFO = 0x020,   // only visible to caster of SPELL_AURA_EMPATHY (Beast Lore)
-	UF_FLAG_GROUP_ONLY   = 0x040,   // only visible to raid group members
-	UF_FLAG_UNK5         = 0x080,   // meaning unknown, not used in vanilla
-	UF_FLAG_DYNAMIC      = 0x100,   // visible to everyone, but different values can be sent to different observers
+    UF_FLAG_NONE         = 0x000,   // not a real field (非真实同步字段)
+    UF_FLAG_PUBLIC       = 0x001,   // visible to everyone (对所有观察者公开可见)
+    UF_FLAG_PRIVATE      = 0x002,   // only visible to self (仅对自身客户端可见)
+    UF_FLAG_OWNER_ONLY   = 0x004,   // only visible to owner (仅对拥有者可见，如物品耐久、宠物经验)
+    UF_FLAG_UNK1         = 0x008,   // meaning unknown, not used in vanilla (未知含义标志，60 级未使用)
+    UF_FLAG_UNK2         = 0x010,   // meaning unknown, only seen on items together with OWNER_ONLY (未知标志，仅见于带 OWNER_ONLY 的物品字段)
+    UF_FLAG_SPECIAL_INFO = 0x020,   // only visible to caster of SPELL_AURA_EMPATHY (Beast Lore) (仅对施放野兽知识/心灵视界光环的施法者可见)
+    UF_FLAG_GROUP_ONLY   = 0x040,   // only visible to raid group members (仅对同小队/团队成员可见)
+    UF_FLAG_UNK5         = 0x080,   // meaning unknown, not used in vanilla (未知含义标志，60 级未使用)
+    UF_FLAG_DYNAMIC      = 0x100,   // visible to everyone, but different values can be sent to different observers (公开可见，但可按观察者差异化下发数值)
 };
 
+// 单个更新字段的元信息描述结构
 struct UpdateFieldData
 {
     UpdateFieldData() = default;
     constexpr UpdateFieldData(uint8 objectTypeMask_, const char* name_, uint16 offset_, uint16 size_, UpdateFieldValueTypes valueType_, uint16 flags_) :
         objectTypeMask(objectTypeMask_), name(name_), offset(offset_), size(size_), valueType(valueType_), flags(flags_) {}
-    uint8 objectTypeMask = 0;
-    const char* name = "";
-    uint16 offset = 0;
-    uint16 size = 0;
-    UpdateFieldValueTypes valueType = UF_TYPE_NONE;
-    uint16 flags = UF_FLAG_NONE;
+    uint8 objectTypeMask = 0;                               // 所属对象类型掩码
+    const char* name = "";                                  // 字段枚举名称字符串
+    uint16 offset = 0;                                      // 在对象字段数组中的起始索引偏移
+    uint16 size = 0;                                        // 占用 uint32 槽位数量
+    UpdateFieldValueTypes valueType = UF_TYPE_NONE;         // 字段数值类型
+    uint16 flags = UF_FLAG_NONE;                            // 字段同步可见性标志
 };
 
+// 更新字段元数据查询接口命名空间
 namespace UpdateFields
 {
+    // 获取指定 ObjectTypeId 对应的字段同步标志数组
     uint16 const* GetUpdateFieldFlagsArray(uint8 objectTypeId);
+    // 按字段名称查找更新字段描述信息
     UpdateFieldData const* GetUpdateFieldDataByName(char const* name);
+    // 按对象类型掩码与字段索引偏移查找更新字段描述信息
     UpdateFieldData const* GetUpdateFieldDataByTypeMaskAndOffset(uint8 objectTypeMask, uint16 offset);
 };
 

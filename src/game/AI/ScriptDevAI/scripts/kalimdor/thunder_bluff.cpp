@@ -21,12 +21,16 @@ SDComment:
 SDCategory: Thunder Bluff
 EndScriptData */
 
+/**
+ * 雷霆崖 (Thunder Bluff) 主城卫兵与交互脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
 /*#####
 #
 ######*/
 
-void AddSC_thunder_bluff()
+void AddSC_thunder_bluff() // 注册脚本到系统管理器
 {
 }

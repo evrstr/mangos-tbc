@@ -21,40 +21,45 @@ SDComment:
 SDCategory: Blackrock Spire
 EndScriptData */
 
+// 维姆萨拉克领主（Overlord Wyrmthalak）首领战 AI
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_BLASTWAVE            = 11130,
-    SPELL_SHOUT                = 23511,
-    SPELL_CLEAVE               = 20691,
-    SPELL_KNOCKAWAY            = 20686,
+    SPELL_BLASTWAVE            = 11130,                     // blastwave 法术 ID
+    SPELL_SHOUT                = 23511,                     // shout 法术 ID
+    SPELL_CLEAVE               = 20691,                     // 顺劈斩 法术 ID
+    SPELL_KNOCKAWAY            = 20686,                     // knockaway 法术 ID
 
-    NPC_SPIRESTONE_WARLORD     = 9216,
-    NPC_SMOLDERTHORN_BERSERKER = 9268,
-    NPC_BLOODAXE_VETERAN       = 9583
+    NPC_SPIRESTONE_WARLORD     = 9216,                      // spirestonewarlord Entry ID
+    NPC_SMOLDERTHORN_BERSERKER = 9268,                      // smolderthornberserker Entry ID
+    NPC_BLOODAXE_VETERAN       = 9583                       // bloodaxeveteran Entry ID
 };
 
 const uint32 uSummons[3] = {NPC_BLOODAXE_VETERAN, NPC_SMOLDERTHORN_BERSERKER, NPC_SPIRESTONE_WARLORD};
 
 const float afLocations[4][4] =
 {
-    { -51.6805f, -439.831f, 78.2874f, 4.657f},              // spawn points
+    { -51.6805f, -439.831f, 78.2874f, 4.657f},              // spawn points (生成points)
     { -54.4554f, -439.679f, 78.2884f, 4.657f},
     { -39.355381f, -513.456482f, 88.472046f, 4.679872f},    // destination
     { -49.875881f, -511.896942f, 88.195160f, 4.613114f}
 };
 
+// 首领战 AI：标识 ID（overlordwyrmthalak）
 struct boss_overlordwyrmthalakAI : public ScriptedAI
 {
     boss_overlordwyrmthalakAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiBlastWaveTimer;
-    uint32 m_uiShoutTimer;
-    uint32 m_uiCleaveTimer;
-    uint32 m_uiKnockawayTimer;
-    bool m_bSummoned;
+    uint32 m_uiBlastWaveTimer;                              // BlastWave 技能计时器
+    uint32 m_uiShoutTimer;                                  // Shout 技能计时器
+    uint32 m_uiCleaveTimer;                                 // Cleave 技能计时器
+    uint32 m_uiKnockawayTimer;                              // Knockaway 技能计时器
+    bool m_bSummoned;                                       // Summoned 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiBlastWaveTimer = 20000;
@@ -64,6 +69,7 @@ struct boss_overlordwyrmthalakAI : public ScriptedAI
         m_bSummoned = false;
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() != NPC_SPIRESTONE_WARLORD && pSummoned->GetEntry() != NPC_SMOLDERTHORN_BERSERKER && pSummoned->GetEntry() != NPC_BLOODAXE_VETERAN)
@@ -76,9 +82,10 @@ struct boss_overlordwyrmthalakAI : public ScriptedAI
         }
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
-        // Return since we have no target
+        // Return since we have no target (无有效目标，退出更新)
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
@@ -100,7 +107,7 @@ struct boss_overlordwyrmthalakAI : public ScriptedAI
         else
             m_uiShoutTimer -= uiDiff;
 
-        // Cleave
+        // Cleave (顺劈斩)
         if (m_uiCleaveTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE);
@@ -118,7 +125,7 @@ struct boss_overlordwyrmthalakAI : public ScriptedAI
         else
             m_uiKnockawayTimer -= uiDiff;
 
-        // Summon two Beserks
+        // Summon two Beserks (召唤 two Beserks)
         if (!m_bSummoned && m_creature->GetHealthPercent() < 51.0f)
         {
             Creature* pGuard1 = m_creature->SummonCreature(uSummons[urand(0, 2)], afLocations[0][0], afLocations[0][1], afLocations[0][2], afLocations[0][3], TEMPSPAWN_TIMED_DESPAWN, 300000);
@@ -137,15 +144,17 @@ struct boss_overlordwyrmthalakAI : public ScriptedAI
             m_bSummoned = true;
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_overlordwyrmthalak
 UnitAI* GetAI_boss_overlordwyrmthalak(Creature* pCreature)
 {
     return new boss_overlordwyrmthalakAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_overlordwyrmthalak
 void AddSC_boss_overlordwyrmthalak()
 {
     Script* pNewScript = new Script;

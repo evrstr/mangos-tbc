@@ -21,16 +21,26 @@ SDComment:
 SDCategory: Maraudon
 EndScriptData */
 
+/**
+ * 玛拉顿：诺克赛恩 (Noxxion) 首领战斗 AI
+ */
+
+/**
+ * 玛拉顿：诺克赛恩 (Noxxion) 首领战斗 AI
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 常量与事件枚举
 enum
 {
-    SPELL_TOXICVOLLEY           = 21687,
-    SPELL_UPPERCUT              = 22916,
-    SPELL_NOXXION_SPAWNS_AURA   = 21708,
-    SPELL_NOXXION_SPAWNS_SUMMON = 21707,
+    SPELL_TOXICVOLLEY           = 21687,                    // 技能法术 ID
+    SPELL_UPPERCUT              = 22916,                    // 技能法术 ID
+    SPELL_NOXXION_SPAWNS_AURA   = 21708,                    // 技能法术 ID
+    SPELL_NOXXION_SPAWNS_SUMMON = 21707,                    // 技能法术 ID
 };
 
+// boss_noxxionAI 首领战斗 AI
 struct boss_noxxionAI : public ScriptedAI
 {
     boss_noxxionAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -39,20 +49,20 @@ struct boss_noxxionAI : public ScriptedAI
     uint32 m_uiUppercutTimer;
     uint32 m_uiSummonTimer;
 
-    void Reset() override
+    void Reset() override                                   // 重置战斗状态与计时器
     {
         m_uiToxicVolleyTimer   = 7000;
         m_uiUppercutTimer      = 16000;
         m_uiSummonTimer         = 19000;
     }
 
-    void JustSummoned(Creature* pSummoned) override
+    void JustSummoned(Creature* pSummoned) override         // 召唤仆从成功回调
     {
         if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             pSummoned->AI()->AttackStart(pTarget);
     }
 
-    void UpdateAI(const uint32 diff) override
+    void UpdateAI(const uint32 diff) override               // AI 核心帧更新处理
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
@@ -85,7 +95,7 @@ struct boss_noxxionAI : public ScriptedAI
     }
 };
 
-UnitAI* GetAI_boss_noxxion(Creature* pCreature)
+UnitAI* GetAI_boss_noxxion(Creature* pCreature) // 创建并返回 AI 实例
 {
     return new boss_noxxionAI(pCreature);
 }
@@ -106,7 +116,7 @@ struct SummonNoxxionsSpawns : public AuraScript
     }
 };
 
-void AddSC_boss_noxxion()
+void AddSC_boss_noxxion() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "boss_noxxion";

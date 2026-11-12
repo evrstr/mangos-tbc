@@ -35,7 +35,7 @@ int base32_decode(char const* encoded, char* result, int bufSize)
             continue;
         buffer <<= 5;
 
-        // Deal with commonly mistyped characters
+        // Deal with commonly mistyped characters | 容错映射常见易混淆字符（0->O、1->L、8->B）
         if (ch == '0')
             ch = 'O';
         else if (ch == '1')
@@ -43,7 +43,7 @@ int base32_decode(char const* encoded, char* result, int bufSize)
         else if (ch == '8')
             ch = 'B';
 
-        // Look up one base32 digit
+        // Look up one base32 digit | 查找单个 Base32 字符对应的 5 比特数值
         if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z'))
             ch = (ch & 0x1F) - 1;
         else if (ch >= '2' && ch <= '7')

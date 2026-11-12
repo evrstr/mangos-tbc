@@ -9,10 +9,11 @@
 #include "Entities/GossipDef.h"
 #include "Quests/QuestDef.h"
 
-// Gossip Item Text
+// Gossip Item Text (对话菜单选项预设文本)
 #define GOSSIP_TEXT_BROWSE_GOODS        "I'd like to browse your goods."
 #define GOSSIP_TEXT_TRAIN               "Train me!"
 
+// 城市设施导航文本
 #define GOSSIP_TEXT_BANK                "The bank"
 #define GOSSIP_TEXT_IRONFORGE_BANK      "The bank of Ironforge"
 #define GOSSIP_TEXT_STORMWIND_BANK      "The bank of Stormwind"
@@ -37,6 +38,7 @@
 #define GOSSIP_TEXT_PROFTRAINER         "A profession trainer"
 #define GOSSIP_TEXT_LEXICON             "Lexicon of Power"
 
+// 战场导航文本
 #define GOSSIP_TEXT_ALTERACVALLEY       "Alterac Valley"
 #define GOSSIP_TEXT_ARATHIBASIN         "Arathi Basin"
 #define GOSSIP_TEXT_WARSONGULCH         "Warsong Gulch"
@@ -44,6 +46,7 @@
 #define GOSSIP_TEXT_EYEOFTHESTORM       "Eye of The Storm"
 #define GOSSIP_TEXT_STRANDOFANCIENT     "Strand of the Ancients"
 
+// 职业训练师导航文本
 #define GOSSIP_TEXT_DEATH_KNIGHT        "Death Knight"
 #define GOSSIP_TEXT_DRUID               "Druid"
 #define GOSSIP_TEXT_HUNTER              "Hunter"
@@ -55,6 +58,7 @@
 #define GOSSIP_TEXT_MAGE                "Mage"
 #define GOSSIP_TEXT_WARLOCK             "Warlock"
 
+// 专业技能导航文本
 #define GOSSIP_TEXT_ALCHEMY             "Alchemy"
 #define GOSSIP_TEXT_BLACKSMITHING       "Blacksmithing"
 #define GOSSIP_TEXT_COOKING             "Cooking"
@@ -72,7 +76,7 @@
 
 enum
 {
-    // Skill defines
+    // Skill defines (专业技能 ID 枚举)
     TRADESKILL_ALCHEMY             = 1,
     TRADESKILL_BLACKSMITHING       = 2,
     TRADESKILL_COOKING             = 3,
@@ -89,6 +93,7 @@ enum
     TRADESKILL_JEWLCRAFTING        = 14,
     TRADESKILL_INSCRIPTION         = 15,
 
+    // 专业技能等级定义（初级、中级、高级、专家、大师、宗师）
     TRADESKILL_LEVEL_NONE          = 0,
     TRADESKILL_LEVEL_APPRENTICE    = 1,
     TRADESKILL_LEVEL_JOURNEYMAN    = 2,
@@ -97,7 +102,7 @@ enum
     TRADESKILL_LEVEL_MASTER        = 5,
     TRADESKILL_LEVEL_GRAND_MASTER  = 6,
 
-    // Gossip defines
+    // Gossip defines (对话动作与发送者常量定义)
     GOSSIP_ACTION_TRADE            = 1,
     GOSSIP_ACTION_TRAIN            = 2,
     GOSSIP_ACTION_TAXI             = 3,
@@ -124,7 +129,7 @@ enum
     GOSSIP_SENDER_SEC_STABLEMASTER = 10
 };
 
-// Defined fuctions to use with player.
+// Defined fuctions to use with player. (玩家对话菜单宏定义)
 
 // This fuction add's a menu item,
 // Icon Id
@@ -139,18 +144,18 @@ enum
 #define ADD_GOSSIP_ITEM_ID_BCT(icon, textId, gender, sender, optionId)   GetPlayerMenu()->GetGossipMenu().AddMenuItemBct(icon, textId, gender, sender, optionId, 0, 0)
 #define ADD_GOSSIP_ITEM_EXTENDED(icon, text, sender, optionId, boxMessage, boxMoney, code)   GetPlayerMenu()->GetGossipMenu().AddMenuItem(icon, text, sender, optionId, boxMessage, boxMoney, code)
 
-// Sets proper 2.4+ gossip menu id
+// Sets proper 2.4+ gossip menu id (设置 2.4+ 对话菜单 ID)
 #define SET_GOSSIP_MENU_ID(id)      GetPlayerMenu()->GetGossipMenu().SetMenuId(id)
 
-// This fuction Sends the current menu to show to client
+// This fuction Sends the current menu to show to client (向客户端发送对话窗口)
 // uiTextId - NPCTEXTID (uint32)
 // guid - npc guid (ObjectGuid)
 #define SEND_GOSSIP_MENU(textId, guid)      GetPlayerMenu()->SendGossipMenu(textId, guid)
 
-// Closes the Menu
+// Closes the Menu (关闭对话菜单)
 #define CLOSE_GOSSIP_MENU()        GetPlayerMenu()->CloseGossip()
 
-// Fuctions to send NPC lists
+// Fuctions to send NPC lists (发送 NPC 交互面板列表)
 // guid - is always the npc guid (ObjectGuid)
 #define SEND_VENDORLIST(guid)         GetSession()->SendListInventory(guid)
 #define SEND_TRAINERLIST(guid)        GetSession()->SendTrainerList(guid)

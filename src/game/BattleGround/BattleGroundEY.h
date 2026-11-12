@@ -23,13 +23,15 @@
 
 class BattleGround;
 
+// 风暴之眼刷新与资源结算间隔常量
 enum EYUpdateTimers
 {
-    EY_FLAG_RESPAWN_TIME                                = 10 * IN_MILLISECONDS,
-    EY_RESOURCES_UPDATE_TIME                            = 2 * IN_MILLISECONDS,
+    EY_FLAG_RESPAWN_TIME                                = 10 * IN_MILLISECONDS, // 交付或掉落超时后中央刷旗间隔（10 秒）
+    EY_RESOURCES_UPDATE_TIME                            = 2 * IN_MILLISECONDS,  // 资源点跳分周期（2 秒）
     EY_FEL_REAVER_FLAG_UPDATE_TIME                      = 1 * IN_MILLISECONDS,
 };
 
+// 风暴之眼世界状态 ID
 enum EYWorldStates
 {
     WORLD_STATE_EY_RESOURCES_ALLIANCE                   = 2749,
@@ -40,7 +42,7 @@ enum EYWorldStates
     WORLD_STATE_EY_BLOOD_ELF_TOWER_ALLIANCE             = 2723,
     WORLD_STATE_EY_BLOOD_ELF_TOWER_HORDE                = 2724,
     WORLD_STATE_EY_BLOOD_ELF_TOWER_NEUTRAL              = 2722,
-    //WORLD_STATE_EY_BLOOD_ELF_TOWER_ALLIANCE_CONFLICT  = 2735, // unused on retail
+    //WORLD_STATE_EY_BLOOD_ELF_TOWER_ALLIANCE_CONFLICT  = 2735, // unused on retail (官服未使用)
     //WORLD_STATE_EY_BLOOD_ELF_TOWER_HORDE_CONFLICT     = 2736, // unused on retail
 
     WORLD_STATE_EY_FEL_REAVER_RUINS_ALLIANCE            = 2726,
@@ -68,6 +70,7 @@ enum EYWorldStates
     WORLD_STATE_EY_CAPTURE_POINT_SLIDER_DISPLAY         = 2718
 };
 
+// 四座防御塔占领点游戏对象模板 ID
 enum EYCapturePoints
 {
     GO_CAPTURE_POINT_BLOOD_ELF_TOWER            = 184080,
@@ -76,17 +79,19 @@ enum EYCapturePoints
     GO_CAPTURE_POINT_DRAENEI_RUINS              = 184083
 };
 
+// 虚空风暴旗帜及视觉旗帜对象 ID
 enum EYGameObjects
 {
     GO_EY_NETHERSTORM_FLAG                      = 184141,
-    GO_EY_NETHERSTORM_FLAG_DROP                 = 184142,                   // temp summoned gameobject when flag is dropped
-    GO_EY_NETHERSTORM_FLAG_VISUAL               = 184493,                   // visual flag; spawned at any of the bases when team scores
+    GO_EY_NETHERSTORM_FLAG_DROP                 = 184142,                   // temp summoned gameobject when flag is dropped (掉旗时地面生成的临时战旗)
+    GO_EY_NETHERSTORM_FLAG_VISUAL               = 184493,                   // visual flag; spawned at any of the bases when team scores (交旗成功时据点底座刷出的视觉旗帜)
 
-    GO_EY_VISUAL_BANNER_HORDE                   = 184380,                   // visual gameobjects; the usage of these objects isn't clear
+    GO_EY_VISUAL_BANNER_HORDE                   = 184380,                   // visual gameobjects; the usage of these objects isn't clear (视觉装饰旗帜，主占领点自身已通过 ArtKit 控制)
     GO_EY_VISUAL_BANNER_ALLIANCE                = 184381,                   // main capture point objects use art kit for alliance / horde flags
     GO_EY_VISUAL_BANNER_NEUTRAL                 = 184382,
 };
 
+// 四座塔占领/中立事件及战旗事件 ID
 enum EYEvents
 {
     //EVENT_BLOOD_ELF_TOWER_WIN_ALLIANCE        = 12965,
@@ -117,11 +122,12 @@ enum EYEvents
     EVENT_DRAENEI_RUINS_NEUTRAL_ALLIANCE        = 12958,
     EVENT_DRAENEI_RUINS_NEUTRAL_HORDE           = 12959,
 
-    // The following event ids are used for the flag handling
-    EVENT_NETHERSTORM_FLAG_PICKUP               = 13000,                    // not used; called when player clicks on the flag drop
-    EVENT_NETHERSTORM_FLAG_SPELL                = 13042,                    // called when player casts flag aura - source player, target flag go
+    // The following event ids are used for the flag handling (中央虚空风暴战旗拾取事件)
+    EVENT_NETHERSTORM_FLAG_PICKUP               = 13000,                    // not used; called when player clicks on the flag drop (未使用)
+    EVENT_NETHERSTORM_FLAG_SPELL                = 13042,                    // called when player casts flag aura - source player, target flag go (玩家施放战旗光环时触发)
 };
 
+// 风暴之眼音效 ID
 enum EYSounds
 {
     EY_SOUND_FLAG_PICKED_UP_ALLIANCE    = 8212,
@@ -131,12 +137,14 @@ enum EYSounds
     EY_SOUND_FLAG_RESET                 = 8192
 };
 
+// 风暴之眼战旗携带与掉落法术 ID
 enum EYSpells
 {
-    EY_SPELL_NETHERSTORM_FLAG           = 34976,                            // cast on player click on GO 184141 or 184142; sends event 13042
-    EY_SPELL_PLAYER_DROPPED_FLAG        = 34991,                            // summon gameobject 184142
+    EY_SPELL_NETHERSTORM_FLAG           = 34976,                            // cast on player click on GO 184141 or 184142; sends event 13042 (点击战旗施放，触发事件 13042)
+    EY_SPELL_PLAYER_DROPPED_FLAG        = 34991,                            // summon gameobject 184142 (掉旗时召唤地面战旗对象 184142)
 };
 
+// 交旗点及符文刷新点区域触发器 ID
 enum EYPointsTrigger
 {
     AREATRIGGER_BLOOD_ELF_TOWER_POINT   = 4476, // also 4512
@@ -154,6 +162,7 @@ enum EYPointsTrigger
     //AREATRIGGER_EY_ALLIANCE_START       = 4531
 };
 
+// 风暴之眼墓地与区域 ID
 enum EYGaveyards
 {
     GRAVEYARD_EY_MAIN_ALLIANCE      = 1103,
@@ -168,12 +177,14 @@ enum EYGaveyards
 
 // node-events work like this: event1:nodeid, event2:state (0alliance,1horde,2neutral)
 // all other event2 are just node Ids; see the next enum
+// (风暴之眼脚本事件编号：event1=4 表示交旗视觉事件，event2=4 表示中央刷旗点)
 enum EYScriptEvents
 {
     EY_EVENT_CAPTURE_FLAG = 4,            // event1=4, event2=nodeid or 4 for the default center spawn
     EY_EVENT2_FLAG_CENTER = 4,            // maximum node is 3 so 4 for center is ok
 };
 
+// 四座哨塔节点索引（顺序与数据库事件一致）
 enum EYNodes
 {
     // TODO: Re-change order after we drop battleground_event and associated tables
@@ -185,33 +196,37 @@ enum EYNodes
     EY_MAX_NODES                    = 4,
 };
 
+// 荣誉结算资源间隔
 enum EYHonorIntervals
 {
     EY_NORMAL_HONOR_INTERVAL        = 260,
     EY_WEEKEND_HONOR_INTERVAL       = 160
 };
 
+// 胜利资源分与接近胜利阈值
 enum EYScore
 {
     EY_WARNING_NEAR_VICTORY_SCORE       = 1800,
     EY_MAX_TEAM_SCORE                   = 2000
 };
 
+// 中央虚空风暴战旗状态
 enum EYFlagState
 {
-    EY_FLAG_STATE_ON_BASE               = 0,
-    EY_FLAG_STATE_WAIT_RESPAWN          = 1,
-    EY_FLAG_STATE_ON_ALLIANCE_PLAYER    = 2,
-    EY_FLAG_STATE_ON_HORDE_PLAYER       = 3,
-    EY_FLAG_STATE_ON_GROUND             = 4
+    EY_FLAG_STATE_ON_BASE               = 0,                // 在中央基座待拾取
+    EY_FLAG_STATE_WAIT_RESPAWN          = 1,                // 等待重新刷出
+    EY_FLAG_STATE_ON_ALLIANCE_PLAYER    = 2,                // 联盟玩家携带中
+    EY_FLAG_STATE_ON_HORDE_PLAYER       = 3,                // 部落玩家携带中
+    EY_FLAG_STATE_ON_GROUND             = 4                 // 掉落在地面
 };
 
-static const uint8 eyTickPoints[EY_MAX_NODES] = {1, 2, 5, 10};
-static const uint32 eyFlagPoints[EY_MAX_NODES] = {75, 85, 100, 500};
+static const uint8 eyTickPoints[EY_MAX_NODES] = {1, 2, 5, 10};   // 控制 1..4 座塔每 2 秒获得的资源分
+static const uint32 eyFlagPoints[EY_MAX_NODES] = {75, 85, 100, 500}; // 控制 1..4 座塔时成功交旗奖励的资源分
 
 static const uint32 eyGraveyards[EY_MAX_NODES] = {GRAVEYARD_FEL_REAVER_RUINS, GRAVEYARD_BLOOD_ELF_TOWER, GRAVEYARD_DRAENEI_RUINS, GRAVEYARD_MAGE_TOWER};
 static const uint32 eyTriggers[EY_MAX_NODES] = {AREATRIGGER_FEL_REAVER_RUINS_BUFF, AREATRIGGER_BLOOD_ELF_TOWER_BUFF, AREATRIGGER_DRAENEI_RUINS_BUFF, AREATRIGGER_MAGE_TOWER_BUFF};
 
+// 防御塔占领事件映射项
 struct EYTowerEvent
 {
     uint32  eventEntry;
@@ -250,6 +265,7 @@ static const EYTowerEvent eyTowerEvents[EY_MAX_NODES][4] =
 
 static const uint32 eyTowers[EY_MAX_NODES] = {GO_CAPTURE_POINT_FEL_REAVER_RUINS, GO_CAPTURE_POINT_BLOOD_ELF_TOWER, GO_CAPTURE_POINT_DRAENEI_RUINS, GO_CAPTURE_POINT_MAGE_TOWER};
 
+// 风暴之眼玩家战绩结构（记录夺旗交付次数）
 class BattleGroundEYScore : public BattleGroundScore
 {
     public:
@@ -258,6 +274,7 @@ class BattleGroundEYScore : public BattleGroundScore
         uint32 flagCaptures;
 };
 
+// 风暴之眼（Eye of the Storm）战场控制类：管理 4 座塔争夺、中央虚空风暴战旗夺取、墓地归属与资源结算
 class BattleGroundEY : public BattleGround
 {
         friend class BattleGroundMgr;
@@ -267,17 +284,17 @@ class BattleGroundEY : public BattleGround
         void Reset() override;
         void Update(uint32 diff) override;
 
-        // Main battleground functions
+        // Main battleground functions (主流程接口)
         void AddPlayer(Player* player) override;
         void RemovePlayer(Player* player, ObjectGuid guid) override;
         void StartingEventOpenDoors() override;
         void EndBattleGround(Team winner) override;
 
-        // General functions
+        // General functions (积分更新与人数不足提前判胜)
         void UpdatePlayerScore(Player* source, uint32 type, uint32 value) override;
         Team GetPrematureWinner() override;
 
-        // Battleground event handlers
+        // Battleground event handlers (据点事件、交旗/符文区域触发器、战旗点击与掉落处理)
         bool HandleEvent(uint32 eventId, Object* source, Object* target) override;
         bool HandleAreaTrigger(Player* source, uint32 trigger) override;
         void HandleGameObjectCreate(GameObject* go) override;
@@ -285,11 +302,11 @@ class BattleGroundEY : public BattleGround
         void HandlePlayerClickedOnFlag(Player* player, GameObject* go) override;
         void HandlePlayerDroppedFlag(Player* source) override;
 
-        // Flag handler
+        // Flag handler (获取当前持旗玩家 GUID)
         ObjectGuid const& GetFlagCarrierGuid() const { return m_flagCarrier; }
 
     private:
-        // Battleground flag functions
+        // Battleground flag functions (战旗持有者管理与中央/地面刷旗)
         void SetFlagCarrier(ObjectGuid guid) { m_flagCarrier = guid; }
         void ClearFlagCarrier() { m_flagCarrier.Clear(); }
 
@@ -299,12 +316,12 @@ class BattleGroundEY : public BattleGround
         void RespawnFlagAtCenter(bool wasCaptured);
         void RespawnDroppedFlag();
 
-        // process capture events
+        // process capture events (处理防卫塔占领/中立事件与玩家交旗得分)
         void ProcessCaptureEvent(GameObject* go, uint32 towerId, Team team, uint32 newWorldState, uint32 message);
         void ProcessPlayerFlagScoreEvent(Player* source, EYNodes node);
         bool AreAllNodesControlledByTeam(Team team);
 
-        // Process score and resources
+        // Process score and resources (胜利检查、2 秒资源周期累加、旗帜与塔归属状态同步)
         void CheckVictory(Team team);
         void UpdateResources();
         void AddPoints(Team team, uint32 points);

@@ -22,6 +22,6 @@
 #include "LFG/LFGDefines.h"
 #include <string>
 
-
+// LFG 管理器占位头文件（TBC 寻求组队队列核心逻辑已迁至 LFGQueue）
 
 #endif

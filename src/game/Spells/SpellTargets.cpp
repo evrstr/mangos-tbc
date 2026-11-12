@@ -28,6 +28,7 @@ SpellTargetInfo::SpellTargetInfo(char const* name, SpellTargetImplicitType type,
 {
 }
 
+// 隐式法术目标类型静态属性表（索引对应 SpellTarget 枚举值）
 SpellTargetInfo SpellTargetInfoTable[MAX_SPELL_TARGETS] =
 {
     /*[0]*/     { "TARGET_NONE",                                          TARGET_TYPE_UNKNOWN                                                       },
@@ -126,6 +127,7 @@ SpellTargetInfo SpellTargetInfoTable[MAX_SPELL_TARGETS] =
     /*[93]*/    { "TARGET_CORPSE_ENEMY_NEAR_CASTER",                      TARGET_TYPE_CORPSE,           TARGET_HARMFUL,    TARGET_ENUMERATOR_CHAIN  },
 };
 
+// 法术效果静态信息表（索引对应 SpellEffects 枚举值：名称、必需目标类型、默认目标）
 SpellEffectInfo SpellEffectInfoTable[MAX_SPELL_EFFECTS] =
 {
     /*[0]*/      { "SPELL_EFFECT_NONE",                         TARGET_TYPE_UNKNOWN,        TARGET_NONE },
@@ -286,12 +288,14 @@ SpellEffectInfo SpellEffectInfoTable[MAX_SPELL_EFFECTS] =
 
 std::map<uint32, SpellTargetingData> SpellTargetMgr::spellTargetingData;
 
+// 查询已初始化的法术目标缓存条目
 SpellTargetingData& SpellTargetMgr::GetSpellTargetingData(uint32 spellId)
 {
     return (*spellTargetingData.find(spellId)).second;
 }
 
 // check if at least one target is different from different effIdx
+// 检查数据库中两个效果索引对应的 spell_script_target 排除标记是否完全一致
 bool CheckBoundsEqualForEffects(SQLMultiStorage::SQLMSIteratorBounds<SpellTargetEntry>& bounds, SpellEffectIndex effIdxSource, SpellEffectIndex effIdxTarget)
 {
     for (SQLMultiStorage::SQLMultiSIterator<SpellTargetEntry> i_spellST = bounds.first; i_spellST != bounds.second; ++i_spellST)
@@ -303,6 +307,7 @@ bool CheckBoundsEqualForEffects(SQLMultiStorage::SQLMSIteratorBounds<SpellTarget
     return true;
 }
 
+// 启动时预计算所有法术的效果目标类型、共享目标掩码与筛选排序方案
 void SpellTargetMgr::Initialize()
 {
     for (uint32 i = 0; i <= sSpellTemplate.GetMaxEntry(); ++i)
@@ -312,7 +317,7 @@ void SpellTargetMgr::Initialize()
             continue;
 
         SpellTargetingData& data = spellTargetingData[i];
-        // figure out what targeting dynamic effects should use
+        // figure out what targeting dynamic effects should use (推导动态效果应采用的隐式目标语义类型)
         for (uint32 effIdx = 0; effIdx < MAX_EFFECT_INDEX; ++effIdx)
         {
             if (!spellInfo->Effect[effIdx])
@@ -352,7 +357,7 @@ void SpellTargetMgr::Initialize()
                     continue;
                 }
                 if (SpellTargetInfoTable[targetA].type == TARGET_TYPE_LOCATION_DEST || SpellTargetInfoTable[targetB].type == TARGET_TYPE_LOCATION_DEST ||
-                    SpellEffectInfoTable[effect].requiredTarget == TARGET_TYPE_DYNAMIC_ANY) // some effects cant be none
+                    SpellEffectInfoTable[effect].requiredTarget == TARGET_TYPE_DYNAMIC_ANY) // some effects cant be none (部分效果不允许无目标，回退为目标点)
                 {
                     data.implicitType[effIdx] = TARGET_TYPE_LOCATION_DEST;
                     continue;
@@ -365,7 +370,7 @@ void SpellTargetMgr::Initialize()
                 sLog.outError("Spell %u effect index %u failed to pick type for dynamic effect targeting type.", i, effIdx);
             }
         }
-        // evaluate which targets should be evaluated on execution
+        // evaluate which targets should be evaluated on execution (分析各效果间相同的隐式目标，合并重复收集并标记忽略)
         for (uint32 effIdxSource = 0; effIdxSource < MAX_EFFECT_INDEX; ++effIdxSource)
         {
             if (!spellInfo->Effect[effIdxSource])
@@ -379,19 +384,19 @@ void SpellTargetMgr::Initialize()
                 uint32 targetSource;
                 if (rightSource == 0)
                 {
-                    if (data.ignoredTargets[effIdxSource].first) // already evaluated as ignored
+                    if (data.ignoredTargets[effIdxSource].first) // already evaluated as ignored (已标记为忽略)
                         continue;
                     targetSource = spellInfo->EffectImplicitTargetA[effIdxSource];
                 }
                 else
                 {
-                    if (data.ignoredTargets[effIdxSource].second) // already evaluated as ignored
+                    if (data.ignoredTargets[effIdxSource].second) // already evaluated as ignored (已标记为忽略)
                         continue;
                     targetSource = spellInfo->EffectImplicitTargetB[effIdxSource];
                 }
-                if (!targetSource) // no target found
+                if (!targetSource) // no target found (无目标配置)
                     continue;
-                // start from first next target
+                // start from first next target (从后续效果/槽位开始比对是否可合并目标查找)
                 for (uint32 effIdxTarget = effIdxSource; effIdxTarget < MAX_EFFECT_INDEX; ++effIdxTarget)
                 {
                     if (!spellInfo->Effect[effIdxTarget])
@@ -417,11 +422,11 @@ void SpellTargetMgr::Initialize()
                         }
                         if (!targetTarget) // no target found
                             continue;
-                        if (targetSource == targetTarget) // if both target types are the same check if subsequent can be skipped
+                        if (targetSource == targetTarget) // if both target types are the same check if subsequent can be skipped (若目标类型相同，判断是否可复用并跳过后续搜索)
                         {
                             SpellTargetInfo& info = SpellTargetInfoTable[targetTarget];
                             bool ignore = false;
-                            // exception for area auras
+                            // exception for area auras (区域光环和目标点效果的特殊忽略规则)
                             if (implicitEffectType == TARGET_TYPE_SPECIAL_UNIT && info.type == TARGET_TYPE_UNIT && info.enumerator != TARGET_ENUMERATOR_SINGLE)
                                 ignore = true;
                             else if (implicitEffectTypeTarget == TARGET_TYPE_LOCATION_DEST && info.type == TARGET_TYPE_UNIT)
@@ -433,12 +438,12 @@ void SpellTargetMgr::Initialize()
                                     case TARGET_TYPE_LOCATION_SRC:
                                     case TARGET_TYPE_LOCATION_DEST:
                                     case TARGET_TYPE_LOCK:
-                                    case TARGET_TYPE_CORPSE: ignore = true; break; // always ignore subsequent
+                                    case TARGET_TYPE_CORPSE: ignore = true; break; // always ignore subsequent (坐标/锁/尸体类始终忽略后续重复项)
                                     case TARGET_TYPE_GAMEOBJECT:
                                     case TARGET_TYPE_UNIT:
                                     case TARGET_TYPE_PLAYER:
                                     {
-                                        // always ignore subsequent
+                                        // always ignore subsequent (单体目标且效果可消费该目标时直接共享)
                                         if (info.enumerator == TARGET_ENUMERATOR_SINGLE && CanEffectConsumeTarget(info.type, effectTargetingSource.requiredTarget))
                                         {
                                             ignore = true;
@@ -446,12 +451,12 @@ void SpellTargetMgr::Initialize()
                                         }
                                         if (effectTargetingSource.requiredTarget == TARGET_TYPE_NONE)
                                             continue;
-                                        // aoe and chain case
+                                        // aoe and chain case (AoE 与链式目标需检查链跳数和半径是否一致)
                                         if (info.enumerator == TARGET_ENUMERATOR_CHAIN) // chain checks chaining
                                             // if chain targets are not the same, cant ignore
                                             if (spellInfo->EffectChainTarget[effIdxSource] != spellInfo->EffectChainTarget[effIdxTarget])
                                                 continue;
-                                        // different radiuses, cant ignore
+                                        // different radiuses, cant ignore (作用半径不同不可合并)
                                         if (spellInfo->EffectRadiusIndex[effIdxSource] != spellInfo->EffectRadiusIndex[effIdxTarget])
                                             continue;
                                         if (info.filter == TARGET_SCRIPT && effIdxSource != effIdxTarget)
@@ -481,6 +486,7 @@ void SpellTargetMgr::Initialize()
                 }
             }
         }
+        // 为各效果槽位确定最终的多目标筛选排序策略
         for (uint32 effIdx = 0; effIdx < MAX_EFFECT_INDEX; ++effIdx)
         {
             if (!spellInfo->Effect[effIdx])
@@ -520,6 +526,7 @@ void SpellTargetMgr::Initialize()
     }
 }
 
+// 检查给定目标标志掩码是否能满足指定效果所需的隐式目标类型
 bool SpellTargetMgr::CanEffectBeFilledWithMask(uint32 spellId, uint32 effIdx, uint32 mask)
 {
     SpellTargetingData& data = GetSpellTargetingData(spellId);
@@ -538,11 +545,12 @@ bool SpellTargetMgr::CanEffectBeFilledWithMask(uint32 spellId, uint32 effIdx, ui
     }
 }
 
+// 判断某效果需求的目标类型是否可消费传入的目标语义类型
 bool SpellTargetMgr::CanEffectConsumeTarget(SpellTargetImplicitType targetType, SpellTargetImplicitType effectTargetType)
 {
     switch (targetType)
     {
-        // incomplete mapping - adjust as needed
+        // incomplete mapping - adjust as needed (不完整映射，按需补充)
         case TARGET_TYPE_UNIT:
             if (effectTargetType == TARGET_TYPE_LOCATION_DEST)
                 return false; // 43178
@@ -554,43 +562,45 @@ bool SpellTargetMgr::CanEffectConsumeTarget(SpellTargetImplicitType targetType, 
     return true;
 }
 
+// 返回特殊法术的链式弹射半径覆盖值，默认返回 CHAIN_SPELL_JUMP_RADIUS
 float SpellTargetMgr::GetJumpRadius(uint32 spellId)
 {
     switch (spellId)
     {
-        case 32445: // Holy Wrath - Maiden of Virtue
+        case 32445: // Holy Wrath - Maiden of Virtue (圣洁之怒 - 贞节圣女)
             return 7.f;
-        case 40827: // Beams - Mother Shahraz
+        case 40827: // Beams - Mother Shahraz (致命吸引射线 - 莎赫拉丝主母)
         case 40859:
         case 40860:
         case 40861:
             return 25.f;
-        case 44537: // Fel Lightning - MgT / SWP
+        case 44537: // Fel Lightning - MgT / SWP (邪能闪电 - 魔导师平台 / 太阳之井)
         case 46048:
         case 46480:
             return 50.f;
-        case 45664: // Legion Lightning - KJ
+        case 45664: // Legion Lightning - KJ (军团闪电 - 基尔加丹)
             return 18.f;
     }
     return CHAIN_SPELL_JUMP_RADIUS;
 }
 
+// 针对特定副本/首领法术覆盖目标筛选策略（如固定选取最近或最远的 N 个目标）
 SpellTargetFilterScheme SpellTargetMgr::GetSpellTargetingFilterScheme(SpellTargetFilterScheme oldScheme, uint32 spellId)
 {
     switch (spellId)
     {
-        case 26052: // Poison Bolt Volley (spell hits only the 15 closest targets)
-        case 26180: // Wyvern Sting (spell hits only the 10 closest targets)
-        case 30284: // Change Facing - Chess event - QOL to pick deterministically closest target
-        case 37144: // Move - Chess event - same QOL change
+        case 26052: // Poison Bolt Volley (spell hits only the 15 closest targets) (毒箭之雨：仅命中最近的 15 个目标)
+        case 26180: // Wyvern Sting (spell hits only the 10 closest targets) (翼龙钉刺：仅命中最近的 10 个目标)
+        case 30284: // Change Facing - Chess event - QOL to pick deterministically closest target (卡拉赞象棋转向：优先最近目标)
+        case 37144: // Move - Chess event - same QOL change (卡拉赞象棋移动)
         case 37146:
         case 37148:
         case 37151:
         case 37152:
         case 37153:
-        case 41294: // Fixate - Reliquary of Souls - Picks closest target
+        case 41294: // Fixate - Reliquary of Souls - Picks closest target (凝视 - 灵魂之匣：选择最近目标)
             return SCHEME_CLOSEST;
-        case 42005: // Bloodboil (spell hits only the 5 furthest away targets)
+        case 42005: // Bloodboil (spell hits only the 5 furthest away targets) (血沸 - 血沸：仅命中距离最远的 5 个目标)
             return SCHEME_FURTHEST;
     }
     return oldScheme;

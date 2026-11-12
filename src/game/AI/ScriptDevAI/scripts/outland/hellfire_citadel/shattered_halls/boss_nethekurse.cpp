@@ -21,6 +21,11 @@ SDComment:
 SDCategory: Hellfire Citadel, Shattered Halls
 EndScriptData */
 
+// 高阶术士奈瑟库斯（破碎大厅一号首领）
+/* 遭遇战概述：
+ * 高阶术士奈瑟库斯在折磨邪兽人狂徒，玩家击杀狂徒后奈瑟库斯亲自参战，施放暗影劈裂与黑暗清算。
+ */
+
 /* ContentData
 boss_grand_warlock_nethekurse
 mob_fel_orc_convert
@@ -31,6 +36,7 @@ EndContentData */
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "shattered_halls.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO_1         = 15594, // all Fel Orc Converts alive
@@ -71,6 +77,7 @@ enum
     NPC_FEL_ORC_CONVERT    = 17083,
 };
 
+// NethekurseActions 相关枚举
 enum NethekurseActions
 {
     NETHEKURSE_ACTION_MAX,
@@ -79,6 +86,7 @@ enum NethekurseActions
     NETHEKURSE_PEON_RP_CD
 };
 
+// boss_grand_warlock_nethekurseAI 逻辑实现
 struct boss_grand_warlock_nethekurseAI : public CombatAI
 {
     boss_grand_warlock_nethekurseAI(Creature* creature) : CombatAI(creature, NETHEKURSE_ACTION_MAX),
@@ -100,6 +108,7 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
 
     uint8 m_peonKilledCount;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -227,6 +236,7 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
         }
     }        
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         switch (m_peonKilledCount)
@@ -237,6 +247,7 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(SAY_DIE, m_creature);
@@ -247,6 +258,7 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
         m_instance->SetData(TYPE_NETHEKURSE, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
@@ -256,6 +268,7 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
 
 static const int32 aRandomAggro[] = { 16697, 16698, 16699, 16700, 16701, 16702, 16703 };
 
+// mob_fel_orc_convertAI 逻辑实现
 struct mob_fel_orc_convertAI : public ScriptedAI
 {
     mob_fel_orc_convertAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -266,11 +279,13 @@ struct mob_fel_orc_convertAI : public ScriptedAI
     ScriptedInstance* m_instance;
     uint32 m_uiHemorrhageTimer;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiHemorrhageTimer = 3000;
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (who->IsPlayer() && !static_cast<Player*>(who)->IsGameMaster() && m_creature->IsWithinDistInMap(who, 20.0f) && m_creature->IsWithinLOSInMap(who))
@@ -289,6 +304,7 @@ struct mob_fel_orc_convertAI : public ScriptedAI
         ScriptedAI::AttackedBy(who);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         if (urand(0, 4) == 4)
@@ -309,6 +325,7 @@ struct mob_fel_orc_convertAI : public ScriptedAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         if (m_instance)
@@ -355,6 +372,7 @@ struct mob_fel_orc_convertAI : public ScriptedAI
 };
 
 // 30745 - Target Fissures
+// TargetFissures 法术脚本
 struct TargetFissures : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -362,6 +380,7 @@ struct TargetFissures : public SpellScript
         spell->SetMaxAffectedTargets(1);
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         spell->GetCaster()->CastSpell(spell->GetUnitTarget(), SPELL_SHADOW_FISSURE_2, TRIGGERED_OLD_TRIGGERED);
@@ -369,8 +388,10 @@ struct TargetFissures : public SpellScript
 };
 
 // 30741 - Death Coil
+// DeathCoil 光环脚本
 struct DeathCoil : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply)
@@ -402,6 +423,7 @@ bool AreaTrigger_at_shh_netherkurse(Player* player, AreaTriggerEntry const* /*at
     return true;
 }
 
+// 游戏对象使用交互回调
 bool GOUse_go_netherkurse_door(Player* player, GameObject* /*go*/)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)player->GetInstanceData())
@@ -421,6 +443,7 @@ bool GOUse_go_netherkurse_door(Player* player, GameObject* /*go*/)
     return true;
 }
 
+// 注册 boss_grand_warlock_nethekurse 脚本
 void AddSC_boss_grand_warlock_nethekurse()
 {
     Script* pNewScript = new Script;

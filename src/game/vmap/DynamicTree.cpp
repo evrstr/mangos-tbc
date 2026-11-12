@@ -48,10 +48,11 @@ static bool operator == (const GameObjectModel& mdl, const GameObjectModel& mdl2
 // int valuesPerNode = 5, numMeanSplits = 3;
 
 //int UNBALANCED_TIMES_LIMIT = 5;
-int CHECK_TREE_PERIOD = 200;
+int CHECK_TREE_PERIOD = 200; // 动态碰撞树自动平衡检查周期（毫秒）
 
 typedef RegularGrid2D<GameObjectModel, BIHWrap<GameObjectModel> > ParentTree;
 
+// 动态碰撞树内部实现：基于 64x64 RegularGrid2D 与 BIHWrap 维护动态 GameObject 模型并周期性重建失衡网格
 struct DynTreeImpl : public ParentTree/*, public Intersectable*/
 {
     typedef GameObjectModel Model;
@@ -138,6 +139,7 @@ void DynamicMapTree::update(uint32 t_diff)
     impl.update(t_diff);
 }
 
+// 动态模型射线求交回调
 struct DynamicTreeIntersectionCallback
 {
     bool did_hit;
@@ -150,6 +152,7 @@ struct DynamicTreeIntersectionCallback
     bool didHit() const { return did_hit;}
 };
 
+// 带调试日志的动态模型射线求交回调
 struct DynamicTreeIntersectionCallback_WithLogger
 {
     bool did_hit;
@@ -175,6 +178,7 @@ struct DynamicTreeIntersectionCallback_WithLogger
 /**
 If intersection is found within pMaxDist, sets pMaxDist to intersection distance and returns true.
 Else, pMaxDist is not modified and returns false;
+若在 pMaxDist 范围内与动态模型相交，则将 pMaxDist 更新为命中距离并返回 true
 */
 
 bool DynamicMapTree::getIntersectionTime(const G3D::Ray& ray, const Vector3& endPos, float& pMaxDist) const
@@ -188,6 +192,7 @@ bool DynamicMapTree::getIntersectionTime(const G3D::Ray& ray, const Vector3& end
 }
 //=========================================================
 
+// 检测两点移动路径上的动态模型碰撞并返回经 pModifyDist 微调后的位置（坐标重载）
 bool DynamicMapTree::getObjectHitPos(float x1, float y1, float z1, float x2, float y2, float z2, float& rx, float& ry, float& rz, float pModifyDist) const
 {
     Vector3 pos1 = Vector3(x1, y1, z1);
@@ -204,6 +209,7 @@ bool DynamicMapTree::getObjectHitPos(float x1, float y1, float z1, float x2, flo
 /**
 When moving from pos1 to pos2 check if we hit an object. Return true and the position if we hit one
 Return the hit pos or the original dest pos
+从 pos1 向 pos2 发射射线检测动态模型碰撞；命中时按 pModifyDist 回退避免卡墙，未命中则返回原终点
 */
 bool DynamicMapTree::getObjectHitPos(const Vector3& pPos1, const Vector3& pPos2, Vector3& pResultHitPos, float pModifyDist) const
 {
@@ -211,7 +217,7 @@ bool DynamicMapTree::getObjectHitPos(const Vector3& pPos1, const Vector3& pPos2,
     float maxDist = (pPos2 - pPos1).magnitude();
     // valid map coords should *never ever* produce float overflow, but this would produce NaNs too:
     MANGOS_ASSERT(maxDist < std::numeric_limits<float>::max());
-    // prevent NaN values which can cause BIH intersection to enter infinite loop
+    // prevent NaN values which can cause BIH intersection to enter infinite loop (起点与终点过近时直接跳过求交，防止零向量除零产生 NaN)
     if (maxDist < 1e-10f)
     {
         pResultHitPos = pPos2;
@@ -248,6 +254,7 @@ bool DynamicMapTree::getObjectHitPos(const Vector3& pPos1, const Vector3& pPos2,
     return result;
 }
 
+// 判断两点间是否不被任何动态 GameObject 模型阻挡视线
 bool DynamicMapTree::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, bool ignoreM2Model) const
 {
     Vector3 v1(x1, y1, z1), v2(x2, y2, z2);
@@ -264,6 +271,7 @@ bool DynamicMapTree::isInLineOfSight(float x1, float y1, float z1, float x2, flo
     return !callback.did_hit;
 }
 
+// 垂直向下发射射线查询动态模型表面的最高点 Z 值（未命中返回 -inf）
 float DynamicMapTree::getHeight(float x, float y, float z, float maxSearchDist) const
 {
     Vector3 v(x, y, z);

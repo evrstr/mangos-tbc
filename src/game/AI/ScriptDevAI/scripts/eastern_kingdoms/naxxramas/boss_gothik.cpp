@@ -21,47 +21,51 @@ SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
+// 收割者戈提克（Gothik the Harvester）军事区2号首领战 AI（生者之门与死者之门分场杀怪、灵魂转换与本体下场）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_SPEECH_1                = 13030,
-    SAY_SPEECH_2                = 13031,
-    SAY_SPEECH_3                = 13032,
-    SAY_SPEECH_4                = 13033,
+    SAY_SPEECH_1                = 13030,                    // 演讲1 台词广播 ID
+    SAY_SPEECH_2                = 13031,                    // 演讲2 台词广播 ID
+    SAY_SPEECH_3                = 13032,                    // 演讲3 台词广播 ID
+    SAY_SPEECH_4                = 13033,                    // 演讲4 台词广播 ID
 
-    SAY_KILL                    = 13027,
-    SAY_DEATH                   = 13026,
-    SAY_TELEPORT                = 13028,
+    SAY_KILL                    = 13027,                    // 击杀 台词广播 ID
+    SAY_DEATH                   = 13026,                    // 死亡 台词广播 ID
+    SAY_TELEPORT                = 13028,                    // 传送 台词广播 ID
 
-    PHASE_SPEECH                = 0,
-    PHASE_BALCONY               = 1,
-    PHASE_TELEPORT_DOWN         = 2,
-    PHASE_TELEPORTING           = 3,
-    PHASE_STOP_TELEPORTING      = 4,
+    PHASE_SPEECH                = 0,                        // 演讲 阶段 ID
+    PHASE_BALCONY               = 1,                        // balcony 阶段 ID
+    PHASE_TELEPORT_DOWN         = 2,                        // 传送down 阶段 ID
+    PHASE_TELEPORTING           = 3,                        // teleporting 阶段 ID
+    PHASE_STOP_TELEPORTING      = 4,                        // stopteleporting 阶段 ID
 
     // Right is right side from Gothik (eastern), i.e. right is living and left is spectral
-    SPELL_TELEPORT_RIGHT        = 28025,
-    SPELL_TELEPORT_LEFT         = 28026,
+    SPELL_TELEPORT_RIGHT        = 28025,                    // 传送right 法术 ID
+    SPELL_TELEPORT_LEFT         = 28026,                    // 传送left 法术 ID
 
-    SPELL_HARVESTSOUL           = 28679,
-    SPELL_SHADOWBOLT            = 29317,
+    SPELL_HARVESTSOUL           = 28679,                    // harvestsoul 法术 ID
+    SPELL_SHADOWBOLT            = 29317,                    // shadowbolt 法术 ID
     SPELL_IMMUNE_ALL            = 29230,            // Cast during balcony phase to make Gothik unattackable
 
-    SPELL_RESET_GOTHIK_EVENT    = 28035,
+    SPELL_RESET_GOTHIK_EVENT    = 28035,                    // 重置戈提克事件 法术 ID
 
     // Spectral side spells
-    SPELL_SUMMON_SPECTRAL_TRAINEE   = 27921,
-    SPELL_SUMMON_SPECTRAL_KNIGHT    = 27932,
-    SPELL_SUMMON_SPECTRAL_RIVENDARE = 27939,
-    SPELL_CHECK_SPECTRAL_SIDE       = 28749,
+    SPELL_SUMMON_SPECTRAL_TRAINEE   = 27921,                // 召唤幽灵trainee 法术 ID
+    SPELL_SUMMON_SPECTRAL_KNIGHT    = 27932,                // 召唤幽灵骑士 法术 ID
+    SPELL_SUMMON_SPECTRAL_RIVENDARE = 27939,                // 召唤幽灵rivendare 法术 ID
+    SPELL_CHECK_SPECTRAL_SIDE       = 28749,                // check幽灵side 法术 ID
 
     // Unrelenting side spell
-    SPELL_CHECK_UNRELENTING_SIDE    = 29875,
+    SPELL_CHECK_UNRELENTING_SIDE    = 29875,                // checkunrelentingside 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GothikActions
 {
     GOTHIK_TELEPORT,
@@ -74,6 +78,7 @@ enum GothikActions
     GOTHIK_SPEECH,
 };
 
+// 首领战 AI：标识 ID（gothik）
 struct boss_gothikAI : public BossAI
 {
     boss_gothikAI(Creature* creature) : BossAI(creature, GOTHIK_ACTIONS_MAX), m_instance(static_cast<instance_naxxramas*>(creature->GetInstanceData())), m_phase(PHASE_SPEECH),
@@ -114,6 +119,7 @@ struct boss_gothikAI : public BossAI
     uint8 m_speechStep;
     uint8 m_teleportCount;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         BossAI::Reset();
@@ -130,7 +136,7 @@ struct boss_gothikAI : public BossAI
         SetReactState(REACT_PASSIVE);
         SetCombatScriptStatus(false);
 
-        // Despawn Adds
+        // Despawn Adds (消除Adds)
         DespawnGuids(m_summonedAddGuids);
     }
 
@@ -168,7 +174,7 @@ struct boss_gothikAI : public BossAI
         if (!m_creature->HasAura(SPELL_IMMUNE_ALL))
             DoCastSpellIfCan(nullptr, SPELL_IMMUNE_ALL, TRIGGERED_OLD_TRIGGERED);
 
-        // Start timer before summoning
+        // Start timer before summoning (开始计时器beforesummoning)
         ResetTimer(GOTHIK_SPEECH, 1s);
 
         ResetTimer(GOTHIK_SUMMON_TRAINEE, 4s);
@@ -209,6 +215,7 @@ struct boss_gothikAI : public BossAI
         return false;
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         BossAI::EnterEvadeMode();
@@ -218,6 +225,7 @@ struct boss_gothikAI : public BossAI
         m_creature->ForcedDespawn();
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (HasPlayersInLeftSide())
@@ -225,6 +233,7 @@ struct boss_gothikAI : public BossAI
         m_summonedAddGuids.push_back(summoned->GetObjectGuid());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         switch (summoned->GetEntry())
@@ -430,7 +439,7 @@ struct AnchorToSkull : public SpellScript
     }
 };
 
-// 28749 - Check Spectral Side
+// 28749 - Check Spectral Side (28749 - Check 幽灵 Side)
 // 29875 - Check Unrelenting Side
 struct CheckGothikSide : public SpellScript
 {
@@ -474,8 +483,8 @@ struct CheckGothikSide : public SpellScript
     }
 };
 
-// 28781 - Spectral Side Assault
-// 29874 - Unrelenting Side Assault
+// 28781 - Spectral Side Assault (28781 - 幽灵 Side 突袭)
+// 29874 - Unrelenting Side Assault (29874 - Unrelenting Side 突袭)
 struct GothikSideAssault : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /* effIdx */) const override
@@ -496,7 +505,7 @@ struct GothikSideAssault : public SpellScript
     }
 };
 
-// 28035 - Reset Gothik Event
+// 28035 - Reset Gothik Event (28035 - 重置 戈提克 事件)
 struct ResetGothikEvent : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -532,6 +541,7 @@ struct ShadowboltGothik : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_gothik
 void AddSC_boss_gothik()
 {
     Script* newScript = new Script;

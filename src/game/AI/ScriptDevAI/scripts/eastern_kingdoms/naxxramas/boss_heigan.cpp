@@ -23,45 +23,49 @@ SDComment: Missing poison inside the eye stalk tunnel in phase 2
 SDCategory: Naxxramas
 EndScriptData */
 
+// 肮脏的希尔盖（Heigan the Unclean）瘟疫区2号首领战 AI（法力燃烧、安全地砖跳舞与看台阶段）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/BossAI.h"
 #include "naxxramas.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    PHASE_GROUND            = 1,
-    PHASE_PLATFORM          = 2,
+    PHASE_GROUND            = 1,                            // ground 阶段 ID
+    PHASE_PLATFORM          = 2,                            // platform 阶段 ID
 
-    SAY_AGGRO1              = 13041,
-    SAY_AGGRO2              = 13042,
-    SAY_AGGRO3              = 13043,
-    SAY_SLAY                = 13045,
-    SAY_TAUNT1              = 13046,
-    SAY_TAUNT2              = 13047,
-    SAY_TAUNT3              = 13048,
-    SAY_TAUNT4              = 13050,
-    SAY_CHANNELING          = 13049,
-    SAY_DEATH               = 13044,
+    SAY_AGGRO1              = 13041,                        // aggro1 台词广播 ID
+    SAY_AGGRO2              = 13042,                        // aggro2 台词广播 ID
+    SAY_AGGRO3              = 13043,                        // aggro3 台词广播 ID
+    SAY_SLAY                = 13045,                        // 击杀 台词广播 ID
+    SAY_TAUNT1              = 13046,                        // taunt1 台词广播 ID
+    SAY_TAUNT2              = 13047,                        // taunt2 台词广播 ID
+    SAY_TAUNT3              = 13048,                        // taunt3 台词广播 ID
+    SAY_TAUNT4              = 13050,                        // taunt4 台词广播 ID
+    SAY_CHANNELING          = 13049,                        // channeling 台词广播 ID
+    SAY_DEATH               = 13044,                        // 死亡 台词广播 ID
 
-    // Heigan spells
-    SPELL_DECREPIT_FEVER    = 29998,
-    SPELL_MANA_BURN         = 29310,
-    SPELL_TELEPORT_SELF     = 30211,
-    SPELL_TELEPORT_PLAYERS  = 29273,
+    // Heigan spells (希尔盖spells)
+    SPELL_DECREPIT_FEVER    = 29998,                        // decrepitfever 法术 ID
+    SPELL_MANA_BURN         = 29310,                        // 法力burn 法术 ID
+    SPELL_TELEPORT_SELF     = 30211,                        // 传送self 法术 ID
+    SPELL_TELEPORT_PLAYERS  = 29273,                        // 传送players 法术 ID
     SPELL_PLAGUE_CLOUD      = 29350,                // Channel spell periodically triggering spell 30122
     SPELL_PLAGUE_WAVE_SLOW  = 29351,                // Activates the traps during phase 1; triggers spell 30116, 30117, 30118, 30119 each 10 secs
     SPELL_PLAGUE_WAVE_FAST  = 30114,                // Activates the traps during phase 2; triggers spell 30116, 30117, 30118, 30119 each 3 secs
-    SPELL_TELEPORT_TRIGGER  = 29499,
+    SPELL_TELEPORT_TRIGGER  = 29499,                        // 传送触发 法术 ID
 
-    MAX_PLAYERS_TELEPORT    = 3,
+    MAX_PLAYERS_TELEPORT    = 3,                            // players传送 标识 ID
 
     NPC_PLAGUE_WAVE         = 17293,                // Control plague waves
-    NPC_WORLD_TRIGGER       = 15384
+    NPC_WORLD_TRIGGER       = 15384                         // world触发 Entry ID
 };
 
 static const float resetX = 2825.0f;                // Beyond this X-line, Heigan is outside his room and should reset (leashing)
 
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum HeiganActions
 {
     HEIGAN_TAUNT,
@@ -73,6 +77,7 @@ enum HeiganActions
     HEIGAN_DOOR,
 };
 
+// 首领战 AI：标识 ID（heigan）
 struct boss_heiganAI : public BossAI
 {
     boss_heiganAI(Creature* creature) : BossAI(creature, HEIGAN_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -99,6 +104,7 @@ struct boss_heiganAI : public BossAI
 
     uint8 m_phase;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -113,10 +119,11 @@ struct boss_heiganAI : public BossAI
         switch (id)
         {
             case HEIGAN_TAUNT: return urand(25, 90) * IN_MILLISECONDS;
-            default: return 0; // never occurs but for compiler
+            default: return 0; // never occurs but for compiler (仅供编译器检查，实际不触发)
         }
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* unit) override
     {
         BossAI::Aggro(unit);
@@ -124,12 +131,14 @@ struct boss_heiganAI : public BossAI
         ResetTimer(HEIGAN_DOOR, 15u * IN_MILLISECONDS);
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         BossAI::JustDied(killer);
         StopEruptions();
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         ScriptedAI::EnterEvadeMode();
@@ -238,6 +247,7 @@ struct boss_heiganAI : public BossAI
 ## npc_diseased_maggot
 ####################*/
 
+// 随从/NPC AI：蛆虫（diseased_maggot）
 struct npc_diseased_maggotAI : public ScriptedAI
 {
     npc_diseased_maggotAI(Creature* creature) : ScriptedAI(creature)
@@ -250,11 +260,13 @@ struct npc_diseased_maggotAI : public ScriptedAI
 
     uint32 m_resetCheckTimer;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_resetCheckTimer = 3 * IN_MILLISECONDS;
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         // Do nothing if no target
@@ -271,7 +283,7 @@ struct npc_diseased_maggotAI : public ScriptedAI
         else
             m_resetCheckTimer -= diff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
@@ -289,7 +301,7 @@ struct PlagueWaveController : public AuraScript
     }
 };
 
-// 29499 - Teleport Trigger
+// 29499 - Teleport Trigger (29499 - 传送 触发)
 struct TeleportTrigger : public SpellScript
 {
     void OnInit(Spell* spell) const override
@@ -305,6 +317,7 @@ struct TeleportTrigger : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_heigan
 void AddSC_boss_heigan()
 {
 

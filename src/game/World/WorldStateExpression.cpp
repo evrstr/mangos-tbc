@@ -24,6 +24,7 @@
 
 #include <string_view>
 
+/// 将十六进制字符串解析为字节数组
 void HexStrToByteArray(std::string_view str, uint8* out, size_t outlen, bool reverse)
 {
     MANGOS_ASSERT(str.size() == (2 * outlen));
@@ -308,6 +309,7 @@ static int32(* const WorldStateExpressionFunctions[WSE_FUNCTION_MAX])(Map const*
     },
 };
 
+/// 从字节码流中求值单个原子操作数（常量 / WorldState 变量 / 内置函数）
 int32 EvalSingleValue(ByteBuffer& buffer, Map const* map)
 {
     WorldStateExpressionValueType valueType = buffer.read<WorldStateExpressionValueType>();
@@ -345,6 +347,7 @@ int32 EvalSingleValue(ByteBuffer& buffer, Map const* map)
     return value;
 }
 
+/// 从字节码流中求值单目或双目算术表达式
 int32 EvalValue(ByteBuffer& buffer, Map const* map)
 {
     int32 leftValue = EvalSingleValue(buffer, map);
@@ -369,6 +372,7 @@ int32 EvalValue(ByteBuffer& buffer, Map const* map)
     return leftValue;
 }
 
+/// 从字节码流中求值单个关系比较子句
 bool EvalRelOp(ByteBuffer& buffer, Map const* map)
 {
     int32 leftValue = EvalValue(buffer, map);

@@ -22,10 +22,10 @@
 
 enum
 {
-    SPELL_BLESSING_OF_THE_CLAW = 28750,
+    SPELL_BLESSING_OF_THE_CLAW = 28750,                     // 利爪祝福（T3 套装愈合每跳触发回蓝/回血效果）
 };
 
-// 8936 - Regrowth
+// 8936 - Regrowth (愈合：具备覆盖脚本 4537 时每跳结束触发利爪祝福)
 struct Regrowth : public AuraScript
 {
     void OnPeriodicTickEnd(Aura* aura) const override
@@ -37,13 +37,14 @@ struct Regrowth : public AuraScript
 };
 
 // 1178 - Bear Form, 3025 - Cat Form, 9635 - Dire Bear Form, 24905 - Moonkin Form
+// 德鲁伊变形形态攻强缩放光环：结合“野性侵略/猛兽攻击(Predatory Strikes)”天赋按等级额外增加攻击强度
 struct FormScalingAttackPowerAuras : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
     {
         if (data.spellProto->EffectApplyAuraName[data.effIdx] == SPELL_AURA_MOD_ATTACK_POWER)
         {
-            // Predatory Strikes
+            // Predatory Strikes (猛兽攻击天赋等级查找)
             Aura* predatoryStrikes = nullptr;
             if (Aura* aura = data.target->GetAura(16975, EFFECT_INDEX_0)) // rank 3
                 predatoryStrikes = aura;
@@ -58,7 +59,7 @@ struct FormScalingAttackPowerAuras : public AuraScript
     }
 };
 
-// 33831 - Force of Nature
+// 33831 - Force of Nature (自然之力：召唤树人并周期性触发嘲讽拉怪)
 struct ForceOfNatureSummon : public SpellScript, public AuraScript
 {
     void OnSummon(Spell* /*spell*/, Creature* summon) const override
@@ -78,7 +79,7 @@ struct ForceOfNatureSummon : public SpellScript, public AuraScript
     }
 };
 
-// 41929 - Guardian Aggro Spell
+// 41929 - Guardian Aggro Spell (自然之力树人索敌法术：使树人主动攻击视野内敌对目标)
 struct GuardianAggroSpell : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -88,7 +89,7 @@ struct GuardianAggroSpell : public SpellScript
 
         Unit* target = spell->GetUnitTarget();
         Unit* caster = spell->GetCaster();
-        if (target->GetEntry() == 1964) // Force of Nature treant
+        if (target->GetEntry() == 1964) // Force of Nature treant (自然之力树人条目)
         {
             if (target->CanAttack(caster))
             {
@@ -99,7 +100,7 @@ struct GuardianAggroSpell : public SpellScript
     }
 };
 
-// 33876, 33878 - Mangle
+// 33876, 33878 - Mangle (裂伤：提高后续流血效果与撕碎伤害，猫形态额外触发能量/连击点关联法术)
 struct MangleDruidTBC : public SpellScript, public AuraScript
 {
     void OnAuraInit(Aura* aura) const override
@@ -113,6 +114,7 @@ struct MangleDruidTBC : public SpellScript, public AuraScript
         aura->GetTarget()->RegisterScriptedLocationAura(aura, SCRIPT_LOCATION_SPELL_DAMAGE_TAKEN, apply);
     }
 
+    // 仅对流血机制或撕碎（Shred）各等级技能生效
     bool OnAffectCheck(Aura const* /*aura*/, SpellEntry const* spellInfo) const override
     {
         if (spellInfo == nullptr)
@@ -123,7 +125,7 @@ struct MangleDruidTBC : public SpellScript, public AuraScript
         
         switch (spellInfo->Id)
         {
-            case 5221: // Shred
+            case 5221: // Shred (撕碎各等级)
             case 6800:
             case 8992:
             case 9829:
@@ -147,7 +149,7 @@ struct MangleDruidTBC : public SpellScript, public AuraScript
     }
 };
 
-// 37327 - Starfire Bonus
+// 37327 - Starfire Bonus (星火术套装加成：当目标身上有虫群或月火周期伤害时提高星火术伤害)
 struct StarfireBonus : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -162,6 +164,7 @@ struct StarfireBonus : public AuraScript
     }
 };
 
+// 注册德鲁伊职业法术脚本
 void LoadDruidScripts()
 {
     RegisterSpellScript<Regrowth>("spell_regrowth");

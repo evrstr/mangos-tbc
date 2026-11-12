@@ -25,6 +25,7 @@
 class Guild;
 class ObjectGuid;
 
+/// 全局公会管理器：负责从数据库加载全部公会并提供按 ID、名称与会长查找接口
 class GuildMgr
 {
         typedef std::unordered_map<uint32, MaNGOS::unique_trackable_ptr<Guild>> GuildMap;
@@ -34,7 +35,9 @@ class GuildMgr
         GuildMgr();
         ~GuildMgr();
 
+        /// 注册公会实例到全局哈希表
         void AddGuild(Guild* guild);
+        /// 从全局哈希表移除并释放公会实例
         void RemoveGuild(uint32 guildId);
 
         Guild* GetGuildById(uint32 guildId) const;
@@ -42,6 +45,7 @@ class GuildMgr
         Guild* GetGuildByLeader(ObjectGuid const& guid) const;
         std::string GetGuildNameById(uint32 guildId) const;
 
+        /// 启动时从数据库批量加载公会、职级、成员、权限、事件日志及公会银行数据
         void LoadGuilds();
 };
 

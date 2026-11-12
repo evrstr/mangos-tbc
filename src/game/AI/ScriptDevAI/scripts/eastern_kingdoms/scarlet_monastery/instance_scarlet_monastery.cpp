@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Scarlet Monastery
 EndScriptData */
 
+// 血色修道院（Scarlet Monastery）墓地、图书馆、军械库、大教堂四区状态机
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/include/sc_instance.h"
 #include "scarlet_monastery.h"
@@ -199,6 +201,7 @@ bool AreaTrigger_at_cathedral_entrance(Player* player, AreaTriggerEntry const* a
     return false;
 }
 
+// 法术脚本逻辑实现：标识 ID（ABEffect000）
 struct ABEffect000 : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -210,6 +213,7 @@ struct ABEffect000 : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：instance_scarlet_monastery
 void AddSC_instance_scarlet_monastery()
 {
     Script* pNewScript = new Script;

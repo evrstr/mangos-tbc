@@ -23,9 +23,10 @@
 #include "Movement/MoveSpline.h"
 #include "Movement/MoveSplineInit.h"
 
+/// 初始化包装生成器：中止旧样条、按需立即发射样条，并在非玩家冲锋面对目标时接战
 void AbstractWrapperMovementGenerator::Initialize(Unit& owner)
 {
-    // Stop any previously dispatched splines no matter the source
+    // Stop any previously dispatched splines no matter the source (停止之前残留样条)
     if (!owner.movespline->Finalized())
     {
         if (owner.IsClientControlled())
@@ -42,7 +43,7 @@ void AbstractWrapperMovementGenerator::Initialize(Unit& owner)
 
     if (!owner.IsPlayerControlled())
     {
-        if (i_id != 43153 && i_id != 30751) // Lynx Rush exception | Blade Dance Charge - can be done in AI - here for research
+        if (i_id != 43153 && i_id != 30751) // Lynx Rush exception | Blade Dance Charge - can be done in AI - here for research (山猫冲锋/剑舞冲锋例外：不附加落地等待计时器)
             i_useTimer = true;
         if (owner.movespline->isFacingTarget())
         {
@@ -58,9 +59,10 @@ void AbstractWrapperMovementGenerator::Initialize(Unit& owner)
     }
 }
 
+/// 销毁前清理未完成的样条或补发到达通知
 void AbstractWrapperMovementGenerator::Finalize(Unit& owner)
 {
-    // Stop any previously dispatched splines no matter the source
+    // Stop any previously dispatched splines no matter the source (若样条未完成则停止移动，否则派发通知)
     if (!owner.movespline->Finalized())
     {
         if (owner.IsClientControlled())
@@ -68,7 +70,7 @@ void AbstractWrapperMovementGenerator::Finalize(Unit& owner)
         else
             owner.InterruptMoving();
     }
-    // Inform AI about spline completed
+    // Inform AI about spline completed (样条已走完且尚未通知时回调 AI)
     else if (!i_informed)
         Inform(owner);
 }
@@ -84,6 +86,7 @@ void AbstractWrapperMovementGenerator::Reset(Unit& owner)
     Initialize(owner);
 }
 
+/// 驱动延迟样条启动及 NPC 样条结束后的 1 秒缓冲计时器
 bool AbstractWrapperMovementGenerator::Update(Unit& owner, const uint32& diff)
 {
     if (i_delayed && !i_dispatched)
@@ -114,6 +117,7 @@ bool AbstractWrapperMovementGenerator::Update(Unit& owner, const uint32& diff)
     return !finalized;
 }
 
+/// 向自身 AI、召唤者 AI 及关联 Relay 脚本发送位移完成事件
 void AbstractWrapperMovementGenerator::Inform(Unit& owner)
 {
     i_informed = true;

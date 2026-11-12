@@ -22,6 +22,7 @@
 #include "Common.h"
 #include "Globals/SharedDefines.h"
 
+/// WorldSafeLocs.dbc 墓地安全复活点数据结构
 struct WorldSafeLocsEntry
 {
     uint32  ID;
@@ -33,6 +34,7 @@ struct WorldSafeLocsEntry
     char*   name;
 };
 
+/// 墓地与阵营归属关联记录
 struct GraveYardData
 {
     uint32 safeLocId;
@@ -45,20 +47,25 @@ typedef std::pair<GraveYardMap::const_iterator, GraveYardMap::const_iterator> Gr
 
 class Map;
 
+/// 墓地管理器：管理区域/地图与墓地复活点的映射并计算距离死亡点最近的友方墓地
 class GraveyardManager
 {
     public:
         void Init(Map* map);
 
+        /// 根据坐标、地图与玩家阵营按 Area -> Zone -> Map 优先级查找最近可用墓地
         WorldSafeLocsEntry const* GetClosestGraveYard(float x, float y, float z, uint32 mapId, Team team) const;
+        /// 添加墓地与区域/地图的关联记录（可选同步写入数据库）
         bool AddGraveYardLink(uint32 id, uint32 locId, uint32 linkKind, Team team, bool inDB = true);
+        /// 修改指定墓地关联的可用阵营
         void SetGraveYardLinkTeam(uint32 id, uint32 linkKey, Team team);
         GraveYardData const* FindGraveYardData(uint32 id, uint32 zoneId);
         static GraveYardData const* FindGraveYardData(GraveYardMap const& map, uint32 id, uint32 zoneId);
 
+        /// 将位置 ID 与关联类型（Area/Map）编码为 32 位索引键
         static uint32 GraveyardLinkKey(uint32 locId, uint32 linkKind);
 
-        // Only for use in Map
+        // Only for use in Map | 仅限 Map 初始化阶段内部读取
         GraveYardMap& GetGraveyardMap() { return m_graveyardMap; }
     private:
         WorldSafeLocsEntry const* GetClosestGraveyardHelper(GraveYardMapBounds bounds, float x, float y, float z, uint32 mapId, Team team) const;

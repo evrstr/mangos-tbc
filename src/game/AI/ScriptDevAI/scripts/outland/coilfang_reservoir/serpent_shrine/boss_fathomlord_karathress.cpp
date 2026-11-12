@@ -21,11 +21,17 @@ SDComment: Timers may need adjustments.
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
+// 深水领主卡拉瑟雷斯（毒蛇神殿四号首领）
+/* 遭遇战概述：
+ * 深水领主卡拉瑟雷斯携三名护卫（萨满、猎人、牧师）共同参战，每名护卫死亡后深水领主获得对应职业强化能力。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = -1548021,
@@ -86,6 +92,7 @@ static const uint32 aHealTargets[MAX_HEAL_TARGETS] = {NPC_KARATHRESS, NPC_CARIBD
 ## boss_fathomlord_karathress
 ######*/
 
+// boss_fathomlord_karathressAI 逻辑实现
 struct boss_fathomlord_karathressAI : public ScriptedAI
 {
     boss_fathomlord_karathressAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -107,6 +114,7 @@ struct boss_fathomlord_karathressAI : public ScriptedAI
 
     GuidVector m_spawns;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiCataclysmicBoltTimer    = 10000;
@@ -151,6 +159,7 @@ struct boss_fathomlord_karathressAI : public ScriptedAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
@@ -159,12 +168,14 @@ struct boss_fathomlord_karathressAI : public ScriptedAI
             m_instance->SetData(TYPE_KARATHRESS_EVENT, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_KARATHRESS_EVENT, FAIL);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         m_spawns.push_back(summoned->GetObjectGuid());
@@ -242,6 +253,7 @@ struct boss_fathomlord_karathressAI : public ScriptedAI
 ## boss_fathomguard_sharkkis
 ######*/
 
+// SharkkisActions 相关枚举
 enum SharkkisActions
 {
     SHARKKIS_HURL_TRIDENT,
@@ -252,6 +264,7 @@ enum SharkkisActions
     SHARKKIS_ACTION_MAX,
 };
 
+// boss_fathomguard_sharkkisAI 逻辑实现
 struct boss_fathomguard_sharkkisAI : public CombatAI
 {
     boss_fathomguard_sharkkisAI(Creature* creature) : CombatAI(creature, SHARKKIS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -270,6 +283,7 @@ struct boss_fathomguard_sharkkisAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -287,11 +301,13 @@ struct boss_fathomguard_sharkkisAI : public CombatAI
         Reset();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoCastSpellIfCan(m_creature, SPELL_POWER_OF_SHARKKIS, CAST_TRIGGERED);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (m_creature->GetVictim())
@@ -305,6 +321,7 @@ struct boss_fathomguard_sharkkisAI : public CombatAI
         ResetCombatAction(SHARKKIS_PET_SUMMON, 30000);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -343,6 +360,7 @@ struct boss_fathomguard_sharkkisAI : public CombatAI
 ## boss_fathomguard_tidalvess
 ######*/
 
+// TidalvessActions 相关枚举
 enum TidalvessActions
 {
     TIDALVESS_TOTEM_SUMMON,
@@ -350,6 +368,7 @@ enum TidalvessActions
     TIDALVESS_ACTION_MAX,
 };
 
+// boss_fathomguard_tidalvessAI 逻辑实现
 struct boss_fathomguard_tidalvessAI : public CombatAI
 {
     boss_fathomguard_tidalvessAI(Creature* creature) : CombatAI(creature, TIDALVESS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -367,6 +386,7 @@ struct boss_fathomguard_tidalvessAI : public CombatAI
 
     GuidVector m_spawns;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -382,16 +402,19 @@ struct boss_fathomguard_tidalvessAI : public CombatAI
         CombatAI::EnterEvadeMode();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoCastSpellIfCan(m_creature, SPELL_POWER_OF_TIDALVESS, CAST_TRIGGERED);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         m_spawns.push_back(summoned->GetObjectGuid());
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -422,6 +445,7 @@ struct boss_fathomguard_tidalvessAI : public CombatAI
 ## boss_fathomguard_caribdis
 ######*/
 
+// boss_fathomguard_caribdisAI 逻辑实现
 struct boss_fathomguard_caribdisAI : public ScriptedAI
 {
     boss_fathomguard_caribdisAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -442,6 +466,7 @@ struct boss_fathomguard_caribdisAI : public ScriptedAI
 
     GuidVector m_spawns;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         m_uiWaterBoltVolleyTimer = 35000;
@@ -460,11 +485,13 @@ struct boss_fathomguard_caribdisAI : public ScriptedAI
         ScriptedAI::EnterEvadeMode();
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoCastSpellIfCan(m_creature, SPELL_POWER_OF_CARIBDIS, CAST_TRIGGERED);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         m_spawns.push_back(summoned->GetObjectGuid());
@@ -552,8 +579,10 @@ struct npc_caribdis_cyclone : public CombatAI
     void ExecuteAction(uint32 /*action*/) override {}
 };
 
+// TidalSurge 法术脚本
 struct TidalSurge : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (spell->GetUnitTarget() && effIdx == EFFECT_INDEX_1)
@@ -561,6 +590,7 @@ struct TidalSurge : public SpellScript
     }
 };
 
+// 注册 boss_fathomlord_karathress 脚本
 void AddSC_boss_fathomlord_karathress()
 {
     Script* pNewScript = new Script;

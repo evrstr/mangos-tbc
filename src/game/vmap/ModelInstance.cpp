@@ -26,12 +26,14 @@ using G3D::Ray;
 
 namespace VMAP
 {
+    // 构造模型实例：预计算旋转逆矩阵与缩放倒数
     ModelInstance::ModelInstance(const ModelSpawn& spawn, WorldModel* model): ModelSpawn(spawn), iModel(model)
     {
         iInvRot = G3D::Matrix3::fromEulerAnglesZYX(G3D::pi() * iRot.y / 180.f, G3D::pi() * iRot.x / 180.f, G3D::pi() * iRot.z / 180.f).inverse();
         iInvScale = 1.f / iScale;
     }
 
+    // 射线求交：先测世界空间 AABB，再将射线变换到模型局部坐标调用 WorldModel::IntersectRay
     bool ModelInstance::intersectRay(const G3D::Ray& pRay, float& pMaxDist, bool pStopAtFirstHit, bool ignoreM2Model) const
     {
         if (!iModel)
@@ -49,7 +51,7 @@ namespace VMAP
 #endif
             return false;
         }
-        // child bounds are defined in object space:
+        // child bounds are defined in object space: (将射线起点与方向变换到局部空间)
         Vector3 p = iInvRot * (pRay.origin() - iPos) * iInvScale;
         Ray modRay(p, iInvRot * pRay.direction());
         float distance = pMaxDist * iInvScale;
@@ -62,6 +64,7 @@ namespace VMAP
         return hit;
     }
 
+    // 空间点查询 WMO 区域信息及地面高度（跳过 M2 装饰模型）
     void ModelInstance::intersectPoint(const G3D::Vector3& p, AreaInfo& info) const
     {
         if (!iModel)
@@ -72,7 +75,7 @@ namespace VMAP
             return;
         }
 
-        // M2 files don't contain area info, only WMO files
+        // M2 files don't contain area info, only WMO files (仅 WMO 建筑包含区域标志信息，M2 不包含)
         if (flags & MOD_M2)
             return;
         if (!iBound.contains(p))
@@ -87,6 +90,7 @@ namespace VMAP
             // Transform back to world space. Note that:
             // Mat * vec == vec * Mat.transpose()
             // and for rotation matrices: Mat.inverse() == Mat.transpose()
+            // 利用正交旋转矩阵逆等于转置的性质，将局部地面点反变换回世界高度 Z
             float world_Z = ((modelGround * iInvRot) * iScale + iPos).z;
             if (info.ground_Z < world_Z)
             {
@@ -96,6 +100,7 @@ namespace VMAP
         }
     }
 
+    // 查询空间点命中的组模型及最高有效地面位置信息
     bool ModelInstance::GetLocationInfo(const G3D::Vector3& p, LocationInfo& info) const
     {
         if (!iModel)
@@ -135,6 +140,7 @@ namespace VMAP
         return false;
     }
 
+    // 查询当前命中组模型局部坐标处的液体高度并反变换为世界 Z 坐标
     bool ModelInstance::GetLiquidLevel(const G3D::Vector3& p, LocationInfo& info, float& liqHeight) const
     {
         // child bounds are defined in object space:
@@ -150,6 +156,7 @@ namespace VMAP
         return false;
     }
 
+    // 从二进制文件反序列化读取一条 ModelSpawn 记录
     bool ModelSpawn::readFromFile(FILE* rf, ModelSpawn& spawn)
     {
         uint32 check = 0, nameLen;
@@ -196,6 +203,7 @@ namespace VMAP
         return true;
     }
 
+    // 将一条 ModelSpawn 记录序列化写入二进制文件
     bool ModelSpawn::writeToFile(FILE* wf, const ModelSpawn& spawn)
     {
         uint32 check = 0;

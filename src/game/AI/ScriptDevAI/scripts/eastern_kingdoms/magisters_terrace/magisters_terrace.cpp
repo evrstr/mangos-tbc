@@ -21,6 +21,8 @@ SDComment:
 SDCategory: Magister's Terrace
 EndScriptData */
 
+// 魔导师平台（Magisters' Terrace）副本状态机与日蚀大门控制
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "magisters_terrace.h"
 
@@ -217,6 +219,7 @@ uint32 instance_magisters_terrace::GetData(uint32 uiType) const
     return 0;
 }
 
+// 注册并载入脚本模块：instance_magisters_terrace
 void AddSC_instance_magisters_terrace()
 {
     Script* pNewScript = new Script;

@@ -21,10 +21,16 @@ SDComment:
 SDCategory: Tempest Keep, The Arcatraz
 EndScriptData */
 
+// 末日预言者达尔莉安（禁魔监狱二号首领）
+/* 遭遇战概述：
+ * 达尔莉安与天怒预言者索克斯拉提斯相互守望，施放治疗毁灭、回旋投掷与绝望之礼。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "arcatraz.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = 19978,
@@ -48,12 +54,14 @@ enum
     SPELL_SHADOW_WAVE               = 39016,                // heroic spell only
 };
 
+// DaliahActions 相关枚举
 enum DaliahActions
 {
     DALIAH_TAUNT,
     DALIAH_ACTION_MAX,
 };
 
+// boss_dalliahAI 逻辑实现
 struct boss_dalliahAI : public CombatAI
 {
     boss_dalliahAI(Creature* creature) : CombatAI(creature, DALIAH_ACTION_MAX),
@@ -66,6 +74,7 @@ struct boss_dalliahAI : public CombatAI
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -73,6 +82,7 @@ struct boss_dalliahAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_DOUBLE_ATTACK, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(SAY_AGGRO, m_creature);
@@ -109,6 +119,7 @@ struct boss_dalliahAI : public CombatAI
             m_creature->SetFacingTo(aDalliahStartPos[3]);
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -135,6 +146,7 @@ struct boss_dalliahAI : public CombatAI
         }
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -151,8 +163,10 @@ struct boss_dalliahAI : public CombatAI
 };
 
 // 36142 - Whirlwind
+// WhirlwindDaliah 光环脚本
 struct WhirlwindDaliah : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (!apply && aura->GetTarget()->AI())
@@ -160,6 +174,7 @@ struct WhirlwindDaliah : public AuraScript
     }
 };
 
+// 注册 boss_dalliah 脚本
 void AddSC_boss_dalliah()
 {
     Script* pNewScript = new Script;

@@ -20,14 +20,16 @@
 
 class BattleGround;
 
+// 纳格兰竞技场玩家积分记录类
 class BattleGroundNAScore : public BattleGroundScore
 {
     public:
         BattleGroundNAScore() {};
         virtual ~BattleGroundNAScore() {};
-        // TODO fix me
+        // TODO fix me (待补充积分扩展)
 };
 
+// 纳格兰竞技场（Nagrand Arena）逻辑控制类
 class BattleGroundNA : public BattleGround
 {
         friend class BattleGroundMgr;
@@ -35,9 +37,9 @@ class BattleGroundNA : public BattleGround
     public:
         BattleGroundNA();
 
-        void Reset() override;
+        void Reset() override;                              // 重置状态并启用双方存活人数 HUD 变量
 
-        /* inherited from BattlegroundClass */
+        /* inherited from BattlegroundClass (继承自 BattleGround 的虚方法覆写) */
         virtual void AddPlayer(Player* plr) override;
         virtual void StartingEventOpenDoors() override;
 

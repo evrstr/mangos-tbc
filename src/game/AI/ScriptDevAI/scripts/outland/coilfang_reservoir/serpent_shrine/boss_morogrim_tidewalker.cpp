@@ -21,11 +21,17 @@ SDComment: Water Globule script is not complete - requires additional research.
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
+// 莫洛格里·踏潮者（毒蛇神殿五号首领）
+/* 遭遇战概述：
+ * 莫洛格里·踏潮者是身材巨大的巨人首领，施放水之墓地禁锢玩家，周期性召唤大量鱼人幼崽冲击团队。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_AGGRO                       = -1548030,
@@ -90,6 +96,7 @@ enum
 static const uint32 m_auiSpellWateryGraveTeleport[] = { SPELL_WATERY_GRAVE_TELEPORT_1, SPELL_WATERY_GRAVE_TELEPORT_2, SPELL_WATERY_GRAVE_TELEPORT_3, SPELL_WATERY_GRAVE_TELEPORT_4 };
 static const uint32 m_auiSpellSummonGlobule[] = { SPELL_SUMMON_GLOBULE_1, SPELL_SUMMON_GLOBULE_2, SPELL_SUMMON_GLOBULE_3, SPELL_SUMMON_GLOBULE_4 };
 
+// MorogrimActions 相关枚举
 enum MorogrimActions
 {
     MOROGRIM_PHASE_2,
@@ -100,6 +107,7 @@ enum MorogrimActions
     MOROGRIM_ACTION_MAX,
 };
 
+// boss_morogrim_tidewalkerAI 逻辑实现
 struct boss_morogrim_tidewalkerAI : public CombatAI
 {
     boss_morogrim_tidewalkerAI(Creature* creature) : CombatAI(creature, MOROGRIM_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -117,6 +125,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -124,6 +133,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
         DoCastSpellIfCan(nullptr, SPELL_DOUBLE_ATTACK, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
@@ -132,6 +142,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
             m_instance->SetData(TYPE_MOROGRIM_EVENT, IN_PROGRESS);
     }
 
+    // 击杀目标回调
     void KilledUnit(Unit* /*victim*/) override
     {
         switch (urand(0, 2))
@@ -142,6 +153,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
         }
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
@@ -150,12 +162,14 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
             m_instance->SetData(TYPE_MOROGRIM_EVENT, DONE);
     }
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_MOROGRIM_EVENT, FAIL);
     }
 
+    // 召唤生物生成登记回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_TIDEWALKER_LURKER)
@@ -168,6 +182,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -238,6 +253,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
     }
 };
 
+// mob_water_globuleAI 逻辑实现
 struct mob_water_globuleAI : public ScriptedAI
 {
     mob_water_globuleAI(Creature* creature) : ScriptedAI(creature), m_initialAggro(false)
@@ -255,6 +271,7 @@ struct mob_water_globuleAI : public ScriptedAI
         AttackClosestEnemy();
     }
 
+    // 目标进入视线回调
     void MoveInLineOfSight(Unit* who) override
     {
         if (m_creature->CanAttack(who) && m_creature->IsWithinDist(who, 5.f))
@@ -264,6 +281,7 @@ struct mob_water_globuleAI : public ScriptedAI
         }
     }
 
+    // 法术命中目标回调
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
         if (spellInfo->Id == SPELL_WATER_GLOBULE_NEW_TARGET)
@@ -280,6 +298,7 @@ struct mob_water_globuleAI : public ScriptedAI
         ResetTimer(1, urand(7000, 10000));
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         ScriptedAI::UpdateAI(diff);
@@ -291,6 +310,7 @@ struct mob_water_globuleAI : public ScriptedAI
     }
 };
 
+// WateryGrave 法术脚本
 struct WateryGrave : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -301,6 +321,7 @@ struct WateryGrave : public SpellScript
         return true;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx == EFFECT_INDEX_0)
@@ -312,8 +333,10 @@ struct WateryGrave : public SpellScript
     }
 };
 
+// SummonWaterGlobules 法术脚本
 struct SummonWaterGlobules : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         for (uint8 i = 0; i < 4; ++i)
@@ -322,8 +345,10 @@ struct SummonWaterGlobules : public SpellScript
 };
 
 // 37852 - Watery Grave Explosion
+// WateryGraveExplosion 法术脚本
 struct WateryGraveExplosion : public SpellScript
 {
+    // 触发施法回调
     void OnCast(Spell* spell) const override
     {
         if (spell->GetTriggeredByAuraSpellInfo())
@@ -331,6 +356,7 @@ struct WateryGraveExplosion : public SpellScript
     }
 };
 
+// 注册 boss_morogrim_tidewalker 脚本
 void AddSC_boss_morogrim_tidewalker()
 {
     Script* pNewScript = new Script;

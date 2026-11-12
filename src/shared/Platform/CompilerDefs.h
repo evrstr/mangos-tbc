@@ -19,12 +19,13 @@
 #ifndef MANGOS_COMPILERDEFS_H
 #define MANGOS_COMPILERDEFS_H
 
+/// 目标运行平台标识宏
 #define PLATFORM_WINDOWS 0
 #define PLATFORM_UNIX    1
 #define PLATFORM_APPLE   2
 #define PLATFORM_INTEL   3
 
-// must be first (win 64 also define WIN32)
+// must be first (win 64 also define WIN32) | 必须优先检测 _WIN64（Win64 环境下同样会定义 WIN32）
 #if defined( _WIN64 )
 #  define PLATFORM PLATFORM_WINDOWS
 #elif defined( __WIN32__ ) || defined( WIN32 ) || defined( _WIN32 )
@@ -37,6 +38,7 @@
 #  define PLATFORM PLATFORM_UNIX
 #endif
 
+/// 编译器类型标识宏
 #define COMPILER_MICROSOFT 0
 #define COMPILER_GNU       1
 #define COMPILER_BORLAND   2
@@ -55,13 +57,13 @@
 #endif
 
 #if COMPILER == COMPILER_MICROSOFT
-#  pragma warning( disable : 4267 )                         // conversion from 'size_t' to 'int', possible loss of data
-#  pragma warning( disable : 4786 )                         // identifier was truncated to '255' characters in the debug information
-#  pragma warning(disable:4996)                             // 'function': was declared deprecated
+#  pragma warning( disable : 4267 )                         // conversion from 'size_t' to 'int', possible loss of data | 禁用 size_t 到 int 转换可能丢失数据的警告
+#  pragma warning( disable : 4786 )                         // identifier was truncated to '255' characters in the debug information | 禁用调试信息中标识符被截断为 255 字符的警告
+#  pragma warning(disable:4996)                             // 'function': was declared deprecated | 禁用函数已弃用警告
 #ifndef __SHOW_STUPID_WARNINGS__
-#  pragma warning(disable:4244)                             // 'argument' : conversion from 'type1' to 'type2', possible loss of data
-#  pragma warning(disable:4355)                             // 'this' : used in base member initializer list
-#  pragma warning(disable:4251)                             // 'function': was declared deprecated
+#  pragma warning(disable:4244)                             // 'argument' : conversion from 'type1' to 'type2', possible loss of data | 禁用隐式数值转换可能丢失数据的警告
+#  pragma warning(disable:4355)                             // 'this' : used in base member initializer list | 禁用成员初始化列表中使用 this 指针的警告
+#  pragma warning(disable:4251)                             // 'function': was declared deprecated | 禁用 DLL 接口成员导出相关警告
 #endif                                                      // __SHOW_STUPID_WARNINGS__
 #endif                                                      // __GNUC__
 

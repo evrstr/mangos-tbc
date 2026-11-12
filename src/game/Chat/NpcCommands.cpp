@@ -20,6 +20,7 @@
 #include "Server/WorldSession.h"
 #include "Entities/Creature.h"
 
+/// 处理 GM 命令：列出当前选中生物的法术列表及施放配置详情
 bool ChatHandler::HandleNpcListSpells(char* /*args*/)
 {
     Creature* creature = getSelectedCreature();

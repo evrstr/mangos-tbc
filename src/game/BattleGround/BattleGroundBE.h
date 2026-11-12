@@ -20,6 +20,7 @@
 
 class BattleGround;
 
+// 刀锋山竞技场玩家积分记录类
 class BattleGroundBEScore : public BattleGroundScore
 {
     public:
@@ -27,6 +28,7 @@ class BattleGroundBEScore : public BattleGroundScore
         virtual ~BattleGroundBEScore() {};
 };
 
+// 刀锋山竞技场（Blade's Edge Arena）逻辑控制类
 class BattleGroundBE : public BattleGround
 {
         friend class BattleGroundMgr;
@@ -34,9 +36,9 @@ class BattleGroundBE : public BattleGround
     public:
         BattleGroundBE();
 
-        void Reset() override;
+        void Reset() override;                              // 初始化世界状态变量并重置基类状态
 
-        /* inherited from BattlegroundClass */
+        /* inherited from BattlegroundClass (继承自 BattleGround 的虚方法覆写) */
         virtual void AddPlayer(Player* plr) override;
         virtual void StartingEventOpenDoors() override;
 
@@ -44,7 +46,7 @@ class BattleGroundBE : public BattleGround
         void HandleKillPlayer(Player* player, Player* killer) override;
         bool HandlePlayerUnderMap(Player* player) override;
 
-        /* Scorekeeping */
+        /* Scorekeeping (积分更新) */
         void UpdatePlayerScore(Player* source, uint32 type, uint32 value) override;
 };
 #endif

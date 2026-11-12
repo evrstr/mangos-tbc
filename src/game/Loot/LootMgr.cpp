@@ -121,6 +121,7 @@ bool IsValidReference(LootStoreItem& lsi, LootIdSet* refSet, LootIdSet& prevRefs
 
 // Loads a *_loot_template DB table into loot store
 // All checks of the loaded template are called from here, no error reports at loot generation required
+/// 从数据库加载当前 LootStore 对应的掉落模板表
 void LootStore::LoadLootTable()
 {
     LootTemplateMap::const_iterator tplEntriesItr;
@@ -306,6 +307,7 @@ bool LootStore::HaveLootFor(uint32 loot_id) const
     return m_LootTemplates.find(loot_id) != m_LootTemplates.end();
 }
 
+/// 检查单条掉落配置项的数据合法性（物品存在性、概率范围、引用深度与堆叠数）
 bool LootStore::IsValidItemTemplate(uint32 entry, uint32 itemId, uint32 group, int32 mincountOrRef, float chanceOrQuestChance, uint32 maxCount) const
 {
     float chance = fabs(chanceOrQuestChance);
@@ -370,6 +372,7 @@ bool LootStore::IsValidItemTemplate(uint32 entry, uint32 itemId, uint32 group, i
 
 // Checks if the entry (quest, non-quest, reference) takes it's chance (at loot generation)
 // RATE_DROP_ITEMS is no longer used for all types of entries
+/// 按概率（结合服务器掉落倍率）判定该条目本次是否掉落
 bool LootStoreItem::Roll(bool rate) const
 {
     if (chance >= 100.0f)
@@ -459,6 +462,7 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
 
 
 // Basic checks for player/item compatibility - if false no chance to see the item in the loot
+/// 判定玩家是否满足看到并拾取该物品的基本条件（任务需求、职业/绑定限制、Condition 条件及独有上限）
 bool LootItem::AllowedForPlayer(Player const* player, WorldObject const* lootTarget, Player const* masterLooter) const
 {
     if (!itemProto)
@@ -495,6 +499,7 @@ bool LootItem::AllowedForPlayer(Player const* player, WorldObject const* lootTar
     return true;
 }
 
+/// 计算组队共享拾取中该物品对指定玩家展示的槽位交互类型（可拾取/仅查看/队长分配/受限）
 LootSlotType LootItem::GetSlotTypeForSharedLoot(Player const* player, Loot const* loot) const
 {
     // The master looter has to see conditional items above the threshold in order to
@@ -745,6 +750,7 @@ GroupLootRoll::~GroupLootRoll()
 
 // Try to start the group roll for the specified item (it may fail for quest item or any condition
 // If this method return false the roll have to be removed from the container to avoid any problem
+// 尝试为指定槽位启动组队 Roll 点（合格人数 <= 1 时取消阻塞直接降为普通拾取）
 bool GroupLootRoll::TryToStart(Loot& loot, uint32 itemSlot)
 {
     if (!m_isStarted)
@@ -793,7 +799,7 @@ bool GroupLootRoll::TryToStart(Loot& loot, uint32 itemSlot)
     return false;
 }
 
-// Add vote from playerGuid
+// Add vote from playerGuid (记录玩家 Roll 点投票并生成 1..100 点数，全员投完则立即结算)
 bool GroupLootRoll::PlayerVote(Player* player, RollVote vote)
 {
     ObjectGuid const& playerGuid = player->GetObjectGuid();
@@ -830,6 +836,7 @@ bool GroupLootRoll::PlayerVote(Player* player, RollVote vote)
 }
 
 // check if we can found a winner for this roll or if timer is expired
+/// 周期检查 Roll 点超时并在超时后强制结算
 bool GroupLootRoll::UpdateRoll()
 {
     RollVoteMap::const_iterator winnerItr = m_rollVoteMap.end();
@@ -887,6 +894,7 @@ bool GroupLootRoll::AllPlayerVoted(RollVoteMap::const_iterator& winnerItr)
 }
 
 // terminate the roll
+/// 结算组队 Roll 点结果：若有人胜出则发给胜出者，全员放弃则解除阻塞开放自由拾取
 void GroupLootRoll::Finish(RollVoteMap::const_iterator& winnerItr)
 {
     m_lootItem->isBlocked = false;
@@ -955,6 +963,7 @@ void Loot::AddItem(uint32 itemid, uint32 count, uint32 randomSuffix, int32 rando
 }
 
 // Calls processor of corresponding LootTemplate (which handles everything including references)
+// 根据掉落表生成本次拾取物品、初始化所有可拾取玩家权限并标记需 Roll 点/队长分配的阻塞物品
 bool Loot::FillLoot(uint32 loot_id, LootStore const& store, Player* lootOwner, bool /*personal*/, bool noEmptyError)
 {
     // Must be provided
@@ -1230,6 +1239,7 @@ void Loot::SetPlayerIsNotLooting(Player* player)
     }
 }
 
+/// 玩家关闭拾取窗口时释放拾取锁，若为首个未完成拾取者关闭则解除轮流/队长保护并处理物品释放或 Roll 点超时
 void Loot::Release(Player* player)
 {
     bool updateClients = false;
@@ -1464,6 +1474,7 @@ void Loot::Release(Player* player)
 }
 
 // Popup windows with loot content
+/// 向玩家发送拾取窗口内容（首次打开时若存在超阈值物品会启动组队 Roll 点）
 void Loot::ShowContentTo(Player* plr)
 {
     if (!m_isChest)
@@ -1570,6 +1581,7 @@ bool IsEligibleForLoot(Player* looter, WorldObject* lootTarget)
 }
 
 // Set the player who have right for this loot
+/// 根据击杀者所在队伍拾取模式（自由/轮流/队伍/需求优先/队长分配）分配本场拾取归属权集合
 void Loot::SetGroupLootRight(Player* player)
 {
     if (m_isChest && !m_ownerSet.empty())
@@ -2023,6 +2035,7 @@ InventoryResult Loot::SendItem(Player* target, uint32 itemSlot)
     return SendItem(target, lootItem);
 }
 
+/// 将指定掉落物品发放到目标玩家背包并同步槽位移除通知，若背包满或唯一冲突则解除阻塞保留给该玩家
 InventoryResult Loot::SendItem(Player* target, LootItem* lootItem, bool sendError)
 {
     if (!target)
@@ -2156,6 +2169,7 @@ std::tuple<uint32, uint32, uint32> Loot::GetQualifiedWeapons()
     return { mh, oh, ranged };
 }
 
+/// 将全部有拾取权的物品与金币自动存入玩家背包（用于分解/开箱/脚本物品）
 bool Loot::AutoStore(Player* player, bool broadcast /*= false*/, uint32 bag /*= NULL_BAG*/, uint32 slot /*= NULL_SLOT*/)
 {
     bool result = true;
@@ -2283,6 +2297,7 @@ void Loot::SetGoldAmount(uint32 _gold)
         m_gold = _gold;
 }
 
+/// 向玩家或全队成员发放拾取中的金币（按合格人数均分）
 void Loot::SendGold(Player* player)
 {
     NotifyMoneyRemoved();
@@ -2430,6 +2445,7 @@ void LootTemplate::LootGroup::AddEntry(LootStoreItem const& item)
 }
 
 // Rolls an item from the group, returns nullptr if all miss their chances
+// 从互斥掉落组抽取一件物品（先按显式概率乱序判定，未命中时再从等概率池抽取）
 LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player const* lootOwner) const
 {
     if (!ExplicitlyChanced.empty())                         // First explicitly chanced entries are checked
@@ -3048,6 +3064,7 @@ void CheckLootTemplates_Reference(LootIdSet& ids_set)
 }
 
 // Vote for an ongoing roll
+/// 处理玩家对正在 Roll 点的目标物品的投票请求
 void LootMgr::PlayerVote(Player* player, ObjectGuid const& lootTargetGuid, uint32 itemSlot, RollVote vote)
 {
     Loot* loot = GetLoot(player, lootTargetGuid);
@@ -3070,6 +3087,7 @@ void LootMgr::PlayerVote(Player* player, ObjectGuid const& lootTargetGuid, uint3
 
 // Get loot by object guid
 // If target guid is not provided, try to find it by recipient or current player target
+/// 根据目标 GUID（生物/游戏对象/尸体/背包物品）获取玩家对应的拾取实例
 Loot* LootMgr::GetLoot(Player* player, ObjectGuid const& targetGuid) const
 {
     Loot* loot = nullptr;
@@ -3132,6 +3150,7 @@ Loot* LootMgr::GetLoot(Player* player, ObjectGuid const& targetGuid) const
     return loot;
 }
 
+/// GM 调试指令：模拟多次掉落并统计输出各物品的实际掉率分布
 void LootMgr::CheckDropStats(ChatHandler& chat, uint32 amountOfCheck, uint32 lootId, std::string lootStore, bool full) const
 {
     // choose correct loot template

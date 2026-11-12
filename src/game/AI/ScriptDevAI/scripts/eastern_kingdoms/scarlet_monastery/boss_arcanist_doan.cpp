@@ -21,30 +21,35 @@ SDComment:
 SDCategory: Scarlet Monastery
 EndScriptData */
 
+// 奥法师杜安（Arcanist Doan）图书馆首领战 AI（奥术爆炸、魔法护盾与大火球）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1189019,
-    SAY_SPECIALAE               = -1189020,
+    SAY_AGGRO                   = -1189019,                 // 开战 台词广播 ID
+    SAY_SPECIALAE               = -1189020,                 // specialae 台词广播 ID
 
-    SPELL_POLYMORPH             = 13323,
-    SPELL_SILENCE               = 8988,
-    SPELL_ARCANE_EXPLOSION      = 9433,
-    SPELL_DETONATION            = 9435,
-    SPELL_ARCANE_BUBBLE         = 9438,
+    SPELL_POLYMORPH             = 13323,                    // polymorph 法术 ID
+    SPELL_SILENCE               = 8988,                     // 沉默 法术 ID
+    SPELL_ARCANE_EXPLOSION      = 9433,                     // 奥术爆炸 法术 ID
+    SPELL_DETONATION            = 9435,                     // detonation 法术 ID
+    SPELL_ARCANE_BUBBLE         = 9438,                     // 奥术bubble 法术 ID
 };
 
+// 首领战 AI：杜安（arcanist_doan）
 struct boss_arcanist_doanAI : public ScriptedAI
 {
     boss_arcanist_doanAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiPolymorphTimer;
-    uint32 m_uiSilenceTimer;
-    uint32 m_uiArcaneExplosionTimer;
-    uint32 m_uiDetonationTimer;
+    uint32 m_uiPolymorphTimer;                              // Polymorph 技能计时器
+    uint32 m_uiSilenceTimer;                                // Silence 技能计时器
+    uint32 m_uiArcaneExplosionTimer;                        // ArcaneExplosion 技能计时器
+    uint32 m_uiDetonationTimer;                             // Detonation 技能计时器
     bool bShielded;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiPolymorphTimer       = 15000;
@@ -59,6 +64,7 @@ struct boss_arcanist_doanAI : public ScriptedAI
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -121,15 +127,17 @@ struct boss_arcanist_doanAI : public ScriptedAI
         else
             m_uiArcaneExplosionTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_arcanist_doan
 UnitAI* GetAI_boss_arcanist_doan(Creature* pCreature)
 {
     return new boss_arcanist_doanAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_arcanist_doan
 void AddSC_boss_arcanist_doan()
 {
     Script* pNewScript = new Script;

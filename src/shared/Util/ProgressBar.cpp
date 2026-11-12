@@ -99,7 +99,7 @@ void BarGoLink::step()
     }
 }
 
-// avoid use inline version because linking problems with private static field
+// avoid use inline version because linking problems with private static field | 避免使用内联定义，防止私有静态成员跨编译单元链接异常
 void BarGoLink::SetOutputState(bool on)
 {
     m_showOutput = on;

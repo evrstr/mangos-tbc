@@ -65,7 +65,7 @@ static uint32 ReputationRankStrIndex[MAX_REPUTATION_RANK] =
     LANG_REP_FRIENDLY, LANG_REP_HONORED, LANG_REP_REVERED,    LANG_REP_EXALTED
 };
 
-// mute player for some times
+// mute player for some times | 对目标玩家禁言指定分钟数并记录账号警告
 bool ChatHandler::HandleMuteCommand(char* args)
 {
     char* nameStr = ExtractOptNotLastArg(&args);
@@ -124,7 +124,7 @@ bool ChatHandler::HandleMuteCommand(char* args)
     return true;
 }
 
-// unmute player
+// unmute player | 解除目标玩家的禁言状态
 bool ChatHandler::HandleUnmuteCommand(char* args)
 {
     Player* target;
@@ -169,6 +169,7 @@ bool ChatHandler::HandleUnmuteCommand(char* args)
     return true;
 }
 
+/// 输出区域触发器传送目标坐标及距离信息
 void ChatHandler::ShowTriggerTargetListHelper(uint32 id, AreaTrigger const* at, bool subpart /*= false*/)
 {
     if (m_session)
@@ -212,6 +213,7 @@ void ChatHandler::ShowTriggerListHelper(AreaTriggerEntry const* atEntry)
         ShowTriggerTargetListHelper(atEntry->id, at, true);
 }
 
+/// 查询指定 ID 或最近的区域触发器 (AreaTrigger) 详情与进入条件
 bool ChatHandler::HandleTriggerCommand(char* args)
 {
     AreaTriggerEntry const* atEntry = nullptr;
@@ -321,6 +323,7 @@ bool ChatHandler::HandleTriggerCommand(char* args)
     return true;
 }
 
+/// 列出玩家当前位置正处于激活状态的所有区域触发器
 bool ChatHandler::HandleTriggerActiveCommand(char* /*args*/)
 {
     uint32 counter = 0;                                     // Counter for figure out that we found smth.
@@ -348,6 +351,7 @@ bool ChatHandler::HandleTriggerActiveCommand(char* /*args*/)
     return true;
 }
 
+/// 列出指定半径范围内的区域触发器及其传送目标点
 bool ChatHandler::HandleTriggerNearCommand(char* args)
 {
     float distance = (!*args) ? 10.0f : (float)atof(args);
@@ -415,6 +419,7 @@ static char const* const areatriggerKeys[] =
     nullptr
 };
 
+/// 传送至指定区域触发器入口或其传送目标坐标
 bool ChatHandler::HandleGoTriggerCommand(char* args)
 {
     Player* _player = m_session->GetPlayer();
@@ -460,6 +465,7 @@ bool ChatHandler::HandleGoTriggerCommand(char* args)
     return HandleGoHelper(_player, atEntry->mapid, atEntry->x, atEntry->y, &atEntry->z);
 }
 
+/// 传送至指定 ID 的墓地安全复活点
 bool ChatHandler::HandleGoGraveyardCommand(char* args)
 {
     Player* _player = m_session->GetPlayer();
@@ -493,7 +499,7 @@ static char const* const creatureKeys[] =
     nullptr
 };
 
-/** \brief Teleport the GM to the specified creature
+/** \brief Teleport the GM to the specified creature | 将 GM 传送到指定生物位置（支持 GUID、模板 Entry 或名称模糊匹配）
 *
 * .go creature <GUID>     --> TP using creature.guid
 * .go creature azuregos   --> TP player to the mob with this name
@@ -503,7 +509,7 @@ static char const* const creatureKeys[] =
 *                             Warning: If there is more than one mob with this "id"
 *                                      you will be teleported to the first one that is found.
 */
-// teleport to creature
+// teleport to creature | 传送至生物位置
 bool ChatHandler::HandleGoCreatureCommand(char* args)
 {
     if (!*args)
@@ -698,7 +704,7 @@ static char const* const gameobjectKeys[] =
     nullptr
 };
 
-// teleport to gameobject
+// teleport to gameobject | 传送至指定游戏对象 (GameObject) 位置
 bool ChatHandler::HandleGoObjectCommand(char* args)
 {
     Player* _player = m_session->GetPlayer();
@@ -834,6 +840,7 @@ bool ChatHandler::HandleGoObjectCommand(char* args)
     return HandleGoHelper(_player, data->mapid, data->posX, data->posY, &data->posZ);
 }
 
+/// 查找附近最近的游戏对象并输出其数据库及动态运行状态详情
 bool ChatHandler::HandleGameObjectTargetCommand(char* args)
 {
     Player* pl = m_session->GetPlayer();
@@ -965,7 +972,7 @@ bool ChatHandler::HandleGameObjectTargetCommand(char* args)
     return true;
 }
 
-// delete object by selection or guid
+// delete object by selection or guid | 从世界和数据库中永久删除指定 GUID 的游戏对象
 bool ChatHandler::HandleGameObjectDeleteCommand(char* args)
 {
     // number or [name] Shift-click form |color|Hgameobject:go_guid|h[name]|h|r
@@ -1017,7 +1024,7 @@ bool ChatHandler::HandleGameObjectDeleteCommand(char* args)
     return true;
 }
 
-// turn selected object
+// turn selected object | 旋转指定游戏对象的朝向并持久化到数据库
 bool ChatHandler::HandleGameObjectTurnCommand(char* args)
 {
     // number or [name] Shift-click form |color|Hgameobject:go_id:go_entry|h[name]|h|r
@@ -1057,7 +1064,7 @@ bool ChatHandler::HandleGameObjectTurnCommand(char* args)
     return true;
 }
 
-// move selected object
+// move selected object | 移动指定游戏对象到玩家当前位置或指定坐标并保存
 bool ChatHandler::HandleGameObjectMoveCommand(char* args)
 {
     // number or [name] Shift-click form |color|Hgameobject:go_guid:go_entry|h[name]|h|r
@@ -1131,7 +1138,7 @@ bool ChatHandler::HandleGameObjectMoveCommand(char* args)
     return true;
 }
 
-// spawn go
+// spawn go | 在玩家当前位置刷新并持久化一个游戏对象
 bool ChatHandler::HandleGameObjectAddCommand(char* args)
 {
     // number or [name] Shift-click form |color|Hgameobject_entry:go_id|h[name]|h|r
@@ -1207,6 +1214,7 @@ bool ChatHandler::HandleGameObjectAddCommand(char* args)
     return true;
 }
 
+/// 列出附近半径范围内数据库登记的游戏对象刷新点
 bool ChatHandler::HandleGameObjectNearCommand(char* args)
 {
     float distance;
@@ -1264,6 +1272,7 @@ bool ChatHandler::HandleGameObjectNearCommand(char* args)
     return true;
 }
 
+/// 激活指定门/机关类游戏对象
 bool ChatHandler::HandleGameObjectActivateCommand(char* args)
 {
     // number or [name] Shift-click form |color|Hgameobject:go_id:go_entry|h[name]|h|r
@@ -1292,6 +1301,7 @@ bool ChatHandler::HandleGameObjectActivateCommand(char* args)
     return true;
 }
 
+/// 强制使指定游戏对象进入消失/待刷新状态
 bool ChatHandler::HandleGameObjectForcedDespawnCommand(char* args)
 {
     uint32 lowguid;
@@ -1321,6 +1331,7 @@ bool ChatHandler::HandleGameObjectForcedDespawnCommand(char* args)
     return true;
 }
 
+/// 列出附近当前已在地图中实体生成的游戏对象
 bool ChatHandler::HandleGameObjectNearSpawnedCommand(char* args)
 {
     float distance;
@@ -1355,6 +1366,7 @@ bool ChatHandler::HandleGameObjectNearSpawnedCommand(char* args)
     return true;
 }
 
+/// 立即重新生成指定未刷出的游戏对象
 bool ChatHandler::HandleGameObjectRespawnCommand(char* args)
 {
     uint32 lowguid;
@@ -1396,6 +1408,7 @@ bool ChatHandler::HandleGameObjectRespawnCommand(char* args)
     return true;
 }
 
+/// 输出当前选中生物的完整 ObjectGuid 与数据库 DBGuid
 bool ChatHandler::HandleGUIDCommand(char* /*args*/)
 {
     Creature* creature = getSelectedCreature();
@@ -1448,6 +1461,7 @@ void ChatHandler::ShowFactionListHelper(FactionEntry const* factionEntry, Locale
     SendSysMessage(ss.str().c_str());
 }
 
+/// 按名称模糊检索阵营声望条目并输出目标玩家当前声望状态
 bool ChatHandler::HandleLookupFactionCommand(char* args)
 {
     if (!*args)
@@ -1508,6 +1522,7 @@ bool ChatHandler::HandleLookupFactionCommand(char* args)
     return true;
 }
 
+/// 修改选中玩家在指定阵营的声望数值或声望阶位
 bool ChatHandler::HandleModifyRepCommand(char* args)
 {
     if (!*args)
@@ -1604,8 +1619,8 @@ bool ChatHandler::HandleModifyRepCommand(char* args)
     return true;
 }
 
-//-----------------------Npc Commands-----------------------
-// add spawn of creature
+//-----------------------Npc Commands----------------------- | -----------------------NPC 管理命令-----------------------
+// add spawn of creature | 在玩家当前位置刷新并持久化一个生物实体
 bool ChatHandler::HandleNpcAddCommand(char* args)
 {
     if (!*args)
@@ -1654,6 +1669,7 @@ bool ChatHandler::HandleNpcAddCommand(char* args)
     return true;
 }
 
+/// 临时召唤指定 Entry 的生物并在脱战计时结束后自动消失
 bool ChatHandler::HandleNpcTempSpawn(char* args)
 {
     Player* player = GetSession()->GetPlayer();
@@ -1678,6 +1694,7 @@ bool ChatHandler::HandleNpcTempSpawn(char* args)
     return true;
 }
 
+/// 强制选中生物脱离战斗并进入归位 (Evade) 状态
 bool ChatHandler::HandleNpcEvade(char* /*args*/)
 {
     Creature* target = getSelectedCreature();
@@ -1694,6 +1711,7 @@ bool ChatHandler::HandleNpcEvade(char* /*args*/)
     return true;
 }
 
+/// 强制使选中生物立即消失
 bool ChatHandler::HandleNpcDespawn(char* /*args*/)
 {
     Creature* target = getSelectedCreature();
@@ -1709,7 +1727,7 @@ bool ChatHandler::HandleNpcDespawn(char* /*args*/)
     return true;
 }
 
-// add item in vendorlist
+// add item in vendorlist | 向选中商人 NPC 的售卖列表中添加物品
 bool ChatHandler::HandleNpcAddVendorItemCommand(char* args)
 {
     uint32 itemId;
@@ -1750,7 +1768,7 @@ bool ChatHandler::HandleNpcAddVendorItemCommand(char* args)
     return true;
 }
 
-// del item from vendor list
+// del item from vendor list | 从选中商人 NPC 的售卖列表中移除物品
 bool ChatHandler::HandleNpcDelVendorItemCommand(char* args)
 {
     if (!*args)
@@ -1785,7 +1803,7 @@ bool ChatHandler::HandleNpcDelVendorItemCommand(char* args)
     return true;
 }
 
-// show info about AI
+// show info about AI | 显示选中生物的 AI 类型、脚本名及内部状态信息
 bool ChatHandler::HandleNpcAIInfoCommand(char* /*args*/)
 {
     Creature* pTarget = getSelectedCreature();
@@ -1815,7 +1833,7 @@ bool ChatHandler::HandleNpcAIInfoCommand(char* /*args*/)
     return true;
 }
 
-// change level of creature or pet
+// change level of creature or pet | 修改选中生物或宠物的等级
 bool ChatHandler::HandleNpcChangeLevelCommand(char* args)
 {
     if (!*args)
@@ -1852,7 +1870,7 @@ bool ChatHandler::HandleNpcChangeLevelCommand(char* args)
     return true;
 }
 
-// set npcflag of creature
+// set npcflag of creature | 修改选中生物的 NPC 功能标志位 (NpcFlags) 并更新模板表
 bool ChatHandler::HandleNpcFlagCommand(char* args)
 {
     if (!*args)
@@ -1878,6 +1896,7 @@ bool ChatHandler::HandleNpcFlagCommand(char* args)
     return true;
 }
 
+/// 删除选中生物或指定 DBGuid 的生物刷新点/召唤物
 bool ChatHandler::HandleNpcDeleteCommand(char* args)
 {
     Creature* unit = nullptr;
@@ -1951,7 +1970,7 @@ bool ChatHandler::HandleNpcDeleteCommand(char* args)
     return true;
 }
 
-// move selected creature
+// move selected creature | 将选中生物或指定 GUID 生物移动到玩家当前位置并更新数据库坐标
 bool ChatHandler::HandleNpcMoveCommand(char* args)
 {
     uint32 lowguid = 0;
@@ -2013,7 +2032,7 @@ bool ChatHandler::HandleNpcMoveCommand(char* args)
 }
 
 /**HandleNpcSetMoveTypeCommand
- * Set the movement type for an NPC.<br/>
+ * Set the movement type for an NPC.<br/> | 设置 NPC 的默认移动模式（stay 静止 / random 随机游荡 / way 路径点 / lin 线性路径，可选 NODEL 保留路径点）
  * <br/>
  * Valid movement types are:
  * <ul>
@@ -2112,7 +2131,7 @@ bool ChatHandler::HandleNpcSetMoveTypeCommand(char* args)
     return true;
 }
 
-// set model of creature
+// set model of creature | 设置选中生物的外观模型 DisplayId
 bool ChatHandler::HandleNpcSetModelCommand(char* args)
 {
     if (!*args)
@@ -2137,7 +2156,7 @@ bool ChatHandler::HandleNpcSetModelCommand(char* args)
 
     return true;
 }
-// set faction of creature
+// set faction of creature | 修改选中生物及其模板的阵营 ID
 bool ChatHandler::HandleNpcFactionIdCommand(char* args)
 {
     if (!*args)
@@ -2174,7 +2193,7 @@ bool ChatHandler::HandleNpcFactionIdCommand(char* args)
 
     return true;
 }
-// set spawn dist of creature
+// set spawn dist of creature | 查询或修改选中生物的随机游荡半径 (spawndist)
 bool ChatHandler::HandleNpcSpawnDistCommand(char* args)
 {
     Creature* pCreature = getSelectedCreature();
@@ -2233,7 +2252,7 @@ bool ChatHandler::HandleNpcSpawnDistCommand(char* args)
     PSendSysMessage(LANG_COMMAND_SPAWNDIST, option);
     return true;
 }
-// spawn time handling
+// spawn time handling | 修改选中生物的重生间隔时间（秒）
 bool ChatHandler::HandleNpcSpawnTimeCommand(char* args)
 {
     uint32 stime;
@@ -2256,7 +2275,7 @@ bool ChatHandler::HandleNpcSpawnTimeCommand(char* args)
 
     return true;
 }
-// npc follow handling
+// npc follow handling | 命令选中生物以宠物默认距离与角度跟随玩家
 bool ChatHandler::HandleNpcFollowCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -2275,7 +2294,7 @@ bool ChatHandler::HandleNpcFollowCommand(char* /*args*/)
     PSendSysMessage(LANG_CREATURE_FOLLOW_YOU_NOW, creature->GetName());
     return true;
 }
-// npc unfollow handling
+// npc unfollow handling | 取消选中生物对当前玩家的跟随状态
 bool ChatHandler::HandleNpcUnFollowCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -2312,7 +2331,7 @@ bool ChatHandler::HandleNpcUnFollowCommand(char* /*args*/)
     PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU_NOW, creature->GetName());
     return true;
 }
-// npc tame handling
+// npc tame handling | 强制驯服选中生物为当前玩家的猎人宠物
 bool ChatHandler::HandleNpcTameCommand(char* /*args*/)
 {
     Creature* creatureTarget = getSelectedCreature();
@@ -2337,7 +2356,7 @@ bool ChatHandler::HandleNpcTameCommand(char* /*args*/)
     return true;
 }
 
-// set model of creature
+// set model of creature | 打印选中生物当前的实时战利品掉落列表
 bool ChatHandler::HandleNpcShowLootCommand(char* /*args*/)
 {
     Creature* creature = getSelectedCreature();
@@ -2359,7 +2378,7 @@ bool ChatHandler::HandleNpcShowLootCommand(char* /*args*/)
     return true;
 }
 
-// show detailed information of creature formation if exist
+// show detailed information of creature formation if exist | 显示选中生物所属刷新组 (CreatureGroup) 与编队详情
 bool ChatHandler::HandleNpcGroupInfoCommand(char* /*args*/)
 {
     Creature* creature = getSelectedCreature();
@@ -2430,7 +2449,7 @@ bool ChatHandler::HandleNpcGroupInfoCommand(char* /*args*/)
 //     return true;
 // }
 
-// reset creature formation template
+// reset creature formation template | 显示选中生物的编队阵型槽位详情
 bool ChatHandler::HandleNpcFormationInfoCommand(char* /*args*/)
 {
     Creature* creature = getSelectedCreature();
@@ -2453,7 +2472,7 @@ bool ChatHandler::HandleNpcFormationInfoCommand(char* /*args*/)
     return true;
 }
 
-// reset creature formation template
+// reset creature formation template | 将选中生物的编队阵型重置为默认状态
 bool ChatHandler::HandleNpcFormationResetCommand(char* /*args*/)
 {
     Creature* creature = getSelectedCreature();
@@ -2479,7 +2498,7 @@ bool ChatHandler::HandleNpcFormationResetCommand(char* /*args*/)
     return true;
 }
 
-// change creature formation template
+// change creature formation template | 切换选中生物所在编队的阵型模板类型
 bool ChatHandler::HandleNpcFormationSwitchCommand(char* args)
 {
     Creature* creature = getSelectedCreature();
@@ -2611,7 +2630,7 @@ bool ChatHandler::HandleNpcSubNameCommand(char* /*args*/)
     return true;
 }
 
-// move item to other slot
+// move item to other slot | 交换玩家背包主栏位两个格子中的物品
 bool ChatHandler::HandleItemMoveCommand(char* args)
 {
     if (!*args)
@@ -2647,7 +2666,7 @@ bool ChatHandler::HandleItemMoveCommand(char* args)
     return true;
 }
 
-// demorph player or unit
+// demorph player or unit | 恢复目标玩家或单位的原始模型外观
 bool ChatHandler::HandleDeMorphCommand(char* /*args*/)
 {
     Unit* target = getSelectedUnit();
@@ -2664,7 +2683,7 @@ bool ChatHandler::HandleDeMorphCommand(char* /*args*/)
     return true;
 }
 
-// morph creature or player
+// morph creature or player | 将目标单位变形为指定 DisplayId 模型
 bool ChatHandler::HandleModifyMorphCommand(char* args)
 {
     if (!*args)
@@ -2693,7 +2712,7 @@ bool ChatHandler::HandleModifyMorphCommand(char* args)
     return true;
 }
 
-// kick player
+// kick player | 强制踢出指定在线玩家
 bool ChatHandler::HandleKickPlayerCommand(char* args)
 {
     Player* target;
@@ -2717,7 +2736,7 @@ bool ChatHandler::HandleKickPlayerCommand(char* args)
     return true;
 }
 
-// show info of player
+// show info of player | 查询在线或离线角色的账号、等级、金币、游戏时长、最近 IP 及反作弊信息
 bool ChatHandler::HandlePInfoCommand(char* args)
 {
     Player* target;
@@ -2804,7 +2823,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
     return true;
 }
 
-/// Helper function
+/// Helper function | 路点可视化辅助函数：在指定路点坐标生成临时指示生物
 inline Creature* Helper_CreateWaypointFor(Creature* wpOwner, WaypointPathOrigin wpOrigin, int32 pathId, uint32 wpId, WaypointNode const* wpNode)
 {
     TempSpawnSettings settings;
@@ -2829,6 +2848,7 @@ inline Creature* Helper_CreateWaypointFor(Creature* wpOwner, WaypointPathOrigin 
 
     return wpCreature;
 }
+/// 清理指定生物在周围已召唤出的全部可视化路点生物
 inline void UnsummonVisualWaypoints(Player const* player, ObjectGuid ownerGuid)
 {
     CreatureList waypoints;
@@ -2850,7 +2870,7 @@ inline void UnsummonVisualWaypoints(Player const* player, ObjectGuid ownerGuid)
     }
 }
 
-/** Add a waypoint to a creature
+/** Add a waypoint to a creature | 为指定生物或当前选中路点之后追加一个巡逻路点 (.wp add)
  * .wp add [dbGuid] [pathId] [source]
  *
  * The user can either select an npc or provide its dbGuid.
@@ -3010,6 +3030,7 @@ bool ChatHandler::HandleWpAddCommand(char* args)
 
 /**
  * .wp modify waittime | scriptid | orientation | del | move [dbGuid, id] [value]
+ * 修改或删除指定路点的等待时间、脚本 ID、朝向或坐标 (.wp modify)
  *
  * waittime <Delay>
  *   User has selected a visual waypoint before.
@@ -3246,6 +3267,7 @@ bool ChatHandler::HandleWpModifyCommand(char* args)
 
 /**
  * .wp show info | on | off | first | last [dbGuid] [pathId [wpOrigin] ]
+ * 显示/隐藏生物的巡逻路点可视化标记或查看单个路点详情 (.wp show)
  *
  * info -> User has selected a visual waypoint before
  *
@@ -3464,7 +3486,7 @@ bool ChatHandler::HandleWpShowCommand(char* args)
     return false;
 }                                                           // HandleWpShowCommand
 
-/// [Guid if no selected unit] <filename> [pathId [wpOrigin] ]
+/// [Guid if no selected unit] <filename> [pathId [wpOrigin] ] | 将生物巡逻路点导出为 SQL 文件 (.wp export)
 bool ChatHandler::HandleWpExportCommand(char* args)
 {
     if (!*args)
@@ -3623,7 +3645,7 @@ bool ChatHandler::HandleWpExportCommand(char* args)
     return true;
 }
 
-// rename characters
+// rename characters | 标记在线或离线角色在下次登录时强制改名
 bool ChatHandler::HandleCharacterRenameCommand(char* args)
 {
     Player* target;
@@ -3657,6 +3679,7 @@ bool ChatHandler::HandleCharacterRenameCommand(char* args)
     return true;
 }
 
+/// 列出目标角色已记录的全部阵营声望状态
 bool ChatHandler::HandleCharacterReputationCommand(char* args)
 {
     Player* target;
@@ -3675,7 +3698,7 @@ bool ChatHandler::HandleCharacterReputationCommand(char* args)
     return true;
 }
 
-// change standstate
+// change standstate | 设置当前玩家持续表情动作状态 (EmoteState)
 bool ChatHandler::HandleModifyStandStateCommand(char* args)
 {
     uint32 anim_id;
@@ -3690,6 +3713,7 @@ bool ChatHandler::HandleModifyStandStateCommand(char* args)
     return true;
 }
 
+/// 为选中玩家直接奖励指定数值的荣誉点数
 bool ChatHandler::HandleHonorAddCommand(char* args)
 {
     if (!*args)
@@ -3712,6 +3736,7 @@ bool ChatHandler::HandleHonorAddCommand(char* args)
     return true;
 }
 
+/// 以选中目标作为击杀对象为当前玩家结算一次荣誉击杀
 bool ChatHandler::HandleHonorAddKillCommand(char* /*args*/)
 {
     Unit* target = getSelectedUnit();
@@ -3730,6 +3755,7 @@ bool ChatHandler::HandleHonorAddKillCommand(char* /*args*/)
     return true;
 }
 
+/// 强制刷新选中玩家的荣誉统计字段
 bool ChatHandler::HandleHonorUpdateCommand(char* /*args*/)
 {
     Player* target = getSelectedPlayer();
@@ -3748,6 +3774,7 @@ bool ChatHandler::HandleHonorUpdateCommand(char* /*args*/)
     return true;
 }
 
+/// 按描述关键字检索游戏事件 (game_event)
 bool ChatHandler::HandleLookupEventCommand(char* args)
 {
     if (!*args)
@@ -3796,6 +3823,7 @@ bool ChatHandler::HandleLookupEventCommand(char* args)
     return true;
 }
 
+/// 列出当前正在激活的游戏事件（带 all 参数时列出全部事件）
 bool ChatHandler::HandleEventListCommand(char* args)
 {
     uint32 counter = 0;
@@ -3840,6 +3868,7 @@ bool ChatHandler::HandleEventListCommand(char* args)
     return true;
 }
 
+/// 查看指定游戏事件的起止时间、周期与下次触发时间详情
 bool ChatHandler::HandleEventInfoCommand(char* args)
 {
     if (!*args)
@@ -3879,6 +3908,7 @@ bool ChatHandler::HandleEventInfoCommand(char* args)
     return true;
 }
 
+/// 手动立即启动指定游戏事件
 bool ChatHandler::HandleEventStartCommand(char* args)
 {
     if (!*args)
@@ -3918,6 +3948,7 @@ bool ChatHandler::HandleEventStartCommand(char* args)
     return true;
 }
 
+/// 手动立即停止指定游戏事件
 bool ChatHandler::HandleEventStopCommand(char* args)
 {
     if (!*args)
@@ -3957,6 +3988,7 @@ bool ChatHandler::HandleEventStopCommand(char* args)
     return true;
 }
 
+/// 强制指定玩家及其宠物立即脱离战斗
 bool ChatHandler::HandleCombatStopCommand(char* args)
 {
     Player* target;
@@ -3971,6 +4003,7 @@ bool ChatHandler::HandleCombatStopCommand(char* args)
     return true;
 }
 
+/// 列出目标单位当前的战斗计时器与所有敌对交战列表
 bool ChatHandler::HandleCombatListCommand(char* /*args*/)
 {
     Unit* target = getSelectedUnit();
@@ -3991,6 +4024,7 @@ bool ChatHandler::HandleCombatListCommand(char* /*args*/)
     return true;
 }
 
+/// 辅助函数：让目标玩家学会指定商业技能/专业下的所有合法最高级配方
 void ChatHandler::HandleLearnSkillRecipesHelper(Player* player, uint32 skill_id)
 {
     uint32 classmask = player->getClassMask();
@@ -4025,6 +4059,7 @@ void ChatHandler::HandleLearnSkillRecipesHelper(Player* player, uint32 skill_id)
     }
 }
 
+/// 让当前玩家学会所有主专业和辅助技能的配方
 bool ChatHandler::HandleLearnAllCraftsCommand(char* /*args*/)
 {
     for (uint32 i = 0; i < sSkillLineStore.GetNumRows(); ++i)
@@ -4043,6 +4078,7 @@ bool ChatHandler::HandleLearnAllCraftsCommand(char* /*args*/)
     return true;
 }
 
+/// 让选中玩家学会指定名称专业的所有配方并将该专业技能拉满
 bool ChatHandler::HandleLearnAllRecipesCommand(char* args)
 {
     //  Learns all recipes of specified profession and sets skill to max
@@ -4119,6 +4155,7 @@ bool ChatHandler::HandleLearnAllRecipesCommand(char* args)
     return true;
 }
 
+/// 按邮箱模糊检索账号信息
 bool ChatHandler::HandleLookupAccountEmailCommand(char* args)
 {
     char* emailStr = ExtractQuotedOrLiteralArg(&args);
@@ -4137,6 +4174,7 @@ bool ChatHandler::HandleLookupAccountEmailCommand(char* args)
     return ShowAccountListHelper(std::move(queryResult), &accountsLimit);
 }
 
+/// 按登录 IP 模糊检索账号信息
 bool ChatHandler::HandleLookupAccountIpCommand(char* args)
 {
     char* ipStr = ExtractQuotedOrLiteralArg(&args);
@@ -4156,6 +4194,7 @@ bool ChatHandler::HandleLookupAccountIpCommand(char* args)
     return ShowAccountListHelper(std::move(queryResult), &accountsLimit);
 }
 
+/// 按用户名模糊检索账号信息
 bool ChatHandler::HandleLookupAccountNameCommand(char* args)
 {
     char* accountStr = ExtractQuotedOrLiteralArg(&args);
@@ -4177,6 +4216,7 @@ bool ChatHandler::HandleLookupAccountNameCommand(char* args)
     return ShowAccountListHelper(std::move(queryResult), &accountsLimit);
 }
 
+/// 列出最近登录的最多 1000 个账号摘要
 bool ChatHandler::HandleLookupAccountAllCommand(char *)
 {
     uint32 accountsLimit = 1000;
@@ -4235,6 +4275,7 @@ bool ChatHandler::ShowAccountListHelper(std::unique_ptr<QueryResult> queryResult
     return true;
 }
 
+/// 按 IP/账号名/邮箱查询玩家角色列表系列命令
 bool ChatHandler::HandleLookupPlayerIpCommand(char* args)
 {
     char* ipStr = ExtractQuotedOrLiteralArg(&args);
@@ -4353,6 +4394,7 @@ void ChatHandler::ShowPoolListHelper(uint16 pool_id)
                         sPoolMgr.GetPoolCreatures(pool_id).size(), sPoolMgr.GetPoolGameObjects(pool_id).size(), sPoolMgr.GetPoolPools(pool_id).size());
 }
 
+/// 按描述模糊检索刷新池 (Pool)
 bool ChatHandler::HandleLookupPoolCommand(char* args)
 {
     if (!*args)
@@ -4384,6 +4426,7 @@ bool ChatHandler::HandleLookupPoolCommand(char* args)
     return true;
 }
 
+/// 列出当前副本地图可用的全部刷新池
 bool ChatHandler::HandlePoolListCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -4415,6 +4458,7 @@ bool ChatHandler::HandlePoolListCommand(char* /*args*/)
     return true;
 }
 
+/// 列出当前地图或指定刷新池中当前已刷出的实体
 bool ChatHandler::HandlePoolSpawnsCommand(char* args)
 {
     Player* player = m_session->GetPlayer();
@@ -4451,6 +4495,7 @@ bool ChatHandler::HandlePoolSpawnsCommand(char* args)
     return true;
 }
 
+/// 显示指定刷新池的母池归属、上限、子对象权重及当前激活状态
 bool ChatHandler::HandlePoolInfoCommand(char* args)
 {
     // id or [name] Shift-click form |color|Hpool:id|h[name]|h|r
@@ -4627,13 +4672,14 @@ bool ChatHandler::HandlePoolInfoCommand(char* args)
     return true;
 }
 
-/// Triggering corpses expire check in world
+/// Triggering corpses expire check in world | 立即触发全服过期尸体清理检测
 bool ChatHandler::HandleServerCorpsesCommand(char* /*args*/)
 {
     sObjectAccessor.RemoveOldCorpses();
     return true;
 }
 
+/// 免费修复目标玩家身上及背包中全部装备耐久度
 bool ChatHandler::HandleRepairitemsCommand(char* args)
 {
     Player* target;
@@ -4653,6 +4699,7 @@ bool ChatHandler::HandleRepairitemsCommand(char* args)
     return true;
 }
 
+/// 开启或关闭选中玩家的水上行走状态
 bool ChatHandler::HandleWaterwalkCommand(char* args)
 {
     bool value;
@@ -4687,6 +4734,7 @@ bool ChatHandler::HandleWaterwalkCommand(char* args)
     return true;
 }
 
+/// 在 CharTitles.dbc 中按名称模糊查找头衔 ID 与解锁/佩戴状态
 bool ChatHandler::HandleLookupTitleCommand(char* args)
 {
     if (!*args)
@@ -4763,6 +4811,7 @@ bool ChatHandler::HandleLookupTitleCommand(char* args)
     return true;
 }
 
+/// 为选中玩家授予指定头衔
 bool ChatHandler::HandleTitlesAddCommand(char* args)
 {
     // number or [name] Shift-click form |color|Htitle:title_id|h[name]|h|r
@@ -4809,6 +4858,7 @@ bool ChatHandler::HandleTitlesAddCommand(char* args)
     return true;
 }
 
+/// 移除选中玩家的指定头衔（若当前正佩戴则一并清除）
 bool ChatHandler::HandleTitlesRemoveCommand(char* args)
 {
     // number or [name] Shift-click form |color|Htitle:title_id|h[name]|h|r
@@ -4862,7 +4912,7 @@ bool ChatHandler::HandleTitlesRemoveCommand(char* args)
     return true;
 }
 
-// Edit Player KnownTitles
+// Edit Player KnownTitles | 按 64 位位掩码批量覆盖选中玩家已解锁头衔
 bool ChatHandler::HandleTitlesSetMaskCommand(char* args)
 {
     if (!*args)
@@ -4905,6 +4955,7 @@ bool ChatHandler::HandleTitlesSetMaskCommand(char* args)
     return true;
 }
 
+/// 将目标玩家的 PvP 军衔头衔在联盟与部落对应位之间互换
 bool ChatHandler::HandleTitlesSwapCommand(char* /*args*/)
 {
     Player* target = getSelectedPlayer();
@@ -4936,6 +4987,7 @@ bool ChatHandler::HandleTitlesSwapCommand(char* /*args*/)
     return true;
 }
 
+/// 列出目标玩家当前已获得的全部头衔
 bool ChatHandler::HandleCharacterTitlesCommand(char* args)
 {
     Player* target;
@@ -4973,6 +5025,7 @@ bool ChatHandler::HandleCharacterTitlesCommand(char* args)
     return true;
 }
 
+/// 设置选中玩家当前激活显示的头衔
 bool ChatHandler::HandleTitlesCurrentCommand(char* args)
 {
     // number or [name] Shift-click form |color|Htitle:title_id|h[name]|h|r
@@ -5017,6 +5070,7 @@ bool ChatHandler::HandleTitlesCurrentCommand(char* args)
     return true;
 }
 
+/// 调试命令：计算并可视化展示到选中目标的 NavMesh 寻路路径（支持 go/straight/to_me 参数）
 bool ChatHandler::HandleMmapPathCommand(char* args)
 {
     auto mmap = MMAP::MMapFactory::createOrGetMMapManager();
@@ -5132,6 +5186,7 @@ bool ChatHandler::HandleMmapPathCommand(char* args)
     return true;
 }
 
+/// 调试命令：查询当前位置对应的 .mmtile 网格瓦片与 NavMesh 多边形瓦片坐标
 bool ChatHandler::HandleMmapLocCommand(char* /*args*/)
 {
     PSendSysMessage("mmap tileloc:");
@@ -5193,6 +5248,7 @@ bool ChatHandler::HandleMmapLocCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：列出当前地图已加载的 NavMesh 瓦片列表
 bool ChatHandler::HandleMmapLoadedTilesCommand(char* /*args*/)
 {
     auto mmap = MMAP::MMapFactory::createOrGetMMapManager();
@@ -5227,6 +5283,7 @@ bool ChatHandler::HandleMmapLoadedTilesCommand(char* /*args*/)
     return true;
 }
 
+/// 调试命令：输出当前地图 NavMesh 瓦片与多边形内存占用统计
 bool ChatHandler::HandleMmapStatsCommand(char* /*args*/)
 {
     auto mmap = MMAP::MMapFactory::createOrGetMMapManager();
@@ -5280,6 +5337,7 @@ bool ChatHandler::HandleMmapStatsCommand(char* /*args*/)
     return true;
 }
 
+/// 测试命令：为自身发放一组大容量背包
 bool ChatHandler::HandleBagsCommand(char* /*args*/)
 {
     Player* player = GetSession()->GetPlayer();
@@ -5301,6 +5359,7 @@ bool ChatHandler::HandleBagsCommand(char* /*args*/)
     return true;
 }
 
+/// 测试命令：立即跳过当前所在战场的开场倒计时
 bool ChatHandler::HandleBattlegroundStartCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -5322,6 +5381,7 @@ bool ChatHandler::HandleBattlegroundStartCommand(char* /*args*/)
     return true;
 }
 
+/// 测试命令：立即平局结束当前所在战场
 bool ChatHandler::HandleBattlegroundStopCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -5343,6 +5403,7 @@ bool ChatHandler::HandleBattlegroundStopCommand(char* /*args*/)
     return true;
 }
 
+/// 辅助函数：对指定掉落表模拟大量随机拾取并统计各物品实际掉率
 bool ChatHandler::LootStatsHelper(char* args, bool full)
 {
     uint32 amountOfCheck = 100000;

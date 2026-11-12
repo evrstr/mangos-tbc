@@ -23,6 +23,7 @@ INSTANTIATE_SINGLETON_1(WardenModuleMgr);
 
 namespace
 {
+    // 扫描模块目录下的所有 .bin 模块文件路径
     std::vector<std::string> GetModuleNames(const std::string &moduleDir)
     {
         std::vector<std::string> results;
@@ -30,6 +31,7 @@ namespace
         if (boost::filesystem::exists(moduleDir))
         {
             // look only for .bin files, and assume (for now) that the corresponding .key and .cr files exist
+            // 仅检索 .bin 文件，默认同目录下存在配套的 .key 与 .cr 文件
             for (const auto& entry : boost::filesystem::directory_iterator(moduleDir))
                 if (entry.path().extension() == ".bin")
                     results.emplace_back(moduleDir + "/" + entry.path().filename().string());
@@ -39,6 +41,7 @@ namespace
     }
 }
 
+// 构造 Warden 模块管理器：加载配置目录下所有可用的 Windows 与 Mac 模块
 WardenModuleMgr::WardenModuleMgr()
 {
     auto const moduleDir = sAnticheatConfig.GetWardenModuleDirectory();
@@ -70,6 +73,7 @@ WardenModuleMgr::WardenModuleMgr()
         throw std::runtime_error("Failed to locate Warden modules");
 }
 
+// 随机返回一个已加载的 Windows Warden 模块
 const WardenModule *WardenModuleMgr::GetWindowsModule() const
 {
     MANGOS_ASSERT(!_winModules.empty());
@@ -77,6 +81,7 @@ const WardenModule *WardenModuleMgr::GetWindowsModule() const
     return &_winModules[urand(0, _winModules.size() - 1)];
 }
 
+// 随机返回一个已加载的 Mac Warden 模块
 const WardenModule *WardenModuleMgr::GetMacModule() const
 {
     MANGOS_ASSERT(!_macModules.empty());

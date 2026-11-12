@@ -21,6 +21,8 @@ SDComment: Quest support: 592
 SDCategory: Stranglethorn Vale
 EndScriptData */
 
+// 荆棘谷（Stranglethorn Vale）藏宝海湾海盗与古拉巴什竞技场脚本
+
 /* ContentData
 mob_yenniku
 mob_colonel_kurzen
@@ -33,23 +35,27 @@ EndContentData */
 ## mob_yenniku
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_YENNIKUS_RELEASE      = 3607,
+    SPELL_YENNIKUS_RELEASE      = 3607,                     // yennikusrelease 法术 ID
 
-    QUEST_ID_SAVING_YENNIKU     = 592,
+    QUEST_ID_SAVING_YENNIKU     = 592,                      // IDsavingyenniku 任务 ID
 
     FACTION_ID_HORDE_GENERIC    = 83,                       // Note: faction may not be correct!
 };
 
+// 随从/NPC AI：标识 ID（yenniku）
 struct mob_yennikuAI : public ScriptedAI
 {
     mob_yennikuAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiResetTimer;
+    uint32 m_uiResetTimer;                                  // Reset 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override { m_uiResetTimer = 0; }
 
+    // 受到法术命中回调
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         if (pSpell->Id == SPELL_YENNIKUS_RELEASE && pCaster->GetTypeId() == TYPEID_PLAYER)
@@ -62,6 +68,7 @@ struct mob_yennikuAI : public ScriptedAI
         }
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_uiResetTimer)
@@ -79,6 +86,7 @@ struct mob_yennikuAI : public ScriptedAI
             ScriptedAI::EnterEvadeMode();
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiResetTimer)
@@ -96,22 +104,25 @@ struct mob_yennikuAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：mob_yenniku
 UnitAI* GetAI_mob_yenniku(Creature* _Creature)
 {
     return new mob_yennikuAI(_Creature);
 }
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_SMOKE_BOMB = 8817,
-    SPELL_GARROTE = 8818,
+    SPELL_SMOKE_BOMB = 8817,                                // smoke炸弹 法术 ID
+    SPELL_GARROTE = 8818,                                   // garrote 法术 ID
     SPELL_STEALTH = 8822 // spell that get applied to npc after using smoke bomb
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KurzenActions
 {
     KURZEN_ACTION_VANISH,
@@ -119,6 +130,7 @@ enum KurzenActions
     KURZEN_ACTION_MAX,
 };
 
+// 随从/NPC AI：kurzen（colonel_kurzen）
 struct mob_colonel_kurzenAI : public CombatAI
 {
     mob_colonel_kurzenAI(Creature* creature) : CombatAI(creature, KURZEN_ACTION_MAX)
@@ -158,6 +170,7 @@ struct mob_colonel_kurzenAI : public CombatAI
 ##
 ######*/
 
+// 注册并载入脚本模块：stranglethorn_vale
 void AddSC_stranglethorn_vale()
 {
     Script* pNewScript = new Script;

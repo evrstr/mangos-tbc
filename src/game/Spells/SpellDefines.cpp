@@ -18,6 +18,7 @@
 
 #include "Spells/SpellDefines.h"
 
+// 客户端施法失败码对应的名称查找表（与 SpellCastResult 一一对应）
 const char* SpellCastResultNames[SPELL_FAILED_CLIENT_MAX]
 {
     "SPELL_FAILED_AFFECTING_COMBAT",
@@ -191,6 +192,7 @@ const char* SpellCastResultNames[SPELL_FAILED_CLIENT_MAX]
     "SPELL_FAILED_UNKNOWN",
 };
 
+// 返回施法结果码对应的调试文本描述（超出客户端上限时返回服务端错误提示）
 const char* GetSpellCastResultString(SpellCastResult result)
 {
     if (result >= SPELL_FAILED_CLIENT_MAX)

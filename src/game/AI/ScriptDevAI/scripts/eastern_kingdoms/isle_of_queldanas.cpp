@@ -21,6 +21,8 @@ SDComment: Quest support: 11524, 11525
 SDCategory: Isle Of Quel'Danas
 EndScriptData */
 
+// 奎尔丹纳斯岛（Isle of Quel'Danas）破碎残阳日常进攻剧情与事件脚本
+
 /* ContentData
 npc_converted_sentry
 EndContentData */
@@ -32,21 +34,24 @@ EndContentData */
 ## npc_converted_sentry
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_CONVERTED_1             = -1000188,
-    SAY_CONVERTED_2             = -1000189,
+    SAY_CONVERTED_1             = -1000188,                 // converted1 台词广播 ID
+    SAY_CONVERTED_2             = -1000189,                 // converted2 台词广播 ID
 
-    SPELL_CONVERT_CREDIT        = 45009,
-    TIME_PET_DURATION           = 7500
+    SPELL_CONVERT_CREDIT        = 45009,                    // convertcredit 法术 ID
+    TIME_PET_DURATION           = 7500                      // petduration 标识 ID
 };
 
+// 随从/NPC AI：sentry（converted_sentry）
 struct npc_converted_sentryAI : public ScriptedAI
 {
     npc_converted_sentryAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiCreditTimer;
+    uint32 m_uiCreditTimer;                                 // Credit 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiCreditTimer = 2500;
@@ -54,6 +59,7 @@ struct npc_converted_sentryAI : public ScriptedAI
 
     void MoveInLineOfSight(Unit* /*pWho*/) override {}
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiCreditTimer)
@@ -73,6 +79,7 @@ struct npc_converted_sentryAI : public ScriptedAI
     }
 };
 
+// 创建并返回 AI 实例工厂函数：npc_converted_sentry
 UnitAI* GetAI_npc_converted_sentry(Creature* pCreature)
 {
     return new npc_converted_sentryAI(pCreature);
@@ -82,22 +89,24 @@ UnitAI* GetAI_npc_converted_sentry(Creature* pCreature)
 # npc_shattered_sun_fighter
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    ZONEID_ISLE_OF_QUELDANAS                = 4080,
-    NPC_SHATTERED_SUN_WARRIOR               = 25115,
-    NPC_SHATTERED_SUN_MARKSMAN              = 24938,
+    ZONEID_ISLE_OF_QUELDANAS                = 4080,         // isleofqueldanas 标识 ID
+    NPC_SHATTERED_SUN_WARRIOR               = 25115,        // shatteredsun战士 Entry ID
+    NPC_SHATTERED_SUN_MARKSMAN              = 24938,        // shatteredsunmarksman Entry ID
     // relay dbscripts - each of which cast 1 of 4 transformation spells based on current Sun's Reach game event information
-    SCRIPT_TRANSFORM_ARCHER_BE_MALE         = 2493801,
-    SCRIPT_TRANSFORM_ARCHER_BE_FEMALE       = 2493802,
-    SCRIPT_TRANSFORM_ARCHER_DRAENEI_MALE    = 2493803,
-    SCRIPT_TRANSFORM_ARCHER_DRAENEI_FEMALE  = 2493804,
-    SCRIPT_TRANSFORM_WARRIOR_BE_MALE        = 2511502,
-    SCRIPT_TRANSFORM_WARRIOR_BE_FEMALE      = 2511501,
-    SCRIPT_TRANSFORM_WARRIOR_DRAENEI_MALE   = 2511504,
-    SCRIPT_TRANSFORM_WARRIOR_DRAENEI_FEMALE = 2511503,
+    SCRIPT_TRANSFORM_ARCHER_BE_MALE         = 2493801,      // 变形archerbemale 标识 ID
+    SCRIPT_TRANSFORM_ARCHER_BE_FEMALE       = 2493802,      // 变形archerbefemale 标识 ID
+    SCRIPT_TRANSFORM_ARCHER_DRAENEI_MALE    = 2493803,      // 变形archerdraeneimale 标识 ID
+    SCRIPT_TRANSFORM_ARCHER_DRAENEI_FEMALE  = 2493804,      // 变形archerdraeneifemale 标识 ID
+    SCRIPT_TRANSFORM_WARRIOR_BE_MALE        = 2511502,      // 变形战士bemale 标识 ID
+    SCRIPT_TRANSFORM_WARRIOR_BE_FEMALE      = 2511501,      // 变形战士befemale 标识 ID
+    SCRIPT_TRANSFORM_WARRIOR_DRAENEI_MALE   = 2511504,      // 变形战士draeneimale 标识 ID
+    SCRIPT_TRANSFORM_WARRIOR_DRAENEI_FEMALE = 2511503,      // 变形战士draeneifemale 标识 ID
 };
 
+// 随从/NPC AI：sunfighter（shattered_sun_fighter）
 struct npc_shattered_sun_fighterAI : public ScriptedAI
 {
     npc_shattered_sun_fighterAI(Creature* creature) : ScriptedAI(creature)
@@ -151,36 +160,41 @@ struct npc_shattered_sun_fighterAI : public ScriptedAI
         }
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
     void UpdateAI(const uint32 /*diff*/) override {}
 };
 
+// 随从/NPC AI：sun战士（shattered_sun_warrior）
 struct npc_shattered_sun_warriorAI : public npc_shattered_sun_fighterAI
 {
     npc_shattered_sun_warriorAI(Creature* creature) : npc_shattered_sun_fighterAI(creature) { Reset(); }
+    // 重置战斗状态与技能计时器
     void Reset() override {}
     void UpdateAI(const uint32 /*diff*/) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_SHOOT_BLOODELF_NW = 45219,
-    SPELL_SHOOT_DRAENEI_NW  = 45223,
-    SPELL_SHOOT_BLOODELF_SE = 45229,
-    SPELL_SHOOT_DRAENEI_SE  = 45233,
+    SPELL_SHOOT_BLOODELF_NW = 45219,                        // shootbloodelfnw 法术 ID
+    SPELL_SHOOT_DRAENEI_NW  = 45223,                        // shootdraeneinw 法术 ID
+    SPELL_SHOOT_BLOODELF_SE = 45229,                        // shootbloodelfse 法术 ID
+    SPELL_SHOOT_DRAENEI_SE  = 45233,                        // shootdraeneise 法术 ID
 };
 
+// 随从/NPC AI：sunmarksman（shattered_sun_marksman）
 struct npc_shattered_sun_marksmanAI : public npc_shattered_sun_fighterAI
 {
     npc_shattered_sun_marksmanAI(Creature* creature) : npc_shattered_sun_fighterAI(creature), m_uiShootTimer(0), m_uiShootSpell(0) {}
 
-    uint32 m_uiShootTimer;
+    uint32 m_uiShootTimer;                                  // Shoot 技能计时器
     uint32 m_uiShootSpell;
 
     void ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* /*invoker*/, uint32 /*miscValue*/) override
@@ -197,6 +211,7 @@ struct npc_shattered_sun_marksmanAI : public npc_shattered_sun_fighterAI
             m_uiShootTimer = urand(1000, 10000);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 diff) override
     {
         if (m_uiShootTimer)
@@ -213,10 +228,11 @@ struct npc_shattered_sun_marksmanAI : public npc_shattered_sun_fighterAI
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（ShatteredSunMarksmanShoot）
 struct ShatteredSunMarksmanShoot : public SpellScript
 {
     void OnRadiusCalculate(Spell* /*spell*/, SpellEffectIndex /*effIdx*/, bool targetB, float& radius) const override
@@ -236,23 +252,25 @@ struct ShatteredSunMarksmanShoot : public SpellScript
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    NPC_DAWNBLADE_BLOOD_KNIGHT  = 24976,
+    NPC_DAWNBLADE_BLOOD_KNIGHT  = 24976,                    // dawnblade鲜血骑士 Entry ID
 
-    SPELL_SEAL_OF_WRATH         = 45095,
-    SPELL_JOUST                 = 45105,
-    SPELL_JUDGEMENT_OF_WRATH    = 45337,
-    SPELL_HOLY_LIGHT            = 13952,
+    SPELL_SEAL_OF_WRATH         = 45095,                    // sealofwrath 法术 ID
+    SPELL_JOUST                 = 45105,                    // joust 法术 ID
+    SPELL_JUDGEMENT_OF_WRATH    = 45337,                    // judgementofwrath 法术 ID
+    SPELL_HOLY_LIGHT            = 13952,                    // 神圣light 法术 ID
 
-    SPELL_FACTION_SPAR          = 45091,
-    SPELL_FACTION_SPAR_BUDDY    = 45092,
+    SPELL_FACTION_SPAR          = 45091,                    // factionspar 法术 ID
+    SPELL_FACTION_SPAR_BUDDY    = 45092,                    // factionsparbuddy 法术 ID
 
-    AREA_ID_DAWNSTAR_VILLAGE    = 4089,
-    FACTION_SPARRING_DAWNBLADE  = 1965,
-    FACTION_SPAR_BUDDY          = 1814,
+    AREA_ID_DAWNSTAR_VILLAGE    = 4089,                     // IDdawnstarvillage 标识 ID
+    FACTION_SPARRING_DAWNBLADE  = 1965,                     // sparringdawnblade 阵营 ID
+    FACTION_SPAR_BUDDY          = 1814,                     // sparbuddy 阵营 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum DawnbladeBloodKnightActions
 {
     DAWNBLADE_BLOOD_KNIGHT_STOP_EVENT,
@@ -339,7 +357,7 @@ struct npc_dawnblade_blood_knight : public CombatAI
         if (sender->GetEntry() != m_creature->GetEntry())
             return;
 
-        if (eventType == AI_EVENT_CUSTOM_A) // start duel
+        if (eventType == AI_EVENT_CUSTOM_A) // start duel (开始duel)
         {
             m_sparringPartner = invoker->GetObjectGuid();
             SetReactState(REACT_DEFENSIVE);
@@ -379,6 +397,7 @@ struct npc_dawnblade_blood_knight : public CombatAI
         }
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         CombatAI::JustReachedHome();
@@ -386,6 +405,7 @@ struct npc_dawnblade_blood_knight : public CombatAI
             ResetTimer(DAWNBLADE_BLOOD_KNIGHT_START_EVENT, 30000u);
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         if (m_creature->IsMounted())
@@ -415,18 +435,19 @@ struct SparAuras : public AuraScript
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
     // Quest "Disrupt the Greengill Coast" (11541)
-    SPELL_ORB_OF_MURLOC_CONTROL         = 45109,
-    SPELL_GREENGILL_SLAVE_FREED         = 45110,
-    SPELL_ENRAGE                        = 45111,
-    NPC_FREED_GREENGILL_SLAVE           = 25085,
-    NPC_DARKSPINE_MYRMIDON              = 25060,
-    NPC_DARKSPINE_SIREN                 = 25073,
+    SPELL_ORB_OF_MURLOC_CONTROL         = 45109,            // orbofmurloccontrol 法术 ID
+    SPELL_GREENGILL_SLAVE_FREED         = 45110,            // greengillslavefreed 法术 ID
+    SPELL_ENRAGE                        = 45111,            // 狂暴 法术 ID
+    NPC_FREED_GREENGILL_SLAVE           = 25085,            // freedgreengillslave Entry ID
+    NPC_DARKSPINE_MYRMIDON              = 25060,            // darkspinemyrmidon Entry ID
+    NPC_DARKSPINE_SIREN                 = 25073,            // darkspinesiren Entry ID
 };
 
-// 45111 - Enrage
+// 45111 - Enrage (45111 - 狂暴)
 struct EnrageDisruptTheGreenCoast : public AuraScript
 {
     void OnApply(Aura* aura, bool apply) const override
@@ -469,6 +490,7 @@ struct OrbOfMurlocControl : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：isle_of_queldanas
 void AddSC_isle_of_queldanas()
 {
     Script* pNewScript = new Script;

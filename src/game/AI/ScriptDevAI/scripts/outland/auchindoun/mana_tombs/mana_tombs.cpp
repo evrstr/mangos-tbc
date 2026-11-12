@@ -21,15 +21,22 @@ SDComment: Summoning event for Anzu NYI
 SDCategory: Auchindoun, Sethekk Halls
 EndScriptData */
 
+// 法力陵墓副本数据脚本
+/* 副本概述：
+ * 法力陵墓位于奥金顿，包含潘德莫纽斯、塔瓦洛克、节点亲王沙法尔以及召唤首领尤尔。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "mana_tombs.h"
 #include "World/WorldStateDefines.h"
 
+// 构造函数：初始化副本实例
 instance_mana_tombs::instance_mana_tombs(Map* pMap) : ScriptedInstance(pMap)
 {
     Initialize();
 }
 
+// 初始化副本世界状态变量（随机激活巡逻与怪群分布）
 void instance_mana_tombs::Initialize()
 {
     instance->GetVariableManager().SetVariable(WORLD_STATE_MANA_TOMBS_GROUP_18, urand(0, 1));
@@ -40,7 +47,7 @@ void instance_mana_tombs::Initialize()
     instance->GetVariableManager().SetVariable(WORLD_STATE_MANA_TOMBS_GROUP_35, urand(0, 1));
 }
 
-
+// 注册法力陵墓副本脚本
 void AddSC_instance_mana_tombs()
 {
     Script* pNewScript = new Script;

@@ -31,6 +31,7 @@ guardAI::guardAI(Creature* creature) : CombatAI(creature, 0),
     m_buffTimer(0)
 {}
 
+// 重置守卫 AI 状态与法术计时器
 void guardAI::Reset()
 {
     m_globalCooldown = 0;
@@ -39,6 +40,7 @@ void guardAI::Reset()
     m_NetTimer = urand(0, 21000);
 }
 
+// 进入战斗处理（特定守卫喊话）
 void guardAI::Aggro(Unit* who)
 {
     if (m_creature->GetEntry() == CENARION_HOLD_INFANTRY)
@@ -52,6 +54,7 @@ void guardAI::Aggro(Unit* who)
     }
 }
 
+// 守卫死亡处理：向本地防务与世界防务频道发送区域受袭警报
 void guardAI::JustDied(Unit* killer)
 {
     if (!killer)
@@ -62,6 +65,7 @@ void guardAI::JustDied(Unit* killer)
         m_creature->SendZoneUnderAttackMessage(pPlayer);
 }
 
+// 守卫复活处理：初始化远程攻击模式
 void guardAI::JustRespawned()
 {
     CombatAI::JustRespawned();
@@ -82,6 +86,7 @@ void guardAI::JustRespawned()
     }
 }
 
+// 对玩家文本表情做出动作回应（亲吻、挥手、敬礼、害羞等）
 void guardAI::DoReplyToTextEmote(uint32 textEmote)
 {
     switch (textEmote)
@@ -95,6 +100,7 @@ void guardAI::DoReplyToTextEmote(uint32 textEmote)
     }
 }
 
+// 接收玩家表情处理：仅部落玩家触发回应
 void guardAI_orgrimmar::ReceiveEmote(Player* player, uint32 textEmote)
 {
     if (player->GetTeam() == HORDE)

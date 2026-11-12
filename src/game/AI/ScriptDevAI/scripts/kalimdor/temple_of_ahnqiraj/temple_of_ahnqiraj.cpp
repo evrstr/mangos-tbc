@@ -21,6 +21,10 @@ SDComment: C'thun whisperings spells NYI.
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
+/**
+ * 安其拉神殿 (Temple of Ahn'Qiraj) 副本主数据管理与门禁逻辑
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 
@@ -76,7 +80,7 @@ void instance_temple_of_ahnqiraj::JustDidDialogueStep(int32 entry)
         }
         case STAND_EMPERORS_INTRO:
         {
-            // Make the Twin Emperors stand
+            // Make the Twin Emperors stand (说明)
             if (Creature* veklor = GetSingleCreatureFromStorage(NPC_VEKLOR))
                 veklor->SetStandState(UNIT_STAND_STATE_STAND);
             if (Creature* veknilash = GetSingleCreatureFromStorage(NPC_VEKNILASH))
@@ -84,7 +88,7 @@ void instance_temple_of_ahnqiraj::JustDidDialogueStep(int32 entry)
             break;
         }
         case SAY_EMPERORS_INTRO_6:
-            // Save the event for the rest of the instance life span
+            // Save the event for the rest of the instance life span (说明)
             SetData(TYPE_TWINS_INTRO, DONE);
             break;
         default:
@@ -224,7 +228,7 @@ void instance_temple_of_ahnqiraj::SetData(uint32 type, uint32 data)
             {
                 ++m_uiBugTrioDeathCount;
                 Creature* deadGuy = GetSingleCreatureFromStorage(data);
-                // notify bugs on death to heal / remove invul
+                // notify bugs on death to heal / remove invul (说明)
                 if (Creature* vem = GetSingleCreatureFromStorage(NPC_VEM))
                     if (vem->IsAlive())
                         vem->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, deadGuy, vem, m_uiBugTrioDeathCount);
@@ -240,12 +244,12 @@ void instance_temple_of_ahnqiraj::SetData(uint32 type, uint32 data)
             }
             if (data == FAIL)
             {
-                // Do not reset again the encounter if already set to failed
+                // Do not reset again the encounter if already set to failed (说明)
                 if (GetData(TYPE_BUG_TRIO) == FAIL)
                     return;
 
-                // On encounter failure, despawn Vem and Princess Yauj and make Lord Kri evade
-                // the two other bosses will respawn when Lord Kri reaches home/respawns
+                // On encounter failure, despawn Vem and Princess Yauj and make Lord Kri evade (说明)
+                // the two other bosses will respawn when Lord Kri reaches home/respawns (说明)
                 if (Creature* vem = GetSingleCreatureFromStorage(NPC_VEM))
                     vem->ForcedDespawn();
                 if (Creature* yauj = GetSingleCreatureFromStorage(NPC_YAUJ))
@@ -277,7 +281,7 @@ void instance_temple_of_ahnqiraj::SetData(uint32 type, uint32 data)
                 DoUseDoorOrButton(GO_TWINS_ENTER_DOOR);
             break;
         case TYPE_TWINS:
-            // Either of the twins can set data, so return to avoid double changing
+            // Either of the twins can set data, so return to avoid double changing (说明)
             if (m_encounter[type] ==  data)
                 return;
 
@@ -290,12 +294,12 @@ void instance_temple_of_ahnqiraj::SetData(uint32 type, uint32 data)
             switch (data)
             {
                 case FAIL:
-                    // Respawn the Ouro spawner on fail
+                    // Respawn the Ouro spawner on fail (复活)
                     if (Creature* pSpawner = GetSingleCreatureFromStorage(NPC_OURO_SPAWNER))
                         pSpawner->Respawn();
-                // no break;
+                // no break; (无 break 直落)
                 case DONE:
-                    // Despawn the sandworm base on Done or Fail
+                    // Despawn the sandworm base on Done or Fail (说明)
                     if (GameObject* pBase = GetSingleGameObjectFromStorage(GO_SANDWORM_BASE))
                         pBase->SetLootState(GO_JUST_DEACTIVATED);
                     break;
@@ -319,7 +323,7 @@ void instance_temple_of_ahnqiraj::SetData(uint32 type, uint32 data)
                 }
                     
                 if (Creature* cthun = GetSingleCreatureFromStorage(NPC_CTHUN))
-                    // Reset combat
+                    // Reset combat (重置战斗)
                     if (cthun->AI() && cthun->IsInCombat())
                         cthun->AI()->EnterEvadeMode();
             }
@@ -388,7 +392,7 @@ void instance_temple_of_ahnqiraj::Update(uint32 diff)
         {
             if (Player* player = GetPlayerInMap())
                 player->GetMap()->PlayDirectSoundToMap(sound_skeram_prophecy[urand(0, 4)]);
-            m_uiSkeramProphecyTimer = urand(3, 4) * MINUTE * IN_MILLISECONDS;   // Timer is guesswork
+            m_uiSkeramProphecyTimer = urand(3, 4) * MINUTE * IN_MILLISECONDS;   // Timer is guesswork (计时器)
         }
         else
             m_uiSkeramProphecyTimer -= diff;
@@ -450,7 +454,7 @@ bool ProcessEventId_event_reset_cthun(uint32 /*eventId*/, Object* source, Object
     return false;
 }
 
-void AddSC_instance_temple_of_ahnqiraj()
+void AddSC_instance_temple_of_ahnqiraj() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_temple_of_ahnqiraj";

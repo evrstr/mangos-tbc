@@ -21,71 +21,74 @@ SDComment: Timers;
 SDCategory: Sunwell Plateau
 EndScriptData */
 
+// 卡雷苟斯与腐蚀者萨索瓦尔（Kalecgos & Sathrovarr）1号首领战 AI（现实与幽灵外域双维度传送门交替战）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 #include "Tools/Language.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    // kalecgos dragon form
-    SAY_EVIL_AGGRO                  = -1580000,
-    SAY_EVIL_SPELL_1                = -1580001,
-    SAY_EVIL_SPELL_2                = -1580002,
-    SAY_EVIL_SLAY_1                 = 25499,
-    SAY_EVIL_SLAY_2                 = 25500,
-    SAY_EVIL_ENRAGE                 = -1580005,
-    SAY_EVIL_WIPE                   = -1580114,
+    // kalecgos dragon form (卡雷苟斯巨龙form)
+    SAY_EVIL_AGGRO                  = -1580000,             // evil开战 台词广播 ID
+    SAY_EVIL_SPELL_1                = -1580001,             // evil法术1 台词广播 ID
+    SAY_EVIL_SPELL_2                = -1580002,             // evil法术2 台词广播 ID
+    SAY_EVIL_SLAY_1                 = 25499,                // evil击杀1 台词广播 ID
+    SAY_EVIL_SLAY_2                 = 25500,                // evil击杀2 台词广播 ID
+    SAY_EVIL_ENRAGE                 = -1580005,             // evil狂暴 台词广播 ID
+    SAY_EVIL_WIPE                   = -1580114,             // evilwipe 台词广播 ID
 
     // kalecgos humanoid form
-    SAY_GOOD_75                     = -1580006,
-    SAY_GOOD_50                     = -1580007,
-    SAY_GOOD_25                     = -1580008,
-    SAY_GOOD_PLRWIN                 = -1580009,
+    SAY_GOOD_75                     = -1580006,             // good75 台词广播 ID
+    SAY_GOOD_50                     = -1580007,             // good50 台词广播 ID
+    SAY_GOOD_25                     = -1580008,             // good25 台词广播 ID
+    SAY_GOOD_PLRWIN                 = -1580009,             // goodplrwin 台词广播 ID
     SAY_GOOD_PLRWIN_2               = -1580108, // unused atm
-    SAY_GOOD_PLRWIN_3               = -1580115,
+    SAY_GOOD_PLRWIN_3               = -1580115,             // goodplrwin3 台词广播 ID
 
-    SAY_SATH_AGGRO                  = -1580010,
-    SAY_SATH_DEATH                  = -1580011,
-    SAY_SATH_SPELL_1                = -1580012,
-    SAY_SATH_SPELL_2                = -1580013,
-    SAY_SATH_SLAY_1                 = 25508,
-    SAY_SATH_SLAY_2                 = 25509,
-    SAY_SATH_ENRAGE                 = -1580016,
+    SAY_SATH_AGGRO                  = -1580010,             // sath开战 台词广播 ID
+    SAY_SATH_DEATH                  = -1580011,             // sath死亡 台词广播 ID
+    SAY_SATH_SPELL_1                = -1580012,             // sath法术1 台词广播 ID
+    SAY_SATH_SPELL_2                = -1580013,             // sath法术2 台词广播 ID
+    SAY_SATH_SLAY_1                 = 25508,                // sath击杀1 台词广播 ID
+    SAY_SATH_SLAY_2                 = 25509,                // sath击杀2 台词广播 ID
+    SAY_SATH_ENRAGE                 = -1580016,             // sath狂暴 台词广播 ID
 
-    // Kalecgos
-    SPELL_SPECTRAL_BLAST            = 44869,
-    SPELL_SPECTRAL_REALM_NOTIFY     = 44845,        // cast by the players on teleport to notify boss
-    SPELL_ARCANE_BUFFET             = 45018,
-    SPELL_FROST_BREATH              = 44799,
-    SPELL_TAIL_LASH                 = 45122,
-    SPELL_CRAZED_RAGE               = 44807,
-    SPELL_CRAZED_RAGE_BUFF          = 44806,
+    // Kalecgos (卡雷苟斯)
+    SPELL_SPECTRAL_BLAST            = 44869,                // 幽灵冲击 法术 ID
+    SPELL_SPECTRAL_REALM_NOTIFY     = 44845,        // cast by the players on teleport to notify boss (由 the players on teleport to notify boss 施放)
+    SPELL_ARCANE_BUFFET             = 45018,                // 奥术震击 法术 ID
+    SPELL_FROST_BREATH              = 44799,                // 冰霜吐息 法术 ID
+    SPELL_TAIL_LASH                 = 45122,                // 扫尾lash 法术 ID
+    SPELL_CRAZED_RAGE               = 44807,                // crazedrage 法术 ID
+    SPELL_CRAZED_RAGE_BUFF          = 44806,                // crazedrage增益 法术 ID
 
-    SPELL_SPECTRAL_REALM            = 44811,
-    SPELL_SPECTRAL_REALM_FORCE_F    = 44852,
+    SPELL_SPECTRAL_REALM            = 44811,                // 幽灵realm 法术 ID
+    SPELL_SPECTRAL_REALM_FORCE_F    = 44852,                // 幽灵realmforcef 法术 ID
     // SPELL_SPECTRAL_REALM_AURA       = 46021,
-    SPELL_TELEPORT_SPECTRAL_REALM   = 46019,
-    SPELL_SPECTRAL_BLAST_IMPACT     = 44866,
-    SPELL_SPECTRAL_BLAST_VISUAL     = 46648,
+    SPELL_TELEPORT_SPECTRAL_REALM   = 46019,                // 传送幽灵realm 法术 ID
+    SPELL_SPECTRAL_BLAST_IMPACT     = 44866,                // 幽灵冲击impact 法术 ID
+    SPELL_SPECTRAL_BLAST_VISUAL     = 46648,                // 幽灵冲击视觉特效 法术 ID
     // SPELL_SPECTRAL_EXHAUSTION       = 44867,
-    SPELL_CURSE_OF_BOUNDLESS_AGONY_REMOVAL = 45050,
+    SPELL_CURSE_OF_BOUNDLESS_AGONY_REMOVAL = 45050,         // 诅咒ofboundlessagonyremoval 法术 ID
 
-    // Kalecgos human
-    SPELL_HEROIC_STRIKE             = 45026,
-    SPELL_REVITALIZE                = 45027,
+    // Kalecgos human (卡雷苟斯human)
+    SPELL_HEROIC_STRIKE             = 45026,                // heroic打击 法术 ID
+    SPELL_REVITALIZE                = 45027,                // revitalize 法术 ID
 
-    // Sathrovarr
-    SPELL_SPECTRAL_INVISIBILITY     = 44801,
-    SPELL_CORRUPTING_STRIKE         = 45029,
-    SPELL_CURSE_OF_BOUNDLESS_AGONY  = 45032,
-    SPELL_SHADOW_BOLT_VOLLEY        = 45031,
+    // Sathrovarr (萨索瓦尔)
+    SPELL_SPECTRAL_INVISIBILITY     = 44801,                // 幽灵隐形 法术 ID
+    SPELL_CORRUPTING_STRIKE         = 45029,                // corrupting打击 法术 ID
+    SPELL_CURSE_OF_BOUNDLESS_AGONY  = 45032,                // 诅咒ofboundlessagony 法术 ID
+    SPELL_SHADOW_BOLT_VOLLEY        = 45031,                // 暗影箭箭雨 法术 ID
     // SPELL_TELEPORT_NORMAL_REALM     = 46020,
 
     // Misc
-    SPELL_BANISH                    = 44836,
-    SPELL_INSTAKILL_SELF            = 29878,
+    SPELL_BANISH                    = 44836,                // banish 法术 ID
+    SPELL_INSTAKILL_SELF            = 29878,                // instakillself 法术 ID
 };
 
 static const uint32 aWildMagicSpells[6] = {44978, 45001, 45002, 45004, 45006, 45010};
@@ -95,6 +98,7 @@ static const float aKalecHumanLoc[4] = {1709.094f, 927.5035f, -74.28364f, 2.9321
 ## boss_kalecgos
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KalecgosActions
 {
     KALECGOS_ENRAGE,
@@ -107,6 +111,7 @@ enum KalecgosActions
     KALECGOS_EXIT_TIMER,
 };
 
+// 首领战 AI：标识 ID（kalecgos）
 struct boss_kalecgosAI : public CombatAI
 {
     boss_kalecgosAI(Creature* creature) : CombatAI(creature, KALECGOS_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -131,6 +136,7 @@ struct boss_kalecgosAI : public CombatAI
 
     uint32 m_exitStage;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -163,6 +169,7 @@ struct boss_kalecgosAI : public CombatAI
             DoStartOutro();
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         if (m_instance && m_instance->GetData(TYPE_KALECGOS) != DONE)
@@ -207,6 +214,7 @@ struct boss_kalecgosAI : public CombatAI
         ResetTimer(KALECGOS_EXIT_TIMER, 10000);
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 motionType, uint32 pointId) override
     {
         if (motionType != POINT_MOTION_TYPE)
@@ -317,6 +325,7 @@ struct boss_kalecgosAI : public CombatAI
 ## boss_sathrovarr
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum SathrovarrActions
 {
     SATHROVARR_ENRAGE,
@@ -326,6 +335,7 @@ enum SathrovarrActions
     SATHROVARR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（sathrovarr）
 struct boss_sathrovarrAI : public CombatAI
 {
     boss_sathrovarrAI(Creature* creature) : CombatAI(creature, SATHROVARR_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -348,6 +358,7 @@ struct boss_sathrovarrAI : public CombatAI
 
     bool m_firstShadow;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -357,6 +368,7 @@ struct boss_sathrovarrAI : public CombatAI
         SetDeathPrevention(true);
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         CombatAI::EnterEvadeMode();
@@ -404,6 +416,7 @@ struct boss_sathrovarrAI : public CombatAI
         DoScriptText(SAY_SATH_DEATH, m_creature);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_KALECGOS_HUMAN)
@@ -453,6 +466,7 @@ struct boss_sathrovarrAI : public CombatAI
 ## boss_kalecgos_humanoid
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KalecgosHumanActions
 {
     KALEC_YELL_75,
@@ -464,6 +478,7 @@ enum KalecgosHumanActions
     KALEC_FORCEFIELD
 };
 
+// 首领战 AI：humanoid（kalecgos_humanoid）
 struct boss_kalecgos_humanoidAI : public CombatAI
 {
     boss_kalecgos_humanoidAI(Creature* creature) : CombatAI(creature, KALEC_HUMAN_ACTION_MAX), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData()))
@@ -477,7 +492,7 @@ struct boss_kalecgos_humanoidAI : public CombatAI
         {
             if (!m_creature->IsInCombat() || m_creature->GetCombatManager().IsEvadingHome())
                 return;
-            // combat doors
+            // combat doors (战斗doors)
             m_instance->DoUseDoorOrButton(GO_FORCEFIELD);
             m_instance->DoUseDoorOrButton(GO_BOSS_COLLISION_1);
             m_instance->DoUseDoorOrButton(GO_BOSS_COLLISION_2);
@@ -486,6 +501,7 @@ struct boss_kalecgos_humanoidAI : public CombatAI
 
     instance_sunwell_plateau* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -506,6 +522,7 @@ struct boss_kalecgos_humanoidAI : public CombatAI
         }
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         m_creature->ForcedDespawn();
@@ -548,6 +565,7 @@ struct boss_kalecgos_humanoidAI : public CombatAI
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SpectralBlast）
 struct SpectralBlast : public SpellScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -574,6 +592,7 @@ struct SpectralBlast : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SpectralRealm）
 struct SpectralRealm : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
@@ -604,6 +623,7 @@ struct SpectralRealm : public SpellScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（SpectralRealmNotify）
 struct SpectralRealmNotify : public SpellScript
 {
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -631,14 +651,16 @@ struct SpectralRealmAura : public AuraScript
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_CURSE_OF_BOUNDLESS_AGONY_FRIENDLY = 45034,
-    SPELL_COBA_ANIM_1 = 45083,
-    SPELL_COBA_ANIM_2 = 45084,
-    SPELL_COBA_ANIM_3 = 45085,
+    SPELL_CURSE_OF_BOUNDLESS_AGONY_FRIENDLY = 45034,        // 诅咒ofboundlessagonyfriendly 法术 ID
+    SPELL_COBA_ANIM_1 = 45083,                              // cobaanim1 法术 ID
+    SPELL_COBA_ANIM_2 = 45084,                              // cobaanim2 法术 ID
+    SPELL_COBA_ANIM_3 = 45085,                              // cobaanim3 法术 ID
 };
 
+// 法术脚本逻辑实现：标识 ID（CurseOfBoundlessAgony）
 struct CurseOfBoundlessAgony : public SpellScript, public AuraScript
 {
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex eff) const override
@@ -679,6 +701,7 @@ struct CurseOfBoundlessAgony : public SpellScript, public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（CurseOfBoundlessAgonyRemoval）
 struct CurseOfBoundlessAgonyRemoval : public SpellScript, public AuraScript
 {
     void Remove(Unit* target) const
@@ -704,6 +727,7 @@ struct CurseOfBoundlessAgonyRemoval : public SpellScript, public AuraScript
     }
 };
 
+// 法术脚本逻辑实现：标识 ID（CrazedRage）
 struct CrazedRage : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -714,6 +738,7 @@ struct CrazedRage : public SpellScript
     }
 };
 
+// 注册并载入脚本模块：boss_kalecgos
 void AddSC_boss_kalecgos()
 {
     Script* pNewScript = new Script;

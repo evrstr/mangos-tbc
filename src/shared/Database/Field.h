@@ -21,10 +21,12 @@
 
 #include "Common.h"
 
+// 数据库查询结果中的单个字段封装类 | Wrapper representing a single field in a database query result
 class Field
 {
     public:
 
+        // 数据库字段通用数据类型 | Generic database field data types
         enum DataTypes
         {
             DB_TYPE_UNKNOWN = 0x00,
@@ -42,13 +44,15 @@ class Field
         enum DataTypes GetType() const { return mType; }
         bool IsNULL() const { return mValue == nullptr; }
 
+        // 获取 C 风格字符串，NULL 时返回空串 | Get C-string value, returns empty string if NULL
         const char* GetString() const
         {
-            return mValue ? mValue : ""; // We need this null check as we do not always null check what we get back from the database everywhere
+            return mValue ? mValue : ""; // We need this null check as we do not always null check what we get back from the database everywhere | 必须判空，因为调用处并非每次都会检查返回值是否为 NULL
         }
+        // 获取 std::string 字符串 | Get value as std::string
         std::string GetCppString() const
         {
-            return mValue ? mValue : "";                    // std::string s = 0 have undefine result in C++
+            return mValue ? mValue : "";                    // std::string s = 0 have undefine result in C++ | 在 C++ 中用空指针构造 std::string 属于未定义行为
         }
         float GetFloat() const { return mValue ? static_cast<float>(atof(mValue)) : 0.0f; }
         bool GetBool() const { return mValue ? atoi(mValue) > 0 : false; }
@@ -57,6 +61,7 @@ class Field
         uint16 GetUInt16() const { return mValue ? static_cast<uint16>(atol(mValue)) : uint16(0); }
         int16 GetInt16() const { return mValue ? static_cast<int16>(atol(mValue)) : int16(0); }
         uint32 GetUInt32() const { return mValue ? static_cast<uint32>(atoll(mValue)) : uint32(0); }
+        // 解析 64 位无符号整数 | Parse field string as uint64
         uint64 GetUInt64() const
         {
             uint64 value = 0;
@@ -65,11 +70,12 @@ class Field
 
             return value;
         }
+        // 将日期时间字符串解析为 time_t | Parse datetime string into time_t
         time_t GetTime() const;
 
         void SetType(enum DataTypes type) { mType = type; }
-        // no need for memory allocations to store resultset field strings
-        // all we need is to cache pointers returned by different DBMS APIs
+        // no need for memory allocations to store resultset field strings | 无需额外分配内存来保存结果集字段字符串
+        // all we need is to cache pointers returned by different DBMS APIs | 只需缓存各数据库 API 返回的原始字符串指针即可
         void SetValue(const char* value) { mValue = value; }
 
     private:

@@ -32,11 +32,12 @@ template<> struct BoundsTrait<VMAP::GroupModel>
 
 namespace VMAP
 {
+    // Moller-Trumbore 射线-三角形相交测试；若击中且距离小于当前 distance 则更新 distance 并返回 true
     bool IntersectTriangle(const MeshTriangle& tri, std::vector<Vector3>::const_iterator points, const G3D::Ray& ray, float& distance)
     {
         static const float EPS = 1e-5f;
 
-        // See RTR2 ch. 13.7 for the algorithm.
+        // See RTR2 ch. 13.7 for the algorithm. (参见 Real-Time Rendering 2 第 13.7 节算法)
 
         const Vector3 e1 = points[tri.idx1] - points[tri.idx0];
         const Vector3 e2 = points[tri.idx2] - points[tri.idx0];
@@ -45,7 +46,7 @@ namespace VMAP
 
         if (fabs(a) < EPS)
         {
-            // Determinant is ill-conditioned; abort early
+            // Determinant is ill-conditioned; abort early (射线与三角形平面近乎平行，提前退出)
             return false;
         }
 
@@ -72,7 +73,7 @@ namespace VMAP
 
         if ((t > 0.0f) && (t < distance))
         {
-            // This is a new hit, closer than the previous one
+            // This is a new hit, closer than the previous one (命中点更近则刷新最小距离)
             distance = t;
 
             /* baryCoord[0] = 1.0 - u - v;
@@ -85,6 +86,7 @@ namespace VMAP
         return false;
     }
 
+    // 计算单个三角面轴对齐包围盒的仿函数，供 BIH 构建使用
     class TriBoundFunc
     {
         public:
@@ -153,6 +155,7 @@ namespace VMAP
         return *this;
     }
 
+    // 按双三角面片插值计算液体网格在指定局部坐标处的水面高度
     bool WmoLiquid::GetLiquidHeight(const Vector3& pos, float& liqHeight) const
     {
         float tx_f = (pos.x - iCorner.x) / LIQUID_TILE_SIZE;
@@ -256,6 +259,7 @@ namespace VMAP
             iLiquid = new WmoLiquid(*other.iLiquid);
     }
 
+    // 交换写入组模型顶点与三角索引，并构建三角面 BIH 加速树
     void GroupModel::setMeshData(std::vector<Vector3>& vert, std::vector<MeshTriangle>& tri)
     {
         vertices.swap(vert);
@@ -264,6 +268,7 @@ namespace VMAP
         meshTree.build(triangles, bFunc);
     }
 
+    // 序列化写出组模型（包围盒、标志、顶点、三角网、BIH 树与液体数据）
     bool GroupModel::writeToFile(FILE* wf)
     {
         bool result = true;
@@ -306,6 +311,7 @@ namespace VMAP
         return result;
     }
 
+    // 从 .vmo 文件流反序列化组模型数据
     bool GroupModel::readFromFile(FILE* rf)
     {
         char chunk[8];
@@ -367,6 +373,7 @@ namespace VMAP
         bool hit;
     };
 
+    // 射线与组模型三角网 BIH 树求交
     bool GroupModel::IntersectRay(const G3D::Ray& ray, float& distance, bool stopAtFirstHit, bool ignoreM2Model) const
     {
         if (triangles.empty())
@@ -376,6 +383,7 @@ namespace VMAP
         return callback.hit;
     }
 
+    // 向下发射略微上抬的射线，判断点 pos 是否位于该组模型几何体之上/内部并计算地面距离 z_dist
     bool GroupModel::IsInsideObject(const Vector3& pos, const Vector3& down, float& z_dist) const
     {
         if (triangles.empty() || !iBound.contains(pos))
@@ -406,6 +414,7 @@ namespace VMAP
 
     // ===================== WorldModel ==================================
 
+    // 设置子组模型列表并构建组级别 BIH 加速树
     void WorldModel::setGroupModels(std::vector<GroupModel>& models)
     {
         groupModels.swap(models);
@@ -425,13 +434,14 @@ namespace VMAP
         bool hit;
     };
 
+    // 射线与整个 WorldModel 求交（支持忽略 M2；仅单组时绕过顶层 BIH 直接求交）
     bool WorldModel::IntersectRay(const G3D::Ray& ray, float& distance, bool stopAtFirstHit, bool ignoreM2Model) const
     {
         if (ignoreM2Model && (modelFlags & MOD_M2))
             return false;
 
         // small M2 workaround, maybe better make separate class with virtual intersection funcs
-        // in any case, there's no need to use a bound tree if we only have one submodel
+        // in any case, there's no need to use a bound tree if we only have one submodel (仅有单个子组模型时直接测试，无需走 groupTree)
         if (groupModels.size() == 1)
             return groupModels[0].IntersectRay(ray, distance, stopAtFirstHit, ignoreM2Model);
 
@@ -440,6 +450,7 @@ namespace VMAP
         return isc.hit;
     }
 
+    // 组模型点查询回调：挑选距点下方最近且包含该点的子组作为最终地面所在组
     class WModelAreaCallback
     {
         public:
@@ -478,6 +489,7 @@ namespace VMAP
             }
     };
 
+    // 点查询所在组模型的 Root/Group ID 及 MOGP 标志，并输出距地面垂直距离
     bool WorldModel::IntersectPoint(const G3D::Vector3& p, const G3D::Vector3& down, float& dist, AreaInfo& info) const
     {
         if (groupModels.empty())
@@ -496,6 +508,7 @@ namespace VMAP
         return false;
     }
 
+    // 点查询命中的最贴近地面组模型指针及 Root WMO ID
     bool WorldModel::GetLocationInfo(const G3D::Vector3& p, const G3D::Vector3& down, float& dist, GroupLocationInfo& info) const
     {
         if (groupModels.empty())
@@ -512,6 +525,7 @@ namespace VMAP
         return false;
     }
 
+    // 将 WorldModel 写出为成品 .vmo 文件
     bool WorldModel::writeFile(const std::string& filename)
     {
         FILE* wf = fopen(filename.c_str(), "wb");
@@ -545,6 +559,7 @@ namespace VMAP
         return result;
     }
 
+    // 从 .vmo 文件反序列化加载 WorldModel 全部组模型及加速树
     bool WorldModel::readFile(const std::string& filename)
     {
         FILE* rf = fopen(filename.c_str(), "rb");

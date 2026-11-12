@@ -21,6 +21,12 @@ SDComment: Instance Data Scripts and functions to acquire mobs and set encounter
 SDCategory: Black Temple
 EndScriptData */
 
+// 黑暗神殿副本数据管理实现
+/* 遭遇战概述：
+ * 黑暗神殿是外域最核心的 25 人团队副本；
+ * 包含九场极具挑战的首领战，以及阿卡玛引路、灰舌死誓者阵营转换与神殿各区门禁控制。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 
@@ -494,11 +500,13 @@ void instance_black_temple::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
+// 获取副本数据脚本实例函数
 InstanceData* GetInstanceData_instance_black_temple(Map* map)
 {
     return new instance_black_temple(map);
 }
 
+// 注册 instance_black_temple 脚本
 void AddSC_instance_black_temple()
 {
     Script* pNewScript = new Script;

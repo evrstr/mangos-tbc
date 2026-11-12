@@ -26,10 +26,12 @@
 The Class is mainly taken from G3D/AABSPTree.h but modified to be able to use our internal data structure.
 This is an iterator that helps us analysing the BSP-Trees.
 The collision detection is modified to return true, if we are inside an object.
+修改自 G3D 碰撞检测工具：用于 VMAP 树遍历回调以及移动点与固定轴对齐包围盒 (AABox) 的相交检测（当起点位于盒内时直接判定命中）
 */
 
 namespace VMAP
 {
+    // 通用相交回调适配器
     template<class TValue>
     class IntersectionCallBack
     {
@@ -48,11 +50,13 @@ namespace VMAP
     //==============================================================
     //==============================================================
 
+    // AABox 与射线/移动点相交检测辅助类
     class MyCollisionDetection
     {
         private:
         public:
 
+            // 检测射线/移动点与轴对齐包围盒的首次相交点；若 origin 在盒内则置 Inside=true 并直接返回 origin
             static bool collisionLocationForMovingPointFixedAABox(
                 const G3D::Vector3&     origin,
                 const G3D::Vector3&     dir,

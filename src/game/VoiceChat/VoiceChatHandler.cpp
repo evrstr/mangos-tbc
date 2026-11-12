@@ -21,22 +21,25 @@
 #include "Server/WorldSession.h"
 #include "Log/Log.h"
 
+// 处理客户端启用/禁用语音聊天会话请求（当前仅跳过字段并输出十六进制调试日志）
 void WorldSession::HandleVoiceSessionEnableOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: CMSG_VOICE_SESSION_ENABLE");
-    // uint8 isVoiceEnabled, uint8 isMicrophoneEnabled
+    // uint8 isVoiceEnabled, uint8 isMicrophoneEnabled (uint8 是否启用语音，uint8 是否启用麦克风)
     recv_data.read_skip<uint8>();
     recv_data.read_skip<uint8>();
     recv_data.hexlike();
 }
 
+// 处理频道右键菜单开启语音请求（仅输出调试包内容）
 void WorldSession::HandleChannelVoiceOnOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: CMSG_CHANNEL_VOICE_ON");
-    // Enable Voice button in channel context menu
+    // Enable Voice button in channel context menu (在频道上下文菜单中启用语音按钮)
     recv_data.hexlike();
 }
 
+// 处理设置当前激活语音频道请求（仅跳过参数并输出调试包内容）
 void WorldSession::HandleSetActiveVoiceChannel(WorldPacket& recv_data)
 {
     DEBUG_LOG("WORLD: CMSG_SET_ACTIVE_VOICE_CHANNEL");

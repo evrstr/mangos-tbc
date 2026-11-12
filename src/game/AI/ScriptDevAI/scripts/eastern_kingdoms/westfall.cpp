@@ -22,6 +22,8 @@ SDCategory: Westfall
 EndScriptData
 */
 
+// 西部荒野（Westfall）迪菲亚兄弟会侦查与哨兵岭防御脚本
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/escort_ai.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
@@ -36,25 +38,27 @@ EndContentData */
 ## npc_daphne_stilwell
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    YELL_DEFIAS_START   = -1000412,
-    YELL_DAPHNE_START   = -1000413,
-    SAY_DS_START        = -1000293,
-    SAY_WAVE_DOWN_1     = -1000294,
-    SAY_WAVE_DOWN_2     = -1000295,
-    SAY_WAVE_DOWN_3     = -1000414,
-    SAY_DS_DOWN_3       = -1000296,
-    SAY_DS_PROLOGUE     = -1000297,
+    YELL_DEFIAS_START   = -1000412,                         // defias开始 大喊台词广播 ID
+    YELL_DAPHNE_START   = -1000413,                         // daphne开始 大喊台词广播 ID
+    SAY_DS_START        = -1000293,                         // ds开始 台词广播 ID
+    SAY_WAVE_DOWN_1     = -1000294,                         // wavedown1 台词广播 ID
+    SAY_WAVE_DOWN_2     = -1000295,                         // wavedown2 台词广播 ID
+    SAY_WAVE_DOWN_3     = -1000414,                         // wavedown3 台词广播 ID
+    SAY_DS_DOWN_3       = -1000296,                         // dsdown3 台词广播 ID
+    SAY_DS_PROLOGUE     = -1000297,                         // dsprologue 台词广播 ID
 
-    SPELL_SHOOT         = 6660,
-    QUEST_TOME_VALOR    = 1651,
-    NPC_DEFIAS_RAIDER   = 6180,
-    EQUIP_ID_RIFLE      = 2511,
+    SPELL_SHOOT         = 6660,                             // shoot 法术 ID
+    QUEST_TOME_VALOR    = 1651,                             // tomevalor 任务 ID
+    NPC_DEFIAS_RAIDER   = 6180,                             // defiasraider Entry ID
+    EQUIP_ID_RIFLE      = 2511,                             // IDrifle 标识 ID
 
-    DAPHNE_SHOOT_CD     = 2000
+    DAPHNE_SHOOT_CD     = 2000                              // shootcd 标识 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum Wave
 {
     FIRST,
@@ -83,6 +87,7 @@ float RaiderCoords[15][3] =
     {-11467.391f, 1537.989f, 50.726f}  // WP5b
 };
 
+// 随从/NPC AI：stilwell（daphne_stilwell）
 struct npc_daphne_stilwellAI : public npc_escortAI
 {
     npc_daphne_stilwellAI(Creature* creature) : npc_escortAI(creature)
@@ -98,6 +103,7 @@ struct npc_daphne_stilwellAI : public npc_escortAI
 
     GuidList m_summonedRaidersGUIDs;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         // Don't reset while escorting
@@ -231,18 +237,21 @@ struct npc_daphne_stilwellAI : public npc_escortAI
         SetCombatMovement(false);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
             m_creature->SetSheath(SHEATH_STATE_RANGED);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_DEFIAS_RAIDER)
             m_summonedRaidersGUIDs.push_back(summoned->GetObjectGuid());
     }
 
+    // 召唤生物死亡回调
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         m_summonedRaidersGUIDs.remove(summoned->GetObjectGuid());
@@ -280,6 +289,7 @@ struct npc_daphne_stilwellAI : public npc_escortAI
             m_summonedRaidersGUIDs.remove(summoned->GetObjectGuid());
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         m_summonedRaidersGUIDs.clear();
@@ -308,10 +318,11 @@ struct npc_daphne_stilwellAI : public npc_escortAI
         else
             m_shootTimer -= diff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 任务接取回调函数：npc_daphne_stilwell
 bool QuestAccept_npc_daphne_stilwell(Player* player, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_TOME_VALOR)
@@ -325,6 +336,7 @@ bool QuestAccept_npc_daphne_stilwell(Player* player, Creature* creature, const Q
     return true;
 }
 
+// 创建并返回 AI 实例工厂函数：npc_daphne_stilwell
 UnitAI* GetAI_npc_daphne_stilwell(Creature* creature)
 {
     return new npc_daphne_stilwellAI(creature);
@@ -334,20 +346,22 @@ UnitAI* GetAI_npc_daphne_stilwell(Creature* creature)
 ## npc_defias_traitor
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_START                = 9,
-    SAY_PROGRESS             = 10,
-    SAY_END                  = 11,
+    SAY_START                = 9,                           // 开始 台词广播 ID
+    SAY_PROGRESS             = 10,                          // progress 台词广播 ID
+    SAY_END                  = 11,                          // end 台词广播 ID
 
-    SAY_AGGRO_1              = 487,
-    SAY_AGGRO_2              = 485,
-    SAY_AGGRO_3              = 489,
+    SAY_AGGRO_1              = 487,                         // 开战1 台词广播 ID
+    SAY_AGGRO_2              = 485,                         // 开战2 台词广播 ID
+    SAY_AGGRO_3              = 489,                         // 开战3 台词广播 ID
 
-    DEFIAS_TRAITOR_PATH      = 467,
-    QUEST_DEFIAS_BROTHERHOOD = 155
+    DEFIAS_TRAITOR_PATH      = 467,                         // traitor路径 标识 ID
+    QUEST_DEFIAS_BROTHERHOOD = 155                          // defiasbrotherhood 任务 ID
 };
 
+// 随从/NPC AI：traitor（defias_traitor）
 struct npc_defias_traitorAI : public npc_escortAI
 {
     npc_defias_traitorAI(Creature* creature) : npc_escortAI(creature)
@@ -376,6 +390,7 @@ struct npc_defias_traitorAI : public npc_escortAI
         }
     }
 
+    // 进入战斗回调：记录开战状态并启动技能循环
     void Aggro(Unit* who) override
     {
         switch (urand(0, 3))
@@ -386,9 +401,11 @@ struct npc_defias_traitorAI : public npc_escortAI
         }
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override { }
 };
 
+// 任务接取回调函数：npc_defias_traitor
 bool QuestAccept_npc_defias_traitor(Player* player, Creature* creature, const Quest* quest)
 {
     if (quest->GetQuestId() == QUEST_DEFIAS_BROTHERHOOD)
@@ -396,7 +413,7 @@ bool QuestAccept_npc_defias_traitor(Player* player, Creature* creature, const Qu
         DoBroadcastText(SAY_START, creature, player);
 
         if (npc_defias_traitorAI* escortAI = dynamic_cast<npc_defias_traitorAI*>(creature->AI()))
-            escortAI->Start(true, player, quest, true, false, DEFIAS_TRAITOR_PATH); // instant respawn
+            escortAI->Start(true, player, quest, true, false, DEFIAS_TRAITOR_PATH); // instant respawn (instant刷新)
     }
 
     return true;
@@ -406,11 +423,13 @@ bool QuestAccept_npc_defias_traitor(Player* player, Creature* creature, const Qu
 ## npc_foreman_klaven_mortwake
 ######*/
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum KlavenMortwake
 {
-    SAY_STEALTH_ALERT_MORTWAKE = 3092
+    SAY_STEALTH_ALERT_MORTWAKE = 3092                       // 潜行alertmortwake 台词广播 ID
 };
 
+// 随从/NPC AI：klavenmortwake（foreman_klaven_mortwake）
 struct npc_foreman_klaven_mortwakeAI : public ScriptedAI
 {
     npc_foreman_klaven_mortwakeAI(Creature* creature) : ScriptedAI(creature)
@@ -418,6 +437,7 @@ struct npc_foreman_klaven_mortwakeAI : public ScriptedAI
         Reset();
     }
 
+    // 重置战斗状态与技能计时器
     void Reset() override {}
 
     void OnStealthAlert(Unit* who) override
@@ -426,6 +446,7 @@ struct npc_foreman_klaven_mortwakeAI : public ScriptedAI
     }
 };
 
+// 注册并载入脚本模块：westfall
 void AddSC_westfall()
 {
     Script* pNewScript = new Script;

@@ -48,13 +48,13 @@ uint32 WorldTimer::tickPrevTime() { return m_iPrevTime; }
 
 uint32 WorldTimer::tick()
 {
-    // save previous world tick time
+    // save previous world tick time | 保存上一帧世界 Tick 时间戳
     m_iPrevTime = m_iTime;
 
-    // get the new one and don't forget to persist current system time in m_SystemTickTime
+    // get the new one and don't forget to persist current system time in m_SystemTickTime | 读取当前最新单调毫秒时间
     m_iTime = WorldTimer::getMSTime();
 
-    // return tick diff
+    // return tick diff | 返回两帧之间的毫秒耗时差
     return getMSTimeDiff(m_iPrevTime, m_iTime);
 }
 
@@ -253,7 +253,7 @@ uint32 TimeStringToSecs(const std::string& timestring)
                 case 'h': multiplier = HOUR;    break;
                 case 'm': multiplier = MINUTE;  break;
                 case 's': multiplier = 1;       break;
-                default : return 0;                         // bad format
+                default : return 0;                         // bad format | 非法时间单位字符
             }
             buffer *= multiplier;
             secs += buffer;
@@ -267,12 +267,12 @@ uint32 TimeStringToSecs(const std::string& timestring)
 std::string TimeToTimestampStr(time_t t)
 {
     tm* aTm = localtime(&t);
-    //       YYYY   year
-    //       MM     month (2 digits 01-12)
-    //       DD     day (2 digits 01-31)
-    //       HH     hour (2 digits 00-23)
-    //       MM     minutes (2 digits 00-59)
-    //       SS     seconds (2 digits 00-59)
+    //       YYYY   year | 年
+    //       MM     month (2 digits 01-12) | 月（两位 01-12）
+    //       DD     day (2 digits 01-31) | 日（两位 01-31）
+    //       HH     hour (2 digits 00-23) | 时（两位 00-23）
+    //       MM     minutes (2 digits 00-59) | 分（两位 00-59）
+    //       SS     seconds (2 digits 00-59) | 秒（两位 00-59）
     char buf[20];
     int snRes = snprintf(buf, 20, "%04d-%02d-%02d_%02d-%02d-%02d", aTm->tm_year + 1900, aTm->tm_mon + 1, aTm->tm_mday, aTm->tm_hour, aTm->tm_min, aTm->tm_sec);
     if (snRes < 0 || snRes >= sizeof(buf))
@@ -295,7 +295,7 @@ time_t timeBitFieldsToSecs(uint32 packedDate)
     return time_t(mktime(&lt));
 }
 
-/// Check if the string is a valid ip address representation
+/// Check if the string is a valid ip address representation | 校验字符串是否为合法 IP 地址表示
 bool IsIPAddress(char const* ipaddress)
 {
     if (!ipaddress)
@@ -303,12 +303,13 @@ bool IsIPAddress(char const* ipaddress)
 
     // Let the big boys do it.
     // Drawback: all valid ip address formats are recognized e.g.: 12.23,121234,0xABCD)
+    // | 交由 boost::asio::ip::make_address 解析校验（注意：也会识别简化整数/十六进制等合法 IP 写法）
     boost::system::error_code ec;
     boost::asio::ip::make_address(ipaddress, ec);
     return ec.value() == 0;
 }
 
-/// create PID file
+/// create PID file | 创建并写入当前进程 PID 文件
 uint32 CreatePIDFile(const std::string& filename)
 {
     FILE* pid_file = fopen(filename.c_str(), "w");
@@ -342,6 +343,8 @@ bool Utf8toWStr(const std::string& utf8str, std::wstring& wstr, size_t max_len)
         // The UTF8 string may also actually be ASCII, in which case no truncation
         // takes place! The final string length is therefore unknown. Reserve
         // as long as the OG string, and back-insert
+        // | 单个 UTF-8 字符最多占 4 字节（对应至多 2 个 UTF-16 码元），而纯 ASCII 时等长；
+        // | 因此先按原 UTF-8 字节数预分配长度，转换后再裁剪尾部多余空间。
         wstr.resize(utf8str.size());
 
         auto end = utf8::utf8to16(utf8str.cbegin(), utf8str.cend(), wstr.begin());
@@ -349,7 +352,7 @@ bool Utf8toWStr(const std::string& utf8str, std::wstring& wstr, size_t max_len)
         if (end != wstr.end())
             wstr.erase(end, wstr.end());
 
-        // truncate to max len
+        // truncate to max len | 按最大字符数截断
         if (!!max_len && wstr.size() > max_len)
         {
             wstr.resize(max_len);
@@ -387,7 +390,7 @@ size_t utf8limit(std::string& utf8str, size_t bytes)
             auto end = (utf8str.cbegin() + bytes);
             auto itr = utf8::find_invalid(utf8str.cbegin(), end);
 
-            // Fix UTF8 if it was corrupted by bytes truncated
+            // Fix UTF8 if it was corrupted by bytes truncated | 若按字节截断破坏了多字节 UTF-8 字符边界，则回退到最后一个有效字符结尾
             if (itr != end)
                 bytes = std::distance(utf8str.cbegin(), itr);
 
@@ -424,7 +427,7 @@ bool WStrToUtf8(const std::wstring& wstr, std::string& utf8str)
     try
     {
         std::string utf8str2;
-        utf8str2.resize(wstr.size() * 4);                   // allocate for most long case
+        utf8str2.resize(wstr.size() * 4);                   // allocate for most long case | 按最坏情况（每字符 4 字节）预分配空间
 
         auto end = utf8::utf16to8(wstr.cbegin(), wstr.cend(), utf8str2.begin());
         if (end != utf8str2.end())
@@ -445,11 +448,11 @@ typedef wchar_t const* const* wstrlist;
 
 std::wstring GetMainPartOfName(const std::wstring& wname, uint32 declension)
 {
-    // supported only Cyrillic cases
+    // supported only Cyrillic cases | 仅支持俄语/西里尔字母角色名的变格词尾剥离
     if (wname.empty() || !isCyrillicCharacter(wname[0]) || declension > 5)
         return wname;
 
-    // Important: end length must be <= MAX_INTERNAL_PLAYER_NAME-MAX_PLAYER_NAME (3 currently)
+    // Important: end length must be <= MAX_INTERNAL_PLAYER_NAME-MAX_PLAYER_NAME (3 currently) | 注意：词尾长度不得超过 MAX_INTERNAL_PLAYER_NAME - MAX_PLAYER_NAME（当前为 3）
 
     static wchar_t const a_End[]    = { wchar_t(1), wchar_t(0x0430), wchar_t(0x0000)};
     static wchar_t const o_End[]    = { wchar_t(1), wchar_t(0x043E), wchar_t(0x0000)};
@@ -480,7 +483,7 @@ std::wstring GetMainPartOfName(const std::wstring& wname, uint32 declension)
 
     for (wchar_t const * const* itr = &dropEnds[declension][0]; *itr; ++itr)
     {
-        size_t len = size_t((*itr)[-1]);                    // get length from string size field
+        size_t len = size_t((*itr)[-1]);                    // get length from string size field | 从词尾数组前导长度元素读取后缀长度
 
         if (wname.substr(wname.size() - len, len) == *itr)
             return wname.substr(0, wname.size() - len);
@@ -499,7 +502,7 @@ bool utf8ToConsole(const std::string& utf8str, std::string& conStr)
     conStr.resize(wstr.size());
     CharToOemBuffW(&wstr[0], &conStr[0], wstr.size());
 #else
-    // not implemented yet
+    // not implemented yet | 非 Windows 平台直接透传（终端默认即 UTF-8）
     conStr = utf8str;
 #endif
 
@@ -515,7 +518,7 @@ bool consoleToUtf8(const std::string& conStr, std::string& utf8str)
 
     return WStrToUtf8(wstr, utf8str);
 #else
-    // not implemented yet
+    // not implemented yet | 非 Windows 平台直接透传
     utf8str = conStr;
     return true;
 #endif
@@ -528,7 +531,7 @@ bool Utf8FitTo(const std::string& str, const std::wstring& search)
     if (!Utf8toWStr(str, temp))
         return false;
 
-    // converting to lower case
+    // converting to lower case | 转为小写后执行子串匹配
     wstrToLower(temp);
 
     return temp.find(search) != std::wstring::npos;
@@ -550,7 +553,7 @@ void vutf8printf(FILE* out, const char* str, va_list* ap)
     std::wstring wtemp_buf;
 
     size_t temp_len = vsnprintf(&temp_buf[0], 32 * 1024, str, *ap);
-    temp_buf.resize(strlen(temp_buf.c_str())); // Resize to match the formatted string
+    temp_buf.resize(strlen(temp_buf.c_str())); // Resize to match the formatted string | 按格式化后的实际字符串长度裁剪缓冲区
 
     if (!temp_buf.empty())
     {

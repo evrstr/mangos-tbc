@@ -21,6 +21,10 @@ SDComment:
 SDCategory: Zul'Farrak
 EndScriptData */
 
+/**
+ * 祖尔法拉克 (Zul'Farrak) 副本数据管理脚本
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulfarrak.h"
 
@@ -205,14 +209,14 @@ void instance_zulfarrak::Update(uint32 uiDiff)
             GuidList::iterator iter = m_lPyramidTrollsGuidList.begin();
             advance(iter, urand(0, m_lPyramidTrollsGuidList.size() - 1));
 
-            // Remove the selected troll
+            // Remove the selected troll (说明)
             ObjectGuid selectedGuid = *iter;
             m_lPyramidTrollsGuidList.erase(iter);
 
-            // Move the selected troll to the top of the pyramid. Note: the algorythm may be more complicated than this, but for the moment this will do.
+            // Move the selected troll to the top of the pyramid. Note: the algorythm may be more complicated than this, but for the moment this will do. (说明)
             if (Creature* pTroll = instance->GetCreature(selectedGuid))
             {
-                // Pick another one if already in combat or already killed
+                // Pick another one if already in combat or already killed (说明)
                 if (pTroll->GetVictim() || !pTroll->IsAlive())
                 {
                     m_uiPyramidEventTimer = urand(0, 2) ? urand(3000, 10000) : 1000;
@@ -222,7 +226,7 @@ void instance_zulfarrak::Update(uint32 uiDiff)
                 float fX, fY, fZ;
                 if (Creature* pBly = GetSingleCreatureFromStorage(NPC_SERGEANT_BLY))
                 {
-                    // ToDo: research if there is anything special if these guys die
+                    // ToDo: research if there is anything special if these guys die (说明)
                     if (!pBly->IsAlive())
                     {
                         m_uiPyramidEventTimer = 0;
@@ -241,12 +245,12 @@ void instance_zulfarrak::Update(uint32 uiDiff)
     }
 }
 
-InstanceData* GetInstanceData_instance_zulfarrak(Map* pMap)
+InstanceData* GetInstanceData_instance_zulfarrak(Map* pMap) // 创建并返回副本数据实例
 {
     return new instance_zulfarrak(pMap);
 }
 
-void AddSC_instance_zulfarrak()
+void AddSC_instance_zulfarrak() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "instance_zulfarrak";

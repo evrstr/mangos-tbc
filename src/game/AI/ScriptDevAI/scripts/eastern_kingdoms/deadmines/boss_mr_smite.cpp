@@ -21,41 +21,46 @@ SDComment:
 SDCategory: Deadmines
 EndScriptData */
 
+// 重拳先生（Mr. Smite）首领战 AI（三阶段武器切换：单手锤、双持、大剑与践踏昏迷）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "deadmines.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_PHASE_2                     = -1036002,
-    SAY_PHASE_3                     = -1036003,
+    SAY_PHASE_2                     = -1036002,             // 阶段2 台词广播 ID
+    SAY_PHASE_3                     = -1036003,             // 阶段3 台词广播 ID
 
     // EQUIP_ID_SWORD               = 2179,                 // default equipment, not used in code
-    EQUIP_ID_AXE                    = 2183,
-    EQUIP_ID_HAMMER                 = 10756,
+    EQUIP_ID_AXE                    = 2183,                 // IDaxe 标识 ID
+    EQUIP_ID_HAMMER                 = 10756,                // IDhammer 标识 ID
 
     SPELL_NIBLE_REFLEXES            = 6433,                 // removed after phase 1
     SPELL_SMITE_SLAM                = 6435,                 // only casted in phase 3
-    SPELL_SMITE_STOMP               = 6432,
+    SPELL_SMITE_STOMP               = 6432,                 // 重拳先生stomp 法术 ID
     SPELL_SMITE_HAMMER              = 6436,                 // unclear, not casted in sniff
     SPELL_THRASH                    = 12787,                // only casted in phase 2; unclear, 3391 directly casted in sniff
 
-    PHASE_1                         = 1,
-    PHASE_2                         = 2,
-    PHASE_3                         = 3,
-    PHASE_EQUIP_NULL                = 4,
-    PHASE_EQUIP_START               = 5,
-    PHASE_EQUIP_PROCESS             = 6,
-    PHASE_EQUIP_END                 = 7,
+    PHASE_1                         = 1,                    // 1 阶段 ID
+    PHASE_2                         = 2,                    // 2 阶段 ID
+    PHASE_3                         = 3,                    // 3 阶段 ID
+    PHASE_EQUIP_NULL                = 4,                    // equipnull 阶段 ID
+    PHASE_EQUIP_START               = 5,                    // equip开始 阶段 ID
+    PHASE_EQUIP_PROCESS             = 6,                    // equipprocess 阶段 ID
+    PHASE_EQUIP_END                 = 7,                    // equipend 阶段 ID
 };
 
+// 首领战 AI：重拳先生（mr_smite）
 struct boss_mr_smiteAI : public ScriptedAI
 {
     boss_mr_smiteAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 m_uiPhase;
-    uint32 m_uiEquipTimer;
-    uint32 m_uiSlamTimer;
+    uint32 m_uiPhase;                                       // 战斗阶段标识
+    uint32 m_uiEquipTimer;                                  // Equip 技能计时器
+    uint32 m_uiSlamTimer;                                   // Slam 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiPhase = PHASE_1;
@@ -87,6 +92,7 @@ struct boss_mr_smiteAI : public ScriptedAI
         ScriptedAI::AttackStart(pWho);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         DoCastSpellIfCan(m_creature, SPELL_NIBLE_REFLEXES, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
@@ -164,6 +170,7 @@ struct boss_mr_smiteAI : public ScriptedAI
         AttackStart(pVictim);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -208,7 +215,7 @@ struct boss_mr_smiteAI : public ScriptedAI
                         m_uiPhase = PHASE_EQUIP_START;
                         m_uiEquipTimer = 2500;
 
-                        // will clear GetVictim (m_attacking)
+                        // will clear GetVictim (m_attacking) (清除当前受害者目标)
                         m_creature->AttackStop(true);
                         m_creature->RemoveAurasDueToSpell(SPELL_NIBLE_REFLEXES);
                     }
@@ -226,7 +233,7 @@ struct boss_mr_smiteAI : public ScriptedAI
                         m_uiPhase = PHASE_EQUIP_START;
                         m_uiEquipTimer = 2500;
 
-                        // will clear GetVictim (m_attacking)
+                        // will clear GetVictim (m_attacking) (清除当前受害者目标)
                         m_creature->AttackStop(true);
                         m_creature->RemoveAurasDueToSpell(SPELL_THRASH);
                     }
@@ -248,15 +255,17 @@ struct boss_mr_smiteAI : public ScriptedAI
             }
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_mr_smite
 UnitAI* GetAI_boss_mr_smite(Creature* pCreature)
 {
     return new boss_mr_smiteAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_mr_smite
 void AddSC_boss_mr_smite()
 {
     Script* pNewScript = new Script;

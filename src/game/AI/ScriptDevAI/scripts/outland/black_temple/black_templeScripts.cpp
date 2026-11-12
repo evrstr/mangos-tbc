@@ -21,6 +21,11 @@ SDComment: Placeholder
 SDCategory: Black Temple
 EndScriptData */
 
+// 黑暗神殿通用与杂项脚本
+/* 遭遇战概述：
+ * 封装黑暗神殿内的事件触发器、灰舌死誓者 NPC 与各类环境交互逻辑。
+ */
+
 /* ContentData
 npc_greater_shadowfiend
 EndContentData */
@@ -40,6 +45,7 @@ struct npc_greater_shadowfiend : public ScriptedAI
 {
     npc_greater_shadowfiend(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         DoCastSpellIfCan(m_creature, SPELL_SHADOWFORM);
@@ -53,6 +59,7 @@ struct npc_greater_shadowfiend : public ScriptedAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_COMBAT_RAGE   = 41251,
@@ -68,6 +75,7 @@ enum
     SAY_KILLING_FRENZY  = -1564145,
 };
 
+// BonechewerActions 相关枚举
 enum BonechewerActions
 {
     BONECHEWER_STOP_EVENT,
@@ -86,6 +94,7 @@ struct npc_bonechewer_brawler : public CombatAI
         AddCombatAction(BONECHEWER_FRENZY, 7000, 14000);
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -94,6 +103,7 @@ struct npc_bonechewer_brawler : public CombatAI
 
     bool m_eventStarted;
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         CombatAI::JustReachedHome();
@@ -118,6 +128,7 @@ struct npc_bonechewer_brawler : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -162,6 +173,7 @@ struct npc_bonechewer_combatant : public CombatAI
         AddCustomAction(BONECHEWER_START_EVENT, 25000u, [&]() { HandleEventStart(); });
     }
 
+    // 遭遇战/状态重置回调
     void Reset() override
     {
         CombatAI::Reset();
@@ -170,6 +182,7 @@ struct npc_bonechewer_combatant : public CombatAI
 
     bool m_eventStarted;
 
+    // 脱战归位回调
     void JustReachedHome() override
     {
         CombatAI::JustReachedHome();
@@ -190,6 +203,7 @@ struct npc_bonechewer_combatant : public CombatAI
         }
     }
 
+    // 执行战斗行为动作
     void ExecuteAction(uint32 action) override
     {
         switch (action)
@@ -220,6 +234,7 @@ struct npc_bonechewer_combatant : public CombatAI
         }
     }
 
+    // AI 逻辑帧更新
     void UpdateAI(const uint32 diff) override
     {
         CombatAI::UpdateAI(diff);
@@ -240,11 +255,13 @@ struct npc_bonechewer_combatant : public CombatAI
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_CHAOTIC_CHARGE = 41033,
 };
 
+// SpellAbsorption 光环脚本
 struct SpellAbsorption : public AuraScript
 {
     bool OnCheckProc(Aura* /*aura*/, ProcExecutionData& data) const override
@@ -260,13 +277,16 @@ struct SpellAbsorption : public AuraScript
     }
 };
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SPELL_FOCUSED = 40085,
 };
 
+// HarpoonersMark 光环脚本
 struct HarpoonersMark : public AuraScript
 {
+    // 光环应用/移除回调
     void OnApply(Aura* aura, bool apply) const override
     {
         if (apply)
@@ -279,6 +299,7 @@ struct HarpoonersMark : public AuraScript
     }
 };
 
+// AssistBT 法术脚本
 struct AssistBT : public SpellScript
 {
     bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
@@ -288,6 +309,7 @@ struct AssistBT : public SpellScript
         return true;
     }
 
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* unitTarget = spell->GetUnitTarget();
@@ -298,8 +320,10 @@ struct AssistBT : public SpellScript
     }
 };
 
+// FixateBT 法术脚本
 struct FixateBT : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (effIdx != EFFECT_INDEX_2)
@@ -314,8 +338,10 @@ struct FixateBT : public SpellScript
     }
 };
 
+// StormBlink 法术脚本
 struct StormBlink : public SpellScript
 {
+    // 法术效果执行回调
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
         if (!spell->GetUnitTarget() || effIdx != EFFECT_INDEX_0)
@@ -324,6 +350,7 @@ struct StormBlink : public SpellScript
     }
 };
 
+// 注册 black_temple 脚本
 void AddSC_black_temple()
 {
     Script* pNewScript = new Script;

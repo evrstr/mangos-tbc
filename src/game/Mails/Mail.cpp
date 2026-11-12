@@ -36,7 +36,7 @@
 #include "Loot/LootMgr.h"
 
 /**
- * Creates a new MailSender object.
+ * Creates a new MailSender object. (根据生物、游戏对象、物品或玩家对象构造 MailSender)
  *
  * @param sender The object/player sending this mail.
  * @param stationery The stationary associated with this sender.
@@ -70,7 +70,7 @@ MailSender::MailSender(Object* sender, MailStationery stationery) : m_stationery
     }
 }
 /**
- * Creates a new MailSender object from an AuctionEntry.
+ * Creates a new MailSender object from an AuctionEntry. (由拍卖条目构造拍卖行发件人)
  *
  * @param sender the AuctionEntry from which this mail is generated.
  */
@@ -131,7 +131,7 @@ MailDraft& MailDraft::AddItem(Item* item)
     return *this;
 }
 /**
- * Prepares the items in a MailDraft.
+ * Prepares the items in a MailDraft. (若草稿绑定了 MailTemplate，则为在线收件人生成附件物品)
  */
 bool MailDraft::prepareItems(Player* receiver)
 {
@@ -161,7 +161,7 @@ bool MailDraft::prepareItems(Player* receiver)
     return true;
 }
 /**
- * Deletes the items included in a MailDraft.
+ * Deletes the items included in a MailDraft. (释放草稿附带物品内存，inDB=true 时同步删除数据库记录)
  *
  * @param inDB A boolean specifying whether the change should be saved to the database or not.
  */
@@ -180,7 +180,7 @@ void MailDraft::deleteIncludedItems(bool inDB /**= false*/)
     m_items.clear();
 }
 /**
- * Clone MailDraft from another MailDraft.
+ * Clone MailDraft from another MailDraft. (深度克隆邮件草稿，包括正文文本及附件物品实例，常用于群发邮件)
  *
  * @param draft Point to source for draft cloning.
  */
@@ -214,7 +214,7 @@ void MailDraft::CloneFrom(MailDraft const& draft)
 }
 
 /*
- * Returns a mail to its sender.
+ * Returns a mail to its sender. (将邮件退回原发件人，跨账号附带物品时应用投递延迟)
  * @param sender_acc           The id of the account of the sender.
  * @param sender_guid          The low part of the GUID of the sender.
  * @param receiver_guid        The low part of the GUID of the receiver.
@@ -260,7 +260,7 @@ void MailDraft::SendReturnToSender(uint32 sender_acc, ObjectGuid sender_guid, Ob
     SendMailTo(MailReceiver(receiver, receiver_guid), MailSender(MAIL_NORMAL, sender_guid.GetCounter()), MAIL_CHECK_MASK_RETURNED, deliver_delay);
 }
 /**
- * Sends a mail.
+ * Sends a mail. (投递邮件：写入 mail 与 mail_items 表，在线收件人同步更新内存邮箱并计算过期时间)
  *
  * @param receiver             The MailReceiver to which this mail is sent.
  * @param sender               The MailSender from which this mail is originated.
@@ -367,6 +367,7 @@ void MailDraft::SendMailTo(MailReceiver const& receiver, MailSender const& sende
 
 /**
  * Generate items from template at mails loading (this happens when mail with mail template items send in time when receiver has been offline)
+ * 玩家离线期间收到的模板邮件，在玩家上线加载邮箱时补全生成邮件模板物品
  *
  * @param receiver             reciver of mail
  */

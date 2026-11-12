@@ -32,6 +32,7 @@
 #include <cassert>
 
 //-----------------------------------------------//
+/// 从 WaypointManager 加载指定来源的路点表并初始化首节点；若仅 1 个路点且无停顿则强制补 5 秒延迟防死循环
 void WaypointMovementGenerator<Creature>::LoadPath(Creature& creature, int32 pathId, WaypointPathOrigin wpOrigin, uint32 overwriteEntry)
 {
     DETAIL_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "LoadPath: loading waypoint path for %s", creature.GetGuidStr().c_str());
@@ -174,9 +175,10 @@ void WaypointMovementGenerator<Creature>::SwitchToNextNode(Creature& /*creature*
     }
 }
 
+/// 到达当前目标路点后的处理：触发节点脚本、通知 AI、保存复位点并决定等待或直连下一点
 void WaypointMovementGenerator<Creature>::OnArrived(Creature& creature)
 {
-    // already arrived?
+    // already arrived? (避免同一节点重复触发到达逻辑)
     if (m_lastReachedWaypoint == i_currentNode)
         return;
 
@@ -190,13 +192,13 @@ void WaypointMovementGenerator<Creature>::OnArrived(Creature& creature)
         creature.GetMap()->ScriptsStart(SCRIPT_TYPE_CREATURE_MOVEMENT, node.script_id, &creature, m_guid ? creature.GetMap()->GetWorldObject(m_guid) : &creature);
     }
 
-    // Inform script
+    // Inform script (通知生物 AI 到达路点)
     if (creature.AI())
     {
         bool inform = false;
         if (m_PathOrigin == PATH_FROM_EXTERNAL)
             inform = true;
-        else if (m_PathOrigin == PATH_FROM_WAYPOINT_PATH) // temporary transitional code for transitioning from script_texts to waypoint_path
+        else if (m_PathOrigin == PATH_FROM_WAYPOINT_PATH) // temporary transitional code for transitioning from script_texts to waypoint_path (兼容过渡期外部/waypoint_path 通知判断)
         {
             if (m_pathId == creature.AI()->GetCurrentWaypointPath())
                 inform = true;
@@ -208,22 +210,23 @@ void WaypointMovementGenerator<Creature>::OnArrived(Creature& creature)
         InformAI(creature, type, i_currentNode);
     }
 
-    // save position and orientation in case of GetResetPosition() call
+    // save position and orientation in case of GetResetPosition() call (记录当前已到达坐标供脱战返巢使用)
     m_resetPoint = creature.GetPosition(creature.GetTransport());
 
-    // AI can modify node delay so we have to compute it
+    // AI can modify node delay so we have to compute it (叠加脚本动态修改的停顿补偿时间)
     int32 newWaitTime = node.delay + m_scriptTime;
 
-    // switch to next node
+    // switch to next node (游标推进到下一路点)
     SwitchToNextNode(creature, m_currentWaypointNode);
 
-    // Wait delay ms
+    // Wait delay ms (存在正停顿时间则停止移动并进入倒计时)
     if (newWaitTime > 0)
     {
         creature.clearUnitState(UNIT_STAT_ROAMING_MOVE);
         Stop(newWaitTime);
 
         // if script modified the node delay we already sent path to client to move the creature so we have to stop it manually
+        // 若节点原延迟为 0（已提前拼接发送后续路径），而脚本将其改为了停顿，需显式发送 Stop 通知客户端停下
         if (!creature.movespline->Finalized() && node.delay == 0 && m_scriptTime != 0)
         {
             Movement::MoveSplineInit init(creature);
@@ -232,11 +235,12 @@ void WaypointMovementGenerator<Creature>::OnArrived(Creature& creature)
     }
     else if (newWaitTime == 0 && node.delay != 0)
     {
-        // we have to manually restart movement as script changed the node delay to 0
+        // we have to manually restart movement as script changed the node delay to 0 (脚本将原停顿归零时立即重启移动)
         SendNextWayPointPath(creature);
     }
 
     // Fire event only if it is already moving to the next node (for normal start it is already done in SendNewPath)
+    // 若通过预拼接样条直接不停顿过渡到下一段，补充触发 EXTERNAL_WAYPOINT_MOVE_START
     if (!m_nodeIndexes.empty() && !Stopped(creature))
     {
         bool inform = false;
@@ -258,6 +262,7 @@ void WaypointMovementGenerator<Creature>::OnArrived(Creature& creature)
 }
 
 // return added travel time - TODO: implement caching of path
+// 借助 PathFinder 构建当前尾部坐标到下一路点的寻路点列，并估算新增移动耗时（毫秒）
 uint32 WaypointMovementGenerator<Creature>::BuildIntPath(PointsArray& path, Creature& creature, Vector3 const& endPos)
 {
     Vector3 startPos = path.back();
@@ -301,11 +306,13 @@ bool WaypointMovementGenerator<Creature>::GetNodeAfter(WaypointPath::const_itera
 }
 
 // minimum time that will take the unit to travel the path (much higher value have been seen in sniff)
+// 单次下发样条的最小覆盖时长（6 秒），无停顿路点会连续拼接直至达到该时长以保证客户端移动平滑
 static const uint32 MinimumPathTime = 6000;
 // client need to receive new path before the end of previous path (much higher value have been seen in sniff)
+// 提前续发下一段路径的时间余量（1.5 秒），避免客户端走到末端出现短暂停顿
 static const uint32 PreSendTime     = 1500;
 
-// build and send path to next node
+// build and send path to next node (构建并向客户端下发前往下一组路点的移动样条)
 void WaypointMovementGenerator<Creature>::SendNextWayPointPath(Creature& creature)
 {
     // make sure to reset spline index as its new path
@@ -620,6 +627,7 @@ bool WaypointMovementGenerator<Creature>::SetNextWaypoint(uint32 pointId)
     return true;
 }
 
+/// 往返线性路点推进：到达尾端后折返向首端移动，到达首端再正向推进，并触发编队端节点钩子
 void LinearWPMovementGenerator<Creature>::SwitchToNextNode(Creature& creature, WaypointPath::const_iterator& nodeItr)
 {
     // switch to next node

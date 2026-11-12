@@ -21,27 +21,31 @@ SDComment:
 SDCategory: Molten Core
 EndScriptData */
 
+// 焚化者古雷曼格（Golemagg the Incinerator）8号首领战 AI（古雷曼格的信任、熔岩巨犬护卫与地震术）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SPELL_MAGMA_SPLASH      = 13879,
-    SPELL_PYROBLAST         = 20228,
-    SPELL_EARTHQUAKE        = 19798,
+    SPELL_MAGMA_SPLASH      = 13879,                        // magmasplash 法术 ID
+    SPELL_PYROBLAST         = 20228,                        // 炎爆术 法术 ID
+    SPELL_EARTHQUAKE        = 19798,                        // earthquake 法术 ID
     // SPELL_ENRAGE            = 19953, // unconfirmed
-    SPELL_GOLEMAGG_TRUST    = 20556,
-    SPELL_DOUBLE_ATTACK     = 18943,
+    SPELL_GOLEMAGG_TRUST    = 20556,                        // 古雷曼格trust 法术 ID
+    SPELL_DOUBLE_ATTACK     = 18943,                        // 双重攻击 法术 ID
 
     // Core Rager
-    EMOTE_LOW_HP            = -1409002,
-    SPELL_QUIET_SUICIDE     = 3617,
-    SPELL_THRASH            = 12787,
-    SPELL_FULL_HEAL         = 17683,
-    SPELL_MANGLE            = 19820
+    EMOTE_LOW_HP            = -1409002,                     // lowhp 表情动作 ID
+    SPELL_QUIET_SUICIDE     = 3617,                         // 静默自杀 法术 ID
+    SPELL_THRASH            = 12787,                        // thrash 法术 ID
+    SPELL_FULL_HEAL         = 17683,                        // full治疗 法术 ID
+    SPELL_MANGLE            = 19820                         // mangle 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GolemaggActions
 {
     GOLEMAGG_ENRAGE,
@@ -50,6 +54,7 @@ enum GolemaggActions
     GOLEMAGG_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（golemagg）
 struct boss_golemaggAI : public CombatAI
 {
     boss_golemaggAI(Creature* creature) : CombatAI(creature, GOLEMAGG_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -61,6 +66,7 @@ struct boss_golemaggAI : public CombatAI
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -90,6 +96,7 @@ struct boss_golemaggAI : public CombatAI
             m_instance->SetData(TYPE_GOLEMAGG, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -129,6 +136,7 @@ struct boss_golemaggAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum CoreRagerActions
 {
     CORE_RAGER_HEAL,
@@ -136,17 +144,19 @@ enum CoreRagerActions
     CORE_RAGER_ACTION_MAX,
 };
 
+// 随从/NPC AI：rager（core_rager）
 struct mob_core_ragerAI : public CombatAI
 {
     mob_core_ragerAI(Creature* creature) : CombatAI(creature, CORE_RAGER_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
         AddTimerlessCombatAction(CORE_RAGER_HEAL, true);
-        AddCombatAction(CORE_RAGER_MANGLE, uint32(7 * IN_MILLISECONDS)); // These times are probably wrong
+        AddCombatAction(CORE_RAGER_MANGLE, uint32(7 * IN_MILLISECONDS)); // These times are probably wrong (此时间参数可能需进一步校对)
         SetDeathPrevention(true);
     }
 
     ScriptedInstance* m_instance;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -183,6 +193,7 @@ struct mob_core_ragerAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_golemagg
 void AddSC_boss_golemagg()
 {
     Script* pNewScript = new Script;

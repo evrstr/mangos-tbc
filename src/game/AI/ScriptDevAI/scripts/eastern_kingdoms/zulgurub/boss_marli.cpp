@@ -21,40 +21,44 @@ SDComment: Enlarge for small spiders NYI
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 高阶祭司玛尔里（High Priestess Mar'li）蜘蛛祭司首领战 AI（缠绕蛛网、毒液喷射与孵化剧毒幼蛛）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1309005,
-    SAY_TRANSFORM               = -1309006,
-    SAY_TRANSFORM_BACK          = -1309025,
-    SAY_SPIDER_SPAWN            = -1309007,
-    SAY_DEATH                   = -1309008,
+    SAY_AGGRO                   = -1309005,                 // 开战 台词广播 ID
+    SAY_TRANSFORM               = -1309006,                 // 变形 台词广播 ID
+    SAY_TRANSFORM_BACK          = -1309025,                 // 变形back 台词广播 ID
+    SAY_SPIDER_SPAWN            = -1309007,                 // spider生成 台词广播 ID
+    SAY_DEATH                   = -1309008,                 // 死亡 台词广播 ID
 
     // Spider form spells
-    SPELL_CORROSIVE_POISON      = 24111,
-    SPELL_CHARGE                = 22911,
-    SPELL_ENVELOPING_WEBS       = 24110,
-    SPELL_POISON_SHOCK          = 24112,
+    SPELL_CORROSIVE_POISON      = 24111,                    // 腐蚀性毒药 法术 ID
+    SPELL_CHARGE                = 22911,                    // 冲锋 法术 ID
+    SPELL_ENVELOPING_WEBS       = 24110,                    // envelopingwebs 法术 ID
+    SPELL_POISON_SHOCK          = 24112,                    // 毒药震击 法术 ID
 
     // Troll form spells
-    SPELL_POISON_VOLLEY         = 24099,
-    SPELL_DRAIN_LIFE            = 24300,
+    SPELL_POISON_VOLLEY         = 24099,                    // 毒药箭雨 法术 ID
+    SPELL_DRAIN_LIFE            = 24300,                    // 吸取生命 法术 ID
     SPELL_ENLARGE               = 24109,                    // cast on friendlies
     SPELL_SPIDER_EGG            = 24082,                    // removed from DBC - should trigger 24081 which summons 15041
 
     // common spells
-    SPELL_SPIDER_FORM           = 24084,
-    SPELL_TRANSFORM_BACK        = 24085,
-    SPELL_TRASH                 = 3391,
+    SPELL_SPIDER_FORM           = 24084,                    // spiderform 法术 ID
+    SPELL_TRANSFORM_BACK        = 24085,                    // 变形back 法术 ID
+    SPELL_TRASH                 = 3391,                     // trash 法术 ID
     SPELL_HATCH_EGGS            = 24083,                    // note this should only target 4 eggs!
 
-    SPELL_LIST_PHASE_1          = 1450701,
-    SPELL_LIST_PHASE_2          = 1450702,
+    SPELL_LIST_PHASE_1          = 1450701,                  // list阶段1 法术 ID
+    SPELL_LIST_PHASE_2          = 1450702,                  // list阶段2 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum MarliActions
 {
     MARLI_PHASE_CHANGE,
@@ -62,6 +66,7 @@ enum MarliActions
     MARLI_ACTIONS_MAX,
 };
 
+// 首领战 AI：标识 ID（marli）
 struct boss_marliAI : public CombatAI
 {
     boss_marliAI(Creature* creature) : CombatAI(creature, MARLI_ACTIONS_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -74,6 +79,7 @@ struct boss_marliAI : public CombatAI
 
     bool m_phaseTwo;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -102,6 +108,7 @@ struct boss_marliAI : public CombatAI
             ResetCombatAction(MARLI_CHARGE, 1000);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -147,6 +154,7 @@ struct boss_marliAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_marli
 void AddSC_boss_marli()
 {
     Script* pNewScript = new Script;

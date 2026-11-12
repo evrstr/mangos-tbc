@@ -21,39 +21,44 @@ SDComment: Should in addition spawn Myrmidons in the hallway outside
 SDCategory: Scarlet Monastery
 EndScriptData */
 
+// 赫洛德（Herod）军械库首领战 AI（狂暴旋风斩与召唤血色狂徒学徒大军）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/escort_ai.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO              = -1189000,
-    SAY_WHIRLWIND          = -1189001,
-    SAY_ENRAGE             = -1189002,
-    SAY_KILL               = -1189003,
-    EMOTE_GENERIC_ENRAGED  = -1000003,
-    GENERIC_EMOTE_FLEE     = 1150,
+    SAY_AGGRO              = -1189000,                      // 开战 台词广播 ID
+    SAY_WHIRLWIND          = -1189001,                      // 旋风斩 台词广播 ID
+    SAY_ENRAGE             = -1189002,                      // 狂暴 台词广播 ID
+    SAY_KILL               = -1189003,                      // 击杀 台词广播 ID
+    EMOTE_GENERIC_ENRAGED  = -1000003,                      // genericenraged 表情动作 ID
+    GENERIC_EMOTE_FLEE     = 1150,                          // 表情flee 标识 ID
 
-    SAY_TRAINEE_SPAWN      = -1189035,
+    SAY_TRAINEE_SPAWN      = -1189035,                      // trainee生成 台词广播 ID
 
-    SPELL_RUSHINGCHARGE    = 8260,
+    SPELL_RUSHINGCHARGE    = 8260,                          // rushingcharge 法术 ID
     SPELL_CLEAVE           = 15496, // 22540 in classic
-    SPELL_WHIRLWIND        = 8989,
-    SPELL_FRENZY           = 8269,
+    SPELL_WHIRLWIND        = 8989,                          // 旋风斩 法术 ID
+    SPELL_FRENZY           = 8269,                          // 狂乱 法术 ID
 
-    NPC_SCARLET_TRAINEE    = 6575
+    NPC_SCARLET_TRAINEE    = 6575                           // scarlettrainee Entry ID
 };
 
+// 首领战 AI：标识 ID（herod）
 struct boss_herodAI : public ScriptedAI
 {
     boss_herodAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    bool m_bEnrage;
-    bool m_bTraineeSay;
+    bool m_bEnrage;                                         // Enrage 状态标记
+    bool m_bTraineeSay;                                     // TraineeSay 状态标记
 
-    uint32 m_uiCleaveTimer;
-    uint32 m_uiWhirlwindTimer;
-    uint32 m_uiRushingChargeTimer;
+    uint32 m_uiCleaveTimer;                                 // Cleave 技能计时器
+    uint32 m_uiWhirlwindTimer;                              // Whirlwind 技能计时器
+    uint32 m_uiRushingChargeTimer;                          // RushingCharge 技能计时器
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_bTraineeSay = false;
@@ -90,6 +95,7 @@ struct boss_herodAI : public ScriptedAI
             m_creature->SummonCreature(NPC_SCARLET_TRAINEE, 1939.18f, -431.58f, 17.09f, 6.22f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 600000);
     }
 
+    // 战斗 AI 逻辑轮询更新
     void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
@@ -136,15 +142,17 @@ struct boss_herodAI : public ScriptedAI
         else
             m_uiRushingChargeTimer -= uiDiff;
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：boss_herod
 UnitAI* GetAI_boss_herod(Creature* pCreature)
 {
     return new boss_herodAI(pCreature);
 }
 
+// 随从/NPC AI：trainee（scarlet_trainee）
 struct mob_scarlet_traineeAI : public npc_escortAI
 {
     mob_scarlet_traineeAI(Creature* pCreature) : npc_escortAI(pCreature)
@@ -153,9 +161,10 @@ struct mob_scarlet_traineeAI : public npc_escortAI
         Reset();
     }
 
-    uint32 m_uiStartTimer;
+    uint32 m_uiStartTimer;                                  // Start 技能计时器
     bool m_hasFled;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_hasFled = false;
@@ -189,15 +198,17 @@ struct mob_scarlet_traineeAI : public npc_escortAI
             }
         }
 
-        DoMeleeAttackIfReady();
+        DoMeleeAttackIfReady();                             // 近战普通攻击判定
     }
 };
 
+// 创建并返回 AI 实例工厂函数：mob_scarlet_trainee
 UnitAI* GetAI_mob_scarlet_trainee(Creature* pCreature)
 {
     return new mob_scarlet_traineeAI(pCreature);
 }
 
+// 注册并载入脚本模块：boss_herod
 void AddSC_boss_herod()
 {
     Script* pNewScript = new Script;

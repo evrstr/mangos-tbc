@@ -21,9 +21,15 @@ SDComment: Timers
 SDCategory: Hellfire Peninsula
 EndScriptData */
 
+// 末日领主卡扎克（世界首领）
+/* 遭遇战概述：
+ * 末日领主卡扎克位于地狱火半岛基尔加丹王座，核心灭团技为卡扎克印记（抽蓝爆炸）与捕获灵魂（任意玩家/随从死亡为卡扎克回复海量生命值并狂暴）。
+ */
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 相关常量、法术与文本条目枚举
 enum
 {
     SAY_INTRO                       = 20076,
@@ -50,6 +56,7 @@ enum
     SPELL_BERSERK                   = 32965,        // triggers 32963
 };
 
+// boss_doomlordkazzakAI 逻辑实现
 struct boss_doomlordkazzakAI : public CombatAI
 {
     boss_doomlordkazzakAI(Creature* creature) : CombatAI(creature, 0)
@@ -63,17 +70,20 @@ struct boss_doomlordkazzakAI : public CombatAI
         DoBroadcastText(urand(0, 1) ? SAY_INTRO : SAY_INTRO_2, m_creature);
     }
 
+    // 进入战斗回调
     void Aggro(Unit* /*who*/) override
     {
         DoBroadcastText(urand(0, 1) ? SAY_AGGRO1 : SAY_AGGRO2, m_creature);
         DoCastSpellIfCan(nullptr, SPELL_CAPTURE_SOUL, CAST_TRIGGERED);
     }
 
+    // 死亡回调
     void JustDied(Unit* /*killer*/) override
     {
         DoBroadcastText(urand(0, 1) ? SAY_DEATH : SAY_DEATH_2, m_creature);
     }
 
+    // 施法完成回调
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         switch (spellInfo->Id)
@@ -87,6 +97,7 @@ struct boss_doomlordkazzakAI : public CombatAI
 };
 
 // 32960 - Mark of Kazzak
+// MarkOfDoomlordKazzak 光环脚本
 struct MarkOfDoomlordKazzak : public AuraScript
 {
     void OnPeriodicCalculateAmount(Aura* aura, uint32& amount) const override
@@ -109,6 +120,7 @@ struct MarkOfDoomlordKazzak : public AuraScript
 };
 
 // 21063 - Twisted Reflection
+// TwistedReflection 光环脚本
 struct TwistedReflection : public AuraScript
 {
     SpellAuraProcResult OnProc(Aura* /*aura*/, ProcExecutionData& procData) const override
@@ -119,6 +131,7 @@ struct TwistedReflection : public AuraScript
     }
 };
 
+// 注册 boss_doomlordkazzak 脚本
 void AddSC_boss_doomlordkazzak()
 {
     Script* pNewScript = new Script;

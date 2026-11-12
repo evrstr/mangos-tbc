@@ -30,11 +30,12 @@
 #include "Spells/SpellAuras.h"
 #include "Loot/LootMgr.h"
 
+// 处理客户端使用物品请求（CMSG_USE_ITEM）：校验物品可用性、绑定状态、目标并触发物品法术或脚本
 void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
 {
     uint8 bagIndex, slot;
-    uint8 spell_index;                                      // item spell index which should be used
-    uint8 cast_count;                                       // next cast if exists (single or not)
+    uint8 spell_index;                                      // item spell index which should be used (待使用的物品法术槽位索引)
+    uint8 cast_count;                                       // next cast if exists (single or not) (施法序列计数)
     ObjectGuid itemGuid;
 
     recvPacket >> bagIndex >> slot >> spell_index >> cast_count >> itemGuid;
@@ -42,13 +43,14 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
     // TODO: add targets.read() check
     Player* pUser = _player;
 
-    // ignore for remote control state
+    // ignore for remote control state (处于远程控制他人状态时忽略)
     if (!pUser->IsSelfMover())
     {
-        recvPacket.rpos(recvPacket.wpos());                 // prevent spam at not read packet tail
+        recvPacket.rpos(recvPacket.wpos());                 // prevent spam at not read packet tail (跳过未读包尾防止日志刷屏)
         return;
     }
 
+    // 根据背包索引与格位查找物品并比对 GUID
     Item* pItem = pUser->GetItemByPos(bagIndex, slot);
     if (!pItem)
     {
@@ -74,7 +76,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // some item classes can be used only in equipped state
+    // some item classes can be used only in equipped state (非消耗类/需装备物品必须在已装备状态下才能使用)
     if (proto->InventoryType != INVTYPE_NON_EQUIP && !pItem->IsEquipped())
     {
         recvPacket.rpos(recvPacket.wpos());                 // prevent spam at not read packet tail
@@ -90,7 +92,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // not allow use item from trade (cheat way only)
+    // not allow use item from trade (cheat way only) (禁止使用交易栏中的物品防作弊)
     if (pItem->IsInTrade())
     {
         recvPacket.rpos(recvPacket.wpos());                 // prevent spam at not read packet tail
@@ -99,6 +101,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
     }
 
     // only allow conjured consumable, bandage, poisons (all should have the 2^21 item flag set in DB)
+    // 竞技场内仅允许使用带 ITEM_FLAG_IGNORE_DEFAULT_ARENA_RESTRICTIONS 标记的消耗品（如造水面包/绷带/毒药）
     if (proto->Class == ITEM_CLASS_CONSUMABLE &&
             !(proto->Flags & ITEM_FLAG_IGNORE_DEFAULT_ARENA_RESTRICTIONS) &&
             pUser->InArena())
@@ -108,6 +111,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
+    // 战斗中禁止使用带有非战斗法术的物品
     if (pUser->IsInCombat())
     {
         for (const auto& Spell : proto->Spells)
@@ -125,6 +129,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
     }
 
     // check also  BIND_WHEN_PICKED_UP and BIND_QUEST_ITEM for .additem or .additemset case by GM (not binded at adding to inventory)
+    // 使用时绑定（以及 GM 命令添加但尚未绑定的拾绑/任务物品）在使用时自动灵魂绑定
     if (pItem->GetProto()->Bonding == BIND_WHEN_USE || pItem->GetProto()->Bonding == BIND_WHEN_PICKED_UP || pItem->GetProto()->Bonding == BIND_QUEST_ITEM)
     {
         if (!pItem->IsSoulBound())
@@ -134,6 +139,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         }
     }
 
+    // 读取客户端传入的施法目标信息并更新目标指针
     SpellCastTargets targets;
 
     recvPacket >> targets.ReadForCaster(pUser);
@@ -142,10 +148,10 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
 
     if (!pItem->IsTargetValidForItemUse(targets.getUnitTarget()))
     {
-        // free gray item after use fail
+        // free gray item after use fail (使用失败时解除客户端物品置灰锁定状态)
         pUser->SendEquipError(EQUIP_ERR_NONE, pItem, nullptr);
 
-        // search spell for spell error
+        // search spell for spell error (查找对应的物品触发法术以发送正确错误码)
         uint32 spellid = 0;
         for (int i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
         {
@@ -163,6 +169,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
     }
 
     // Note: If script stop casting it must send appropriate data to client to prevent stuck item in gray state.
+    // 先尝试由 ScriptDev 脚本拦截处理，未拦截则走常规物品施法流程
     if (!sScriptDevAIMgr.OnItemUse(pUser, pItem, targets))
     {
         // no script or script not process request by self
@@ -176,6 +183,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
 #define OPEN_BOOTY_CHEST 5107
 #define OPEN_STRONGBOX 8517
 
+// 处理客户端打开容器类物品或拆开礼物包装请求（CMSG_OPEN_ITEM）
 void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
 {
     DETAIL_LOG("WORLD: CMSG_OPEN_ITEM packet, data length = " SIZEFMTD, recvPacket.size());
@@ -188,7 +196,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
 
     Player* pUser = _player;
 
-    // ignore for remote control state
+    // ignore for remote control state (远程控制他人时忽略)
     if (!pUser->IsSelfMover())
         return;
 
@@ -212,7 +220,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    // locked item
+    // locked item (校验带锁物品是否已解锁，若需开锁技能则拒绝直接开启)
     uint32 lockId = proto->LockID;
     if (lockId && !pItem->HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_UNLOCKED))
     {
@@ -225,7 +233,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
             return;
         }
 
-        // required picklocking
+        // required picklocking (仍需撬锁技能)
         if (lockInfo->Skill[1] || lockInfo->Skill[0])
         {
             pUser->SendEquipError(EQUIP_ERR_ITEM_LOCKED, pItem, nullptr);
@@ -233,7 +241,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
         }
     }
 
-    if (pItem->HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED))// wrapped?
+    if (pItem->HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED))// wrapped? (若是包装礼盒，则从 character_gifts 恢复内部真实物品)
     {
         auto queryResult = CharacterDatabase.PQuery("SELECT entry, flags FROM character_gifts WHERE item_guid = '%u'", pItem->GetGUIDLow());
         if (queryResult)
@@ -261,6 +269,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
     }
     else
     {
+        // 普通容器物品：生成或展示物品拾取列表
         Loot*& loot = pItem->m_loot;
         if (!loot)
             loot = new Loot(pUser, pItem, LOOT_PICKPOCKETING);
@@ -269,6 +278,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
     }
 }
 
+// 处理客户端与游戏对象交互请求（CMSG_GAMEOBJ_USE）：校验距离、锁定、刷新与可交互标志
 void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -277,7 +287,7 @@ void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
 
     DEBUG_LOG("WORLD: Received opcode CMSG_GAMEOBJ_USE guid: %s", guid.GetString().c_str());
 
-    // ignore for remote control state
+    // ignore for remote control state (远程控制状态或传送中不响应)
     if (!_player->IsSelfMover())
         return;
 
@@ -297,14 +307,14 @@ void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
         return;
     }
 
-    // Additional check preventing exploits (ie loot despawned chests)
+    // Additional check preventing exploits (ie loot despawned chests) (防止利用已消失宝箱等漏洞)
     if (!obj->IsSpawned())
     {
         sLog.outError("HandleGameObjectUseOpcode: CMSG_GAMEOBJ_USE for despawned GameObject (Entry %u), didn't expect this to happen.", obj->GetEntry());
         return;
     }
 
-    // Never expect this opcode for some type GO's
+    // Never expect this opcode for some type GO's (通用型 GO 不应触发此协议)
     if (obj->GetGoType() == GAMEOBJECT_TYPE_GENERIC)
     {
         sLog.outError("HandleGameObjectUseOpcode: CMSG_GAMEOBJ_USE for not allowed GameObject type %u (Entry %u), didn't expect this to happen.", obj->GetGoType(), obj->GetEntry());
@@ -314,7 +324,7 @@ void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
     if (obj->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE))
         return;
 
-    // Never expect this opcode for non intractable GO's
+    // Never expect this opcode for non intractable GO's (不可交互 GO 不应触发此协议)
     if (obj->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT))
     {
         sLog.outError("HandleGameObjectUseOpcode: CMSG_GAMEOBJ_USE for GameObject (Entry %u) with non intractable flag (Flags %u), didn't expect this to happen.", obj->GetEntry(), obj->GetUInt32Value(GAMEOBJECT_FLAGS));
@@ -327,6 +337,7 @@ void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
     obj->Use(_player);
 }
 
+// 处理客户端主动施法请求（CMSG_CAST_SPELL）：验证法术拥有权、读取目标、处理施法队列与 GCD 容差
 void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
 {
     uint32 spellId;
@@ -334,7 +345,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     recvPacket >> spellId;
     recvPacket >> cast_count;
 
-    // ignore for remote control state (for player case)
+    // ignore for remote control state (for player case) (被控制或控制其他玩家时忽略)
     Unit* mover = _player->GetMover();
     if (mover != _player && mover->GetTypeId() == TYPEID_PLAYER)
     {
@@ -353,6 +364,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         return;
     }
 
+    // 校验施法者是否拥有该主动法术（防止伪造客户端包）
     Unit* caster = mover;
     if (mover->GetTypeId() == TYPEID_PLAYER)
     {
@@ -382,12 +394,12 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         }
     }
 
-    // client provided targets
+    // client provided targets (解析客户端提供的目标信息)
     SpellCastTargets targets;
 
     recvPacket >> targets.ReadForCaster(_player);
 
-    // auto-selection buff level base at target level (in spellInfo)
+    // auto-selection buff level base at target level (in spellInfo) (根据友方目标等级自动降级选择适配的 Buff 法术等级)
     if (Unit* target = targets.getUnitTarget())
     {
         // if rank not found then function return nullptr but in explicit cast case original spell can be casted and later failed with appropriate error message
@@ -395,12 +407,14 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
             spellInfo = actualSpellInfo;
     }
 
+    // 客户端未显式传目标时补全当前选中目标
     if (HasMissingTargetFromClient(spellInfo))
         targets.setUnitTarget(mover->GetTarget());
 
     if (_player->HasQueuedSpell())
         return;
 
+    // 正在自动重复施放相同法术时忽略重复请求
     if (IsAutoRepeatRangedSpell(spellInfo))
         if (const Spell* repeatSpell = caster->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
             if (spellId == repeatSpell->m_spellInfo->Id)
@@ -408,8 +422,9 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
 
     bool handled = false;
     Spell* spell = new Spell(caster, spellInfo, TRIGGERED_NONE);
-    spell->m_cast_count = cast_count;                       // set count of casts
+    spell->m_cast_count = cast_count;                       // set count of casts (记录客户端施法序号)
     spell->m_clientCast = true;
+    // 若 GCD 或冷却尚在容差窗口内，则加入施法队列并延迟至冷却结束执行
     if (caster->HasGCD(spellInfo) || !caster->IsSpellReady(*spellInfo))
     {
         if (caster->HasGCDOrCooldownWithinMargin(*spellInfo))
@@ -418,9 +433,9 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
             _player->SetQueuedSpell(spell);
             GetMessager().AddMessage([guid = caster->GetObjectGuid(), isPlayer = caster != mover, targets = targets](WorldSession* session) mutable
             {
-                if (session->GetPlayer()) // in case of logout
+                if (session->GetPlayer()) // in case of logout (防止异步执行期间玩家已下线)
                 {
-                    // in case of mind control end
+                    // in case of mind control end (确认心灵控制状态未发生变化)
                     if ((isPlayer && session->GetPlayer()->GetObjectGuid() == guid) || (!isPlayer && session->GetPlayer()->GetMover()->GetObjectGuid() == guid))
                         session->GetPlayer()->CastQueuedSpell(targets);
                     else
@@ -434,6 +449,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         spell->SpellStart(&targets);
 }
 
+// 处理客户端取消当前施法请求（CMSG_CANCEL_CAST）
 void WorldSession::HandleCancelCastOpcode(WorldPacket& recvPacket)
 {
     uint32 spellId;
@@ -452,6 +468,7 @@ void WorldSession::HandleCancelCastOpcode(WorldPacket& recvPacket)
         _player->InterruptNonMeleeSpells(false, spellId);
 }
 
+// 处理客户端右键取消自身光环请求（CMSG_CANCEL_AURA）
 void WorldSession::HandleCancelAuraOpcode(WorldPacket& recvPacket)
 {
     uint32 spellId;
@@ -461,6 +478,7 @@ void WorldSession::HandleCancelAuraOpcode(WorldPacket& recvPacket)
     if (!spellInfo)
         return;
 
+    // 不可取消、无图标（追踪资源除外）或被动光环禁止手动取消
     if (spellInfo->HasAttribute(SPELL_ATTR_NO_AURA_CANCEL))
         return;
 
@@ -475,13 +493,13 @@ void WorldSession::HandleCancelAuraOpcode(WorldPacket& recvPacket)
     if (!holder)
         return;
 
-    // cant remove any auras while possessed
+    // cant remove any auras while possessed (被附身或被魅惑时无法取消光环)
     if (_player->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_POSSESSED) || _player->HasCharmer())
         return;
 
     if (!holder->IsPositive())
     {
-        // ignore for remote control state
+        // ignore for remote control state (仅在控制他人时允许取消特定控制类负面光环)
         if (!_player->IsSelfMover())
         {
             // except own aura spells
@@ -504,7 +522,7 @@ void WorldSession::HandleCancelAuraOpcode(WorldPacket& recvPacket)
             return;
     }
 
-    // channeled spell case (it currently casted then)
+    // channeled spell case (it currently casted then) (若为引导中产生的光环，则直接打断引导)
     if (IsChanneledSpell(spellInfo))
     {
         if (Spell* curSpell = _player->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
@@ -514,13 +532,15 @@ void WorldSession::HandleCancelAuraOpcode(WorldPacket& recvPacket)
     }
 
     // not own area auras can't be cancelled (note: maybe need to check for aura on holder and not general on spell)
+    // 他人提供的区域光环（如光环/图腾）不能单方面右键取消
     if (holder && holder->GetCasterGuid() != _player->GetObjectGuid() && HasAreaAuraEffect(holder->GetSpellProto()))
         return;
 
-    // non channeled case
+    // non channeled case (常规非引导增益光环：移除光环)
     _player->RemoveAurasDueToSpellByCancel(spellId);
 }
 
+// 处理客户端取消宠物正面光环请求（CMSG_PET_CANCEL_AURA）
 void WorldSession::HandlePetCancelAuraOpcode(WorldPacket& recvPacket)
 {
     ObjectGuid guid;
@@ -544,6 +564,7 @@ void WorldSession::HandlePetCancelAuraOpcode(WorldPacket& recvPacket)
         return;
     }
 
+    // 校验目标是否为玩家当前宠物或魅惑随从
     if (guid != GetPlayer()->GetPetGuid() && !GetPlayer()->HasCharm(guid))
     {
         sLog.outError("HandlePetCancelAura. %s isn't pet of %s", guid.GetString().c_str(), GetPlayer()->GetGuidStr().c_str());
@@ -572,21 +593,24 @@ void WorldSession::HandlePetCancelAuraOpcode(WorldPacket& recvPacket)
     pet->RemoveAurasDueToSpell(spellId);
 }
 
+// 处理取消体型增长光环请求（预留空实现）
 void WorldSession::HandleCancelGrowthAuraOpcode(WorldPacket& /*recvPacket*/)
 {
     // nothing do
 }
 
+// 处理客户端取消自动重复施法请求（如取消自动射击/魔杖攻击）
 void WorldSession::HandleCancelAutoRepeatSpellOpcode(WorldPacket& /*recvPacket*/)
 {
     // cancel and prepare for deleting
-    // do not send SMSG_CANCEL_AUTO_REPEAT! client will send this Opcode again (loop)
+    // do not send SMSG_CANCEL_AUTO_REPEAT! client will send this Opcode again (loop) (切勿回发 SMSG_CANCEL_AUTO_REPEAT，否则客户端会循环重发)
     _player->GetMover()->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
 }
 
+// 处理客户端手动打断引导法术请求（CMSG_CANCEL_CHANNELLING）
 void WorldSession::HandleCancelChanneling(WorldPacket& recv_data)
 {
-    recv_data.read_skip<uint32>();                          // spellid, not used
+    recv_data.read_skip<uint32>();                          // spellid, not used (跳过未使用的法术 ID)
 
     // ignore for remote control state (for player case)
     Unit* mover = _player->GetMover();
@@ -596,6 +620,7 @@ void WorldSession::HandleCancelChanneling(WorldPacket& recv_data)
     _player->InterruptSpell(CURRENT_CHANNELED_SPELL);
 }
 
+// 处理客户端右键销毁图腾请求（CMSG_TOTEM_DESTROYED）
 void WorldSession::HandleTotemDestroyed(WorldPacket& recvPacket)
 {
     uint8 slotId;
@@ -613,6 +638,7 @@ void WorldSession::HandleTotemDestroyed(WorldPacket& recvPacket)
         totem->UnSummon();
 }
 
+// 处理客户端确认自我复活请求（如萨满复生或灵魂石复活）
 void WorldSession::HandleSelfResOpcode(WorldPacket& /*recv_data*/)
 {
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "WORLD: CMSG_SELF_RES");                  // empty opcode
@@ -627,6 +653,7 @@ void WorldSession::HandleSelfResOpcode(WorldPacket& /*recv_data*/)
     }
 }
 
+// 处理客户端请求镜像（Mirror Image）外观与装备数据（CMSG_GET_MIRRORIMAGE_DATA）
 void WorldSession::HandleGetMirrorimageData(WorldPacket& recv_data)
 {
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "WORLD: CMSG_GET_MIRRORIMAGE_DATA");
@@ -662,18 +689,19 @@ void WorldSession::HandleGetMirrorimageData(WorldPacket& recv_data)
     {
         Player* pPlayer = (Player*)pCaster;
 
-        // skin, face, hair, haircolor
+        // skin, face, hair, haircolor (肤色、脸型、发型、发色)
         data << (uint8)pPlayer->GetByteValue(PLAYER_BYTES, 0);
         data << (uint8)pPlayer->GetByteValue(PLAYER_BYTES, 1);
         data << (uint8)pPlayer->GetByteValue(PLAYER_BYTES, 2);
         data << (uint8)pPlayer->GetByteValue(PLAYER_BYTES, 3);
 
-        // facial hair
+        // facial hair (面部特征/胡须)
         data << (uint8)pPlayer->GetByteValue(PLAYER_BYTES_2, 0);
 
-        // guild id
+        // guild id (公会 ID)
         data << (uint32)pPlayer->GetGuildId();
 
+        // 各装备槽位显示模型 ID（考虑隐藏头盔与隐藏披风设置）
         if (pPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_HELM))
             data << (uint32)0;
         else
@@ -700,6 +728,7 @@ void WorldSession::HandleGetMirrorimageData(WorldPacket& recv_data)
         // pCaster may have been nullptr (usually not expected, but may happen at disconnect, etc)
         // OR
         // pCaster is not player, data is taken from CreatureDisplayInfoExtraEntry by model already
+        // 施法者离线或非玩家单位：填充零值外观与装备槽数据
         data << (uint8)0;
         data << (uint8)0;
         data << (uint8)0;

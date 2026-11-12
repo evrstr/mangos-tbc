@@ -21,57 +21,61 @@ SDComment: Some minor improvements are required; Bat rider movement not implemen
 SDCategory: Zul'Gurub
 EndScriptData */
 
+// 高阶祭司耶克里克（High Priestess Jeklik）蝙蝠祭司首领战 AI（音波爆震群体沉默、暗影箭雨与鲜血拟态）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    SAY_AGGRO                   = -1309002,
-    SAY_RAIN_FIRE               = -1309003,
-    SAY_SHRIEK                  = -1309026,
-    SAY_HEAL                    = -1309027,
-    SAY_DEATH                   = -1309004,
-    SAY_SELF_DETONATE           = -1309028,
+    SAY_AGGRO                   = -1309002,                 // 开战 台词广播 ID
+    SAY_RAIN_FIRE               = -1309003,                 // rain火焰 台词广播 ID
+    SAY_SHRIEK                  = -1309026,                 // shriek 台词广播 ID
+    SAY_HEAL                    = -1309027,                 // 治疗 台词广播 ID
+    SAY_DEATH                   = -1309004,                 // 死亡 台词广播 ID
+    SAY_SELF_DETONATE           = -1309028,                 // selfdetonate 台词广播 ID
 
     // Bat spells
-    SPELL_CHARGE                = 22911,
-    SPELL_SONIC_BURST           = 23918,
-    SPELL_SWOOP                 = 23919,
-    SPELL_ROOT_SELF             = 23973,
-    SPELL_SUMMON_FRENZIED_BATS  = 23974,
-    SPELL_BLOOD_LEECH           = 22644,
-    SPELL_PIERCE_ARMOR          = 12097,
+    SPELL_CHARGE                = 22911,                    // 冲锋 法术 ID
+    SPELL_SONIC_BURST           = 23918,                    // sonicburst 法术 ID
+    SPELL_SWOOP                 = 23919,                    // swoop 法术 ID
+    SPELL_ROOT_SELF             = 23973,                    // 缠绕self 法术 ID
+    SPELL_SUMMON_FRENZIED_BATS  = 23974,                    // 召唤frenziedbats 法术 ID
+    SPELL_BLOOD_LEECH           = 22644,                    // 鲜血leech 法术 ID
+    SPELL_PIERCE_ARMOR          = 12097,                    // piercearmor 法术 ID
 
     // Troll form spells
-    SPELL_SHADOW_WORD_PAIN      = 23952,
-    SPELL_MIND_FLAY             = 23953,
-    SPELL_GREATER_HEAL          = 23954,
+    SPELL_SHADOW_WORD_PAIN      = 23952,                    // 暗影wordpain 法术 ID
+    SPELL_MIND_FLAY             = 23953,                    // mind鞭笞 法术 ID
+    SPELL_GREATER_HEAL          = 23954,                    // greater治疗 法术 ID
 
     // SPELL_PSYHIC_SCREAM      = 22884,                   // spell not confirmed - needs research
     // curse of blood also unconfirmed
 
     // Common spells
     SPELL_GREEN_CHANNELING      = 13540,                    // visual for idle mode
-    SPELL_BAT_FORM              = 23966,
-    SPELL_TRANSFORM_VISUAL      = 24085,
+    SPELL_BAT_FORM              = 23966,                    // batform 法术 ID
+    SPELL_TRANSFORM_VISUAL      = 24085,                    // 变形视觉特效 法术 ID
 
-    // Batriders Spell
+    // Batriders Spell (Batriders法术)
     SPELL_LIQUID_FIRE           = 23968,                    // script effect - triggers 23971,
-    SPELL_UNSTABLE_CONCOCTION   = 24024,
-    SPELL_THRASH                = 8876,
-    SPELL_DEMORALIZING_SHOUT    = 23511,
-    SPELL_BATTLE_COMMAND        = 5115,
-    SPELL_INFECTED_BITE         = 16128,
+    SPELL_UNSTABLE_CONCOCTION   = 24024,                    // unstableconcoction 法术 ID
+    SPELL_THRASH                = 8876,                     // thrash 法术 ID
+    SPELL_DEMORALIZING_SHOUT    = 23511,                    // demoralizingshout 法术 ID
+    SPELL_BATTLE_COMMAND        = 5115,                     // battlecommand 法术 ID
+    SPELL_INFECTED_BITE         = 16128,                    // infectedbite 法术 ID
 
-    // npcs
-    NPC_FRENZIED_BAT            = 14965,
-    NPC_BAT_RIDER               = 14750,
+    // npcs (相关 NPC)
+    NPC_FRENZIED_BAT            = 14965,                    // frenziedbat Entry ID
+    NPC_BAT_RIDER               = 14750,                    // batrider Entry ID
 
-    SPELL_LIST_PHASE_1 = 1451701,
-    SPELL_LIST_PHASE_2 = 1451702,
+    SPELL_LIST_PHASE_1 = 1451701,                           // list阶段1 法术 ID
+    SPELL_LIST_PHASE_2 = 1451702,                           // list阶段2 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum JeklikActions
 {
     JEKLIK_PHASE_2,
@@ -80,6 +84,7 @@ enum JeklikActions
     JEKLIK_DELAYED_BAT,
 };
 
+// 首领战 AI：标识 ID（jeklik）
 struct boss_jeklikAI : public CombatAI
 {
     boss_jeklikAI(Creature* creature) : CombatAI(creature, JEKLIK_ACTION_MAX), m_instance(static_cast<instance_zulgurub*>(creature->GetInstanceData()))
@@ -102,6 +107,7 @@ struct boss_jeklikAI : public CombatAI
 
     ObjectGuid m_delayedBat;
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -135,6 +141,7 @@ struct boss_jeklikAI : public CombatAI
             m_instance->SetData(TYPE_JEKLIK, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         DoDespawnBombRiders();
@@ -143,6 +150,7 @@ struct boss_jeklikAI : public CombatAI
             m_instance->SetData(TYPE_JEKLIK, FAIL);
     }
 
+    // 召唤生物生成回调
     void JustSummoned(Creature* summoned) override
     {
         summoned->SetLevitate(true);
@@ -160,6 +168,7 @@ struct boss_jeklikAI : public CombatAI
         }
     }
 
+    // 进入脱战闪避模式
     void EnterEvadeMode() override
     {
         // Override MMaps, and teleport to original position
@@ -170,6 +179,7 @@ struct boss_jeklikAI : public CombatAI
         ScriptedAI::EnterEvadeMode();
     }
 
+    // 移动路径点到达回调
     void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
     {
         if (uiMoveType != POINT_MOTION_TYPE || !uiPointId)
@@ -247,12 +257,14 @@ struct boss_jeklikAI : public CombatAI
     }
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum BatRiderActions
 {
     BAT_RIDER_UNSTABLE_CONCOCTION,
     BAT_RIDER_ACTION_MAX,
 };
 
+// 随从/NPC AI：batrider（gurubashi_bat_rider）
 struct npc_gurubashi_bat_riderAI : public CombatAI
 {
     npc_gurubashi_bat_riderAI(Creature* pCreature) : CombatAI(pCreature, BAT_RIDER_ACTION_MAX)
@@ -263,9 +275,10 @@ struct npc_gurubashi_bat_riderAI : public CombatAI
         AddTimerlessCombatAction(BAT_RIDER_UNSTABLE_CONCOCTION, true);
     }
 
-    bool m_bIsSummon;
-    bool m_bHasDoneConcoction;
+    bool m_bIsSummon;                                       // IsSummon 状态标记
+    bool m_bHasDoneConcoction;                              // HasDoneConcoction 状态标记
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         CombatAI::Reset();
@@ -304,6 +317,7 @@ struct npc_gurubashi_bat_riderAI : public CombatAI
     }
 };
 
+// 注册并载入脚本模块：boss_jeklik
 void AddSC_boss_jeklik()
 {
     Script* pNewScript = new Script;

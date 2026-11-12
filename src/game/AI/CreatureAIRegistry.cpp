@@ -32,8 +32,10 @@
 
 namespace AIRegistry
 {
+    // 注册核心生物 AI 工厂与基础移动生成器工厂到全局注册表
     void Initialize()
     {
+        // 注册各类内置生物 AI
         (new CreatureAIFactory<NullCreatureAI>("NullAI"))->RegisterSelf();
         (new CreatureAIFactory<GuardAI>("GuardAI"))->RegisterSelf();
         (new CreatureAIFactory<PetAI>("PetAI"))->RegisterSelf();
@@ -42,6 +44,7 @@ namespace AIRegistry
         (new CreatureAIFactory<GuardianAI>("GuardianAI"))->RegisterSelf();
         (new CreatureAIFactory<PossessedAI>("PossessedAI"))->RegisterSelf();
 
+        // 注册各类内置移动生成器
         (new MovementGeneratorFactory<WanderMovementGenerator>(RANDOM_MOTION_TYPE))->RegisterSelf();
         (new MovementGeneratorFactory<WaypointMovementGenerator<Creature> >(WAYPOINT_MOTION_TYPE))->RegisterSelf();
         (new MovementGeneratorFactory<FixedPathMovementGenerator>(PATH_MOTION_TYPE))->RegisterSelf();

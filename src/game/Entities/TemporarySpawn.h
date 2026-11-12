@@ -22,6 +22,7 @@
 #include "Entities/Creature.h"
 #include "Globals/ObjectAccessor.h"
 
+// 临时召唤生物类（管理按时间、脱战或死亡条件自动消失的召唤物）
 class TemporarySpawn : public Creature
 {
     public:
@@ -42,13 +43,14 @@ class TemporarySpawn : public Creature
 
         bool CheckAuraOnOwner();
         void RemoveAuraFromOwner();
-        TempSpawnType m_type;
-        TimePoint m_expirationTimestamp;
-        uint32 m_lifetime;
-        ObjectGuid m_spawner;
-        uint32 m_linkedToOwnerAura;
+        TempSpawnType m_type;                               // 临时召唤消失策略类型
+        TimePoint m_expirationTimestamp;                    // 到期消失时间戳
+        uint32 m_lifetime;                                  // 存活时长（毫秒）
+        ObjectGuid m_spawner;                               // 召唤者 GUID
+        uint32 m_linkedToOwnerAura;                         // 与召唤者光环绑定的联动标志位
 };
 
+// 绑定了路径点信息的临时召唤生物类
 class TemporarySpawnWaypoint : public TemporarySpawn
 {
     public:
@@ -59,9 +61,9 @@ class TemporarySpawnWaypoint : public TemporarySpawn
         uint32 GetPathOrigin() const { return m_pathOrigin; }
 
     private:
-        uint32 m_waypoint_id;
-        int32 m_path_id;
-        uint32 m_pathOrigin;
+        uint32 m_waypoint_id;                               // 关联路径点 ID
+        int32 m_path_id;                                    // 关联路径 ID
+        uint32 m_pathOrigin;                                // 路径来源类型
 };
 
 #endif

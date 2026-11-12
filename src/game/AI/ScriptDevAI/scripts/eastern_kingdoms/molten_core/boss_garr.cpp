@@ -21,30 +21,34 @@ SDComment: 'Summon Player' missing
 SDCategory: Molten Core
 EndScriptData */
 
+// 加尔（Garr）4号首领战 AI（减速图腾、净化与八名火誓束缚者自爆）
+
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "molten_core.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum
 {
-    EMOTE_MASSIVE_ERUPTION      = -1409025,
+    EMOTE_MASSIVE_ERUPTION      = -1409025,                 // massiveeruption 表情动作 ID
 
-    // Garr spells
-    SPELL_ANTIMAGICPULSE        = 19492,
-    SPELL_MAGMASHACKLES         = 19496,
-    SPELL_ENRAGE                = 19516,
-    SPELL_SUMMON_PLAYER         = 20477,
-    SPELL_ERUPTION_TRIGGER      = 20482,
+    // Garr spells (加尔spells)
+    SPELL_ANTIMAGICPULSE        = 19492,                    // antimagicpulse 法术 ID
+    SPELL_MAGMASHACKLES         = 19496,                    // magmashackles 法术 ID
+    SPELL_ENRAGE                = 19516,                    // 狂暴 法术 ID
+    SPELL_SUMMON_PLAYER         = 20477,                    // 召唤player 法术 ID
+    SPELL_ERUPTION_TRIGGER      = 20482,                    // eruption触发 法术 ID
     SPELL_SEPARATION_ANXIETY    = 23487,                    // Aura cast on himself by Garr, if adds move out of range, they will cast spell 23492 on themselves
 
     // Firesworn spells
-    SPELL_ERUPTION              = 19497,
-    SPELL_ENRAGE_TRIGGER        = 19515,
-    SPELL_MASSIVE_ERUPTION      = 20483,
-    SPELL_THRASH                = 8876,
-    SPELL_IMMOLATE              = 15733,
+    SPELL_ERUPTION              = 19497,                    // eruption 法术 ID
+    SPELL_ENRAGE_TRIGGER        = 19515,                    // 狂暴触发 法术 ID
+    SPELL_MASSIVE_ERUPTION      = 20483,                    // massiveeruption 法术 ID
+    SPELL_THRASH                = 8876,                     // thrash 法术 ID
+    SPELL_IMMOLATE              = 15733,                    // 献祭 法术 ID
 };
 
+// 枚举定义：法术技能、生物与环境事件标识
 enum GarrActions
 {
     GARR_ANTI_MAGIC_PULSE,
@@ -53,6 +57,7 @@ enum GarrActions
     GARR_ACTION_MAX,
 };
 
+// 首领战 AI：标识 ID（garr）
 struct boss_garrAI : public CombatAI
 {
     boss_garrAI(Creature* creature) : CombatAI(creature, GARR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
@@ -80,6 +85,7 @@ struct boss_garrAI : public CombatAI
             m_instance->SetData(TYPE_GARR, DONE);
     }
 
+    // 脱战归位回调：重置遭遇战状态
     void JustReachedHome() override
     {
         if (m_instance)
@@ -121,16 +127,19 @@ struct boss_garrAI : public CombatAI
     }
 };
 
+// 随从/NPC AI：标识 ID（firesworn）
 struct mob_fireswornAI : public ScriptedAI
 {
     mob_fireswornAI(Creature* creature) : ScriptedAI(creature) {}
 
+    // 重置战斗状态与技能计时器
     void Reset() override
     {
         DoCastSpellIfCan(nullptr, SPELL_THRASH, CAST_AURA_NOT_PRESENT | CAST_TRIGGERED);
         DoCastSpellIfCan(nullptr, SPELL_IMMOLATE, CAST_AURA_NOT_PRESENT | CAST_TRIGGERED);
     }
 
+    // 死亡回调：更新遭遇战状态与开启门禁
     void JustDied(Unit* killer) override
     {
         if (m_creature != killer)
@@ -146,6 +155,7 @@ struct mob_fireswornAI : public ScriptedAI
     }
 };
 
+// 注册并载入脚本模块：boss_garr
 void AddSC_boss_garr()
 {
     Script* pNewScript = new Script;

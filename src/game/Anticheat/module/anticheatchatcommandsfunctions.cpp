@@ -7,6 +7,7 @@
 #include "Antispam/antispam.hpp"
 #include "Globals/ObjectMgr.h"
 
+// 查询目标玩家的反作弊统计与实时检测信息
 bool ChatHandler::HandleAnticheatInfoCommand(char* args)
 {
     Player *target = nullptr;
@@ -28,12 +29,14 @@ bool ChatHandler::HandleAnticheatInfoCommand(char* args)
     return true;
 }
 
+// 输出当前反作弊模块版本信息
 bool ChatHandler::HandleAnticheatEnableCommand(char* /*args*/)
 {
     PSendSysMessage("Anticheat Late March version");
     return true;
 }
 
+// 禁言指定账号（通过反垃圾消息管理器执行禁言）
 bool ChatHandler::HandleAnticheatSilenceCommand(char* args)
 {
     uint32 AccountId = 0;
@@ -48,6 +51,7 @@ bool ChatHandler::HandleAnticheatSilenceCommand(char* args)
     return true;
 }
 
+// 查看指定在线玩家或离线角色所属账号的反垃圾聊天评分详情
 bool ChatHandler::HandleAnticheatSpaminfoCommand(char* args)
 {
     Player *target = nullptr;
@@ -64,7 +68,7 @@ bool ChatHandler::HandleAnticheatSpaminfoCommand(char* args)
 
     if (!antispam)
     {
-        // if we reach here, lookup cached information instead
+        // if we reach here, lookup cached information instead (玩家不在线时回退查询反垃圾缓存)
         auto const accountId = sObjectMgr.GetPlayerAccountIdByGUID(playerGuid);
 
         antispam = sAntispamMgr.CheckCache(accountId);
@@ -78,6 +82,7 @@ bool ChatHandler::HandleAnticheatSpaminfoCommand(char* args)
     return true;
 }
 
+// 列出当前在线且匹配指定十六进制系统指纹的所有会话账号与角色
 bool ChatHandler::HandleAnticheatFingerprintListCommand(char* args)
 {
     uint32 fingerprintNum = 0;
@@ -87,7 +92,7 @@ bool ChatHandler::HandleAnticheatFingerprintListCommand(char* args)
         return false;
     }
 
-    // search all session with specified fingerprint
+    // search all session with specified fingerprint (投递到世界线程遍历所有在线会话)
     sWorld.GetMessager().AddMessage([session = GetSession(), fingerprintNum](World* world)
     {
         int32 count = 0;
@@ -120,6 +125,7 @@ bool ChatHandler::HandleAnticheatFingerprintListCommand(char* args)
     return true;
 }
 
+// 从登录库查询指定系统指纹的历史使用记录
 bool ChatHandler::HandleAnticheatFingerprintHistoryCommand(char* args)
 {
     uint32 fingerprintNum = 0;
@@ -155,6 +161,7 @@ bool ChatHandler::HandleAnticheatFingerprintHistoryCommand(char* args)
     return true;
 }
 
+// 从登录库查询指定账号的历史指纹记录
 bool ChatHandler::HandleAnticheatFingerprintAHistoryCommand(char* args)
 {
     uint32 AccountId = 0;
@@ -191,9 +198,10 @@ bool ChatHandler::HandleAnticheatFingerprintAHistoryCommand(char* args)
     return true;
 }
 
+// 切换当前 GM 账号接收反作弊实时告警通知的标志位
 bool ChatHandler::HandleAnticheatCheatinformCommand(char* /*args*/)
 {
-    // ACCOUNT FLAGS
+    // ACCOUNT FLAGS (更新登录库账号标志位)
     WorldSession* session = GetSession();
 
     if (!session->HasAccountFlag(ACCOUNT_FLAG_SHOW_ANTICHEAT))
@@ -213,9 +221,10 @@ bool ChatHandler::HandleAnticheatCheatinformCommand(char* /*args*/)
     return true;
 }
 
+// 切换当前 GM 账号接收反垃圾刷屏告警通知的标志位
 bool ChatHandler::HandleAnticheatSpaminformCommand(char* /*args*/)
 {
-    // ACCOUNT FLAGS
+    // ACCOUNT FLAGS (更新登录库账号标志位)
     WorldSession* session = GetSession();
 
     if (!session->HasAccountFlag(ACCOUNT_FLAG_SHOW_ANTISPAM))
@@ -235,6 +244,7 @@ bool ChatHandler::HandleAnticheatSpaminformCommand(char* /*args*/)
     return true;
 }
 
+// 将指定正则/关键词加入反垃圾聊天黑名单
 bool ChatHandler::HandleAnticheatBlacklistCommand(char* args)
 {
     sAntispamMgr.BlacklistAdd(args);
@@ -243,6 +253,7 @@ bool ChatHandler::HandleAnticheatBlacklistCommand(char* args)
     return true;
 }
 
+// 解除指定账号的反垃圾禁言状态
 bool ChatHandler::HandleAnticheatUnsilenceCommand(char* args)
 {
     uint32 AccountId = 0;
@@ -257,6 +268,7 @@ bool ChatHandler::HandleAnticheatUnsilenceCommand(char* args)
     return true;
 }
 
+// 开启指定时长（秒，上限 1 小时）的移动外推调试日志
 bool ChatHandler::HandleAnticheatDebugExtrapCommand(char* args)
 {
     uint32 seconds;    

@@ -29,6 +29,7 @@
 #include "DBScripts/ScriptMgr.h"
 #include "Util/Util.h"
 
+/// 全局光环触发处理器分发表（按 AuraType 索引映射对应的 Unit 成员处理函数）
 pAuraProcHandler AuraProcHandler[TOTAL_AURAS] =
 {
     &Unit::HandleNULLProc,                                  //  0 SPELL_AURA_NONE
@@ -295,6 +296,7 @@ pAuraProcHandler AuraProcHandler[TOTAL_AURAS] =
     &Unit::HandleNULLProc,                                  //261 SPELL_AURA_PHASE some phased state (44856 spell)
 };
 
+/// 单次触发检查结果记录（保存触发配置、光环持有者及各效果槽是否允许触发）
 struct ProcTriggeredData
 {
     ProcTriggeredData(SpellProcEventEntry const* _spellProcEvent, SpellAuraHolder* _triggeredByHolder)
@@ -307,10 +309,11 @@ struct ProcTriggeredData
 
 typedef std::vector<ProcTriggeredData> ProcTriggeredVector;
 
+/// 根据法术命中结果与伤害信息构造触发扩展标志位（ProcFlagsEx）
 uint32 createProcExtendMask(SpellNonMeleeDamage* spellDamageInfo, SpellMissInfo missCondition)
 {
     uint32 procEx = PROC_EX_NONE;
-    // Check victim state
+    // Check victim state (根据未命中原因设置对应触发扩展位)
     if (missCondition != SPELL_MISS_NONE)
         switch (missCondition)
         {
@@ -345,22 +348,23 @@ uint32 createProcExtendMask(SpellNonMeleeDamage* spellDamageInfo, SpellMissInfo 
     return procEx;
 }
 
+/// 在近战/远程攻击触发后更新玩家武器/防御技能点，并激活响应型技能状态（压制、反击、暴击等）
 void Unit::ProcSkillsAndReactives(bool isVictim, Unit* target, uint32 procFlags, uint32 procEx, WeaponAttackType attType)
 {
-    // For melee/ranged based attack need update skills and set some Aura states
+    // For melee/ranged based attack need update skills and set some Aura states (近战/远程攻击更新武器熟练度、防御技能及反击状态)
     if (procFlags & MELEE_BASED_TRIGGER_MASK)
     {
         // Update skills here for players
         if (GetTypeId() == TYPEID_PLAYER)
         {
-            // On melee based hit/miss/resist need update skill (for victim and attacker)
+            // On melee based hit/miss/resist need update skill (for victim and attacker) (排除玩家与小动物目标，按命中结果更新战斗技能)
             if (procEx & (PROC_EX_NORMAL_HIT | PROC_EX_CRITICAL_HIT | PROC_EX_MISS | PROC_EX_DODGE | PROC_EX_PARRY | PROC_EX_BLOCK))
             {
                 if (target->GetTypeId() != TYPEID_PLAYER && target->GetCreatureType() != CREATURE_TYPE_CRITTER)
                     ((Player*)this)->UpdateCombatSkills(procEx, attType, isVictim);
             }
         }
-        // If exist crit/parry/dodge/block need update aura state (for victim and attacker)
+        // If exist crit/parry/dodge/block need update aura state (for victim and attacker) (暴击、招架、躲闪、格挡时刷新响应式光环状态与计时器)
         if (procEx & (PROC_EX_CRITICAL_HIT | PROC_EX_PARRY | PROC_EX_DODGE | PROC_EX_BLOCK))
         {
             // for victim
@@ -400,13 +404,13 @@ void Unit::ProcSkillsAndReactives(bool isVictim, Unit* target, uint32 procFlags,
             }
             else // For attacker
             {
-                // Overpower on victim dodge
+                // Overpower on victim dodge (目标躲闪时激活战士压制状态)
                 if (procEx & PROC_EX_DODGE && getClass() == CLASS_WARRIOR)
                 {
                     AddComboPoints(target, 1);
                     StartReactiveTimer(REACTIVE_OVERPOWER);
                 }
-                // Enable AURA_STATE_CRIT on crit
+                // Enable AURA_STATE_CRIT on crit (暴击时激活暴击响应状态)
                 if (procEx & PROC_EX_CRITICAL_HIT)
                 {
                     ModifyAuraState(AURA_STATE_CRIT, true);
@@ -422,14 +426,15 @@ void Unit::ProcSkillsAndReactives(bool isVictim, Unit* target, uint32 procFlags,
     }
 }
 
+/// 法术与攻击触发系统主入口：依次处理攻击方/受击方技能状态、触发光环分发及武器附魔触发
 void Unit::ProcDamageAndSpell(ProcSystemArguments&& data)
 {
-    // First lets get skills and reactives out of the way
+    // First lets get skills and reactives out of the way (先处理技能提升与响应式光环状态，并标记重入保护)
     bool currentLevel = true;
     if (data.attacker)
     {
         if (data.attacker->m_spellProcsHappening)
-            currentLevel = false; // triggered spell in proc system should not make holders ready
+            currentLevel = false; // triggered spell in proc system should not make holders ready (嵌套触发中不提前解锁延迟光环持有者)
         data.attacker->m_spellProcsHappening = true;
         if (data.procFlagsAttacker)
             data.attacker->ProcSkillsAndReactives(false, data.victim, data.procFlagsAttacker, data.procExtra, data.attType);
@@ -438,28 +443,28 @@ void Unit::ProcDamageAndSpell(ProcSystemArguments&& data)
     if (canProcVictim)
         data.victim->ProcSkillsAndReactives(true, data.attacker, data.procFlagsVictim, data.procExtra, data.attType);
 
-    // Not much to do if no flags are set.
+    // Not much to do if no flags are set. (处理攻击方光环触发)
     if (data.attacker && data.procFlagsAttacker)
         data.attacker->ProcDamageAndSpellFor(data, false);
 
-    // Now go on with a victim's events'n'auras
+    // Now go on with a victim's events'n'auras (若受击方存活且有受击触发标志，处理受击方光环触发)
     // Not much to do if no flags are set or there is no victim
     if (canProcVictim)
         data.victim->ProcDamageAndSpellFor(data, true);
 
     if (data.attacker)
     {
-		// trigger weapon enchants for weapon based spells; exclude spells that stop attack, because may break CC
-		if (data.attacker->GetTypeId() == TYPEID_PLAYER && (data.procExtra & (PROC_EX_NORMAL_HIT | PROC_EX_CRITICAL_HIT)) != 0)
+        // trigger weapon enchants for weapon based spells; exclude spells that stop attack, because may break CC (武器类命中触发物品战斗附魔，排除周期性 DoT 与抑制武器触发的法术)
+        if (data.attacker->GetTypeId() == TYPEID_PLAYER && (data.procExtra & (PROC_EX_NORMAL_HIT | PROC_EX_CRITICAL_HIT)) != 0)
             if ((data.procFlagsAttacker & PROC_FLAG_DEAL_HARMFUL_PERIODIC) == 0) // do not proc this on DOTs
-			    if (!data.spellInfo || (data.spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON && !data.spellInfo->HasAttribute(SPELL_ATTR_EX4_SUPPRESS_WEAPON_PROCS)))
-				    static_cast<Player*>(data.attacker)->CastItemCombatSpell(data.victim, data.attType, data.spellInfo ? !IsNextMeleeSwingSpell(data.spellInfo) : false);
+                if (!data.spellInfo || (data.spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON && !data.spellInfo->HasAttribute(SPELL_ATTR_EX4_SUPPRESS_WEAPON_PROCS)))
+                    static_cast<Player*>(data.attacker)->CastItemCombatSpell(data.victim, data.attType, data.spellInfo ? !IsNextMeleeSwingSpell(data.spellInfo) : false);
 
         if (currentLevel)
         {
             data.attacker->m_spellProcsHappening = false;
 
-            // Mark auras created during proccing as ready
+            // Mark auras created during proccing as ready (顶层触发结束后，将过程中新建的延迟光环标记为就绪态)
             for (SpellAuraHolder* holder : data.attacker->m_delayedSpellAuraHolders)
                 if (holder->GetState() == SPELLAURAHOLDER_STATE_CREATED) // if deleted by some unknown circumstance
                     holder->SetState(SPELLAURAHOLDER_STATE_READY);
@@ -469,6 +474,7 @@ void Unit::ProcDamageAndSpell(ProcSystemArguments&& data)
     }
 }
 
+/// 构造单次触发执行上下文数据（区分攻击方视角与受击方视角）
 ProcExecutionData::ProcExecutionData(ProcSystemArguments& data, bool isVictim) : attacker(data.attacker), victim(data.victim),
     isVictim(isVictim), procExtra(data.procExtra), attType(data.attType), damage(data.damage), absorb(data.absorb), spellInfo(data.spellInfo), spell(data.spell), healthGain(data.healthGain), isHeal(data.isHeal),
     triggeredByAura(nullptr), cooldown(0), triggeredSpellId(0), procOnce(false), triggerTarget(nullptr)
@@ -487,6 +493,7 @@ ProcExecutionData::ProcExecutionData(ProcSystemArguments& data, bool isVictim) :
     }
 }
 
+/// 为指定单位（攻击方或受击方）遍历光环并执行匹配的触发事件处理器与层数/冷却消耗
 void Unit::ProcDamageAndSpellFor(ProcSystemArguments& argData, bool isVictim)
 {
     ProcExecutionData execData(argData, isVictim);
@@ -497,13 +504,14 @@ void Unit::ProcDamageAndSpellFor(ProcSystemArguments& argData, bool isVictim)
     for (SpellAuraHolderMap::const_iterator itr = GetSpellAuraHolderMap().begin(); itr != GetSpellAuraHolderMap().end(); ++itr)
     {
         SpellAuraHolder* holder = itr->second;
-        // skip deleted auras (possible at recursive triggered call
+        // skip deleted auras (possible at recursive triggered call (跳过尚未就绪或已标记删除的光环)
         if (holder->GetState() != SPELLAURAHOLDER_STATE_READY || holder->IsDeleted())
             continue;
 
         ProcTriggeredData procTriggeredData(nullptr, itr->second);
 
         SpellProcEventTriggerCheck result = IsTriggeredAtSpellProcEvent(execData, holder, procTriggeredData.spellProcEvent, procTriggeredData.canProc);
+        // 若光环带有触发失败消耗充能属性，加入待扣减列表
         if (holder->GetSpellProto()->HasAttribute(SPELL_ATTR_PROC_FAILURE_BURNS_CHARGE) &&
             result == SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_ROLL_FAILED && holder->GetAuraCharges() > 0)
             holdersForDeletion.push_back(holder);
@@ -531,7 +539,7 @@ void Unit::ProcDamageAndSpellFor(ProcSystemArguments& argData, bool isVictim)
     if (procTriggered.empty())
         return;
 
-    // Handle effects proceed this time
+    // Handle effects proceed this time (逐一执行通过筛选的触发光环效果)
     for (ProcTriggeredVector::const_iterator itr = procTriggered.begin(); itr != procTriggered.end(); ++itr)
     {
         // Some auras can be deleted in function called in this loop (except first, ofc)
@@ -582,7 +590,7 @@ void Unit::ProcDamageAndSpellFor(ProcSystemArguments& argData, bool isVictim)
         if ((procSuccess || triggeredByHolder->GetSpellProto()->HasAttribute(SPELL_ATTR_EX2_PROC_COOLDOWN_ON_FAILURE)) && anyAuraProc && execData.cooldown)
             triggeredByHolder->SetProcCooldown(std::chrono::milliseconds(execData.cooldown), GetMap()->GetCurrentClockTime());
 
-        // Remove charge (aura can be removed by triggers)
+        // Remove charge (aura can be removed by triggers) (触发成功或失败也扣减充能时，扣除一次光环充能并在归零时移除)
         // Attribute example - drain soul vanilla - third effect fails when not have talent but charge should drop
         if (useCharges && (procSuccess || triggeredByHolder->GetSpellProto()->HasAttribute(SPELL_ATTR_PROC_FAILURE_BURNS_CHARGE)) && anyAuraProc && !triggeredByHolder->IsDeleted())
         {
@@ -593,11 +601,12 @@ void Unit::ProcDamageAndSpellFor(ProcSystemArguments& argData, bool isVictim)
     }
 }
 
+/// 检查单个光环持有者是否满足本次触发事件的所有条件（事件标志、击杀经验、装备需求、概率、内置 CD、家族掩码）
 Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder* holder, SpellProcEventEntry const*& spellProcEvent, bool (&canProc)[MAX_EFFECT_INDEX])
 {
     SpellEntry const* spellProto = holder->GetSpellProto();
 
-    // Get proc Event Entry
+    // Get proc Event Entry (查询数据库 spell_proc_event 覆盖配置)
     spellProcEvent = sSpellMgr.GetSpellProcEvent(spellProto->Id);
 
     // Get EventProcFlag
@@ -610,11 +619,11 @@ Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecution
     if (!EventProcFlag)
         return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_FAILED;
 
-    // Check spellProcEvent data requirements
+    // Check spellProcEvent data requirements (校验基础触发标志、学派与扩展条件)
     if (!SpellMgr::IsSpellProcEventCanTriggeredBy(spellProcEvent, EventProcFlag, data.spellInfo, data.procFlags, data.procExtra))
         return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_FAILED;
 
-    // In most cases req get honor or XP from kill
+    // In most cases req get honor or XP from kill (击杀触发通常要求目标能提供经验或荣誉，暗言术：灭雕文/天赋特例除外)
     if (EventProcFlag & PROC_FLAG_KILL && GetTypeId() == TYPEID_PLAYER)
     {
         bool allow = ((Player*)this)->isHonorOrXPTarget(data.target);
@@ -624,12 +633,12 @@ Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecution
         if (!allow)
             return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_FAILED;
     }
-    // Aura added by spell can`t trigger from self (prevent drop charges/do triggers)
+    // Aura added by spell can`t trigger from self (prevent drop charges/do triggers) (法术自身不能触发自己施加的光环，周期性受击触发除外)
     // But except periodic triggers (can triggered from self)
     if (data.spellInfo && data.spellInfo->Id == spellProto->Id && !(EventProcFlag & PROC_FLAG_TAKE_HARMFUL_PERIODIC))
         return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_FAILED;
 
-    // Check if current equipment allows aura to proc
+    // Check if current equipment allows aura to proc (检查当前装备的武器或盾牌是否满足光环触发的装备类型要求)
     if (!data.isVictim && GetTypeId() == TYPEID_PLAYER && !spellProto->HasAttribute(SPELL_ATTR_EX3_NO_PROC_EQUIP_REQUIREMENT))
     {
         if (spellProto->EquippedItemClass == ITEM_CLASS_WEAPON)
@@ -673,7 +682,7 @@ Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecution
     if (IsSitState() && !spellProto->HasAttribute(SPELL_ATTR_ALLOW_WHILE_SITTING) && !spellProto->HasAttribute(SPELL_ATTR_EX4_ALLOW_PROC_WHILE_SITTING))
         return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_FAILED;
 
-    // Get chance from spell
+    // Get chance from spell (计算最终触发概率：法术默认概率 -> 自定义概率 -> PPM 公式 -> 天赋修正 -> 60级以上衰减)
     float chance = (float)spellProto->procChance;
     // If in spellProcEvent exist custom chance, chance = spellProcEvent->customChance;
     if (spellProcEvent && spellProcEvent->customChance)
@@ -688,7 +697,7 @@ Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecution
     if (Player* modOwner = GetSpellModOwner())
         modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_CHANCE_OF_SUCCESS, chance);
 
-    // proc chance is reduced by an additional 3.333% per level past 60
+    // proc chance is reduced by an additional 3.333% per level past 60 (60级以上每级额外降低 3.333% 触发几率)
     if (holder->IsReducedProcChancePast60() && GetLevel() > 60)
         chance = std::max(0.f, (1.f - ((GetLevel() - 60) * 1.f / 30.f)) * chance);
 
@@ -697,6 +706,7 @@ Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecution
         if (spellProto->HasAttribute(SPELL_ATTR_EX6_AURA_IS_WEAPON_PROC) && data.spell->m_spellInfo->HasAttribute(SPELL_ATTR_EX4_SUPPRESS_WEAPON_PROCS))
             return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_FAILED;
 
+        // 默认禁止由触发法术引发二次连锁触发，除非明确允许从触发触发
         if (data.spell->m_IsTriggeredSpell)
         {
             if (!data.spell->m_spellInfo->HasAttribute(SPELL_ATTR_EX3_NOT_A_PROC) && !spellProto->HasAttribute(SPELL_ATTR_EX3_CAN_PROC_FROM_PROCS))
@@ -731,7 +741,7 @@ Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecution
                             continue;
                         }
 
-                        // don't allow proc from cast end for non modifier spells
+                        // don't allow proc from cast end for non modifier spells (施法结束时仅允许修饰类光环触发，除非显式配置了 procEx)
                         // unless they have proc ex defined for that
                         if (IsCastEndProcModifierAura(holder->GetSpellProto(), SpellEffectIndex(i), data.spellInfo))
                         {
@@ -768,12 +778,14 @@ Unit::SpellProcEventTriggerCheck Unit::IsTriggeredAtSpellProcEvent(ProcExecution
     if (!canProc[EFFECT_INDEX_0] && !canProc[EFFECT_INDEX_1] && !canProc[EFFECT_INDEX_2])
         return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_FAILED;
 
+    // 掷骰判定是否触发成功（用于区分失败扣充能/内置冷却）
     if (roll_chance_f(chance))
         return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_OK;
     else
         return SpellProcEventTriggerCheck::SPELL_PROC_TRIGGER_ROLL_FAILED;
 }
 
+/// 按法术 ID 触发并施放衍生子法术的辅助入口
 SpellAuraProcResult Unit::TriggerProccedSpell(Unit* target, std::array<int32, MAX_EFFECT_INDEX>& basepoints, uint32 triggeredSpellId, Item* castItem, Aura* triggeredByAura, uint32 cooldown, ObjectGuid originalCaster)
 {
     SpellEntry const* triggerEntry = sSpellTemplate.LookupEntry<SpellEntry>(triggeredSpellId);
@@ -787,6 +799,7 @@ SpellAuraProcResult Unit::TriggerProccedSpell(Unit* target, std::array<int32, MA
     return TriggerProccedSpell(target, basepoints, triggerEntry, castItem, triggeredByAura, cooldown, originalCaster);
 }
 
+/// 校验目标存活、触发冷却及自定义基础点数后，实际施放被触发的子法术
 SpellAuraProcResult Unit::TriggerProccedSpell(Unit* target, std::array<int32, MAX_EFFECT_INDEX>& basepoints, SpellEntry const* spellInfo, Item* castItem, Aura* triggeredByAura, uint32 cooldown, ObjectGuid originalCaster)
 {
     // default case
@@ -814,6 +827,7 @@ SpellAuraProcResult Unit::TriggerProccedSpell(Unit* target, std::array<int32, MA
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理近战急速类光环触发（盗贼剑刃乱舞溅射、战士/萨满乱舞消耗层数）
 SpellAuraProcResult Unit::HandleHasteAuraProc(ProcExecutionData& data)
 {
     Unit* pVictim = data.target; uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura; uint32 cooldown = data.cooldown;
@@ -826,6 +840,7 @@ SpellAuraProcResult Unit::HandleHasteAuraProc(ProcExecutionData& data)
     Unit* target = triggered_spell_id ? data.triggerTarget : pVictim;
     std::array<int32, MAX_EFFECT_INDEX>& basepoints = data.basepoints;
 
+    // 依据急速光环法术 ID 处理特殊触发（剑刃乱舞溅射、乱舞仅主目标触发）
     switch (hasteSpell->Id)
     {
         // Blade Flurry
@@ -862,6 +877,7 @@ SpellAuraProcResult Unit::HandleHasteAuraProc(ProcExecutionData& data)
     return TriggerProccedSpell(target, basepoints, triggered_spell_id, castItem, triggeredByAura, cooldown, data.triggerOriginalCaster);
 }
 
+/// 处理 Dummy 占位光环触发（按职业家族与法术 ID 分发：以眼还眼、横扫攻击、点燃、燃烧、夜幕、吸血鬼之触/拥抱、圣骑士圣印、萨满风怒/火舌/闪电过载等）
 SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
 {
     Unit* pVictim = data.target; uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
@@ -882,7 +898,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         {
             switch (dummySpell->Id)
             {
-                // Eye for an Eye
+                // Eye for an Eye (圣骑士：以眼还眼，反弹魔法暴击伤害)
                 case 9799:
                 case 25988:
                 {
@@ -898,7 +914,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     triggered_spell_id = 25997;
                     break;
                 }
-                // Sweeping Strikes
+                // Sweeping Strikes (战士：横扫攻击，对附近敌人复制伤害或旋风/斩杀)
                 case 12328:
                 case 18765:
                 case 35429:
@@ -932,7 +948,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         basepoints[0] = damage;
                     break;
                 }
-                // Unstable Power
+                // Unstable Power (不稳定能量饰品：每次施法消耗 1 层法伤增益)
                 case 24658:
                 {
                     if (!spellInfo || spellInfo->Id == 24659)
@@ -941,14 +957,14 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     RemoveAuraHolderFromStack(24659);
                     return SPELL_AURA_PROC_OK;
                 }
-                // Restless Strength
+                // Restless Strength (无尽力量饰品：消耗 1 层增益)
                 case 24661:
                 {
                     // Need remove one 24662 aura
                     RemoveAuraHolderFromStack(24662);
                     return SPELL_AURA_PROC_OK;
                 }
-                // Adaptive Warding (Frostfire Regalia set)
+                // Adaptive Warding (Frostfire Regalia set) (法师 T3 霜火套装：受法术攻击时触发对应抗性护盾)
                 case 28764:
                 {
                     if (!spellInfo)
@@ -988,7 +1004,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     target = this;
                     break;
                 }
-                // Obsidian Armor (Justice Bearer`s Pauldrons shoulder)
+                // Obsidian Armor (Justice Bearer`s Pauldrons shoulder) (黑曜石护甲：受法术攻击触发对应学派抗性)
                 case 27539:
                 {
                     if (!spellInfo)
@@ -1011,7 +1027,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     target = this;
                     break;
                 }
-                // Mana Leech (Passive) (Priest Pet Aura)
+                // Mana Leech (Passive) (Priest Pet Aura) (牧师暗影魔：攻击造成伤害按 250% 为主人回蓝)
                 case 28305:
                 {
                     // Cast on owner
@@ -1023,7 +1039,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     triggered_spell_id = 34650;
                     break;
                 }
-                // Soul Charge - Archimonde
+                // Soul Charge - Archimonde (海加尔山阿克蒙德：玩家死亡触发对应颜色灵魂充能)
                 case 32045: // Yellow
                 case 32051: // Green
                 case 32052: // Red
@@ -1038,7 +1054,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     AI()->SendAIEvent(AI_EVENT_CUSTOM_A, this, this, triggered_spell_id);
                     return SPELL_AURA_PROC_CANT_TRIGGER; // Strangely, stacks and charges are removed on cast finish
                 }
-                // Mark of Malice
+                // Mark of Malice (恶毒印记：最后一层充能消耗时触发终结效果)
                 case 33493:
                 {
                     // Cast finish spell at last charge
@@ -1049,7 +1065,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     triggered_spell_id = 33494;
                     break;
                 }
-                // Vampiric Aura (boss spell)
+                // Vampiric Aura (boss spell) (首领吸血光环：造成伤害按 300% 治疗自身)
                 case 38196:
                 {
                     basepoints[0] = 3 * damage;             // 300%
@@ -1060,7 +1076,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     target = this;
                     break;
                 }
-                // Aura of Madness (Darkmoon Card: Madness trinket)
+                // Aura of Madness (Darkmoon Card: Madness trinket) (暗月卡片：疯狂，按职业随机抽取疯狂增益)
                 //=====================================================
                 // 39511 Sociopath: +35 strength (Paladin, Rogue, Druid, Warrior)
                 // 40997 Delusional: +70 attack power (Rogue, Hunter, Paladin, Warrior, Druid)
@@ -1129,7 +1145,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     CastSpell(owner, 42455, TRIGGERED_NONE);
                     break;
                 }
-                // Sunwell Exalted Caster Neck (Shattered Sun Pendant of Acumen neck)
+                // Sunwell Exalted Caster Neck (Shattered Sun Pendant of Acumen neck) (破碎残阳声望法系项链：按奥尔多/占星者崇拜触发不同法术)
                 // cast 45479 Light's Wrath if Exalted by Aldor
                 // cast 45429 Arcane Bolt if Exalted by Scryers
                 case 45481:
@@ -1166,7 +1182,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     }
                     return SPELL_AURA_PROC_FAILED;
                 }
-                // Sunwell Exalted Melee Neck (Shattered Sun Pendant of Might neck)
+                // Sunwell Exalted Melee Neck (Shattered Sun Pendant of Might neck) (破碎残阳声望近战项链)
                 // cast 45480 Light's Strength if Exalted by Aldor
                 // cast 45428 Arcane Strike if Exalted by Scryers
                 case 45482:
@@ -1189,7 +1205,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     }
                     return SPELL_AURA_PROC_FAILED;
                 }
-                // Sunwell Exalted Tank Neck (Shattered Sun Pendant of Resolve neck)
+                // Sunwell Exalted Tank Neck (Shattered Sun Pendant of Resolve neck) (破碎残阳声望坦克项链)
                 // cast 45431 Arcane Insight if Exalted by Aldor
                 // cast 45432 Light's Ward if Exalted by Scryers
                 case 45483:
@@ -1213,7 +1229,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     }
                     return SPELL_AURA_PROC_FAILED;
                 }
-                // Sunwell Exalted Healer Neck (Shattered Sun Pendant of Restoration neck)
+                // Sunwell Exalted Healer Neck (Shattered Sun Pendant of Restoration neck) (破碎残阳声望治疗项链)
                 // cast 45478 Light's Salvation if Exalted by Aldor
                 // cast 45430 Arcane Surge if Exalted by Scryers
                 case 45484:
@@ -1247,7 +1263,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         }
         case SPELLFAMILY_MAGE:
         {
-            // Magic Absorption
+            // Magic Absorption (法师：魔法吸收，抵抗法术时回复最大法力百分比)
             if (dummySpell->SpellIconID == 459)             // only this spell have SpellIconID == 459 and dummy aura
             {
                 if (GetPowerType() != POWER_MANA)
@@ -1259,7 +1275,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 triggered_spell_id = 29442;
                 break;
             }
-            // Master of Elements
+            // Master of Elements (法师：元素大师，法术暴击返还部分法力消耗)
             if (dummySpell->SpellIconID == 1920)
             {
                 if (!spellInfo)
@@ -1279,7 +1295,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
 
             switch (dummySpell->Id)
             {
-                // Ignite
+                // Ignite (法师：点燃，火焰暴击附加 4%~20% 伤害的持续灼烧)
                 case 11119:
                 case 11120:
                 case 12846:
@@ -1301,7 +1317,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     triggered_spell_id = 12654;
                     break;
                 }
-                // Combustion
+                // Combustion (法师：燃烧，每次火焰法术叠加暴击光环并在最后一次暴击后清除)
                 case 11129:
                 {
                     // last charge and crit
@@ -1319,7 +1335,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         }
         case SPELLFAMILY_WARRIOR:
         {
-            // Second Wind
+            // Second Wind (战士：复苏之风，受到定身或昏迷控制时触发回血回怒)
             if (dummySpell->SpellIconID == 1697)
             {
                 // only for spells and hit/crit (trigger start always) and not start from self casted spells (5530 Mace Stun Effect for example)
@@ -1347,7 +1363,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         {
             switch (dummySpell->Id)
             {
-                // Nightfall
+                // Nightfall (术士：夜幕，腐蚀术/吸取生命触发暗影冥思瞬发暗影箭)
                 case 18094:
                 case 18095:
                 {
@@ -1384,7 +1400,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         }
         case SPELLFAMILY_PRIEST:
         {
-            // Vampiric Touch
+            // Vampiric Touch (牧师：吸血鬼之触，暗影伤害按比例为小队回蓝)
             if (dummySpell->SpellFamilyFlags & uint64(0x0000040000000000))
             {
                 if (!pVictim || !pVictim->IsAlive())
@@ -1401,7 +1417,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
             }
             switch (dummySpell->Id)
             {
-                // Vampiric Embrace
+                // Vampiric Embrace (牧师：吸血鬼的拥抱，暗影伤害按比例治疗小队)
                 case 15286:
                 {
                     if (!pVictim || !pVictim->IsAlive())
@@ -1465,7 +1481,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         {
             switch (dummySpell->Id)
             {
-                // Healing Touch (Dreamwalker Raiment set)
+                // Healing Touch (Dreamwalker Raiment set) (德鲁伊 T3 梦游者套装：治疗之触返还 30% 法力)
                 case 28719:
                 {
                     // mana back
@@ -1489,7 +1505,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     triggered_spell_id = 37238;
                     break;
                 }
-                // Druid Tier 6 Trinket
+                // Druid Tier 6 Trinket (德鲁伊 T6 职业饰品：星火/回春/裂伤概率触发法伤/治疗/AP 增益)
                 case 40442:
                 {
                     float  chance;
@@ -1584,7 +1600,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         }
         case SPELLFAMILY_PALADIN:
         {
-            // Seal of Righteousness - melee proc dummy
+            // Seal of Righteousness - melee proc dummy (圣骑士：正义圣印，按武器速度与单双手计算神圣附加伤害)
             if ((dummySpell->SpellFamilyFlags & uint64(0x000000008000000)) && triggeredByAura->GetEffIndex() == EFFECT_INDEX_0)
             {
                 if (GetTypeId() != TYPEID_PLAYER)
@@ -1640,7 +1656,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 CastCustomSpell(pVictim, spellId, &damagePoint, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, triggeredByAura);
                 return SPELL_AURA_PROC_OK;                  // no hidden cooldown
             }
-            // Seal of Blood do damage trigger
+            // Seal of Blood do damage trigger (圣骑士：鲜血圣印，命中触发神圣伤害与反伤)
             if (dummySpell->SpellFamilyFlags & uint64(0x0000040000000000))
             {
                 switch (triggeredByAura->GetEffIndex())
@@ -1688,7 +1704,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     }
                     break;
                 }
-                // Spiritual Attunement
+                // Spiritual Attunement (圣骑士：灵魂协调，受他人实际治疗时回复法力)
                 case 31785:
                 case 33776:
                 {
@@ -1701,7 +1717,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     triggered_spell_id = 31786;
                     break;
                 }
-                // Seal of Vengeance (damage calc on apply aura)
+                // Seal of Vengeance (damage calc on apply aura) (圣骑士：复仇圣印，叠加神圣复仇 DoT，5 层后触发额外神圣伤害)
                 case 31801:
                 {
                     if (effIndex != EFFECT_INDEX_0)         // effect 1,2 used by seal unleashing code
@@ -1761,7 +1777,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     triggered_spell_id = 28850;
                     break;
                 }
-                // Windfury Weapon (Passive) 1-5 Ranks
+                // Windfury Weapon (Passive) 1-5 Ranks (萨满：风怒武器，主副手武器附魔触发两次额外攻击并附加 AP 伤害)
                 case 33757:
                 {
                     if (GetTypeId() != TYPEID_PLAYER)
@@ -1862,7 +1878,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     break;
                 }
             }
-            // Flametongue Weapon (Passive), Ranks
+            // Flametongue Weapon (Passive), Ranks (萨满：火舌武器，按触发武器槽位触发对应等级火焰伤害)
             if (dummySpell->SpellFamilyFlags & uint64(0x0000000000200000))
             {
                 if (GetTypeId() != TYPEID_PLAYER || !castItem)
@@ -1887,7 +1903,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 }
                 break;
             }
-            // Lightning Overload
+            // Lightning Overload (萨满：闪电过载，闪电箭/闪电链概率免费重放半伤复制法术)
             if (dummySpell->SpellIconID == 2018)            // only this spell have SpellFamily Shaman SpellIconID == 2018 and dummy aura
             {
                 if (!spellInfo || GetTypeId() != TYPEID_PLAYER || !pVictim)
@@ -1951,6 +1967,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
     return TriggerProccedSpell(target, basepoints, triggered_spell_id, castItem, triggeredByAura, cooldown, data.triggerOriginalCaster);
 }
 
+/// 处理触发法术型光环（SPELL_AURA_PROC_TRIGGER_SPELL / WITH_VALUE），解析目标、基础点数与职业特例后施放子法术
 SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data)
 {
     Unit* pVictim = data.target; uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
@@ -2148,7 +2165,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
             }
             break;
         case SPELLFAMILY_WARRIOR:
-            // Deep Wounds (replace triggered spells to directly apply DoT), dot spell have familyflags
+            // Deep Wounds (replace triggered spells to directly apply DoT), dot spell have familyflags (战士：重伤，按武器均值伤害百分比施加 6 秒流血 DoT)
             if (!auraSpellInfo->SpellFamilyFlags && auraSpellInfo->SpellIconID == 243)
             {
                 float weaponDamage;
@@ -2193,7 +2210,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
             break;
         case SPELLFAMILY_WARLOCK:
         {
-            // Pyroclasm
+            // Pyroclasm (术士：火焰冲撞，按法术总跳数分摊眩晕触发概率)
             if (auraSpellInfo->SpellIconID == 1137)
             {
                 if (!pVictim || !pVictim->IsAlive() || pVictim == this || spellInfo == nullptr)
@@ -2221,7 +2238,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
 
                 trigger_spell_id = 18093;
             }
-            // Drain Soul
+            // Drain Soul (术士：吸取灵魂击杀回蓝天赋加成)
             else if (auraSpellInfo->SpellFamilyFlags & uint64(0x0000000000004000))
             {
                 Unit::AuraList const& mAddFlatModifier = GetAurasByType(SPELL_AURA_ADD_FLAT_MODIFIER);
@@ -2248,7 +2265,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
         }
         case SPELLFAMILY_PRIEST:
         {
-            // Blessed Recovery
+            // Blessed Recovery (牧师：神佑之复，受近战暴击后 3 跳持续回复生命)
             if (auraSpellInfo->SpellIconID == 1875)
             {
                 switch (auraSpellInfo->Id)
@@ -2267,7 +2284,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
         }
         case SPELLFAMILY_DRUID:
         {
-            // Leader of the Pack
+            // Leader of the Pack (德鲁伊：兽群领袖，暴击回血触发)
             if (auraSpellInfo->Id == 24932)
             {
                 if (triggerAmount == 0)
@@ -2355,7 +2372,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
                 trigger_spell_id = 20272;
                 target = this;
             }
-            // Lightning Capacitor
+            // Lightning Capacitor (闪电电容饰品：法术暴击充能 3 层后释放闪电箭)
             else if (auraSpellInfo->Id == 37657)
             {
                 if (!pVictim || !pVictim->IsAlive())
@@ -2383,7 +2400,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
         }
         case SPELLFAMILY_SHAMAN:
         {
-            // Lightning Shield (overwrite non existing triggered spell call in spell.dbc
+            // Lightning Shield (overwrite non existing triggered spell call in spell.dbc (萨满：闪电之盾，受击触发对应等级反击闪电)
             if (auraSpellInfo->IsFitToFamilyMask(uint64(0x0000000000000400)) && auraSpellInfo->SpellVisual == 37)
             {
                 switch (auraSpellInfo->Id)
@@ -2429,7 +2446,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
                 trigger_spell_id = 23571;
                 target = this;
             }
-            // Nature's Guardian
+            // Nature's Guardian (萨满：自然守护者，血量跌破 30% 时回血并降低仇恨)
             else if (auraSpellInfo->SpellIconID == 2013)
             {
                 // Check health condition - should drop to less 30% (trigger at any attack with result health less 30%, independent original health state)
@@ -2463,7 +2480,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
             target = pVictim;
             break;
         }
-        // Finishing moves that add combo points
+        // Finishing moves that add combo points (终结技触发额外连击点需挂接到当前施法末尾，避免被终结技自身清空)
         case 14189: // Seal Fate (Netherblade set)
         case 14157: // Ruthlessness
         {
@@ -2507,7 +2524,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
         return SPELL_AURA_PROC_FAILED;
     }
 
-    // try detect target manually if not set
+    // try detect target manually if not set (未显式指定目标时，按触发法术正负面目标模式自动决定施法目标)
     if (target == nullptr)
         target = !(procFlags & (PROC_FLAG_DEAL_HELPFUL_SPELL | PROC_FLAG_DEAL_HELPFUL_ABILITY)) && IsPositiveSpellTargetMode(triggerEntry, this, pVictim) ? this : pVictim;
 
@@ -2525,13 +2542,14 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
         }
     }
 
-    // not allow proc extra attack spell at extra attack
+    // not allow proc extra attack spell at extra attack (禁止在额外攻击执行期间再次触发额外攻击)
     if (m_extraAttacksExecuting && IsSpellHaveEffect(triggerEntry, SPELL_EFFECT_ADD_EXTRA_ATTACKS))
         return SPELL_AURA_PROC_FAILED;
 
     return TriggerProccedSpell(target, basepoints, triggerEntry, castItem, triggeredByAura, cooldown, data.triggerOriginalCaster);
 }
 
+/// 处理触发伤害型光环（SPELL_AURA_PROC_TRIGGER_DAMAGE），计算命中抵抗、吸收与护甲减免后直接造成法术伤害
 SpellAuraProcResult Unit::HandleProcTriggerDamageAuraProc(ProcExecutionData& data)
 {
     Unit* victim = data.target; Aura* triggeredByAura = data.triggeredByAura; uint32 cooldown = data.cooldown;
@@ -2542,7 +2560,7 @@ SpellAuraProcResult Unit::HandleProcTriggerDamageAuraProc(ProcExecutionData& dat
     if (!triggeredByAura->GetHolder()->IsProcReady(GetMap()->GetCurrentClockTime()))
         return SPELL_AURA_PROC_FAILED;
 
-    // Trigger damage can be resisted...
+    // Trigger damage can be resisted... (触发伤害先判定命中与抵抗，再计算法伤加成、吸收与抗性减免)
     if (SpellMissInfo missInfo = SpellHitResult(this, victim, spellInfo, uint8(1 << triggeredByAura->GetEffIndex()), false))
     {
         SendSpellDamageResist(victim, spellInfo->Id);
@@ -2561,6 +2579,7 @@ SpellAuraProcResult Unit::HandleProcTriggerDamageAuraProc(ProcExecutionData& dat
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理覆盖职业脚本型光环触发（SPELL_AURA_OVERRIDE_CLASS_SCRIPTS，主要用于套装奖励与特殊事件脚本）
 SpellAuraProcResult Unit::HandleOverrideClassScriptAuraProc(ProcExecutionData& data)
 {
     Unit* pVictim = data.target; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo; uint32 cooldown = data.cooldown;
@@ -2624,6 +2643,7 @@ SpellAuraProcResult Unit::HandleOverrideClassScriptAuraProc(ProcExecutionData& d
     return TriggerProccedSpell(target, basepoints, triggered_spell_id, castItem, triggeredByAura, cooldown, data.triggerOriginalCaster);
 }
 
+/// 处理按充能层数在团队成员间弹跳的触发光环（如特定副本/治疗链跳机制）
 SpellAuraProcResult Unit::HandleRaidProcFromChargeAuraProc(ProcExecutionData& data)
 {
     uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura;
@@ -2652,7 +2672,7 @@ SpellAuraProcResult Unit::HandleRaidProcFromChargeAuraProc(ProcExecutionData& da
     int32 jumps = triggeredByAura->GetHolder()->GetAuraCharges() - 1; // jumps
     triggeredByAura->GetHolder()->SetAuraCharges(1); // current aura expire - will be removed at next charges decrease
 
-    // next target selection
+    // next target selection (若仍有剩余弹跳次数，搜索范围内的随机团队成员转移光环并播放弹跳动画)
     if (jumps > 0 && GetTypeId() == TYPEID_PLAYER && caster_guid.IsPlayer())
     {
         float radius;
@@ -2701,6 +2721,7 @@ SpellAuraProcResult Unit::HandleRaidProcFromChargeAuraProc(ProcExecutionData& da
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理带数值的团队充能弹跳光环（核心用于牧师愈合祷言 Prayer of Mending，自动寻找血量百分比最低的队友弹跳）
 SpellAuraProcResult Unit::HandleRaidProcFromChargeWithValueAuraProc(ProcExecutionData& data)
 {
     uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura;
@@ -2726,7 +2747,7 @@ SpellAuraProcResult Unit::HandleRaidProcFromChargeWithValueAuraProc(ProcExecutio
     // current aura expire
     triggeredByAura->GetHolder()->SetAuraCharges(1);        // will removed at next charges decrease
 
-    // next target selection
+    // next target selection (若仍有剩余弹跳次数，寻找半径内生命百分比最低的队友转移愈合祷言光环)
     if (jumps > 0 && GetTypeId() == TYPEID_PLAYER && caster_guid.IsPlayer())
     {
         float radius;
@@ -2780,6 +2801,7 @@ SpellAuraProcResult Unit::HandleRaidProcFromChargeWithValueAuraProc(ProcExecutio
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理非叠加施法加速光环触发（仅对有施法时间的法术生效，跳过近战与瞬发）
 SpellAuraProcResult Unit::HandleModCastingSpeedNotStackAuraProc(ProcExecutionData& data)
 {
     SpellEntry const* spellInfo = data.spellInfo;
@@ -2787,6 +2809,7 @@ SpellAuraProcResult Unit::HandleModCastingSpeedNotStackAuraProc(ProcExecutionDat
     return !(spellInfo == nullptr || GetSpellCastTime(spellInfo, this) == 0) ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;
 }
 
+/// 处理按法术学派反射法术光环触发（校验入射法术学派掩码）
 SpellAuraProcResult Unit::HandleReflectSpellsSchoolAuraProc(ProcExecutionData& data)
 {
     Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo;
@@ -2794,6 +2817,7 @@ SpellAuraProcResult Unit::HandleReflectSpellsSchoolAuraProc(ProcExecutionData& d
     return !(spellInfo == nullptr || (triggeredByAura->GetModifier()->m_miscvalue & spellInfo->SchoolMask) == 0) ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;
 }
 
+/// 处理按学派减免法力消耗光环触发（校验法力消耗与学派掩码）
 SpellAuraProcResult Unit::HandleModPowerCostSchoolAuraProc(ProcExecutionData& data)
 {
     Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo;
@@ -2803,6 +2827,7 @@ SpellAuraProcResult Unit::HandleModPowerCostSchoolAuraProc(ProcExecutionData& da
              (triggeredByAura->GetModifier()->m_miscvalue & spellInfo->SchoolMask) == 0) ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;  // School check
 }
 
+/// 处理机制免疫/抗性光环触发（匹配入射法术控制机制类型）
 SpellAuraProcResult Unit::HandleMechanicImmuneResistanceAuraProc(ProcExecutionData& data)
 {
     Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo;
@@ -2811,12 +2836,14 @@ SpellAuraProcResult Unit::HandleMechanicImmuneResistanceAuraProc(ProcExecutionDa
            ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;
 }
 
+/// 处理法术吸附磁铁光环触发（根基图腾吸收命中后消耗光环）
 SpellAuraProcResult Unit::HandleMagnetAuraProc(ProcExecutionData& data)
 {
     Aura* triggeredByAura = data.triggeredByAura; uint32 procEx = data.procExtra;
     return procEx & PROC_EX_MAGNET && triggeredByAura->IsMagnetUsed() ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;
 }
 
+/// 处理法力护盾光环触发（如法师套装触发额外回蓝/增益效果）
 SpellAuraProcResult Unit::HandleManaShieldAuraProc(ProcExecutionData& data)
 {
     Unit* pVictim = data.target; Aura* triggeredByAura = data.triggeredByAura; uint32 cooldown = data.cooldown;
@@ -2856,6 +2883,7 @@ SpellAuraProcResult Unit::HandleManaShieldAuraProc(ProcExecutionData& data)
     return TriggerProccedSpell(target, basepoints, triggered_spell_id, castItem, triggeredByAura, cooldown, data.triggerOriginalCaster);
 }
 
+/// 处理攻击者攻击强度加成光环触发（预留占位）
 SpellAuraProcResult Unit::HandleAttackPowerAttackerBonusAuraProc(ProcExecutionData& data)
 {
     Unit* pVictim = data.target; uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
@@ -2864,6 +2892,7 @@ SpellAuraProcResult Unit::HandleAttackPowerAttackerBonusAuraProc(ProcExecutionDa
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理抗性/护甲类光环触发（牧师心灵之火仅在实际受到伤害时消耗层数）
 SpellAuraProcResult Unit::HandleModResistanceAuraProc(ProcExecutionData& data)
 {
     uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura;
@@ -2880,12 +2909,13 @@ SpellAuraProcResult Unit::HandleModResistanceAuraProc(ProcExecutionData& data)
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理受击概率打破控制光环触发（恐惧/定身/沉默类光环按所受伤害与施法者等级比例概率移除）
 SpellAuraProcResult Unit::HandleRemoveByDamageChanceProc(ProcExecutionData& data)
 {
     uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura;
     if (triggeredByAura->GetSpellProto()->Id == 46102) // does not follow this logic
         return SPELL_AURA_PROC_OK;
-    // The chance to dispel an aura depends on the damage taken with respect to the casters level.
+    // The chance to dispel an aura depends on the damage taken with respect to the casters level. (根据受到伤害与目标等级上限比例计算打破控制的概率)
     uint32 max_dmg = GetLevel() > 8 ? 25 * GetLevel() - 150 : 50;
     float chance = float(damage) / max_dmg * 100.0f;
     if (roll_chance_f(chance))
@@ -2897,6 +2927,7 @@ SpellAuraProcResult Unit::HandleRemoveByDamageChanceProc(ProcExecutionData& data
     return SPELL_AURA_PROC_FAILED;
 }
 
+/// 处理隐身光环触发（施放技能或受击时打破非被动/非减益隐身效果）
 SpellAuraProcResult Unit::HandleInvisibilityAuraProc(ProcExecutionData& data)
 {
     Aura* triggeredByAura = data.triggeredByAura;
@@ -2907,6 +2938,7 @@ SpellAuraProcResult Unit::HandleInvisibilityAuraProc(ProcExecutionData& data)
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理周期性伤害光环受击/触发回调（如真菌衰变、尾刺、窒息藤蔓叠层转化）
 SpellAuraProcResult Unit::HandlePeriodicAuraProc(ProcExecutionData& data)
 {
     Unit* pVictim = data.target; uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
@@ -2930,6 +2962,7 @@ SpellAuraProcResult Unit::HandlePeriodicAuraProc(ProcExecutionData& data)
     return SPELL_AURA_PROC_OK;
 }
 
+/// 处理法术修饰器光环触发（当前返回 CANT_TRIGGER，由施法流程直接处理消耗）
 SpellAuraProcResult Unit::HandleSpellModProc(ProcExecutionData& /*data*/)
 {
     // one day if figured out - remove charges through proc system but currently not reliable enough for edge cases
