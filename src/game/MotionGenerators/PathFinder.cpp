@@ -1013,7 +1013,14 @@ void PathFinder::NormalizePath()
     {
         if (transport)
             transport->CalculatePassengerPosition(m_pathPoint.x, m_pathPoint.y, m_pathPoint.z);
+
+        float oldZ = m_pathPoint.z;
         m_sourceUnit->UpdateAllowedPositionZ(m_pathPoint.x, m_pathPoint.y, m_pathPoint.z);
+
+        // 限制 Z 轴贴地修正幅度，防止路径点穿透桥梁、多层建筑或悬挑地形吸附到底层（Issue #3226）
+        if (std::fabs(m_pathPoint.z - oldZ) > 2.0f)
+            m_pathPoint.z = oldZ;
+
         if (transport)
             transport->CalculatePassengerOffset(m_pathPoint.x, m_pathPoint.y, m_pathPoint.z);
     }

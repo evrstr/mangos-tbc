@@ -214,8 +214,9 @@ struct TamingPetRodAura : public AuraScript
         }
         else
         {
-            if (aura->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
-                creature->ForcedDespawn();     
+            // 驯服训练棒法术提前移除（取消施法、移动、打断等）时立即清理召唤的任务怪，死亡或正常删除除外
+            if (aura->GetRemoveMode() != AURA_REMOVE_BY_DEATH && aura->GetRemoveMode() != AURA_REMOVE_BY_DELETE)
+                creature->ForcedDespawn();
         }
     }
 };

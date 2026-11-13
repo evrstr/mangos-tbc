@@ -450,7 +450,6 @@ class Aura
         void HandleAuraPowerBurn(bool apply, bool Real);
         void HandleSchoolAbsorb(bool apply, bool Real);
         void HandlePreventFleeing(bool apply, bool Real);
-        void HandleManaShield(bool apply, bool Real);
         void HandleArenaPreparation(bool apply, bool Real);
         void HandleAuraMirrorImage(bool apply, bool Real);
         void HandleFactionOverride(bool apply, bool Real);

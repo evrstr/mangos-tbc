@@ -159,7 +159,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS] =
     &Aura::HandleNoImmediateEffect,                         // 94 SPELL_AURA_INTERRUPT_REGEN implemented in Player::RegenerateAll
     &Aura::HandleAuraGhost,                                 // 95 SPELL_AURA_GHOST
     &Aura::HandleNoImmediateEffect,                         // 96 SPELL_AURA_SPELL_MAGNET implemented in Unit::SelectMagnetTarget
-    &Aura::HandleManaShield,                                // 97 SPELL_AURA_MANA_SHIELD implemented in Unit::CalculateAbsorbAndResist
+    &Aura::HandleNoImmediateEffect,                         // 97 SPELL_AURA_MANA_SHIELD implemented in Unit::CalculateAbsorbAndResist
     &Aura::HandleAuraModSkill,                              // 98 SPELL_AURA_MOD_SKILL_TALENT
     &Aura::HandleAuraModAttackPower,                        // 99 SPELL_AURA_MOD_ATTACK_POWER
     &Aura::HandleUnused,                                    //100 SPELL_AURA_AURAS_VISIBLE obsolete? all player can see all auras now
@@ -4914,10 +4914,6 @@ void Aura::HandlePeriodicTriggerSpell(bool apply, bool /*Real*/)
                             caster->getThreatManager().modifyThreatPercent(Temp, -100);
                 }
                 return;
-            case 42783:                                     // Wrath of the Astrom...
-                if (m_removeMode == AURA_REMOVE_BY_EXPIRE && GetEffIndex() + 1 < MAX_EFFECT_INDEX)
-                    target->CastSpell(target, GetSpellProto()->CalculateSimpleValue(SpellEffectIndex(GetEffIndex() + 1)), TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCasterGuid());
-                return;
             case 42177:                                     // Alert Drums
                 if (m_removeMode == AURA_REMOVE_BY_EXPIRE)
                 {
@@ -7624,40 +7620,6 @@ void Aura::HandlePreventFleeing(bool apply, bool Real)
     }
 }
 
-// 处理器：法力护盾光环（用魔法值按比例吸收伤害）
-void Aura::HandleManaShield(bool apply, bool Real)
-{
-    if (!Real)
-        return;
-
-    // prevent double apply bonuses
-    if (apply && (GetTarget()->GetTypeId() != TYPEID_PLAYER || !((Player*)GetTarget())->GetSession()->PlayerLoading()))
-    {
-        if (Unit* caster = GetCaster())
-        {
-            float DoneActualBenefit = 0.0f;
-            switch (GetSpellProto()->SpellFamilyName)
-            {
-                case SPELLFAMILY_MAGE:
-                    if (GetSpellProto()->SpellFamilyFlags & uint64(0x0000000000008000))
-                    {
-                        // Mana Shield
-                        // +50% from +spd bonus
-                        DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(GetSpellProto())) * 0.5f;
-                        break;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            DoneActualBenefit *= caster->CalculateLevelPenalty(GetSpellProto());
-
-            m_modifier.m_amount += (int32)DoneActualBenefit;
-        }
-    }
-}
-
 // 处理器：竞技场准备阶段状态（免消耗施法并在结束时同步清除准备标记）
 void Aura::HandleArenaPreparation(bool apply, bool Real)
 {
@@ -9024,11 +8986,12 @@ void SpellAuraHolder::OnDispel(Unit* dispeller, uint32 dispellingSpellId, uint32
         script->OnDispel(this, dispeller, dispellingSpellId, originalStacks);
 }
 
-// 计算光环初始效果值（例如吸收盾类光环叠加法术治疗强度系数与等级惩罚）
+// 计算光环初始效果值（例如吸收盾/法力护盾类光环叠加法术强度系数与等级惩罚）
 uint32 Aura::CalculateAuraEffectValue(Unit* caster, Unit* /*target*/, SpellEntry const* spellProto, SpellEffectIndex effIdx, uint32 value)
 {
     switch (spellProto->EffectApplyAuraName[effIdx])
     {
+        case SPELL_AURA_MANA_SHIELD:
         case SPELL_AURA_SCHOOL_ABSORB:
         {
             float DoneActualBenefit = 0.0f;
