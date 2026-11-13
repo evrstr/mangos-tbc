@@ -3169,10 +3169,22 @@ SpellCastResult Spell::CheckScriptTargeting(SpellEffectIndex effIndex, uint32 ch
                     if ((type == SPELL_TARGET_TYPE_CREATURE && target->IsAlive()) ||
                         (type == SPELL_TARGET_TYPE_DEAD && ((Creature*)target)->IsCorpse()))
                     {
-                        if (target->IsWithinDistInMap(caster, radius) && OnCheckTarget(target, effIndex))
-                            foundScriptCreatureTargets.push_back((Creature*)target);
-                        else
-                            foundButOutOfRange = true;
+                        switch (m_spellInfo->Id)
+                        {
+                            // 卡拉赞象棋火雨直接释放在目标身上，需检测目标周围半径而非施法者周围
+                            case 37465:
+                                if (target->IsWithinDistInMap(target, radius) && OnCheckTarget(target, effIndex))
+                                    foundScriptCreatureTargets.push_back((Creature*)target);
+                                else
+                                    foundButOutOfRange = true;
+                                break;
+                            default:
+                                if (target->IsWithinDistInMap(caster, radius) && OnCheckTarget(target, effIndex))
+                                    foundScriptCreatureTargets.push_back((Creature*)target);
+                                else
+                                    foundButOutOfRange = true;
+                                break;
+                        }
                     }
                 }
             }

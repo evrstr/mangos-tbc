@@ -635,6 +635,19 @@ struct CaptureMountainGiant : public SpecificTargetScript // 11889 (说明)
     std::set<uint32> const& GetRequiredTargets() const override { return m_targets; }
 };
 
+// 11757 - 挖掘钴矿石：必须在指定矿石堆附近才允许施法
+struct DiggingForCobalt : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        float range = GetSpellMaxRange(sSpellRangeStore.LookupEntry(spell->m_spellInfo->rangeIndex));
+        if (!GetClosestGameObjectWithEntry(spell->GetCaster(), 144050, range))
+            return SPELL_FAILED_BAD_TARGETS;
+
+        return SPELL_CAST_OK;
+    }
+};
+
 void AddSC_feralas() // 注册脚本到系统管理器
 {
     Script* pNewScript = new Script;
@@ -671,4 +684,5 @@ void AddSC_feralas() // 注册脚本到系统管理器
     RegisterSpellScript<CaptureFaerieDragon>("spell_capture_faerie_dragon");
     RegisterSpellScript<CaptureTreant>("spell_capture_treant");
     RegisterSpellScript<CaptureMountainGiant>("spell_capture_mountain_giant");
+    RegisterSpellScript<DiggingForCobalt>("spell_digging_for_cobalt");
 }

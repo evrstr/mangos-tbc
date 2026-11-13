@@ -470,6 +470,8 @@ struct npc_injured_patientAI : public ScriptedAI
 
         // no select
         m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE);
+        // 设置战斗标记防止伤员自动脱战回满血以及过早触发脱战消失
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
 
         // to make them lay with face down
         m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
@@ -521,6 +523,8 @@ struct npc_injured_patientAI : public ScriptedAI
 
             m_creature->SetWalk(false);
             isSaved = true;
+
+            m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
 
             switch (m_creature->GetEntry())
             {

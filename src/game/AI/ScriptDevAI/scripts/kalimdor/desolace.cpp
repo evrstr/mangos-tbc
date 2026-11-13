@@ -152,7 +152,8 @@ struct KodoKombobulator : public SpellScript
     {
         Unit* caster = spell->GetCaster();
         Unit* target = spell->GetUnitTarget();
-        target->CastSpell(caster, SPELL_KODO_KOMBO_PLAYER_BUFF, TRIGGERED_OLD_TRIGGERED);
+        // 由玩家对自己施加跟随 Buff，避免野兽目标状态异常导致施法失败
+        caster->CastSpell(caster, SPELL_KODO_KOMBO_PLAYER_BUFF, TRIGGERED_OLD_TRIGGERED);
 
         static_cast<Creature*>(target)->UpdateEntry(NPC_TAMED_KODO);
         target->CastSpell(nullptr, SPELL_KODO_KOMBO_DESPAWN_BUFF, TRIGGERED_NONE);

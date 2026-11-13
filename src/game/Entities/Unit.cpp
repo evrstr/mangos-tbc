@@ -349,6 +349,9 @@ Unit::Unit() :
     m_hasHeartbeatProcCounter(0),
     m_ignoreRangedTargets(false),
     m_auraUpdateMask(0),
+    m_damageByOthers(0),
+    m_damageByNpcs(0),
+    m_tapStolenByNpc(false),
     m_isMountOverriden(false), m_overridenMountId(0)
 {
     m_objectType |= TYPEMASK_UNIT;
@@ -1116,7 +1119,18 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
         {
             if (Creature* creatureVictim = static_cast<Creature*>(victim))
             {
-                if (!creatureVictim->IsPet() && !creatureVictim->HasLootRecipient())
+                // 非玩家单位（守卫/友方 NPC 等无受益玩家的单位）对目标造成超过其最大生命 50% 的伤害 => 抢走拾取权
+                if (dealer && dealer->GetTypeId() == TYPEID_UNIT && !dealer->GetBeneficiaryPlayer())
+                {
+                    victim->m_damageByNpcs += damage;
+                    if (!victim->IsTapStolenByNpc() && victim->m_damageByNpcs > victim->GetMaxHealth() / 2)
+                    {
+                        victim->SetTapStolenByNpc();
+                        creatureVictim->SetLootRecipient(nullptr);
+                    }
+                }
+
+                if (!creatureVictim->IsPet() && !creatureVictim->HasLootRecipient() && !victim->IsTapStolenByNpc())
                     creatureVictim->SetLootRecipient(dealer);
 
                 if (creatureVictim->HasLootRecipient())
@@ -2548,6 +2562,10 @@ float Unit::CalcArmorReducedDamage(WorldObject* attacker, Unit* victim, const fl
     // Ignore enemy armor by armor penetration
     if (attacker->IsUnit())
         armor -= static_cast<Unit*>(attacker)->GetResistancePenetration(SPELL_SCHOOL_NORMAL);
+
+    // 卡拉赞象棋棋子护甲不减免物理伤害（嗅探证实棋子护甲为0或免疫减免）
+    if (victim->GetFaction() == 1689 || victim->GetFaction() == 1690)
+        armor = 0.0f;
 
     if (armor < 0.0f)
         armor = 0.0f;
@@ -4507,7 +4525,8 @@ void Unit::_UpdateSpells(uint32 time)
     {
         SpellAuraHolder* holder = iter->second;
 
-        if (!(holder->IsPermanent() || holder->IsPassive()) && holder->GetAuraDuration() == 0)
+        // 持续性区域光环（Persistent）由其 DynamicObject 生命周期管理，不在此处提前按 duration=0 移除
+        if (!(holder->IsPermanent() || holder->IsPassive()) && holder->GetAuraDuration() == 0 && !holder->IsPersistent())
         {
             RemoveSpellAuraHolder(holder, AURA_REMOVE_BY_EXPIRE);
             iter = m_spellAuraHolders.begin();
@@ -8585,6 +8604,8 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
         Creature* creature = static_cast<Creature*>(this);
 
         m_damageByOthers = 0;
+        m_damageByNpcs = 0;
+        m_tapStolenByNpc = false;
 
         // clear stand state if set in addon - else script has to do it on its own
         CreatureDataAddon const* cainfo = creature->GetCreatureAddon();
@@ -10259,6 +10280,13 @@ void CharmInfo::InitPetActionBar()
         SetActionBar(ACTION_BAR_INDEX_PET_SPELL_END + i, COMMAND_ATTACK - i, ACT_REACTION);
 }
 
+// 卡拉赞象棋棋子动作条初始化：隐藏随从指令/反应按钮，全部槽位初始化为空
+void CharmInfo::InitChessActionBar()
+{
+    for (uint32 i = ACTION_BAR_INDEX_START; i < ACTION_BAR_INDEX_END; ++i)
+        SetActionBar(i, 0, ACT_DISABLED);
+}
+
 void CharmInfo::InitEmptyActionBar()
 {
     for (uint32 x = ACTION_BAR_INDEX_START + 1; x < ACTION_BAR_INDEX_END; ++x)
@@ -10336,9 +10364,14 @@ void CharmInfo::InitPossessCreateSpells()
 
 void CharmInfo::InitCharmCreateSpells()
 {
-    InitPetActionBar();
-
-    SetActionBar(ACTION_BAR_INDEX_START, COMMAND_ATTACK, ACT_COMMAND);
+    // 特殊处理：卡拉赞象棋棋子拥有专属动作条（无随从命令/被动姿态）
+    if (m_unit->IsCreature() && m_unit->HasAura(30019))
+        InitChessActionBar();
+    else
+    {
+        InitPetActionBar();
+        SetActionBar(ACTION_BAR_INDEX_START, COMMAND_ATTACK, ACT_COMMAND);
+    }
 
     if (m_unit->IsPlayer())               // charmed players don't have spells
         return;

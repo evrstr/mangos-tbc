@@ -356,7 +356,16 @@ void WorldSession::HandlePetAction(WorldPacket& recv_data)
             const SpellRangeEntry* sRange = sSpellRangeStore.LookupEntry(spellInfo->rangeIndex);
 
             if (!IsSpellRequireTarget(spellInfo))
-                unit_target = nullptr;
+            {
+                switch (spellInfo->Id)
+                {
+                    case 37465: // 卡拉赞象棋火雨法术需要指定附近目标坐标
+                        break;
+                    default:
+                        unit_target = nullptr;
+                        break;
+                }
+            }
             else if (!unit_target && IsSpellAimedAtEnemy(spellInfo))
             {
                 petUnit->SendPetActionFeedback(FEEDBACK_NOTHING_TO_ATT);

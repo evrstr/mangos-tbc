@@ -135,11 +135,11 @@ enum
     SPELL_ELEMENTAL_BLAST           = 37462,                    // human queen
     SPELL_RAIN_OF_FIRE              = 37465,                // rainof火焰 法术 ID
     SPELL_FIREBALL                  = 37463,                    // orc queen
-    // SPELL_POISON_CLOUD           = 37469,
+    SPELL_POISON_CLOUD              = 37469,
     SPELL_POISON_CLOUD_ACTION       = 37775,                    // triggers 37469 - acts as a target selector spell for orc queen
     SPELL_HEALING                   = 37455,                    // human bishop
     SPELL_HOLY_LANCE                = 37459,                // 神圣lance 法术 ID
-    // SPELL_SHADOW_MEND            = 37456,                    // orc bishop
+    SPELL_SHADOW_MEND               = 37456,                    // orc bishop
     SPELL_SHADOW_MEND_ACTION        = 37824,                    // triggers 37456 - acts as a target selector spell for orc bishop
     SPELL_SHADOW_SPEAR              = 37461,                // 暗影spear 法术 ID
     SPELL_GEYSER                    = 37427,                    // human rook
@@ -324,16 +324,15 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
     uint32 m_uiMoveCommandTimer;                            // MoveCommand 技能计时器
     uint32 m_uiSpellCommandTimer;                           // SpellCommand 技能计时器
 
-    bool m_bIsPrimarySpell;                                 // IsPrimarySpell 状态标记
     float m_fCurrentOrientation;
 
     // 重置战斗状态与技能计时器
     void Reset() override
     {
         m_uiMoveTimer = 0;
-        m_uiMoveCommandTimer = 1000;
+        // 玩家停止控制时防止己方国王自动移动
+        m_uiMoveCommandTimer = m_creature->HasAura(SPELL_CONTROL_PIECE) ? 0 : 1000;
         m_uiSpellCommandTimer = m_creature->HasAura(SPELL_CONTROL_PIECE) ? 0 : 1000;
-        m_bIsPrimarySpell = true;
 
         // cancel move timer for player faction npcs or for friendly games
         if (m_pInstance)
@@ -393,6 +392,10 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
 
             //DoCastSpellIfCan(m_creature, SPELL_AI_SNAPSHOT_TIMER, CAST_TRIGGERED);
             DoCastSpellIfCan(nullptr, SPELL_CHESS_AI_ATTACK_TIMER, CAST_TRIGGERED);
+
+            // 开局播放挥击动作与光柱标记
+            m_creature->HandleEmote(EMOTE_ONESHOT_ATTACK1H);
+            m_creature->CastSpell(m_creature, SPELL_MOVE_MARKER, TRIGGERED_NONE);
 
             pInvoker->CastSpell(pInvoker, SPELL_DISABLE_SQUARE, TRIGGERED_OLD_TRIGGERED);
             pInvoker->CastSpell(pInvoker, SPELL_IS_SQUARE_USED, TRIGGERED_OLD_TRIGGERED);
@@ -473,8 +476,9 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
             return nullptr;
 
         // define distance based on the spell radius
-        // this will replace the targeting sysmte of spells SPELL_MOVE_1 and SPELL_MOVE_2 - HACK
-        float fRadius = 10.0f;
+        // this will replace the targeting system of spells SPELL_MOVE_1 and SPELL_MOVE_2 - HACK
+        // 基础移动半径使用 5 码防止默认单步走 2 格
+        float fRadius = 5.0f;
         std::list<Creature*> lSquaresList;
 
         // some pieces have special distance
@@ -482,9 +486,11 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
         {
             case NPC_HUMAN_CONJURER:
             case NPC_ORC_WARLOCK:
+                fRadius = 15.0f;
+                break;
             case NPC_HUMAN_CHARGER:
             case NPC_ORC_WOLF:
-                fRadius = 15.0f;
+                fRadius = 10.0f;
                 break;
         }
 
@@ -541,36 +547,27 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
         {
             if (m_uiMoveCommandTimer <= uiDiff)
             {
+                m_uiMoveCommandTimer = 5000;
+
                 // just update facing if some enemy is near
                 if (Unit* pTarget = GetTargetByType(TARGET_TYPE_RANDOM, 5.0f))
                     DoCastSpellIfCan(pTarget, SPELL_CHANGE_FACING);
                 else
                 {
-                    // the npc doesn't have a 100% chance to move; also there should be some GCD check in core for this part
-                    if (roll_chance_i(15))
+                    // 降低单次移动概率（15% -> 10%），使棋子行动频率更符合 1-2 只同时移动的官服节奏
+                    if (roll_chance_i(10))
                     {
-                        // Note: in a normal case the target would be chosen using the spells above
-                        // However, because the core doesn't support special targeting, we'll provide explicit target
-                        //uint32 uiMoveSpell = SPELL_MOVE_1;
-                        //switch (m_creature->GetEntry())
-                        //{
-                        //    case NPC_HUMAN_CONJURER:
-                        //    case NPC_ORC_WARLOCK:
-                        //    case NPC_HUMAN_CHARGER:
-                        //    case NPC_ORC_WOLF:
-                        //        uiMoveSpell = SPELL_MOVE_2;
-                        // break; (越狱)
-                        //}
-                        //DoCastSpellIfCan(m_creature, uiMoveSpell, CAST_TRIGGERED);
-
                         m_fCurrentOrientation = m_creature->GetOrientation();
                         // workaround which provides specific move target
                         if (Unit* spellTarget = GetMovementSquare())
-                            spellTarget->CastSpell(m_creature, SPELL_MOVE_TO_SQUARE, TRIGGERED_NONE);
+                        {
+                            CanCastResult result = spellTarget->AI()->DoCastSpellIfCan(m_creature, SPELL_MOVE_TO_SQUARE, TRIGGERED_NONE);
+                            // 棋子移动后增加 12 秒 GCD 间隔，防止 NPC 棋子无视移动冷却连续位移
+                            if (result == CAST_OK)
+                                m_uiMoveCommandTimer = 12000;
+                        }
                     }
                 }
-
-                m_uiMoveCommandTimer = 5000;
             }
             else
                 m_uiMoveCommandTimer -= uiDiff;
@@ -581,9 +578,8 @@ struct npc_chess_piece_genericAI : public Scripted_NoMovementAI
         {
             if (m_uiSpellCommandTimer <= uiDiff)
             {
-                // alternate the spells and also reset the timer
-                m_uiSpellCommandTimer = m_bIsPrimarySpell ? DoCastPrimarySpell() : DoCastSecondarySpell();
-                m_bIsPrimarySpell = !m_bIsPrimarySpell;
+                // 技能施放改为随机选取，不再死板交替施放
+                m_uiSpellCommandTimer = urand(0, 1) ? DoCastPrimarySpell() : DoCastSecondarySpell();
             }
             else
                 m_uiSpellCommandTimer -= uiDiff;
@@ -633,6 +629,23 @@ bool GossipSelect_npc_chess_generic(Player* pPlayer, Creature* pCreature, uint32
     return true;
 }
 
+// 30019 - 卡拉赞象棋：控制棋子光环脚本
+struct ControlPiece : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        // 玩家停止控制该棋子时，激活其自动施法计时器，使其能继续自主施法
+        if (!apply)
+        {
+            if (aura->GetTarget())
+            {
+                if (npc_chess_piece_genericAI* ai = dynamic_cast<npc_chess_piece_genericAI*>(aura->GetTarget()->AI()))
+                    ai->m_uiSpellCommandTimer = 5000;
+            }
+        }
+    }
+};
+
 // 30253 - Chess: Move to Square
 struct ChessMoveToSquare : public SpellScript
 {
@@ -647,6 +660,19 @@ struct ChessMoveToSquare : public SpellScript
         }
         if (target->IsCreature())
         {
+            // 部分棋子移动前播放对应动作表情
+            switch (target->GetEntry())
+            {
+                case NPC_KING_LLANE: target->HandleEmote(EMOTE_ONESHOT_YES); break;
+                case NPC_HUMAN_CLERIC: target->HandleEmote(EMOTE_ONESHOT_BOW); break;
+                case NPC_HUMAN_CONJURER: target->HandleEmote(EMOTE_ONESHOT_YES); break;
+                case NPC_HUMAN_FOOTMAN: target->HandleEmote(EMOTE_ONESHOT_SALUTE); break;
+                case NPC_WARCHIEF_BLACKHAND: target->HandleEmote(EMOTE_ONESHOT_ROAR); break;
+                case NPC_ORC_GRUNT: target->HandleEmote(EMOTE_ONESHOT_SALUTE); break;
+                case NPC_ORC_NECROLYTE: target->HandleEmote(EMOTE_ONESHOT_YES); break;
+                case NPC_ORC_WARLOCK: target->HandleEmote(EMOTE_ONESHOT_YES); break;
+                default: break;
+            }
             target->CastSpell(nullptr, SPELL_MOVE_COOLDOWN, TRIGGERED_NONE);
             target->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, caster, target);
         }
@@ -694,6 +720,150 @@ struct ChessFaceSquare : public SpellScript
             target->SetFacingToObject(caster);
             target->AI()->SendAIEvent(AI_EVENT_CUSTOM_C, caster, target);
         }
+    }
+};
+
+// 32227 - 卡拉赞象棋 NPC 动作：步兵近战
+struct ChessMeleeAttackFootman : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 32228 - 卡拉赞象棋 NPC 动作：兽人步兵近战
+struct ChessMeleeAttackGrunt : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37143 - 卡拉赞象棋 NPC 动作：骑士近战
+struct ChessMeleeAttackCharger : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37339 - 卡拉赞象棋 NPC 动作：狼骑近战
+struct ChessMeleeAttackWolf : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37147 - 卡拉赞象棋 NPC 动作：牧师近战
+struct ChessMeleeAttackCleric : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37337 - 卡拉赞象棋 NPC 动作：死灵法师近战
+struct ChessMeleeAttackNecrolyte : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37142 - 卡拉赞象棋 NPC 动作：水元素近战
+struct ChessMeleeAttackElemental : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37220 - 卡拉赞象棋 NPC 动作：恶魔近战
+struct ChessMeleeAttackDaemon : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37149 - 卡拉赞象棋 NPC 动作：法师近战
+struct ChessMeleeAttackConjurer : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37345 - 卡拉赞象棋 NPC 动作：术士近战
+struct ChessMeleeAttackWarlock : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37150 - 卡拉赞象棋 NPC 动作：莱恩国王近战
+struct ChessMeleeAttackLlane : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37348 - 卡拉赞象棋 NPC 动作：黑手酋长近战
+struct ChessMeleeAttackBlackhand : public SpellScript
+{
+    bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        return target->GetDistance(caster) <= 8.0f && caster->GetAngle(target) <= 15.0f;
+    }
+};
+
+// 37462 - 元素冲击
+struct ChessElementalBlast : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        Unit* target = spell->m_targets.getUnitTarget();
+        if (!target || target->GetFaction() != FACTION_ID_CHESS_HORDE)
+            return SPELL_FAILED_BAD_TARGETS;
+        return SPELL_CAST_OK;
+    }
+};
+
+// 37463 - 火球术
+struct ChessFireball : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        Unit* target = spell->m_targets.getUnitTarget();
+        if (!target || target->GetFaction() != FACTION_ID_CHESS_ALLIANCE)
+            return SPELL_FAILED_BAD_TARGETS;
+        return SPELL_CAST_OK;
     }
 };
 
@@ -1059,7 +1229,7 @@ struct npc_orc_warlockAI : public npc_chess_piece_genericAI
             DoCastSpellIfCan(pTarget, SPELL_POISON_CLOUD_ACTION);
 
             // reset timer based on spell values (根据法术属性重置计时器)
-            const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_POISON_CLOUD_ACTION);
+            const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_POISON_CLOUD);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
 
@@ -1713,7 +1883,7 @@ struct npc_orc_necrolyteAI : public npc_chess_piece_genericAI
             DoCastSpellIfCan(pTarget, SPELL_SHADOW_MEND_ACTION);
 
             // reset timer based on spell values (根据法术属性重置计时器)
-            const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_SHADOW_MEND_ACTION);
+            const SpellEntry* pSpell = GetSpellStore()->LookupEntry<SpellEntry>(SPELL_SHADOW_MEND);
             return pSpell->RecoveryTime ? pSpell->RecoveryTime : pSpell->CategoryRecoveryTime;
         }
 
@@ -1851,7 +2021,22 @@ void AddSC_chess_event()
     pNewScript->pGossipSelect = GossipSelect_npc_chess_generic;
     pNewScript->RegisterSelf();
 
+    RegisterSpellScript<ControlPiece>("spell_chess_control_piece");
     RegisterSpellScript<ChessMoveToSquare>("spell_chess_move_to_square");
     RegisterSpellScript<KarazhanChessNpcAiTakeActionMelee>("spell_karazhan_chess_take_action_melee");
     RegisterSpellScript<ChessFaceSquare>("spell_chess_face_square");
+    RegisterSpellScript<ChessMeleeAttackFootman>("spell_chess_melee_footman"); 
+    RegisterSpellScript<ChessMeleeAttackGrunt>("spell_chess_melee_grunt"); 
+    RegisterSpellScript<ChessMeleeAttackCharger>("spell_chess_melee_charger");
+    RegisterSpellScript<ChessMeleeAttackWolf>("spell_chess_melee_wolf");
+    RegisterSpellScript<ChessMeleeAttackCleric>("spell_chess_melee_cleric");
+    RegisterSpellScript<ChessMeleeAttackNecrolyte>("spell_chess_melee_necrolyte");
+    RegisterSpellScript<ChessMeleeAttackElemental>("spell_chess_melee_elemental");
+    RegisterSpellScript<ChessMeleeAttackDaemon>("spell_chess_melee_daemon");
+    RegisterSpellScript<ChessMeleeAttackConjurer>("spell_chess_melee_conjurer");
+    RegisterSpellScript<ChessMeleeAttackWarlock>("spell_chess_melee_warlock");
+    RegisterSpellScript<ChessMeleeAttackLlane>("spell_chess_melee_llane");
+    RegisterSpellScript<ChessMeleeAttackBlackhand>("spell_chess_melee_blackhand");
+    RegisterSpellScript<ChessElementalBlast>("spell_chess_elemental_blast");
+    RegisterSpellScript<ChessFireball>("spell_chess_fireball");
 }

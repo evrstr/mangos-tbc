@@ -440,9 +440,13 @@ void instance_karazhan::Load(const char* chrIn)
             i = NOT_STARTED;
     }
 
-    if (m_auiEncounter[8] == DONE) // if chess event is done, enable friendly games
+    if (m_auiEncounter[8] >= DONE) // if chess event is done, enable friendly games
     {
         m_bFriendlyGame = true;
+    }
+    else // 重置象棋事件以防服务器重启导致棋子缺失进度卡死
+    {
+        m_uiChessResetTimer = 1000;
     }
 
     OUT_LOAD_INST_DATA_COMPLETE;

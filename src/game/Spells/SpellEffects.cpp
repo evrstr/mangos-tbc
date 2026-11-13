@@ -1834,6 +1834,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastCustomSpell(unitTarget, 37675, &basepoints0, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
+                case 37775:                                 // 卡拉赞象棋 NPC 动作 - 毒性之云
+                {
+                    if (!unitTarget)
+                        return;
+
+                    m_caster->CastSpell(unitTarget, 37469, TRIGGERED_OLD_TRIGGERED);
+                    return;
+                }
                 case 37867:                                 // Arcano-Scorp Control
                 case 37892:
                 case 37894:

@@ -963,6 +963,7 @@ struct CharmInfo
         void InitPossessCreateSpells();
         void InitCharmCreateSpells();
         void InitPetActionBar();
+        void InitChessActionBar();
         void InitEmptyActionBar();
         void ProcessUnattackableTargets(CombatData* combatData);
 
@@ -1070,7 +1071,7 @@ enum ReactiveType
 
 // delay time next attack to prevent client attack animation problems (下次攻击最小延迟，防止客户端动画异常)
 #define ATTACK_DISPLAY_DELAY 200
-#define MAX_PLAYER_STEALTH_DETECT_RANGE 45.0f               // max distance for detection targets by player (玩家侦测潜行的最大距离)
+#define MAX_PLAYER_STEALTH_DETECT_RANGE 30.0f               // max distance for detection targets by player (玩家侦测潜行的最大距离，对齐暴雪官方 30 码上限)
 #define MAX_CREATURE_ATTACK_RADIUS 45.0f                    // max distance for creature aggro (use with CONFIG_FLOAT_RATE_CREATURE_AGGRO) (生物仇恨索敌最大半径)
 
 // Regeneration defines (生命与能量周期回复计算时间基数)
@@ -2584,6 +2585,9 @@ class Unit : public WorldObject
 
         uint32 GetDamageDoneByOthers() { return m_damageByOthers; }
         uint32 GetModifierXpBasedOnDamageReceived(uint32 xp);
+        uint32 GetDamageDoneByNpcs() const { return m_damageByNpcs; }
+        bool IsTapStolenByNpc() const { return m_tapStolenByNpc; }
+        void SetTapStolenByNpc() { m_tapStolenByNpc = true; }
 
         void UpdateNextUpdateTime() override;
         uint32 ShouldPerformObjectUpdate(uint32 const diff) override;
@@ -2821,6 +2825,8 @@ class Unit : public WorldObject
         int8 m_comboPoints;                                 // 当前连击点数
 
         uint32 m_damageByOthers;                            // 由非玩家及其宠物（如守卫 NPC）造成的伤害累计，用于经验衰减
+        uint32 m_damageByNpcs;                              // 由无受益玩家的 NPC 造成的伤害累计
+        bool m_tapStolenByNpc;                              // 是否已被 NPC 抢走拾取权（NPC 伤害 >50%）
 
         bool m_isMountOverriden;                            // 是否覆盖飞行坐骑模型
         uint32 m_overridenMountId;                          // 覆盖的坐骑显示 ID

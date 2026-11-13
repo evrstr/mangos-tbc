@@ -1018,6 +1018,9 @@ void UnitAI::AddMainSpell(uint32 spellId)
         SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(m_mainSpellId);
         m_mainSpellCost = Spell::CalculatePowerCost(spellInfo, m_unit);
         m_mainSpellMinRange = GetSpellMinRange(sSpellRangeStore.LookupEntry(spellInfo->rangeIndex));
+        // 非近战主法术设置追击距离为其最大射程，防止远程施法怪无谓贴近或过早进入近战/逃脱
+        if (sSpellRangeStore.LookupEntry(spellInfo->rangeIndex)->Flags != static_cast<uint32>(SpellRangeFlags::SPELL_RANGE_FLAG_MELEE))
+            m_chaseDistance = GetSpellMaxRange(sSpellRangeStore.LookupEntry(spellInfo->rangeIndex));
         m_mainAttackMask = SpellSchoolMask(m_mainAttackMask + spellInfo->SchoolMask);
         m_mainSpellInfo = spellInfo;
     }
@@ -1202,6 +1205,10 @@ bool UnitAI::IsMainSpellPrevented(SpellEntry const* spellInfo) const
     if (spellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE && m_unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SILENCED))
         return true;
     if (spellInfo->PreventionType == SPELL_PREVENTION_TYPE_PACIFY && m_unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED))
+        return true;
+
+    // 能量/法力值不足以施放主法术时视为被阻断
+    if (m_unit->GetPower(static_cast<Powers>(spellInfo->powerType)) < m_mainSpellCost)
         return true;
 
     return false;

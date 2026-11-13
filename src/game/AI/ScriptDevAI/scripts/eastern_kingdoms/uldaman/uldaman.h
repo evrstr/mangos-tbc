@@ -86,10 +86,10 @@ class instance_uldaman : public ScriptedInstance
         ObjectGuid m_playerGuid;                            // player 实体 GUID
 
         uint32 m_uiKeeperCooldown;
-        uint32 m_uiStoneKeepersFallen;
 
-        GuidList m_lWardens;
-        GuidList m_lKeepers;
+        GuidSet m_sWardens;
+        GuidSet m_sKeepers;
+        GuidSet m_sDeadKeepers;
 };
 
 #endif                                                      // 结束头文件防重复包含宏

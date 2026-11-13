@@ -591,6 +591,7 @@ SpellTargetFilterScheme SpellTargetMgr::GetSpellTargetingFilterScheme(SpellTarge
     {
         case 26052: // Poison Bolt Volley (spell hits only the 15 closest targets) (毒箭之雨：仅命中最近的 15 个目标)
         case 26180: // Wyvern Sting (spell hits only the 10 closest targets) (翼龙钉刺：仅命中最近的 10 个目标)
+        case 30012: // Move - Chess event - Player Move
         case 30284: // Change Facing - Chess event - QOL to pick deterministically closest target (卡拉赞象棋转向：优先最近目标)
         case 37144: // Move - Chess event - same QOL change (卡拉赞象棋移动)
         case 37146:
@@ -598,6 +599,18 @@ SpellTargetFilterScheme SpellTargetMgr::GetSpellTargetingFilterScheme(SpellTarge
         case 37151:
         case 37152:
         case 37153:
+        case 37142: // Karazhan - Chess NPC Action: Melee Attack: Conjured Water Elemental
+        case 37143: // Karazhan - Chess NPC Action: Melee Attack: Charger
+        case 37147: // Karazhan - Chess NPC Action: Melee Attack: Human Cleric
+        case 37149: // Karazhan - Chess NPC Action: Melee Attack: Human Conjurer
+        case 37150: // Karazhan - Chess NPC Action: Melee Attack: King Llane
+        case 37220: // Karazhan - Chess NPC Action: Melee Attack: Summoned Daemon
+        case 32227: // Karazhan - Chess NPC Action: Melee Attack: Footman
+        case 32228: // Karazhan - Chess NPC Action: Melee Attack: Grunt
+        case 37337: // Karazhan - Chess NPC Action: Melee Attack: Orc Necrolyte
+        case 37339: // Karazhan - Chess NPC Action: Melee Attack: Orc Wolf
+        case 37345: // Karazhan - Chess NPC Action: Melee Attack: Orc Warlock
+        case 37348: // Karazhan - Chess NPC Action: Melee Attack: Warchief Blackhand
         case 41294: // Fixate - Reliquary of Souls - Picks closest target (凝视 - 灵魂之匣：选择最近目标)
             return SCHEME_CLOSEST;
         case 42005: // Bloodboil (spell hits only the 5 furthest away targets) (血沸 - 血沸：仅命中距离最远的 5 个目标)

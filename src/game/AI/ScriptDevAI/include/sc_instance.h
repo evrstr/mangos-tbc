@@ -105,7 +105,7 @@ struct DialogueEntry
     int32 textEntry;                                       ///< To be said text entry (脚本文本条目 ID)
     uint32 sayerEntry;                                    ///< Entry of the mob who should say (说话生物 Entry)
     uint32 timer;                                         ///< Time delay until next text of array is said (0 stops) (距下一步骤的延迟毫秒，0 表示终止)
-    DialogueStepType type {DIALOGUE_STEP_ACTION};
+    DialogueStepType type {DIALOGUE_STEP_TEXT};           // 默认步骤类型为文本，防止未显式声明的广播台词被吞
 };
 
 /// A static const array of this structure must be handled to DialogueHelper
@@ -117,7 +117,7 @@ struct DialogueEntryTwoSide
     int32 textEntryAlt;                                    ///< To be said text entry (second side) (第二侧台词条目 ID)
     uint32 sayerEntryAlt;                                 ///< Entry of the mob who should say (second side) (第二侧说话者 Entry)
     uint32 timer;                                         ///< Time delay until next text of array is said (0 stops) (延时毫秒)
-    DialogueStepType type {DIALOGUE_STEP_ACTION};
+    DialogueStepType type {DIALOGUE_STEP_TEXT};           // 默认步骤类型为文本
 };
 
 /// Helper class handling a dialogue given as static const array of DialogueEntry or DialogueEntryTwoSide
