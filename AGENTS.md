@@ -29,7 +29,8 @@ PATH="/d/Software/mingw64/bin:$PATH" \
 cmake -G Ninja -S "D:/Games/wowsf/mangos-tbc" -B "D:/Games/wowsf/build" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="D:/Games/wowsf/install" \
-  -DBUILD_PLAYERBOTS=ON
+  -DBUILD_PLAYERBOTS=ON \
+  -DBUILD_AHBOT=ON
 ```
 
 ### Build rules / 构建约束
