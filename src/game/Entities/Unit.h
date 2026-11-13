@@ -2552,6 +2552,7 @@ class Unit : public WorldObject
         void AddDelayedHolderDueToProc(SpellAuraHolder* holder) { m_delayedSpellAuraHolders.push_back(holder); }
 
         void ResetAutoRepeatSpells() { m_AutoRepeatFirstCast = true; }
+        uint32 GetAutoRepeatRemainingMs() const;
 
         const uint64& GetAuraUpdateMask() const { return m_auraUpdateMask; }
         void SetAuraUpdateMask(uint8 slot) { m_auraUpdateMask |= (uint64(1) << slot); }

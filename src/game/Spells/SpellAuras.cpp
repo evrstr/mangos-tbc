@@ -2442,7 +2442,8 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
     // AT REMOVE
     else
     {
-        if (IsQuestTameSpell(GetId()) && target->IsAlive())
+        // 驯服野兽任务法术仅在自然到期移除时成功，防止被驱散或中断时误判定驯服成功
+        if (IsQuestTameSpell(GetId()) && target->IsAlive() && m_removeMode == AURA_REMOVE_BY_EXPIRE)
         {
             Unit* caster = GetCaster();
             if (!caster || !caster->IsAlive())
@@ -2933,8 +2934,8 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     // final heal
                     if (target->IsInWorld())
                     {
-                        // Lifebloom dummy store single stack amount always
-                        int32 amount = m_modifier.m_amount;
+                        // Lifebloom dummy store single stack amount always (生命之花最终绽放治疗：按实际堆叠层数等比缩放)
+                        int32 amount = m_modifier.m_amount * GetStackAmount();
                         target->CastCustomSpell(nullptr, 33778, &amount, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, this, GetCasterGuid());
                     }
                 }

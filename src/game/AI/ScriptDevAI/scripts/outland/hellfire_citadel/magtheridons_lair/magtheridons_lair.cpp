@@ -143,28 +143,51 @@ void instance_magtheridons_lair::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_CHANNELER_EVENT:
-            // don't set the same data twice
-            if (m_auiEncounter[1] == uiData)
-                break;
+        {
+            bool const changed = (m_auiEncounter[uiType] != uiData);
+
             // stop the event timer on fail
-            if (uiData == FAIL)           
+            if (uiData == FAIL)
                 FailBoss();
-            // prepare Magtheridon for release
+
+            // 战斗大门采用显式状态控制，避免 DoUseOpenableObject 进入 GO_JUST_DEACTIVATED 导致大门在 900 秒重生期内消失
+            GameObject* pDoor = GetSingleGameObjectFromStorage(GO_DOODAD_HF_MAG_DOOR01);
             if (uiData == IN_PROGRESS)
             {
-                if (Creature* pMagtheridon = GetSingleCreatureFromStorage(NPC_MAGTHERIDON))
+                if (pDoor)
                 {
-                    if (pMagtheridon->IsAlive())
+                    pDoor->SetGoState(GO_STATE_READY);
+                    pDoor->SetLootState(GO_READY);
+                    pDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+                    pDoor->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                }
+
+                if (changed)
+                {
+                    if (Creature* pMagtheridon = GetSingleCreatureFromStorage(NPC_MAGTHERIDON))
                     {
-                        pMagtheridon->AI()->SendAIEvent(AI_EVENT_CUSTOM_B, pMagtheridon, pMagtheridon);
-                        m_uiCageBreakTimer = MINUTE * IN_MILLISECONDS;
+                        if (pMagtheridon->IsAlive())
+                        {
+                            pMagtheridon->AI()->SendAIEvent(AI_EVENT_CUSTOM_B, pMagtheridon, pMagtheridon);
+                            m_uiCageBreakTimer = MINUTE * IN_MILLISECONDS;
+                        }
                     }
                 }
-                // combat door
-                DoUseOpenableObject(GO_DOODAD_HF_MAG_DOOR01, false);
             }
+            else if (uiData == FAIL || uiData == DONE || uiData == NOT_STARTED)
+            {
+                if (pDoor)
+                {
+                    pDoor->SetGoState(GO_STATE_ACTIVE);
+                    pDoor->SetLootState(GO_READY);
+                    pDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+                    pDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                }
+            }
+
             m_auiEncounter[uiType] = uiData;
             break;
+        }
     }
 
     // Instance save isn't needed for this one

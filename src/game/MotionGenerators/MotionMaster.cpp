@@ -552,6 +552,37 @@ void MotionMaster::MoveDistract(uint32 timer)
     Mutate(mgen);
 }
 
+void MotionMaster::MoveJump(float x, float y, float z, float horizontalSpeed, float max_height, uint32 id/* = EVENT_JUMP*/)
+{
+    (void)max_height;
+
+    if (m_owner->hasUnitState(UNIT_STAT_NO_FREE_MOVE))
+        return;
+
+    Movement::MoveSplineInit init(*m_owner);
+    init.SetWalk(false);
+    init.SetVelocity(horizontalSpeed > 0.1f ? horizontalSpeed : 8.0f);
+    init.MoveTo(x, y, z, false);   // 跳跃走直线，不寻路
+    init.SetFall();
+    Mutate(new EffectMovementGenerator(init, id, false));
+}
+
+void MotionMaster::MoveJumpFacing(float x, float y, float z, float o, float horizontalSpeed, float max_height, uint32 id/* = EVENT_JUMP*/)
+{
+    (void)max_height;
+
+    if (m_owner->hasUnitState(UNIT_STAT_NO_FREE_MOVE))
+        return;
+
+    Movement::MoveSplineInit init(*m_owner);
+    init.SetWalk(false);
+    init.SetVelocity(horizontalSpeed > 0.1f ? horizontalSpeed : 8.0f);
+    init.SetFacing(o);
+    init.MoveTo(x, y, z, false);
+    init.SetFall();
+    Mutate(new EffectMovementGenerator(init, id, false));
+}
+
 void MotionMaster::MoveCharge(float x, float y, float z, float speed, uint32 id/* = EVENT_CHARGE*/)
 {
     if (m_owner->hasUnitState(UNIT_STAT_NO_FREE_MOVE))

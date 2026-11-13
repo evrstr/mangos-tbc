@@ -4523,6 +4523,19 @@ void Unit::_UpdateSpells(uint32 time)
 #endif
 }
 
+// 获取自动射击/魔杖射击当前循环的剩余冷却毫秒数
+uint32 Unit::GetAutoRepeatRemainingMs() const
+{
+    Spell* repeat = m_currentSpells[CURRENT_AUTOREPEAT_SPELL];
+    if (!repeat || !repeat->m_spellInfo || !IsInWorld()) return 0;
+    if (m_AutoRepeatFirstCast) return 500;
+    TimePoint expiration;
+    bool permanent = false;
+    if (!GetExpireTime(*repeat->m_spellInfo, expiration, permanent) || permanent) return 0;
+    auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(expiration - GetMap()->GetCurrentClockTime()).count();
+    return remaining > 0 ? uint32(remaining) : 0;
+}
+
 // 每帧更新自动射击/魔杖射击循环
 void Unit::_UpdateAutoRepeatSpell()
 {
@@ -11537,6 +11550,30 @@ void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpee
 
 void Unit::KnockBackWithAngle(float angle, float horizontalSpeed, float verticalSpeed)
 {
+#ifdef ENABLE_PLAYERBOTS
+    // 机器人击飞物理模拟：真人玩家击飞由客户端计算抛物线，机器人由服务端按重力计算落点并通过 MoveJump 模拟飞行轨迹
+    if (IsPlayer())
+    {
+        Player* botPlayer = static_cast<Player*>(this);
+        if (botPlayer->GetPlayerbotAI())
+        {
+            float constexpr GRAVITY = 19.291105f;           // 客户端重力（码/s^2）
+            float const vz  = std::max(0.1f, verticalSpeed);
+            float const vxy = std::max(0.1f, horizontalSpeed);
+            float const t   = 2.0f * vz / GRAVITY;          // 滞空时间
+            float const tx  = GetPositionX() + cosf(angle) * vxy * t;
+            float const ty  = GetPositionY() + sinf(angle) * vxy * t;
+            float const tz  = GetMap()->GetHeight(tx, ty, GetPositionZ() + 5.0f);
+            if (tz > INVALID_HEIGHT)
+            {
+                float const maxH = vz * vz / (2.0f * GRAVITY);
+                botPlayer->GetMotionMaster()->MoveJump(tx, ty, tz, vxy, maxH, EVENT_JUMP);
+                return;
+            }
+        }
+    }
+#endif
+
     if (IsClientControlled())
     {
         if (Player const* player = GetControllingPlayer())

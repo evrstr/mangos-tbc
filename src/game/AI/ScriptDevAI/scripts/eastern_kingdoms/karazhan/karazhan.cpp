@@ -183,15 +183,31 @@ void instance_karazhan::OnObjectCreate(GameObject* pGo)
                 pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
             break;
         case GO_STAGE_CURTAIN:
+            pGo->SetGoState(m_auiEncounter[TYPE_OPERA] == IN_PROGRESS || m_auiEncounter[TYPE_OPERA] == DONE
+                ? GO_STATE_ACTIVE : GO_STATE_READY);
+            break;
         case GO_PRIVATE_LIBRARY_DOOR:
+            if (m_auiEncounter[TYPE_ARAN] == IN_PROGRESS)
+            {
+                pGo->SetGoState(GO_STATE_READY);
+                pGo->SetLootState(GO_READY);
+                pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+                pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+            }
+            break;
+        case GO_MASTERS_TERRACE_DOOR_1:
+        case GO_MASTERS_TERRACE_DOOR_2:
+            if (m_auiEncounter[TYPE_OPERA] == DONE)
+            {
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            }
+            break;
         case GO_MASSIVE_DOOR:
         case GO_GAMESMANS_HALL_DOOR:
         case GO_NETHERSPACE_DOOR:
-        case GO_DUST_COVERED_CHEST:
-        case GO_MASTERS_TERRACE_DOOR_1:
-        case GO_MASTERS_TERRACE_DOOR_2:
         case GO_BLACKENED_URN:
         case GO_CHESSBOARD:
+        case GO_DUST_COVERED_CHEST:
             break;
 
         // Opera event backgrounds
@@ -273,19 +289,38 @@ void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
                 DoToggleGameObjectFlags(GO_SERVANTS_ACCESS_DOOR, GO_FLAG_LOCKED, false);
                 DoToggleGameObjectFlags(GO_SIDE_ENTRANCE_DOOR, GO_FLAG_LOCKED, false);
             }
-            // use curtain only for event start or fail
-            else
-                DoUseDoorOrButton(GO_STAGE_CURTAIN);
+            // 显式状态设定（幂等），不再使用 toggle 防止大幕反向翻转
+            if (GameObject* curtain = GetSingleGameObjectFromStorage(GO_STAGE_CURTAIN))
+            {
+                if (uiData == IN_PROGRESS || uiData == DONE)
+                    curtain->SetGoState(GO_STATE_ACTIVE);
+                else if (uiData == FAIL || uiData == NOT_STARTED)
+                    curtain->SetGoState(GO_STATE_READY);
+            }
             break;
         case TYPE_CURATOR:
         case TYPE_TERESTIAN:
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_ARAN:
-            if (uiData == FAIL || uiData == DONE)
-                DoToggleGameObjectFlags(GO_PRIVATE_LIBRARY_DOOR, GO_FLAG_LOCKED, false);
-            if (uiData == IN_PROGRESS)
-                DoToggleGameObjectFlags(GO_PRIVATE_LIBRARY_DOOR, GO_FLAG_LOCKED, true);
+            // 图书馆门保持显式状态与解锁，避免自动关闭后重复翻转
+            if (GameObject* libraryDoor = GetSingleGameObjectFromStorage(GO_PRIVATE_LIBRARY_DOOR))
+            {
+                if (uiData == IN_PROGRESS)
+                {
+                    libraryDoor->SetGoState(GO_STATE_READY);
+                    libraryDoor->SetLootState(GO_READY);
+                    libraryDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+                    libraryDoor->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                }
+                else if (uiData == FAIL || uiData == DONE)
+                {
+                    libraryDoor->SetGoState(GO_STATE_ACTIVE);
+                    libraryDoor->SetLootState(GO_READY);
+                    libraryDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+                    libraryDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                }
+            }
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_NETHERSPITE:
@@ -309,10 +344,31 @@ void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_NIGHTBANE:
+        {
+            // 主宰露台门在歌剧院通关后已常开，若使用 DoUseDoorOrButton(toggle) 会将其误关；改用显式状态控制
+            uint32 const doorEntries[2] = { GO_MASTERS_TERRACE_DOOR_1, GO_MASTERS_TERRACE_DOOR_2 };
+            for (uint32 entry : doorEntries)
+            {
+                GameObject* pDoor = GetSingleGameObjectFromStorage(entry);
+                if (!pDoor)
+                    continue;
+
+                pDoor->SetLootState(GO_READY);
+                pDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+                if (uiData == IN_PROGRESS)
+                {
+                    pDoor->SetGoState(GO_STATE_READY);
+                    pDoor->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                }
+                else
+                {
+                    pDoor->SetGoState(GO_STATE_ACTIVE);
+                    pDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                }
+            }
             m_auiEncounter[uiType] = uiData;
-            DoUseDoorOrButton(GO_MASTERS_TERRACE_DOOR_1);
-            DoUseDoorOrButton(GO_MASTERS_TERRACE_DOOR_2);
             break;
+        }
         // Store the event type for the Opera
         case TYPE_OPERA_PERFORMANCE:
             m_uiOperaEvent = uiData;
