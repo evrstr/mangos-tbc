@@ -90,15 +90,19 @@ if(WIN32)
   add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/game/Anticheat/module/warden_modules/ $<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/warden_modules)
 	
-  if(BUILD_PLAYERBOTS)
-    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
-	  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/modules/PlayerBots/playerbot/aiplayerbot.conf.dist.in.tbc\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/aiplayerbot.conf.dist\")
-  endif()
+	  if(BUILD_PLAYERBOTS)
+	    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+		  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/modules/PlayerBots/playerbot/aiplayerbot.conf.dist.in.tbc\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/aiplayerbot.conf.dist\")
+	    if(NOT BUILD_AHBOT)
+	      add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+		    COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/modules/PlayerBots/ahbot/ahbot.conf.dist.in\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/ahbot.conf.dist\")
+	    endif()
+	  endif()
 
-  if(BUILD_AHBOT)
-    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
-	  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/game/AuctionHouseBot/ahbot.conf.dist.in\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/ahbot.conf.dist\")
-  endif()
+	  if(BUILD_AHBOT)
+	    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+		  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/game/AuctionHouseBot/ahbot.conf.dist.in\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/ahbot.conf.dist\")
+	  endif()
 endif()
 
 set(EXECUTABLE_LINK_FLAGS "")
