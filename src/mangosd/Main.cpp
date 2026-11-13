@@ -41,6 +41,11 @@
 #include <iostream>
 #include <string>
 
+#if defined(__GLIBC__) && !defined(_WIN32)
+#include <malloc.h>
+#include <cstdlib>
+#endif
+
 #ifdef ENABLE_PLAYERBOTS
 #include "playerbot/PlayerbotAIConfig.h"
 #endif
@@ -72,6 +77,11 @@ uint32 realmID;                                             ///< Id of the realm
 /// Launch the mangos server | 启动 MaNGOS 服务端主入口函数
 int main(int argc, char* argv[])
 {
+#if defined(__GLIBC__) && !defined(_WIN32)
+    // 约束 glibc 每线程 arena 数量，防止数百个 Bot/工作线程膨胀独立 arena 导致 RSS 虚高 (PR #910)
+    if (!std::getenv("MALLOC_ARENA_MAX"))
+        mallopt(M_ARENA_MAX, 8);
+#endif
     std::string auctionBotConfig, configFile, aiPlayerBotConfig, serviceParameter;
 
     boost::program_options::options_description desc("Allowed options");

@@ -87,6 +87,11 @@
 #include <mutex>
 #include <cstdarg>
 #include <memory>
+#if defined(__GLIBC__) && !defined(_WIN32)
+#include <malloc.h>
+#endif
+#include <cstdio>
+#include <cstring>
 
 INSTANTIATE_SINGLETON_1(World);
 
@@ -511,6 +516,9 @@ void World::LoadConfigSettings(bool reload)
     setConfigMin(CONFIG_UINT32_INTERVAL_GRIDCLEAN, "GridCleanUpDelay", 5 * MINUTE * IN_MILLISECONDS, MIN_GRID_DELAY);
     if (reload)
         sMapMgr.SetGridCleanUpDelay(getConfig(CONFIG_UINT32_INTERVAL_GRIDCLEAN));
+
+    // glibc 内存自动整理周期（秒），0为禁用周期整理（空闲时仍整理），默认 5 分钟 (PR #910)
+    setConfig(CONFIG_UINT32_MEMORY_TRIM_INTERVAL, "MemoryTrimInterval", 5 * MINUTE);
 
     setConfigMin(CONFIG_UINT32_INTERVAL_MAPUPDATE, "MapUpdateInterval", 100, MIN_MAP_UPDATE_DELAY);
     if (reload)
@@ -1558,6 +1566,39 @@ void World::DetectDBCLang()
     sLog.outString();
 }
 
+void World::TrimMemory()
+{
+#if defined(__GLIBC__) && !defined(_WIN32)
+    // glibc 的每线程 arena 频繁分配和释放碎片。使用 malloc_trim(0) 回收空闲页到内核 (PR #910)
+    auto readRssKb = []() -> unsigned long
+    {
+        FILE* file = fopen("/proc/self/status", "r");
+        if (!file)
+            return 0;
+
+        unsigned long rss = 0;
+        char line[256];
+        while (fgets(line, sizeof(line), file))
+        {
+            if (std::strncmp(line, "VmRSS:", 6) == 0)
+            {
+                std::sscanf(line + 6, "%lu", &rss);
+                break;
+            }
+        }
+        fclose(file);
+        return rss;
+    };
+
+    const unsigned long before = readRssKb();
+    const int result = malloc_trim(0);
+    const unsigned long after = readRssKb();
+
+    sLog.outString("Memory trim: malloc_trim(%d), RSS %lu kB -> %lu kB (released %ld kB)",
+        result, before, after, (long)before - (long)after);
+#endif
+}
+
 /// Update the World ! | 世界主循环单帧更新：推进全局计时器、事件、任务重置、会话、地图、战场、异步 SQL 回调与 CLI 命令
 void World::Update(uint32 diff)
 {
@@ -1750,6 +1791,26 @@ void World::Update(uint32 diff)
 
     // cleanup unused GridMap objects as well as VMaps | 释放不再使用的地形高度图与 VMap 数据
     sTerrainMgr.Update(diff);
+
+    // 定期释放空闲堆内存回操作系统（Linux/glibc malloc_trim，PR #910）
+    m_memoryTrimTimer += diff;
+    if (m_memoryTrimTimer >= 60 * IN_MILLISECONDS)
+    {
+        m_memoryTrimTimer = 0;
+        const bool idle = GetActiveSessionCount() == 0;
+        const uint32 interval = idle ? 60 : getConfig(CONFIG_UINT32_MEMORY_TRIM_INTERVAL);
+        const uint32 now = uint32(time(nullptr));
+        if (interval && (m_lastMemoryTrimTime == 0 || now - m_lastMemoryTrimTime >= interval))
+        {
+            m_lastMemoryTrimTime = now;
+
+            // 空闲状态下先强制触发网格与 VMap 清理，以便刚刚失去最后访问者的网格能够及时释放
+            if (idle)
+                sTerrainMgr.Update(getConfig(CONFIG_UINT32_INTERVAL_GRIDCLEAN) + 1000);
+
+            TrimMemory();
+        }
+    }
 #ifdef BUILD_METRICS
     auto updateEndTime = std::chrono::time_point_cast<std::chrono::milliseconds>(Clock::now());
     long long total = (updateEndTime - m_currentTime).count();

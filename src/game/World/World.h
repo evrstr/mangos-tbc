@@ -97,6 +97,7 @@ enum eConfigUInt32Values
     CONFIG_UINT32_COMPRESSION = 0,
     CONFIG_UINT32_INTERVAL_SAVE,
     CONFIG_UINT32_INTERVAL_GRIDCLEAN,
+    CONFIG_UINT32_MEMORY_TRIM_INTERVAL,
     CONFIG_UINT32_INTERVAL_MAPUPDATE,
     CONFIG_UINT32_INTERVAL_CHANGEWEATHER,
     CONFIG_UINT32_PORT_WORLD,
@@ -551,6 +552,9 @@ class World
         /// 世界主循环单帧更新入口：驱动时间、会话、地图、事件、数据库异步回调及停机倒计时
         void Update(uint32 diff);
 
+        /// 释放空闲堆内存回操作系统（Linux/glibc malloc_trim）
+        void TrimMemory();
+
         /// 处理新增/待更新玩家会话及 CLI 队列命令
         void UpdateSessions(uint32 diff);
 
@@ -704,6 +708,8 @@ class World
         IntervalTimer m_timers[WUPDATE_COUNT];
         uint32 mail_timer;
         uint32 mail_timer_expires;
+        uint32 m_memoryTrimTimer = 0;
+        uint32 m_lastMemoryTrimTime = 0;
 
         typedef std::unordered_map<uint32, WorldSession*> SessionMap;
         typedef std::unordered_set<uint32> UniqueSessions;

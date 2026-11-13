@@ -2294,10 +2294,24 @@ struct ExposeRazorthornRoot : public SpellScript
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* target = spell->GetUnitTarget();
-        if (!target || !target->AI())
+        if (!target)
             return;
 
-        target->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, target, target);
+        // 若生物处于魅惑/心控状态，事件直接派发给当前激活的 CharmState / PetAI (Issue #4112)
+        if (target->IsCreature())
+        {
+            if (CharmInfo* charmInfo = target->GetCharmInfo())
+            {
+                if (UnitAI* charmAI = charmInfo->GetAI())
+                {
+                    charmAI->ReceiveAIEvent(AI_EVENT_CUSTOM_A, target, target, 0);
+                    return;
+                }
+            }
+        }
+
+        if (target->AI())
+            target->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, target, target);
     }
 };
 
@@ -2404,6 +2418,13 @@ struct npc_razorthorn_ravager : public CombatAI
     {
         if (CharmInfo* charmInfo = m_creature->GetCharmInfo())
             charmInfo->SetCharmState(new npc_razorthorn_ravager_pet(m_creature));
+    }
+
+    void ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* invoker, uint32 miscValue) override
+    {
+        if (CharmInfo* charmInfo = m_creature->GetCharmInfo())
+            if (UnitAI* charmAI = charmInfo->GetAI())
+                charmAI->ReceiveAIEvent(eventType, sender, invoker, miscValue);
     }
 
     // 执行战斗行为动作
