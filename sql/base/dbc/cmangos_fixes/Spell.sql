@@ -2629,6 +2629,10 @@ UPDATE spell_template SET EffectBasePoints1=9,EffectItemType1=0x1 WHERE Id = 288
 -- Use caster-front 3-yard radius instead of global Frail Skeleton search to avoid room-wide chain aggro
 UPDATE spell_template SET EffectImplicitTargetA1 = 47, EffectRadiusIndex1 = 15 WHERE Id = 17618;
 
+-- Fix #4088: Warlock Imp cannot autocast Blood Pact while Phase Shifted
+-- Add SPELL_ATTR_EX6_CAN_ASSIST_IMMUNE_PC (0x8) to allow assisting self/master while immune
+UPDATE `spell_template` SET `AttributesEx6` = `AttributesEx6` | 8 WHERE `Id` IN (6307, 7804, 7805, 11766, 11767, 27268);
+
 -- ============================================================
 -- TBC section
 -- ============================================================

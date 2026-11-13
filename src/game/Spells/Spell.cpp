@@ -1410,10 +1410,18 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
 
     if (m_spellAuraHolder && m_caster)
     {
-        if (m_caster->IsSpellProccingHappening())
-            m_caster->AddDelayedHolderDueToProc(m_spellAuraHolder);
+        // 校验目标单位身上该光环对象是否依然存活，防止施法期间被触发/伤害清除后发生悬垂野写 UAF (dev/KNOWN_ISSUES.md §11.6)
+        if (unit && unit->HasAuraHolder(m_spellAuraHolder->GetId(), [this](SpellAuraHolder const* h) { return h == m_spellAuraHolder; }))
+        {
+            if (m_caster->IsSpellProccingHappening())
+                m_caster->AddDelayedHolderDueToProc(m_spellAuraHolder);
+            else
+                m_spellAuraHolder->SetState(SPELLAURAHOLDER_STATE_READY);
+        }
         else
-            m_spellAuraHolder->SetState(SPELLAURAHOLDER_STATE_READY);
+        {
+            m_spellAuraHolder = nullptr;
+        }
     }
 }
 

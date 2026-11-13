@@ -5209,7 +5209,8 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder* holder)
             {
                 // any stackable case with amount should mod existing stack amount
                 bool isStackable = sSpellStacker.IsSpellStackableWithSpellForDifferentCasters(aurSpellInfo, foundHolder->GetSpellProto(), true, this);
-                if (aurSpellInfo->StackAmount && !IsChanneledSpell(aurSpellInfo) && !isStackable)
+                bool sameSpellStacking = (aurSpellInfo == foundHolder->GetSpellProto() && aurSpellInfo->StackAmount && !aurSpellInfo->HasAttribute(SPELL_ATTR_EX3_DOT_STACKING_RULE) && !aurSpellInfo->HasAttribute(SPELL_ATTR_EX5_AURA_UNIQUE_PER_CASTER));
+                if (aurSpellInfo->StackAmount && !IsChanneledSpell(aurSpellInfo) && (!isStackable || sameSpellStacking))
                 {
                     foundHolder->ModStackAmount(holder->GetStackAmount(), holder->GetCaster());
                     return false;

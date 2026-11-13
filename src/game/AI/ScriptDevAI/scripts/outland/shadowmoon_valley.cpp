@@ -2102,8 +2102,9 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
         m_uiFrostTimer      = 20000;
         m_uiHealTimer       = 8000;
 
+        m_borak             = nullptr;
+        m_gromtor           = nullptr;
         m_bHasAttackStart   = false;
-
     }
 
     void JustRespawned() override
@@ -2138,7 +2139,8 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
             {
                 m_creature->SetFacingTo(4.9f);
                 // make the formation turn around as well
-                m_creature->GetCreatureGroup()->GetFormationData()->Compact(false);
+                if (m_creature->GetCreatureGroup() && m_creature->GetCreatureGroup()->GetFormationData())
+                    m_creature->GetCreatureGroup()->GetFormationData()->Compact(false);
                 Creature* elemental = m_creature->SummonCreature(NPC_REDEEMED_SPIRIT_OF_AIR, aDamnationLocations[0].x, aDamnationLocations[0].y, aDamnationLocations[0].z, aDamnationLocations[0].o, TEMPSPAWN_TIMED_DESPAWN, 32000);
                 elemental->CastSpell(nullptr, SPELL_ELEMENTAL_SPAWN_IN, TRIGGERED_NONE);
                 elemental = m_creature->SummonCreature(NPC_REDEEMED_SPIRIT_OF_EARTH, aDamnationLocations[1].x, aDamnationLocations[1].y, aDamnationLocations[1].z, aDamnationLocations[1].o, TEMPSPAWN_TIMED_DESPAWN, 32000);
@@ -2241,9 +2243,9 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
             // despawn the others if they're dead
             if (!m_creature->IsAlive())
                 m_creature->ForcedDespawn();
-            if (!m_borak->IsAlive())
+            if (m_borak && !m_borak->IsAlive())
                 m_borak->ForcedDespawn();
-            if (!m_gromtor->IsAlive())
+            if (m_gromtor && !m_gromtor->IsAlive())
                 m_gromtor->ForcedDespawn();
         }
     }
