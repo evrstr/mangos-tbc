@@ -86,4 +86,8 @@ Follow `.clang-format` and surrounding CMaNGOS style（遵循 `.clang-format` �
 - **Includes / 头文件**: Do **not** reorder existing `#include` blocks (`SortIncludes: Never`); missing standard headers under GCC 15 (e.g. `<cstdint>`) should be added minimally where needed.（禁止重排现有 `#include` 顺序。）
 - **Minimal diffs / 最小改动**: Match the idioms of the subsystem you touch (`src/game` vs `src/modules/PlayerBots`, which uses `#pragma once` and slightly different naming). Avoid unrelated refactors in large core files (`Player.cpp`, `SpellEffects.cpp`, `PlayerbotAI.cpp`).（贴合所属子系统习惯，避免在超大核心文件中做无关重构。）
 - **Comments / 注释规范**: Keep original English technical/Doxygen comments intact and maintain bilingual Chinese annotations for newly added or modified modules/logic.（保留原有英文技术注释，新增或修改逻辑同步补充中文注释。）
-- **Git hygiene / Git 规范**: Never commit `bin/`, `build/`, `*.conf` (only `.conf.dist.in` templates), or extracted client assets (`dbc/`, `maps/`, `vmaps/`, `mmaps/`).（严禁提交构建目录、实际 `.conf` 或客户端提取数据。）
+- **Git hygiene & commit messages / Git 提交规范**:
+  - Never commit `bin/`, `build/`, `*.conf` (only `.conf.dist.in` templates), or extracted client assets (`dbc/`, `maps/`, `vmaps/`, `mmaps/`).（严禁提交构建目录、实际 `.conf` 或客户端提取数据。）
+  - **Bilingual Git Commit Messages / Git 提交日志中英双语**: All Git commit messages must be written in bilingual Chinese & English (中英双语). Both the commit subject line and the body bullets must clearly state the change in English and Chinese.（所有 Git 提交日志必须使用中英双语撰写，包含标题与正文清单均须同时提供英文与中文对照。）
+  - **No Feature Branches / 严禁创建分支**: Always commit and push directly to `master`.（所有提交直接推送到 `master` 主分支，不要创建特性分支。）
+
