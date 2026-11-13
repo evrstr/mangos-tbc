@@ -21,6 +21,7 @@
 
 #include "Common.h"
 #include <functional>
+#include <memory>
 #include "Entities/Object.h"
 
 // 战斗逃脱/脱战状态枚举
@@ -57,6 +58,11 @@ class CombatManager
         void TriggerCombatTimer(bool pvp);                              // 按 PVP/PVE 模式重置战斗计时器并记录当前位置
         void TriggerCombatTimer(uint32 timer);                          // 按指定毫秒数重置战斗计时器并记录位置
         void StopCombatTimer() { m_combatTimer = 0; }                   // 清零战斗计时器
+        std::shared_ptr<time_t> const& GetLastLeashExtensionPtr() const; // 获取共享牵引时间指针
+        void ShareLeashExtension(std::shared_ptr<time_t> const& ptr);   // 设置/同步共享牵引时间指针（群怪联动）
+        void ClearLeashExtension();                                     // 清空共享牵引时间
+        time_t GetLastLeashExtension() const;                           // 获取最后一次牵引时间
+        void UpdateLeashExtension();                                    // 刷新当前牵引时间戳
         bool IsLeashingDisabled() { return m_leashingDisabled; }        // 是否禁用追击脱战限制
         void SetLeashingDisable(bool apply) { m_leashingDisabled = apply; }
         void SetLeashingCheck(std::function<bool(Unit*, float x, float y, float z)> check) { m_leashingCheck = check; } // if check evals as true - evade (注册自定义脱战位置检查回调，返回 true 时强制脱战)
@@ -71,6 +77,7 @@ class CombatManager
         // combat timer handling (追击计时与脱战检查数据)
         uint32 m_combatTimer;                                           // 剩余追击战斗时间（毫秒）
         Position m_lastRefreshPos;                                      // 上次刷新战斗计时器时的位置
+        mutable std::shared_ptr<time_t> m_lastLeashExtension;           // 共享牵引刷新时间戳（群怪联动刷新）
         bool m_leashingDisabled;                            // disables leashing timer for script mobs (脚本怪物禁用牵引计时器标志)
         std::function<bool(Unit*, float x, float y, float z)> m_leashingCheck; // 自定义脱战坐标判定函数
 };

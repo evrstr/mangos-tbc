@@ -2217,7 +2217,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
                 m_caster->GetNearPoint2d(x, y, dis + m_caster->GetObjectBoundingRadius(), m_caster->GetOrientation() + angle_offset);
 
                 GridMapLiquidData liqData;
-                if (!m_caster->GetTerrain()->IsInWater(x, y, m_caster->GetTerrain()->GetWaterLevel(x, y, m_caster->GetPositionZ()) - 1.0f, &liqData))
+                // 探测水面高度改用玩家自身高度（GetWaterLevel 查地表在 WMO 内城平台水池如幽暗城会返回 VMAP_INVALID_HEIGHT_VALUE）
+                float const probeZ = m_caster->GetPositionZ();
+                if (!m_caster->GetTerrain()->IsInWater(x, y, probeZ, &liqData))
                 {
                     result = SPELL_FAILED_NOT_FISHABLE;
                     continue;
@@ -2230,6 +2232,10 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
                     result = SPELL_FAILED_LINE_OF_SIGHT;
                     continue;
                 }
+
+                // 找到合法抛点就立刻采用并跳出循环，避免最后一发随机落在岸上将合法点覆盖
+                result = SPELL_CAST_OK;
+                break;
             }
 
             uint32 mapId = m_caster->GetMapId();
@@ -2407,6 +2413,25 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
 
             if (result == SPELL_CAST_OK)
             {
+                // 优先以 DB 中 skill_fishing_base_level 表为准（除上述特殊副本硬编码地图外）
+                bool mapLevelRequirement =
+                    mapId == 43 || mapId == 48 || mapId == 189 || mapId == 349 || mapId == 289 || mapId == 309 ||
+                    mapId == 329 || mapId == 429 ||
+                    mapId == 534 || mapId == 545 || mapId == 546 || mapId == 547 || mapId == 548 || mapId == 560 ||
+                    mapId == 568 || mapId == 580 || mapId == 585;
+
+                if (!mapLevelRequirement)
+                {
+                    int32 dbSkill = sObjectMgr.GetFishingBaseSkillLevel(area);
+                    if (dbSkill == 0)
+                        dbSkill = sObjectMgr.GetFishingBaseSkillLevel(zone);
+
+                    if (dbSkill != 0)
+                        minimumRequiredSkill = (dbSkill > 0) ? uint32(dbSkill) : 0u;
+                    else if (minimumRequiredSkill >= 500)
+                        minimumRequiredSkill = 0u; // DB 也没收录则放行，不再用 500 兜底卡死
+                }
+
                 uint32 fishingSkill = m_caster->IsPlayer() ? static_cast<Player*>(m_caster)->GetSkillValue(SKILL_FISHING) : 0;
                 if (fishingSkill < minimumRequiredSkill)
                     result = SPELL_FAILED_LOW_CASTLEVEL;

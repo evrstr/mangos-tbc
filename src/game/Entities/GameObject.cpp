@@ -85,6 +85,7 @@ GameObject::GameObject() : WorldObject(),
     m_respawnOverriden = false;
     m_respawnOverrideOnce = false;
     m_forcedDespawn = false;
+    m_hasGoUseScript = false;
 
     m_lootState = GO_READY;
     m_spawnedByDefault = true;
@@ -256,7 +257,12 @@ bool GameObject::Create(uint32 dbGuid, uint32 guidlow, uint32 name_id, Map* map,
             // safe to use door cos both have startOpen on same spot
             SetGoState(goinfo->door.startOpen ? GO_STATE_ACTIVE : GO_STATE_READY);
             if (goinfo->door.startOpen)
+            {
                 m_lootState = GO_ACTIVATED;
+                // A door that spawns open and has an auto-close time must stay open for that long (初始开门且配置自动关闭的门，播种冷却时间以防首帧被立即关闭)
+                if (uint32 autoClose = goinfo->door.autoCloseTime / 0x10000)
+                    m_cooldownTime = time(nullptr) + autoClose;
+            }
             break;
         case GAMEOBJECT_TYPE_TRAP:
             // values from rogue detect traps aura
@@ -665,6 +671,16 @@ void GameObject::Update(const uint32 diff)
             if (preventDespawn) // mainly serves to prevent casting traps from despawning
                 break;
 
+            // 具有自动关闭时间的静态门和执行过脚本的拉杆机关不执行消失下线，仅重置状态
+            bool const autoCloseStaticDoor = GetGoType() == GAMEOBJECT_TYPE_DOOR &&
+                                             GetGOInfo()->GetAutoCloseTime() > 0 && m_spawnedByDefault &&
+                                             HasStaticDBSpawnData();
+            bool const autoCloseScriptedLever = GetGoType() == GAMEOBJECT_TYPE_BUTTON && m_hasGoUseScript &&
+                                                GetGOInfo()->GetAutoCloseTime() > 0 && m_spawnedByDefault &&
+                                                HasStaticDBSpawnData();
+            bool const neverDespawns = !m_forcedDespawn && (GetEntry() == 184912 || autoCloseStaticDoor ||
+                                                            autoCloseScriptedLever);
+
             // Remove wild summoned after use
             if (!HasStaticDBSpawnData() && (!GetSpellId() || GetGOInfo()->GetDespawnPossibility() || GetGOInfo()->IsDespawnAtAction() || m_forcedDespawn))
             {
@@ -674,8 +690,19 @@ void GameObject::Update(const uint32 diff)
                 return;
             }
 
+            if (neverDespawns)
+            {
+                if (GetMap()->Instanceable())
+                {
+                    // In Instances GO_FLAG_LOCKED, GO_FLAG_INTERACT_COND or GO_FLAG_NO_INTERACT are not changed
+                    uint32 currentLockOrInteractFlags = GetUInt32Value(GAMEOBJECT_FLAGS) & (GO_FLAG_LOCKED | GO_FLAG_INTERACT_COND | GO_FLAG_NO_INTERACT);
+                    SetUInt32Value(GAMEOBJECT_FLAGS, (GetGOInfo()->flags & ~(GO_FLAG_LOCKED | GO_FLAG_INTERACT_COND | GO_FLAG_NO_INTERACT)) | currentLockOrInteractFlags);
+                }
+                else
+                    SetUInt32Value(GAMEOBJECT_FLAGS, GetGOInfo()->flags);
+            }
             // burning flags in some battlegrounds, if you find better condition, just add it
-            if (GetGOInfo()->IsDespawnAtAction() || GetGoAnimProgress() > 0)
+            else if (GetGOInfo()->IsDespawnAtAction() || GetGoAnimProgress() > 0)
             {
                 SendObjectDeSpawnAnim(GetObjectGuid());
                 // reset flags
@@ -1579,9 +1606,9 @@ void GameObject::Use(Unit* user, SpellEntry const* spellInfo)
 
             TriggerLinkedGameObject(user);
 
-            // activate script
-            if (!scriptReturnValue)
-                GetMap()->ScriptsStart(SCRIPT_TYPE_GAMEOBJECT, GetDbGuid(), spellCaster, this);
+            // activate script; remember that this button is a scripted mechanism (执行脚本并记录拉杆/机关按钮标记，防止自动复位时被移出世界)
+            if (!scriptReturnValue && GetMap()->ScriptsStart(SCRIPT_TYPE_GAMEOBJECT, GetDbGuid(), spellCaster, this))
+                m_hasGoUseScript = true;
 
             return;
         }

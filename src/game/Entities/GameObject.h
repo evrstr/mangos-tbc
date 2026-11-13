@@ -1009,6 +1009,7 @@ class GameObject : public WorldObject
         bool        m_respawnOverriden;                     // 是否覆盖默认重生时间
         bool        m_respawnOverrideOnce;                  // 重生时间覆盖是否仅生效一次
         bool        m_forcedDespawn;                        // 是否标记为强制消失
+        bool        m_hasGoUseScript;                       // 是否成功执行过 dbscripts_on_go_use 脚本（如机关拉杆）
         LootState   m_lootState;                            // 当前服务端交互/拾取状态
         bool        m_spawnedByDefault;                     // 是否为默认随地图刷新的静态物体
         time_t      m_cooldownTime;                         // used as internal reaction delay time store (not state change reaction). (内部触发冷却时间戳)

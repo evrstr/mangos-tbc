@@ -667,6 +667,13 @@ void Unit::EvadeTimerExpired()
     if (!AI())
         return;
 
+    // 仅处理怪打玩家场景：小动物及目标非玩家控制单位跳过，防止小动物被野兽攻击后卡入永久 Evade
+    if (IsCreature() && static_cast<Creature*>(this)->IsCritter())
+        return;
+    Unit* victim = GetVictim();
+    if (!victim || !victim->IsControlledByPlayer())
+        return;
+
     // When there is no target to switch to, leave combat (仇恨列表仅剩一个目标时直接重置脱战)
     if (getThreatManager().getThreatList().size() == 1)
     {
@@ -6897,6 +6904,7 @@ void Unit::CombatStop(bool includingCast, bool includingCombo)
         AI()->CombatStop();
 
     GetCombatManager().StopCombatTimer();
+    GetCombatManager().ClearLeashExtension();
 
     ClearInCombat();
 }
@@ -9417,7 +9425,8 @@ bool Unit::SelectHostileTarget()
                 }
                 else
                 {
-                    if (!GetCombatManager().IsInEvadeMode())
+                    // 仅对玩家方目标启动 EvadeTimer，防止小动物被 NPC 攻击时反复进入 Evade 模式导致无法击杀
+                    if (target->IsControlledByPlayer() && !GetCombatManager().IsInEvadeMode())
                         GetCombatManager().StartEvadeTimer();
                 }
             }
@@ -9445,7 +9454,12 @@ bool Unit::SelectHostileTarget()
         for (auto m_attacker : m_attackers)
         {
             if (m_attacker->IsInMap(this) && CanAttack(m_attacker) && m_attacker->isInAccessablePlaceFor(this))
+            {
+                // 仅对玩家方攻击者启动 Evade 计时，避免 NPC 互殴将小动物顶进永久 evade
+                if (m_attacker->IsControlledByPlayer() && !GetCombatManager().IsInEvadeMode())
+                    GetCombatManager().StartEvadeTimer();
                 return false;
+            }
         }
     }
 

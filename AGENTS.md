@@ -63,9 +63,15 @@ cmake -G Ninja -S "D:/Games/wowsf/mangos-tbc" -B "D:/Games/wowsf/build" \
 
 ## 4. Database & SQL Rules / 数据库与 SQL 规范
 
+- **Test MySQL Environment / 测试 MySQL 环境**:
+  - Host: `192.168.100.115`
+  - Port: `3306`
+  - User: `root`
+  - Password: `123456`
+  - Target DBs: `mangos` (world), `characters`, `realmd`, `logs`
 - **Supported DB / 支持的数据库**: MySQL 8 / MariaDB only. Do **not** target PostgreSQL (`DatabasePostgre` is unmaintained/incomplete and core SQL uses MySQL syntax such as `REPLACE INTO`, `AUTO_INCREMENT`, and backticks).（仅支持 MySQL 8 / MariaDB；禁止基于已废弃的 `DatabasePostgre` 开发。）
 - Any schema or data change must be placed in numbered/structured SQL files under `sql/updates/` (core) or `src/modules/PlayerBots/sql/` (PlayerBots) — never silently assume manual DB edits.（所有表结构与数据改动必须写入对应 `sql/updates/` 或 `src/modules/PlayerBots/sql/` 迁移文件。）
-- Never hardcode database credentials or personal machine paths in committed source/config files.（严禁在提交的源码或配置模板中硬编码数据库密码或个人本机路径。）
+- Never hardcode database credentials or personal machine paths in committed source/config templates (`.conf.dist.in`).（严禁在提交的源码或配置模板中硬编码数据库密码或个人本机路径。）
 
 ## 5. Code Style & Editing Rules / 代码风格与编辑规范
 

@@ -25,7 +25,7 @@
 #define COMBAT_MANAGER_TICK 1200 // 战斗牵引/脱战检查间隔（1.2 秒）
 
 // 构造函数：初始化战斗管理器状态
-CombatManager::CombatManager(Unit* owner) : m_owner(owner), m_evadeTimer(0), m_evadeState(EVADE_NONE), m_combatTick(COMBAT_MANAGER_TICK), m_combatTimer(0), m_leashingDisabled(false), m_leashingCheck(nullptr)
+CombatManager::CombatManager(Unit* owner) : m_owner(owner), m_evadeTimer(0), m_evadeState(EVADE_NONE), m_combatTick(COMBAT_MANAGER_TICK), m_combatTimer(0), m_lastLeashExtension(nullptr), m_leashingDisabled(false), m_leashingCheck(nullptr)
 {
 
 }
@@ -90,30 +90,38 @@ void CombatManager::Update(const uint32 diff)
                     if (!m_owner->GetMap()->IsDungeon() && m_owner->IsImmobilizedState())
                         m_owner->getThreatManager().DeleteOutOfRangeReferences();
 
-                    if (!m_combatTimer)
+                    // 非玩家控制单位在被控（羊/恐/晕）期间刷新牵引时间，防止被控怪过早脱战
+                    if (!m_owner->IsPlayerControlled() && m_owner->IsCrowdControlled())
+                        UpdateLeashExtension();
+
+                    bool check = !m_owner->HasMaster();
+                    if (!check)
                     {
-                        bool check = !m_owner->HasMaster();
-                        if (!check)
+                        Unit* master = m_owner->GetMaster();
+                        if (!master || !master->IsAlive()) // if charmer alive, he will evade this charm (若主人/魅惑者存活，则由其统一控制脱战)
+                            check = true;
+                    }
+                    if (check)
+                    {
+                        if (m_owner->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
                         {
-                            Unit* master = m_owner->GetMaster();
-                            if (!master || !master->IsAlive()) // if charmer alive, he will evade this charm (若主人/魅惑者存活，则由其统一控制脱战)
-                                check = true;
-                        }
-                        if (check)
-                        {
-                            if (m_owner->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                            if (!m_combatTimer)
                             {
                                 if (m_owner->getHostileRefManager().getSize() == 0)
                                     m_owner->HandleExitCombat(false, m_owner->IsPlayer());
                             }
-                            // if timer ran out and we are far away from last refresh pos, evade (战斗计时归零且目标远离上次刷新位置时触发脱战)
-                            else if (m_owner->GetVictim() && m_owner->GetVictim()->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                        }
+                        // if timer ran out and we are far away from last refresh pos, evade (战斗计时归零且目标远离上次刷新位置时触发脱战)
+                        else if (m_owner->GetVictim() && m_owner->GetVictim()->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                        {
+                            // immobilized passive mobs ignore last refresh pos (定身且被动的生物直接脱战)
+                            if (m_owner->IsImmobilizedState() && m_owner->AI()->GetReactState() == REACT_PASSIVE)
+                                m_owner->HandleExitCombat(false);
+                            else if (GetLastLeashExtension() + (time_t)(m_owner->GetPursuit() / 1000) < time(nullptr) &&
+                                     m_owner->GetVictim()->GetDistance2d(m_lastRefreshPos.GetPositionX(), m_lastRefreshPos.GetPositionY()) > sWorld.getConfig(CONFIG_FLOAT_LEASH_RADIUS))
                             {
-                                // immobilized passive mobs ignore last refresh pos (定身且被动的生物直接脱战)
-                                if (m_owner->IsImmobilizedState() && m_owner->AI()->GetReactState() == REACT_PASSIVE)
-                                    m_owner->HandleExitCombat(false);
-                                else if (m_owner->GetVictim()->GetDistance2d(m_lastRefreshPos.GetPositionX(), m_lastRefreshPos.GetPositionY()) > sWorld.getConfig(CONFIG_FLOAT_LEASH_RADIUS))
-                                    m_owner->HandleExitCombat(false);
+                                DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "[LEASH] EVADE guid=%u val=%ld now=%ld", m_owner->GetGUIDLow(), (long)GetLastLeashExtension(), (long)time(nullptr));
+                                m_owner->HandleExitCombat(false);
                             }
                         }
                     }
@@ -202,6 +210,7 @@ void CombatManager::TriggerCombatTimer(bool pvp)
 {
     m_combatTimer = pvp ? 5000 : m_owner->GetPursuit();
     m_lastRefreshPos = m_owner->GetPosition();
+    UpdateLeashExtension();
 }
 
 // 使用指定时间刷新战斗计时器并记录位置
@@ -209,4 +218,41 @@ void CombatManager::TriggerCombatTimer(uint32 timer)
 {
     m_combatTimer = timer;
     m_lastRefreshPos = m_owner->GetPosition();
+    UpdateLeashExtension();
+}
+
+// 获取或初始化共享牵引时间指针
+std::shared_ptr<time_t> const& CombatManager::GetLastLeashExtensionPtr() const
+{
+    if (!m_lastLeashExtension)
+        m_lastLeashExtension = std::make_shared<time_t>(time(nullptr));
+    return m_lastLeashExtension;
+}
+
+// 设置/同步共享牵引时间指针（群怪呼救联动）
+void CombatManager::ShareLeashExtension(std::shared_ptr<time_t> const& ptr)
+{
+    m_lastLeashExtension = ptr;
+    if (m_owner->GetVictim() && m_owner->GetVictim()->IsControlledByPlayer())
+        sLog.outDebug("[LEASH] Share receiver=%u ptr=%p val=%ld", m_owner->GetGUIDLow(), (void*)m_lastLeashExtension.get(), (long)*m_lastLeashExtension);
+}
+
+// 清空共享牵引时间指针
+void CombatManager::ClearLeashExtension()
+{
+    m_lastLeashExtension.reset();
+}
+
+// 获取最后一次牵引时间
+time_t CombatManager::GetLastLeashExtension() const
+{
+    return *GetLastLeashExtensionPtr();
+}
+
+// 刷新当前牵引时间戳
+void CombatManager::UpdateLeashExtension()
+{
+    (*GetLastLeashExtensionPtr()) = time(nullptr);
+    if (m_owner->GetVictim() && m_owner->GetVictim()->IsControlledByPlayer())
+        sLog.outDebug("[LEASH] Update guid=%u ptr=%p val=%ld", m_owner->GetGUIDLow(), (void*)m_lastLeashExtension.get(), (long)*m_lastLeashExtension);
 }

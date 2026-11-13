@@ -251,6 +251,9 @@ void CreatureAI::HandleAssistanceCall(Unit* sender, Unit* invoker)
         if (!factionTemplate || factionTemplate->IsFleeFromCallForHelp() || factionTemplate->IsRespondToCallForHelp())
             m_creature->SetNoCallAssistance(true);
         OnCallForHelp(invoker);
+        // Leash-link: 共享呼救发起者的牵引时间指针，使击打群怪其中一只时刷新整组牵引（防群怪中途脱战）
+        if (sender && sender->IsCreature())
+            m_creature->GetCombatManager().ShareLeashExtension(sender->GetCombatManager().GetLastLeashExtensionPtr());
     }
 }
 
