@@ -69,6 +69,10 @@ cmake -G Ninja -S "D:/Games/wowsf/mangos-tbc" -B "D:/Games/wowsf/build" \
   - User: `root`
   - Password: `123456`
   - Target DBs: `mangos` (world), `characters`, `realmd`, `logs`
+- **SQL Fixes & Knowledge Base (`dev/`) / 数据库修复脚本与知识库**:
+  - `dev/`: 包含 83 个通用 Bug 修复脚本（任务、刷怪组、中文补全、门控、法术等），可通过 `dev/run_dev_sql.bat` / `dev/run_dev_sql.ps1` 批量幂等执行。
+  - `dev/custom_tuning/`: 包含 43 个私服定制/魔改脚本（AHBot 做市商、掉率倍率提升、集合石等级放宽等），已隔离存放，默认不参与通用修复批量执行。
+  - `dev/KNOWN_ISSUES.md`: 核心问题总账与根因文档，记录所有修复证据与测试口径。
 - **Supported DB / 支持的数据库**: MySQL 8 / MariaDB only. Do **not** target PostgreSQL (`DatabasePostgre` is unmaintained/incomplete and core SQL uses MySQL syntax such as `REPLACE INTO`, `AUTO_INCREMENT`, and backticks).（仅支持 MySQL 8 / MariaDB；禁止基于已废弃的 `DatabasePostgre` 开发。）
 - Any schema or data change must be placed in numbered/structured SQL files under `sql/updates/` (core) or `src/modules/PlayerBots/sql/` (PlayerBots) — never silently assume manual DB edits.（所有表结构与数据改动必须写入对应 `sql/updates/` 或 `src/modules/PlayerBots/sql/` 迁移文件。）
 - Never hardcode database credentials or personal machine paths in committed source/config templates (`.conf.dist.in`).（严禁在提交的源码或配置模板中硬编码数据库密码或个人本机路径。）
