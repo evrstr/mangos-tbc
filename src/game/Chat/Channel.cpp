@@ -766,7 +766,9 @@ void Channel::SendToAll(WorldPacket const& data) const
 
 void Channel::SendMessage(WorldPacket const& data, ObjectGuid sender) const
 {
-    for (PlayerList::const_iterator i = m_players.begin(); i != m_players.end(); ++i)
+    // 快照当前成员列表，防止在发包遍历期间机器人或玩家退出/离线引发迭代器失效崩溃 (Issue #3918)
+    PlayerList tempPlayers = m_players;
+    for (PlayerList::const_iterator i = tempPlayers.begin(); i != tempPlayers.end(); ++i)
         if (Player* plr = sObjectMgr.GetPlayer(i->first))
             if (!sender || !plr->GetSocial()->HasIgnore(sender))
                 plr->GetSession()->SendPacket(data);

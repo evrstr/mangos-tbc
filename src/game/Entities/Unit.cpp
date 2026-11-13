@@ -3071,6 +3071,10 @@ void Unit::SendMeleeAttackStart(const Unit& victim) const
 
 void Unit::SendMeleeAttackStop(Unit const* victim) const
 {
+    // 受击目标脱离世界时直接略过发包，防止野外/战场或机器人快速退场时解包空引用崩溃 (Issue #3917)
+    if (victim && !victim->IsInWorld())
+        return;
+
     WorldPacket data(SMSG_ATTACKSTOP, (4 + 16));            // we guess size
     data << GetPackGUID();
     if (victim)
@@ -8127,12 +8131,27 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     if (attType == RANGED_ATTACK)
     {
         APbonus += victim->GetTotalAuraModifier(SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS);
+        APbonus += victim->GetTotalAuraModifier(SPELL_AURA_MOD_TARGET_RANGED_ATTACK_POWER_BY_ATTACKER);
         APbonus += GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_RANGED_ATTACK_POWER_VERSUS, creatureTypeMask);
     }
     else
     {
         APbonus += victim->GetTotalAuraModifier(SPELL_AURA_MELEE_ATTACK_POWER_ATTACKER_BONUS);
         APbonus += GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_MELEE_ATTACK_POWER_VERSUS, creatureTypeMask);
+
+        // 强化猎人印记：全队近战对带标记目标获得其叠加远程攻强百分比的近战攻强加成 (PR #889 / Issue #3112)
+        AuraList const& hmAuras = victim->GetAurasByType(SPELL_AURA_MOD_TARGET_RANGED_ATTACK_POWER_BY_ATTACKER);
+        for (auto i : hmAuras)
+        {
+            if (Unit* markCaster = i->GetCaster())
+            {
+                int32 talentPct = 0;
+                for (int32 misc = 5236; misc <= 5240; ++misc)
+                    talentPct += markCaster->GetTotalAuraModifierByMiscValue(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS, misc);
+                if (talentPct > 0)
+                    APbonus += int32(i->GetModifier()->m_amount * talentPct / 100.0f);
+            }
+        }
     }
 
     // PERCENT damage auras

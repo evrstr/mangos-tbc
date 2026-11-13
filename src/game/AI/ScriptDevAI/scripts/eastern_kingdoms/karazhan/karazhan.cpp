@@ -288,6 +288,12 @@ void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
                 DoUseDoorOrButton(GO_STAGE_DOOR_RIGHT);
                 DoToggleGameObjectFlags(GO_SERVANTS_ACCESS_DOOR, GO_FLAG_LOCKED, false);
                 DoToggleGameObjectFlags(GO_SIDE_ENTRANCE_DOOR, GO_FLAG_LOCKED, false);
+
+                // 歌剧院通关后主宰露台门立即解锁开启 (Issue #4156)
+                if (GameObject* pDoor1 = GetSingleGameObjectFromStorage(GO_MASTERS_TERRACE_DOOR_1))
+                    pDoor1->SetGoState(GO_STATE_ACTIVE);
+                if (GameObject* pDoor2 = GetSingleGameObjectFromStorage(GO_MASTERS_TERRACE_DOOR_2))
+                    pDoor2->SetGoState(GO_STATE_ACTIVE);
             }
             // 显式状态设定（幂等），不再使用 toggle 防止大幕反向翻转
             if (GameObject* curtain = GetSingleGameObjectFromStorage(GO_STAGE_CURTAIN))

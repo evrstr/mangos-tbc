@@ -27,6 +27,10 @@ struct HuntersMark : public AuraScript
     {
         if (data.effIdx == EFFECT_INDEX_2)
         {
+            // TBC 2.4.3 猎人印记4级：效果2为 SPELL_AURA_MOD_TARGET_RANGED_ATTACK_POWER_BY_ATTACKER，按层数叠加已包含在 value 中，直接返回
+            if (data.spellProto->EffectApplyAuraName[EFFECT_INDEX_2] == SPELL_AURA_MOD_TARGET_RANGED_ATTACK_POWER_BY_ATTACKER)
+                return value;
+
             int32 auraValue = 0;
             if (data.aura)
             {
@@ -59,6 +63,11 @@ struct HuntersMark : public AuraScript
 
     SpellAuraProcResult OnProc(Aura* aura, ProcExecutionData& /*procData*/) const override
     {
+        // TBC 2.4.3 猎人印记4级：效果2叠层由 Unit::HandleTargetRangedAttackPowerByAttackerAuraProc 统一处理
+        if (aura->GetEffIndex() == EFFECT_INDEX_2 &&
+            aura->GetModifier()->m_auraname == SPELL_AURA_MOD_TARGET_RANGED_ATTACK_POWER_BY_ATTACKER)
+            return SPELL_AURA_PROC_OK;
+
         if (aura->GetEffIndex() != EFFECT_INDEX_0) // increases debuff strength on every hit up to 4th (每次命中递增印记攻强，最高叠至基础值的 4 倍)
         {
             int32 basevalue = aura->GetBasePoints();

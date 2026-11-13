@@ -230,7 +230,7 @@ pAuraProcHandler AuraProcHandler[TOTAL_AURAS] =
     &Unit::HandleNULLProc,                                  //195 SPELL_AURA_MOD_DEPRICATED_2 not used now (old SPELL_AURA_MOD_SPELL_HEALING_OF_INTELLECT)
     &Unit::HandleNULLProc,                                  //196 SPELL_AURA_MOD_COOLDOWN
     &Unit::HandleNULLProc,                                  //197 SPELL_AURA_MOD_ATTACKER_SPELL_AND_WEAPON_CRIT_CHANCE
-    &Unit::HandleNULLProc,                                  //198 SPELL_AURA_MOD_ALL_WEAPON_SKILLS
+    &Unit::HandleTargetRangedAttackPowerByAttackerAuraProc, //198 SPELL_AURA_MOD_TARGET_RANGED_ATTACK_POWER_BY_ATTACKER
     &Unit::HandleNULLProc,                                  //199 SPELL_AURA_MOD_INCREASES_SPELL_PCT_TO_HIT
     &Unit::HandleNULLProc,                                  //200 SPELL_AURA_MOD_XP_PCT
     &Unit::HandleNULLProc,                                  //201 SPELL_AURA_FLY                             this aura enable flight mode...
@@ -2889,6 +2889,32 @@ SpellAuraProcResult Unit::HandleAttackPowerAttackerBonusAuraProc(ProcExecutionDa
     Unit* pVictim = data.target; uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
     SpellEntry const* dummySpell = triggeredByAura->GetSpellProto();
 
+    return SPELL_AURA_PROC_OK;
+}
+
+/// 处理目标受远程攻击叠加攻击强度光环触发（TBC 2.4.3 猎人印记效果2，按远程普攻/技能逐层叠加，上限 30 层）
+SpellAuraProcResult Unit::HandleTargetRangedAttackPowerByAttackerAuraProc(ProcExecutionData& data)
+{
+    Aura* triggeredByAura = data.triggeredByAura;
+    if (!triggeredByAura || triggeredByAura->GetEffIndex() != EFFECT_INDEX_2)
+        return SPELL_AURA_PROC_OK;
+
+    // 仅当远程攻击（猎人或宠物远程射击/攻击）命中时触发叠加
+    if (data.attType != RANGED_ATTACK)
+        return SPELL_AURA_PROC_FAILED;
+
+    SpellAuraHolder* holder = triggeredByAura->GetHolder();
+    if (!holder)
+        return SPELL_AURA_PROC_FAILED;
+
+    // TBC 2.4.3 猎人印记4级上限30层（每层+11远程AP，最高+330远程AP）
+    uint32 stackAmount = holder->GetStackAmount();
+    if (stackAmount >= 30)
+        return SPELL_AURA_PROC_OK;
+
+    Unit* originalCaster = triggeredByAura->GetCaster();
+    Unit* stackCaster = originalCaster ? originalCaster : data.attacker;
+    holder->SetStackAmount(stackAmount + 1, stackCaster);
     return SPELL_AURA_PROC_OK;
 }
 

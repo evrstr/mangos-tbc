@@ -1199,6 +1199,9 @@ SpellSchoolMask UnitAI::GetMainAttackSchoolMask() const
 // 判断法术当前是否因冷却、沉默或安抚而无法施放
 bool UnitAI::IsMainSpellPrevented(SpellEntry const* spellInfo) const
 {
+    if (!spellInfo)
+        return true;
+
     if (!m_unit->IsSpellReady(*spellInfo))
         return true;
 

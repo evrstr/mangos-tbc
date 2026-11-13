@@ -354,7 +354,7 @@ enum AuraType
     SPELL_AURA_MOD_DEPRICATED_2  = 195,                     // not used now, old SPELL_AURA_MOD_SPELL_HEALING_OF_INTELLECT (已废弃：旧版智力转治疗)
     SPELL_AURA_MOD_COOLDOWN = 196,                          // only 24818 Noxious Breath (修改法术冷却时间)
     SPELL_AURA_MOD_ATTACKER_SPELL_AND_WEAPON_CRIT_CHANCE = 197, // 修改攻击者对该目标的法术与武器暴击几率
-    SPELL_AURA_MOD_ALL_WEAPON_SKILLS = 198,                 // 修改所有武器技能等级
+    SPELL_AURA_MOD_TARGET_RANGED_ATTACK_POWER_BY_ATTACKER = 198, // 攻击者根据受害者身上光环层数获得额外远程攻强 (TBC 2.4.3 猎人印记效果2)
     SPELL_AURA_MOD_INCREASES_SPELL_PCT_TO_HIT = 199,        // 提高法术命中几率百分比
     SPELL_AURA_MOD_XP_PCT = 200,                            // 修改经验值获取百分比
     SPELL_AURA_FLY = 201,                                   // 允许飞行状态
