@@ -1993,9 +1993,24 @@ void GameObject::Use(Unit* user, SpellEntry const* spellInfo)
             }
 
             spellId = info->spellcaster.spellId;
-            spellCaster = this;
-            if (spellId == 46841) // sends only spell GO
-                triggeredFlags |= TRIGGERED_OLD_TRIGGERED;
+
+            // 光明之泉（各等级）对点击者施放持续恢复光环：施法者指定为泉水主人（牧师）或点击者，
+            // 使周期治疗光环获得有效 Unit 施法者并正确享受法术治疗强度与天赋加成 (Issue #3837)
+            switch (GetEntry())
+            {
+                case 181102: // Lightwell Rank 1
+                case 181105: // Lightwell Rank 2
+                case 181106: // Lightwell Rank 3
+                case 181165: // Lightwell Rank 4
+                    spellCaster = GetOwner() ? static_cast<WorldObject*>(GetOwner()) : user;
+                    triggeredFlags |= TRIGGERED_OLD_TRIGGERED;
+                    break;
+                default:
+                    spellCaster = this;
+                    if (spellId == 46841) // sends only spell GO
+                        triggeredFlags |= TRIGGERED_OLD_TRIGGERED;
+                    break;
+            }
 
             onSuccess = [&]()
             {

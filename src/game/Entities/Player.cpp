@@ -19886,7 +19886,8 @@ void Player::ApplyEquipCooldown(Item* pItem)
         if (!spellentry)
             continue;
 
-        AddCooldown(*spellentry, nullptr, false, 30 * IN_MILLISECONDS);
+        // 仅施加 30 秒换装基础冷却，忽略法术自带的长类别冷却（如祈福/咒逐 30 分钟），防止装备时误触发 (Issue #3477)
+        AddCooldown(*spellentry, nullptr, false, 30 * IN_MILLISECONDS, true);
 
         WorldPacket data(SMSG_ITEM_COOLDOWN, 12);
         data << ObjectGuid(pItem->GetObjectGuid());

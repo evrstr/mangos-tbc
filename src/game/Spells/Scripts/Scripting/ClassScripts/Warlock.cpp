@@ -476,6 +476,24 @@ struct CurseDiminishingDuration : public AuraScript
 // 17804 - Soul Siphon (灵魂虹吸：按目标身上术士痛苦系效果数量（含堆叠）提高吸取生命伤害)
 struct SoulSiphon : public AuraScript
 {
+    void OnAuraInit(Aura* aura) const override
+    {
+        aura->SetAffectOverriden();
+    }
+
+    // 仅作用于吸取生命（Drain Life）法术 (Issue #3649)
+    bool OnAffectCheck(Aura const* /*aura*/, SpellEntry const* spellInfo) const override
+    {
+        if (!spellInfo)
+            return false;
+
+        if (spellInfo->SpellFamilyName != SPELLFAMILY_WARLOCK)
+            return false;
+
+        // Drain Life has SpellFamilyFlags 0x8 in SPELLFAMILY_WARLOCK
+        return (spellInfo->SpellFamilyFlags & uint64(0x8)) != 0;
+    }
+
     void OnApply(Aura* aura, bool apply) const override
     {
         if (aura->GetEffIndex() == EFFECT_INDEX_1)
