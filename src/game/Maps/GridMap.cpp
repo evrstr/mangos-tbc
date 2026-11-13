@@ -1260,10 +1260,16 @@ GridMap* TerrainInfo::GetGrid(const float x, const float y, bool loadOnlyMap /*=
 // 线程安全地按需加载指定网格的 .map、VMap 与寻路网格（MMap）；mapOnly 为 true 时仅加载 .map
 GridMap* TerrainInfo::LoadMapAndVMap(const uint32 x, const uint32 y, bool mapOnly /*= false*/)
 {
-    if ((m_GridMaps[x][y] && mapOnly)
-        || (VMAP::VMapFactory::createOrGetVMapManager()->IsTileLoaded(m_mapId, x, y) && MMAP::MMapFactory::createOrGetMMapManager()->IsMMapIsLoaded(m_mapId, x, y)))
+    if (m_GridMaps[x][y] && mapOnly)
+        return m_GridMaps[x][y];
+
+    VMAP::IVMapManager* vmgr = VMAP::VMapFactory::createOrGetVMapManager();
+    MMAP::MMapManager* mmgr = MMAP::MMapFactory::createOrGetMMapManager();
+
+    if (m_GridMaps[x][y] && vmgr->IsTileLoaded(m_mapId, x, y) && mmgr->IsMMapIsLoaded(m_mapId, x, y))
     {
-        // nothing to load here
+        // 即使已加载也补一次 loadMap 登记（非分块图已登记则快速返回），确保活跃网格在用时不被误删整树
+        vmgr->loadMap((sWorld.GetDataPath() + "vmaps").c_str(), m_mapId, x, y);
         return m_GridMaps[x][y];
     }
 
@@ -1295,31 +1301,29 @@ GridMap* TerrainInfo::LoadMapAndVMap(const uint32 x, const uint32 y, bool mapOnl
     if (mapOnly)
         return m_GridMaps[x][y];
 
-    if (!m_vmgr->IsTileLoaded(m_mapId, x, y))
-    {
-        // load VMAPs for current map/grid...
-        const MapEntry* i_mapEntry = sMapStore.LookupEntry(m_mapId);
-        const char* mapName = i_mapEntry ? i_mapEntry->name[sWorld.GetDefaultDbcLocale()] : "UNNAMEDMAP\x0";
+    // 非分块地图在初次加载后 IsTileLoaded 恒为 true，因此必须无条件调用 loadMap 补登记（内部有 IsTileRegistered 幂等防护）
+    const MapEntry* i_mapEntry = sMapStore.LookupEntry(m_mapId);
+    const char* mapName = i_mapEntry ? i_mapEntry->name[sWorld.GetDefaultDbcLocale()] : "UNNAMEDMAP\x0";
 
-        int vmapLoadResult = m_vmgr->loadMap((sWorld.GetDataPath() + "vmaps").c_str(), m_mapId, x, y);
-        switch (vmapLoadResult)
-        {
-            case VMAP::VMAP_LOAD_RESULT_OK:
-                DEBUG_FILTER_LOG(LOG_FILTER_MAP_LOADING, "VMAP loaded name:%s, id:%d, x:%d, y:%d (vmap rep.: x:%d, y:%d)", mapName, m_mapId, x, y, x, y);
-                break;
-            case VMAP::VMAP_LOAD_RESULT_ERROR:
-                DEBUG_FILTER_LOG(LOG_FILTER_MAP_LOADING, "Could not load VMAP name:%s, id:%d, x:%d, y:%d (vmap rep.: x:%d, y:%d)", mapName, m_mapId, x, y, x, y);
-                break;
-            case VMAP::VMAP_LOAD_RESULT_IGNORED:
-                DEBUG_FILTER_LOG(LOG_FILTER_MAP_LOADING, "Ignored VMAP name:%s, id:%d, x:%d, y:%d (vmap rep.: x:%d, y:%d)", mapName, m_mapId, x, y, x, y);
-                break;
-        }
+    int vmapLoadResult = vmgr->loadMap((sWorld.GetDataPath() + "vmaps").c_str(), m_mapId, x, y);
+    switch (vmapLoadResult)
+    {
+        case VMAP::VMAP_LOAD_RESULT_OK:
+            DEBUG_FILTER_LOG(LOG_FILTER_MAP_LOADING, "VMAP loaded name:%s, id:%d, x:%d, y:%d (vmap rep.: x:%d, y:%d)", mapName, m_mapId, x, y, x, y);
+            break;
+        case VMAP::VMAP_LOAD_RESULT_ERROR:
+            sLog.outError("VMAP: could not load vmap data for map %s (id %u, tile %d,%d) - line of sight and height queries for this map will be MISSING!",
+                mapName, m_mapId, x, y);
+            break;
+        case VMAP::VMAP_LOAD_RESULT_IGNORED:
+            DEBUG_FILTER_LOG(LOG_FILTER_MAP_LOADING, "Ignored VMAP name:%s, id:%d, x:%d, y:%d (vmap rep.: x:%d, y:%d)", mapName, m_mapId, x, y, x, y);
+            break;
     }
 
-    if (!MMAP::MMapFactory::createOrGetMMapManager()->IsMMapIsLoaded(m_mapId, x, y))
+    if (!mmgr->IsMMapIsLoaded(m_mapId, x, y))
     {
         // load navmesh
-        MMAP::MMapFactory::createOrGetMMapManager()->loadMap(sWorld.GetDataPath(), m_mapId, x, y);
+        mmgr->loadMap(sWorld.GetDataPath(), m_mapId, x, y);
     }
 
     if (m_GridMaps[x][y])

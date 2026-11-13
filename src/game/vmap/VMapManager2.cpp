@@ -101,8 +101,11 @@ namespace VMAP
         VMAPLoadResult result = VMAP_LOAD_RESULT_IGNORED;
         if (isMapLoadingEnabled())
         {
+            iBasePath = pBasePath ? pBasePath : "";
             if (_loadMap(pMapId, pBasePath, x, y))
                 result = VMAP_LOAD_RESULT_OK;
+            else if (iNoVmapDataMaps.find(pMapId) != iNoVmapDataMaps.end())
+                result = VMAP_LOAD_RESULT_IGNORED;
             else
                 result = VMAP_LOAD_RESULT_ERROR;
         }
@@ -119,6 +122,17 @@ namespace VMAP
         return instanceTree->second->IsTileLoaded(x, y);
     }
 
+    bool VMapManager2::IsMapTreeLoaded(uint32 mapId) const
+    {
+        return GetMapTree(mapId) != iInstanceMapTrees.end();
+    }
+
+    bool VMapManager2::IsMapTiled(uint32 mapId) const
+    {
+        InstanceTreeMap::const_iterator instanceTree = GetMapTree(mapId);
+        return instanceTree != iInstanceMapTrees.end() && instanceTree->second->isTiled();
+    }
+
     //=========================================================
     // load one tile (internal use only) (内部加载地图树并按需加载单个 .vmtile 图块)
 
@@ -133,6 +147,9 @@ namespace VMAP
                 MANGOS_ASSERT(false && "Invalid mapId passed to VMapManager2 after startup in thread unsafe environment");
         }
 
+        if (iNoVmapDataMaps.find(mapId) != iNoVmapDataMaps.end())
+            return false;
+
         if (!instanceTree->second)
         {
             std::string mapFileName = getMapFileName(mapId);
@@ -140,6 +157,7 @@ namespace VMAP
             if (!newTree->InitMap(mapFileName, this))
             {
                 delete newTree;
+                iNoVmapDataMaps.insert(mapId);
                 return false;
             }
 
@@ -149,7 +167,48 @@ namespace VMAP
                 instanceTree->second = newTree;
             }
         }
+
+        if (instanceTree->second->IsTileRegistered(tileX, tileY))
+            return true;
+
         return instanceTree->second->LoadMapTile(tileX, tileY, this);
+    }
+
+    // 视线/高度查询时若发现静态模型树已被提前卸载，按需自愈重新加载
+    bool VMapManager2::EnsureMapLoaded(uint32 mapId, float x1, float y1, float x2, float y2)
+    {
+        if (GetMapTree(mapId) != iInstanceMapTrees.end())
+            return true;
+        if (!isMapLoadingEnabled() || iBasePath.empty())
+            return false;
+        if (iInstanceMapTrees.find(mapId) == iInstanceMapTrees.end())
+            return false;
+        if (iNoVmapDataMaps.find(mapId) != iNoVmapDataMaps.end())
+            return false;
+
+        std::lock_guard<std::mutex> lock(m_vmEnsureMutex);
+        if (GetMapTree(mapId) != iInstanceMapTrees.end())
+            return true;
+
+        static constexpr float tileSize = 533.33333333f;
+        static constexpr uint32 maxTiles = 64;
+        float const points[2][2] = { { x1, y1 }, { x2, y2 } };
+        for (auto const& pt : points)
+        {
+            Vector3 const p = convertPositionToInternalRep(pt[0], pt[1], 0.0f);
+            uint32 const tileX = uint32(p.x / tileSize);
+            uint32 const tileY = uint32(p.y / tileSize);
+            if (tileX >= maxTiles || tileY >= maxTiles)
+                continue;
+            if (_loadMap(mapId, iBasePath, tileX, tileY) && GetMapTree(mapId) != iInstanceMapTrees.end())
+            {
+                NOTICE_LOG("VMAP: map %u had NO vmap tree in memory (it was unloaded while still in use) - "
+                           "reloaded on demand for tile %u,%u; all line of sight / height queries for this map "
+                           "returned 'clear' until now", mapId, tileX, tileY);
+                return true;
+            }
+        }
+        return GetMapTree(mapId) != iInstanceMapTrees.end();
     }
 
     //=========================================================
@@ -193,6 +252,7 @@ namespace VMAP
     {
         if (!isLineOfSightCalcEnabled()) return true;
         bool result = true;
+        EnsureMapLoaded(mapId, x1, y1, x2, y2);
         InstanceTreeMap::const_iterator instanceTree = GetMapTree(mapId);
         if (instanceTree != iInstanceMapTrees.end())
         {
@@ -219,6 +279,7 @@ namespace VMAP
         rz = z2;
         if (isLineOfSightCalcEnabled())
         {
+            EnsureMapLoaded(mapId, x1, y1, x2, y2);
             InstanceTreeMap::const_iterator instanceTree = GetMapTree(mapId);
             if (instanceTree != iInstanceMapTrees.end())
             {
@@ -246,6 +307,7 @@ namespace VMAP
         float height = VMAP_INVALID_HEIGHT_VALUE;           // no height
         if (isHeightCalcEnabled())
         {
+            EnsureMapLoaded(mapId, x, y, x, y);
             InstanceTreeMap::const_iterator instanceTree = GetMapTree(mapId);
             if (instanceTree != iInstanceMapTrees.end())
             {

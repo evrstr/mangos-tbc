@@ -97,6 +97,8 @@ namespace VMAP
 
             virtual std::string getDirFileName(unsigned int pMapId, int x, int y) const = 0; // 生成图块文件名
             virtual bool IsTileLoaded(uint32 mapId, uint32 x, uint32 y) const = 0; // 查询指定图块是否已加载
+            virtual bool IsMapTreeLoaded(uint32 mapId) const = 0;       // 诊断/自愈用：查询指定地图的静态模型树是否当前在内存中
+            virtual bool IsMapTiled(uint32 mapId) const = 0;            // 诊断用：查询指定地图是否为分块地图（拥有 .vmtile 文件）
             /**
             Query world model area info.
             \param z gets adjusted to the ground height for which this are info is valid

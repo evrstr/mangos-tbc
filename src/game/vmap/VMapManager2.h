@@ -25,6 +25,8 @@
 
 #include <unordered_map>
 #include <mutex>
+#include <set>
+#include <string>
 
 //===========================================================
 
@@ -71,8 +73,11 @@ namespace VMAP
         private:
             std::mutex m_vmStaticMapMutex;                      // 保护 iInstanceMapTrees 增删的互斥锁
             std::mutex m_vmModelMutex;                          // 保护共享模型缓存 iLoadedModelFiles 的互斥锁
+            std::mutex m_vmEnsureMutex;                         // 保护 EnsureMapLoaded 自愈重载的互斥锁
 
             bool m_thread_safe_environment;                     // 若已通过 InitializeThreadUnsafe 预分配全部地图槽位则为 true（可无锁只读查找）
+            std::string iBasePath;                              // 数据目录路径，供按需自愈重载使用
+            std::set<uint32> iNoVmapDataMaps;                   // 记录无 vmap 数据的地图 ID，避免重复尝试打开不存在的 .vmtree 文件
 
         protected:
             // Tree to check collision (已加载的模型缓存与地图碰撞树表)
@@ -80,6 +85,7 @@ namespace VMAP
             InstanceTreeMap iInstanceMapTrees;
 
             bool _loadMap(uint32 pMapId, const std::string& basePath, uint32 tileX, uint32 tileY); // 加载地图树及指定图块数据
+            bool EnsureMapLoaded(uint32 mapId, float x1, float y1, float x2, float y2); // 按需自愈重新加载被提前卸载的地图树
             /* void _unloadMap(uint32 pMapId, uint32 x, uint32 y); */
 
         public:
@@ -95,6 +101,8 @@ namespace VMAP
 
             VMAPLoadResult loadMap(const char* pBasePath, unsigned int pMapId, int x, int y) override; // 加载地图图块
             bool IsTileLoaded(uint32 mapId, uint32 x, uint32 y) const override; // 查询图块是否已加载
+            bool IsMapTreeLoaded(uint32 mapId) const override;          // 查询指定地图树是否在内存中
+            bool IsMapTiled(uint32 mapId) const override;               // 查询指定地图是否为分块地图
 
             void unloadMap(unsigned int pMapId, int x, int y) override; // 卸载指定地图图块
             void unloadMap(unsigned int pMapId) override;               // 卸载整张地图的所有图块及树实例

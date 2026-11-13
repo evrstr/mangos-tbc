@@ -99,6 +99,11 @@ namespace VMAP
                     return false;
                 return itr->second;
             }
+            // 查询指定图块 (x,y) 是否存在登记记账（区分于 IsTileLoaded 对非分块图恒为 true）
+            bool IsTileRegistered(uint32 x, uint32 y) const
+            {
+                return iLoadedTiles.find(packTileID(x, y)) != iLoadedTiles.end();
+            }
             void UnloadMapTile(uint32 tileX, uint32 tileY, VMapManager2* vm); // 卸载单个图块并递减模型实例引用计数
             bool isTiled() const { return iIsTiled; }
             uint32 numLoadedTiles() const { return iLoadedTiles.size(); }
