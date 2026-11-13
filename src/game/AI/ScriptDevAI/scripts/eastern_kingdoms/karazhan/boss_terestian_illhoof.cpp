@@ -154,6 +154,16 @@ struct boss_terestianAI : public CombatAI
 
         if (m_instance)
             m_instance->SetData(TYPE_TERESTIAN, IN_PROGRESS);
+
+        // 基尔里克在开战前已预刷，邪蹄进战时显式同步令其进战 (PR #891)
+        if (Creature* kilrek = m_creature->GetMap()->GetAnyTypeCreature(m_kilrekGuid))
+        {
+            if (kilrek->IsAlive())
+            {
+                kilrek->SetInCombatWithZone();
+                kilrek->AI()->AttackClosestEnemy();
+            }
+        }
     }
 
     // 脱战归位回调：重置遭遇战状态

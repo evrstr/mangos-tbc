@@ -561,6 +561,8 @@ void GameObject::Update(const uint32 diff)
                             m_lootState = GO_JUST_DEACTIVATED;
 
                         m_loot->Update();
+                        // 宝箱被钥匙成功开启后移除锁定状态，允许小队其他成员正常拾取共享战利品 (PR #882)
+                        RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
                     }
                     break;
                 case GAMEOBJECT_TYPE_TRAP:

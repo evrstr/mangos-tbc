@@ -28,6 +28,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 #define MAX_STACK_SIZE 64 // BIH 遍历栈最大深度
 
@@ -133,6 +134,15 @@ class BIH
             float intervalMax = -1.f;
             Vector3 org = r.origin();
             Vector3 dir = r.direction();
+
+            // 过滤 NaN 坐标与方向，防止死循环绕过剪枝反复入栈导致崩溃 (PR #881)
+            for (int i = 0; i < 3; ++i)
+                if (!std::isfinite(org[i]) || !std::isfinite(dir[i]))
+                    return;
+            // 距离为 NaN 或负数时直接返回（正无穷大用于室内区域判定，合法放行）
+            if (std::isnan(maxDist) || maxDist < 0.0f)
+                return;
+
             Vector3 invDir;
             for (int i = 0; i < 3; ++i)
             {
@@ -215,7 +225,9 @@ class BIH
                                 continue;
                             }
 
-                            MANGOS_ASSERT(stackPos < MAX_STACK_SIZE); // should never happen, subdivide guards against this
+                            // 栈深度溢出保护，防止越界覆写栈内存导致段错误 (PR #881)
+                            if (stackPos >= MAX_STACK_SIZE)
+                                return;
 
                             // ray passes through both nodes
                             // push back node

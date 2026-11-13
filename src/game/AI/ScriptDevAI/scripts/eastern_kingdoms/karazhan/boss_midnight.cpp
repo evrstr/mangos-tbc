@@ -245,6 +245,9 @@ struct boss_attumenAI : public CombatAI
     void EnterEvadeMode() override
     {
         ScriptedAI::EnterEvadeMode();
+        if (!m_instance)
+            return;
+
         if (Creature* midnight = m_instance->GetSingleCreatureFromStorage(NPC_MIDNIGHT))
         {
             if (midnight->IsInCombat())

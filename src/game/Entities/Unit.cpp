@@ -10719,9 +10719,10 @@ bool Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
                 GetMotionMaster()->MoveFleeing(source ? source : this);
             }
 
-            // The generator that would give control back may be gone (e.g. cleared on uncharm)
+            // 心控被解除但仍处于迷惑/恐惧状态时挂起客户端控制包；控制解除且无残留控制时补发 (Issue #3402, PR #892)
             if (!apply && IsPlayer() && !HasCharmer() && !IsFleeing() && !IsInPanic())
-                static_cast<Player*>(this)->UpdateClientControl(this, true);
+                if (static_cast<Player*>(this)->ConsumePendingClientControlChange())
+                    static_cast<Player*>(this)->UpdateClientControl(this, true);
         }
 
         if (apply)
@@ -10767,9 +10768,10 @@ bool Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint
                 GetMotionMaster()->MoveFleeing((source ? source : this), duration);
             }
 
-            // The generator that would give control back may be gone (e.g. cleared on uncharm)
+            // 心控被解除但仍处于恐惧状态时挂起客户端控制包；恐惧解除且无残留控制时补发 (Issue #3402, PR #892)
             if (!apply && IsPlayer() && !HasCharmer() && !IsConfused() && !IsInPanic())
-                static_cast<Player*>(this)->UpdateClientControl(this, true);
+                if (static_cast<Player*>(this)->ConsumePendingClientControlChange())
+                    static_cast<Player*>(this)->UpdateClientControl(this, true);
         }
 
         if (apply)
@@ -12528,6 +12530,10 @@ void Unit::Uncharm(Unit* charmed, uint32 /*spellId*/)
     // Update possessed's client control status after altering flags
     if (const Player* controllingClientPlayer = charmed->GetClientControlling())
         controllingClientPlayer->UpdateClientControl(charmed, true);
+
+    // 被心控玩家若仍处于恐惧/迷惑等控制状态，暂不恢复客户端控制，待控制效果结束时补发 (Issue #3402, PR #892)
+    if (charmed->IsPlayer() && (charmed->IsConfused() || charmed->IsFleeing() || charmed->IsInPanic()))
+        static_cast<Player*>(charmed)->SetPendingClientControlChange();
 
     if (charmed->IsAlive()) // must be done after flag update
     {

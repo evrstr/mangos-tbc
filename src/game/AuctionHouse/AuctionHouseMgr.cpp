@@ -516,7 +516,13 @@ void AuctionHouseMgr::RemovePlayerAuctions(ObjectGuid playerGuid)
 void AuctionHouseMgr::AddAItem(Item* it)
 {
     MANGOS_ASSERT(it);
-    MANGOS_ASSERT(mAitems.find(it->GetGUIDLow()) == mAitems.end());
+    auto iter = mAitems.find(it->GetGUIDLow());
+    if (iter != mAitems.end())
+    {
+        // 发现重复拍卖物品 GUID 时记录错误并跳过，防止断言触发服务端启动循环崩溃 (Issue #4304)
+        sLog.outError("AuctionHouseMgr::AddAItem: duplicate auction item guid %u (entry %u). Keeping existing item, ignoring duplicate.", it->GetGUIDLow(), it->GetEntry());
+        return;
+    }
     mAitems[it->GetGUIDLow()] = it;
 }
 

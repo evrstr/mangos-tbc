@@ -499,7 +499,7 @@ void TradeData::SetAccepted(bool state, bool crosssend /*= false*/)
 //== Player (玩家核心实现) ================================================
 
 /// Player 构造函数：初始化玩家实体各子系统默认值与计时器
-Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(this), m_camera(this), m_reputationMgr(this), m_launched(false)
+Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(this), m_pendingClientControlChange(false), m_camera(this), m_reputationMgr(this), m_launched(false)
 {
 #ifdef ENABLE_PLAYERBOTS
     m_playerbotAI = nullptr;
