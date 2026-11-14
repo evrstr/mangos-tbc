@@ -172,6 +172,10 @@ namespace MMAP
     /// 扫描 mmaps 目录并一次性加载属于 mapId 的全部 .mmtile 瓦片
     void MMapManager::loadAllMapTiles(std::string const& basePath, uint32 mapId)
     {
+        // 禁用 MMAP 寻路时直接跳过（与 loadMap 同理，避免 loadedMMaps 为空触发断言）
+        if (!MMapFactory::IsPathfindingEnabled(mapId))
+            return;
+
         auto itr = loadedMMaps.find(mapId);
         MANGOS_ASSERT(itr != loadedMMaps.end());
         const auto& mmapData = itr->second;
@@ -202,6 +206,11 @@ namespace MMAP
 
     bool MMapManager::loadMap(std::string const& basePath, uint32 mapId, int32 x, int32 y)
     {
+        // 禁用 MMAP 寻路时（mmap.enabled=0）直接跳过：GridMap 加载网格时仍会无条件调用
+        // loadMap，此时 loadedMMaps 为空会触发断言终止服务器（首次启动无 mmaps 数据时同理）
+        if (!MMapFactory::IsPathfindingEnabled(mapId))
+            return false;
+
         // get this mmap data
         auto itr = loadedMMaps.find(mapId);
         MANGOS_ASSERT(itr != loadedMMaps.end()); // must not occur here as it would not be thread safe - only in loadMapData through loadMapInstance

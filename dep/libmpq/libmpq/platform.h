@@ -25,4 +25,18 @@
   #define fseeko _fseeki64
 #endif
 
+// MinGW/GCC on Windows also needs the explicit 64-bit file-seek mapping:
+// the default fseeko/ftello there are limited to 32-bit long offsets, which
+// breaks MPQ archives larger than 4GB (e.g. HD-rework clients' common.MPQ).
+// （MinGW/GCC 下默认 fseeko/ftello 偏移为 32 位 long，无法处理超过 4GB 的 MPQ
+//   档案（如高清整合包客户端的 common.MPQ），同样需要显式映射 64 位 seek）
+#if defined(_WIN32) && (defined(__MINGW32__) || defined(__MINGW64__))
+  #ifndef fseeko
+    #define fseeko(stream, offset, whence) _fseeki64((stream), (long long)(offset), (whence))
+  #endif
+  #ifndef ftello
+    #define ftello(stream) _ftelli64((stream))
+  #endif
+#endif
+
 #endif								/* _PLATFORM_H */
