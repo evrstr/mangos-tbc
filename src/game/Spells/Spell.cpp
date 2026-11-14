@@ -5027,7 +5027,12 @@ void Spell::TakeAmmo() const
 // 扣除法术所需施法材料（处理物品既作施法媒介又作材料及免消耗天赋情况）
 void Spell::TakeReagents()
 {
-    if (!m_trueCaster->IsPlayer() || m_spellInfo->HasAttribute(SPELL_ATTR_EX6_DO_NOT_CONSUME_RESOURCES))
+    if (!m_trueCaster->IsPlayer())
+        return;
+
+    // 仪式召唤（698）客户端数据带 EX6 DO_NOT_CONSUME_RESOURCES（意图为引导子法术 46546 消耗），
+    // 但核心引导链不经子法术扣材料，导致主法术同样免扣（Issue #4109）；此处对 698 显式恢复材料扣除
+    if (m_spellInfo->HasAttribute(SPELL_ATTR_EX6_DO_NOT_CONSUME_RESOURCES) && m_spellInfo->Id != 698)
         return;
 
     if (IgnoreItemRequirements())                           // reagents used in triggered spell removed by original spell or don't must be removed.

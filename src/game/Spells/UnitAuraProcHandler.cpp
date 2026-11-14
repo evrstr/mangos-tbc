@@ -2024,6 +2024,12 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
                 case 23780:                                 // Aegis of Preservation (Aegis of Preservation trinket)
                     trigger_spell_id = 23781;
                     break;
+                case 45059:                                 // Vessel of the Naaru (Vial of the Sunwell / Sunwell Vial)
+                    // 圣能堆叠（45062）不得反向触发收集光环，防止施法链溢出与重复叠层
+                    // （dev/039 已用 SQL 抑制施法者 proc，此处为核心层双保险）
+                    if (spellInfo && spellInfo->Id == 45062)
+                        return SPELL_AURA_PROC_FAILED;
+                    break;
                 case 24905:                                 // Moonkin Form (Passive)
                 {
                     // Elune's Touch (instead non-existed triggered spell) 30% from AP

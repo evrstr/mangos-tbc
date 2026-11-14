@@ -7379,12 +7379,10 @@ void ObjectMgr::LoadGameObjectLocales()
 {
     mGameObjectLocaleMap.clear();                           // need for reload case
 
+    // 2.4.3 客户端没有 GO 打开/关闭文本本地化字段（opening/closing_text_loc* 为 WotLK 列），
+    // 只查询 name_loc* 避免在不具备这些列的 TBC 数据库上启动报错 (Issue #4090)
     auto queryResult = WorldDatabase.Query("SELECT entry,"
-                          "name_loc1,name_loc2,name_loc3,name_loc4,name_loc5,name_loc6,name_loc7,name_loc8,"
-                          "opening_text_loc1,opening_text_loc2,opening_text_loc3,opening_text_loc4,"
-                          "opening_text_loc5,opening_text_loc6,opening_text_loc7,opening_text_loc8,"
-                          "closing_text_loc1,closing_text_loc2,closing_text_loc3,closing_text_loc4,"
-                          "closing_text_loc5,closing_text_loc6,closing_text_loc7,closing_text_loc8 "
+                          "name_loc1,name_loc2,name_loc3,name_loc4,name_loc5,name_loc6,name_loc7,name_loc8 "
                           "FROM locales_gameobject");
 
     if (!queryResult)
@@ -7427,46 +7425,6 @@ void ObjectMgr::LoadGameObjectLocales()
                             data.Name.resize(idx + 1);
 
                         data.Name[idx] = str;
-                    }
-                }
-            }
-        }
-
-        for (int i = 1; i < MAX_LOCALE; ++i)
-        {
-            auto& field = fields[i + (MAX_LOCALE - 1)];
-            if (!field.IsNULL())
-            {
-                std::string str = field.GetCppString();
-                if (!str.empty())
-                {
-                    int idx = GetOrNewStorageLocaleIndexFor(LocaleConstant(i));
-                    if (idx >= 0)
-                    {
-                        if ((int32)data.OpeningText.size() <= idx)
-                            data.OpeningText.resize(idx + 1);
-
-                        data.OpeningText[idx] = str;
-                    }
-                }
-            }
-        }
-
-        for (int i = 1; i < MAX_LOCALE; ++i)
-        {
-            auto& field = fields[i + (MAX_LOCALE - 1) * 2];
-            if (!field.IsNULL())
-            {
-                std::string str = field.GetCppString();
-                if (!str.empty())
-                {
-                    int idx = GetOrNewStorageLocaleIndexFor(LocaleConstant(i));
-                    if (idx >= 0)
-                    {
-                        if ((int32)data.ClosingText.size() <= idx)
-                            data.ClosingText.resize(idx + 1);
-
-                        data.ClosingText[idx] = str;
                     }
                 }
             }
